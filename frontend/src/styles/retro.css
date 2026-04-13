@@ -1,0 +1,449 @@
+/* CourseMateAI - Retro Pixel Aesthetic Styles */
+
+/* ========================================
+   PIXEL FONTS (Import in layout.tsx)
+   ======================================== */
+@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=VT323&display=swap');
+
+/* ========================================
+   RETRO UTILITIES
+   ======================================== */
+.pixel-font {
+  font-family: 'Press Start 2P', 'VT323', monospace;
+  letter-spacing: 0.05em;
+  line-height: 1.6;
+}
+
+.retro-text {
+  text-shadow: 2px 2px 0px rgba(0, 0, 0, 0.3);
+}
+
+.drop-shadow-pixel {
+  filter: drop-shadow(2px 2px 0px rgba(0, 0, 0, 0.5));
+}
+
+/* ========================================
+   PIXEL ART AVATAR SYSTEM
+   ======================================== */
+.pixel-avatar-container {
+  background:
+    linear-gradient(45deg, rgba(26, 26, 26, 0.8) 25%, transparent 25%),
+    linear-gradient(-45deg, rgba(26, 26, 26, 0.8) 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, rgba(26, 26, 26, 0.8) 75%),
+    linear-gradient(-45deg, transparent 75%, rgba(26, 26, 26, 0.8) 75%),
+    linear-gradient(135deg, #1a1a1a 0%, #2a2a2a 100%);
+  background-size: 20px 20px;
+  background-position: 0 0, 0 10px, 10px -10px, -10px 0px;
+  border: 4px solid #444;
+  border-radius: 8px;
+  box-shadow:
+    inset 0 0 20px rgba(0, 0, 0, 0.5),
+    4px 4px 0px rgba(0, 0, 0, 0.3);
+  image-rendering: pixelated;
+  image-rendering: -moz-crisp-edges;
+  image-rendering: crisp-edges;
+}
+
+.pixel-character {
+  display: inline-block;
+  image-rendering: pixelated;
+}
+
+.pixel-row {
+  display: flex;
+  line-height: 0;
+}
+
+.pixel {
+  width: 12px;
+  height: 12px;
+  image-rendering: pixelated;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+/* Character Colors */
+.pixel-transparent {
+  background: transparent;
+  border: none;
+}
+
+.pixel-skin {
+  background: linear-gradient(135deg, #FFDAB9 0%, #F0C8A0 100%);
+  box-shadow: inset 1px 1px 0px rgba(255, 255, 255, 0.3);
+}
+
+.pixel-hair {
+  background: linear-gradient(135deg, #8B4513 0%, #654321 100%);
+  box-shadow: inset 1px 1px 0px rgba(139, 69, 19, 0.5);
+}
+
+.pixel-eye {
+  background: linear-gradient(135deg, #000000 0%, #1a1a1a 100%);
+  width: 8px;
+  height: 8px;
+  margin: 2px;
+}
+
+.pixel-shirt {
+  background: linear-gradient(135deg, #4A90E2 0%, #357ABD 100%);
+  box-shadow: inset 1px 1px 0px rgba(74, 144, 226, 0.3);
+}
+
+.pixel-pants {
+  background: linear-gradient(135deg, #2C3E50 0%, #1a252f 100%);
+  box-shadow: inset 1px 1px 0px rgba(44, 62, 80, 0.3);
+}
+
+/* Equipment Sprites */
+.equipment-sprite {
+  animation: pixel-float 2s ease-in-out infinite;
+  image-rendering: pixelated;
+}
+
+.pixel-border {
+  box-shadow:
+    inset -4px -4px 0px rgba(0, 0, 0, 0.4),
+    inset 4px 4px 0px rgba(255, 255, 255, 0.1);
+}
+
+/* ========================================
+   RETRO BORDERS & PANELS
+   ======================================== */
+.retro-border {
+  box-shadow:
+    inset -4px -4px 0px rgba(0, 0, 0, 0.4),
+    inset 4px 4px 0px rgba(255, 255, 255, 0.1);
+  image-rendering: pixelated;
+}
+
+.retro-panel {
+  background: linear-gradient(135deg,
+    rgba(26, 26, 26, 1) 0%,
+    rgba(38, 38, 38, 1) 100%
+  );
+  box-shadow:
+    inset -2px -2px 4px rgba(0, 0, 0, 0.5),
+    inset 2px 2px 4px rgba(255, 255, 255, 0.05);
+}
+
+.retro-card {
+  position: relative;
+  background: linear-gradient(145deg,
+    rgba(42, 42, 42, 1) 0%,
+    rgba(30, 30, 30, 1) 100%
+  );
+  box-shadow:
+    4px 4px 0px rgba(0, 0, 0, 0.4),
+    inset -1px -1px 0px rgba(0, 0, 0, 0.3),
+    inset 1px 1px 0px rgba(255, 255, 255, 0.05);
+  image-rendering: pixelated;
+}
+
+.retro-card:hover {
+  transform: translateY(-2px);
+  box-shadow:
+    6px 6px 0px rgba(0, 0, 0, 0.4),
+    inset -1px -1px 0px rgba(0, 0, 0, 0.3),
+    inset 1px 1px 0px rgba(255, 255, 255, 0.05);
+}
+
+/* ========================================
+   RETRO BUTTONS
+   ======================================== */
+.retro-button {
+  position: relative;
+  font-family: 'Press Start 2P', monospace;
+  font-size: 12px;
+  padding: 12px 24px;
+  border: 4px solid;
+  border-radius: 0;
+  box-shadow:
+    4px 4px 0px rgba(0, 0, 0, 0.3),
+    inset -2px -2px 0px rgba(0, 0, 0, 0.2),
+    inset 2px 2px 0px rgba(255, 255, 255, 0.2);
+  transition: all 0.1s ease;
+  cursor: pointer;
+  image-rendering: pixelated;
+}
+
+.retro-button:hover {
+  transform: translate(2px, 2px);
+  box-shadow:
+    2px 2px 0px rgba(0, 0, 0, 0.3),
+    inset -2px -2px 0px rgba(0, 0, 0, 0.2),
+    inset 2px 2px 0px rgba(255, 255, 255, 0.2);
+}
+
+.retro-button:active {
+  transform: translate(4px, 4px);
+  box-shadow:
+    0px 0px 0px rgba(0, 0, 0, 0.3),
+    inset -2px -2px 0px rgba(0, 0, 0, 0.3),
+    inset 2px 2px 0px rgba(255, 255, 255, 0.1);
+}
+
+.retro-button-gold {
+  background: linear-gradient(180deg, #FFD700 0%, #DAA520 100%);
+  border-color: #B8860B;
+  color: #000;
+}
+
+.retro-button-blue {
+  background: linear-gradient(180deg, #4A90E2 0%, #357ABD 100%);
+  border-color: #2C5F8D;
+  color: #fff;
+}
+
+.retro-button-red {
+  background: linear-gradient(180deg, #E74C3C 0%, #C0392B 100%);
+  border-color: #A93226;
+  color: #fff;
+}
+
+/* ========================================
+   RETRO 8-BIT BADGES
+   ======================================== */
+.retro-badge {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 10px;
+  padding: 6px 12px;
+  border: 3px solid;
+  box-shadow: 3px 3px 0px rgba(0, 0, 0, 0.4);
+  image-rendering: pixelated;
+  border-radius: 8px;
+}
+
+/* ========================================
+   PIXEL GRID BACKGROUND
+   ======================================== */
+.pixel-grid-bg {
+  background-image:
+    repeating-linear-gradient(
+      0deg,
+      rgba(255, 255, 255, 0.02) 0px,
+      rgba(255, 255, 255, 0.02) 1px,
+      transparent 1px,
+      transparent 4px
+    ),
+    repeating-linear-gradient(
+      90deg,
+      rgba(255, 255, 255, 0.02) 0px,
+      rgba(255, 255, 255, 0.02) 1px,
+      transparent 1px,
+      transparent 4px
+    );
+}
+
+/* ========================================
+   RETRO SCANLINES EFFECT
+   ======================================== */
+.retro-scanlines::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    rgba(0, 0, 0, 0.15) 0px,
+    rgba(0, 0, 0, 0.15) 1px,
+    transparent 1px,
+    transparent 2px
+  );
+  pointer-events: none;
+  z-index: 1000;
+  animation: scanline 8s linear infinite;
+}
+
+@keyframes scanline {
+  0% { transform: translateY(0); }
+  100% { transform: translateY(100%); }
+}
+
+/* ========================================
+   RETRO GLOW EFFECTS
+   ======================================== */
+.retro-glow-gold {
+  box-shadow:
+    0 0 10px rgba(212, 175, 55, 0.5),
+    0 0 20px rgba(212, 175, 55, 0.3),
+    0 0 30px rgba(212, 175, 55, 0.1);
+}
+
+.retro-glow-blue {
+  box-shadow:
+    0 0 10px rgba(74, 144, 226, 0.5),
+    0 0 20px rgba(74, 144, 226, 0.3),
+    0 0 30px rgba(74, 144, 226, 0.1);
+}
+
+.retro-glow-green {
+  box-shadow:
+    0 0 10px rgba(46, 204, 113, 0.5),
+    0 0 20px rgba(46, 204, 113, 0.3),
+    0 0 30px rgba(46, 204, 113, 0.1);
+}
+
+/* ========================================
+   RETRO PIXEL ANIMATIONS
+   ======================================== */
+@keyframes pixel-float {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-4px); }
+}
+
+.pixel-float {
+  animation: pixel-float 2s ease-in-out infinite;
+}
+
+@keyframes pixel-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
+}
+
+.pixel-pulse {
+  animation: pixel-pulse 2s ease-in-out infinite;
+}
+
+@keyframes pixel-blink {
+  0%, 49%, 100% { opacity: 1; }
+  50%, 99% { opacity: 0; }
+}
+
+.pixel-blink {
+  animation: pixel-blink 1s step-start infinite;
+}
+
+@keyframes pixel-shake {
+  0%, 100% { transform: translateX(0); }
+  10%, 30%, 50%, 70%, 90% { transform: translateX(-2px); }
+  20%, 40%, 60%, 80% { transform: translateX(2px); }
+}
+
+.pixel-shake {
+  animation: pixel-shake 0.5s ease-in-out;
+}
+
+/* ========================================
+   RETRO PROGRESS BARS
+   ======================================== */
+.retro-progress-bar {
+  position: relative;
+  height: 24px;
+  background: #1a1a1a;
+  border: 4px solid #444;
+  box-shadow:
+    inset 2px 2px 0px rgba(0, 0, 0, 0.5),
+    inset -2px -2px 0px rgba(255, 255, 255, 0.1);
+  overflow: hidden;
+}
+
+.retro-progress-fill {
+  height: 100%;
+  background: repeating-linear-gradient(
+    90deg,
+    #FFD700 0px,
+    #FFD700 4px,
+    #DAA520 4px,
+    #DAA520 8px
+  );
+  box-shadow: inset 0 2px 0px rgba(255, 255, 255, 0.3);
+  transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  image-rendering: pixelated;
+}
+
+/* ========================================
+   RETRO TOOLTIPS
+   ======================================== */
+.retro-tooltip {
+  position: relative;
+  font-family: 'Press Start 2P', monospace;
+  font-size: 10px;
+  padding: 8px 12px;
+  background: #000;
+  border: 2px solid #FFD700;
+  color: #FFD700;
+  box-shadow: 4px 4px 0px rgba(0, 0, 0, 0.5);
+  white-space: nowrap;
+  z-index: 9999;
+}
+
+/* ========================================
+   RETRO MODAL/DIALOG
+   ======================================== */
+.retro-modal {
+  background: linear-gradient(145deg, #1a1a1a 0%, #262626 100%);
+  border: 6px solid #444;
+  box-shadow:
+    0 0 0 2px #000,
+    8px 8px 0px rgba(0, 0, 0, 0.5),
+    inset -4px -4px 0px rgba(0, 0, 0, 0.3),
+    inset 4px 4px 0px rgba(255, 255, 255, 0.1);
+}
+
+.retro-modal-header {
+  background: linear-gradient(180deg, #FFD700 0%, #DAA520 100%);
+  border-bottom: 4px solid #B8860B;
+  color: #000;
+  font-family: 'Press Start 2P', monospace;
+  padding: 12px 16px;
+  box-shadow: inset 0 -2px 0px rgba(0, 0, 0, 0.2);
+}
+
+/* ========================================
+   RETRO HEALTH/HP BAR
+   ======================================== */
+.retro-hp-bar {
+  position: relative;
+  height: 16px;
+  background: #1a1a1a;
+  border: 3px solid #333;
+  box-shadow: inset 2px 2px 0px rgba(0, 0, 0, 0.5);
+}
+
+.retro-hp-fill {
+  height: 100%;
+  background: linear-gradient(180deg, #2ECC71 0%, #27AE60 100%);
+  box-shadow: inset 0 2px 0px rgba(255, 255, 255, 0.3);
+  transition: width 0.3s ease;
+}
+
+.retro-hp-fill.low {
+  background: linear-gradient(180deg, #E74C3C 0%, #C0392B 100%);
+}
+
+.retro-hp-fill.medium {
+  background: linear-gradient(180deg, #F39C12 0%, #E67E22 100%);
+}
+
+/* ========================================
+   RESPONSIVE PIXEL SCALING
+   ======================================== */
+@media (max-width: 768px) {
+  .pixel-font {
+    font-size: 0.8em;
+  }
+
+  .retro-button {
+    font-size: 10px;
+    padding: 10px 20px;
+  }
+
+  .pixel {
+    width: 10px;
+    height: 10px;
+  }
+}
+
+/* ========================================
+   PIXEL ART IMAGE RENDERING
+   ======================================== */
+img.pixel-art,
+.pixel-art {
+  image-rendering: pixelated;
+  image-rendering: -moz-crisp-edges;
+  image-rendering: crisp-edges;
+  -ms-interpolation-mode: nearest-neighbor;
+}

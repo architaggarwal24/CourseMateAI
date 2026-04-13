@@ -1,0 +1,1477 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Battle Arena — CourseMateAI</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@700&family=Cinzel:wght@400;600;700&family=IM+Fell+English:ital@0;1&family=Press+Start+2P&display=swap" rel="stylesheet">
+<style>
+/* ═══════════════════════════════════════════════════════════
+   RESET + ROOT
+═══════════════════════════════════════════════════════════ */
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box;}
+:root{
+  /* Core palette */
+  --ink:       #0A0608;
+  --deep:      #110D16;
+  --panel:     rgba(12,8,20,0.97);
+  --panel2:    rgba(18,12,30,0.96);
+  --gold:      #C8A84A;
+  --gold-b:    #F0CC6E;
+  --gold-d:    #7A5820;
+  --red:       #C81028;
+  --red-b:     #FF2040;
+  --green:     #22BB44;
+  --blue:      #204880;
+  --txt:       #E2D8C0;
+  --txt-d:     #806A50;
+  --bord:      rgba(200,168,74,0.22);
+  --bord-h:    rgba(200,168,74,0.65);
+  /* Fonts */
+  --font-title: 'Cinzel Decorative', serif;
+  --font-ui:    'Cinzel', serif;
+  --font-body:  'IM Fell English', serif;
+  --font-px:    'Press Start 2P', monospace;
+}
+
+html,body{
+  width:100%;height:100%;
+  overflow:hidden;
+  background:var(--ink);
+  color:var(--txt);
+  font-family:var(--font-ui);
+}
+
+/* ═══════════════════════════════════════════════════════════
+   CRT — very subtle scanlines
+═══════════════════════════════════════════════════════════ */
+body::after{
+  content:'';position:fixed;inset:0;z-index:9998;
+  background:repeating-linear-gradient(0deg,
+    transparent 0,transparent 3px,
+    rgba(0,0,0,0.04) 3px,rgba(0,0,0,0.04) 4px);
+  pointer-events:none;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   LAYOUT — 3 rows: boss identity, arena, command panel
+═══════════════════════════════════════════════════════════ */
+#game-container{
+  position:relative;z-index:2;
+  width:100vw;height:100vh;
+  display:grid;
+  grid-template-rows:min-content 1fr min-content;
+  overflow:hidden;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   ROW 1 — BOSS IDENTITY STRIP
+   Full-width cinematic boss bar like FFXIV/Dark Souls
+═══════════════════════════════════════════════════════════ */
+#boss-strip{
+  position:relative;
+  background:linear-gradient(180deg,
+    rgba(14,4,8,1) 0%,
+    rgba(20,6,12,0.98) 60%,
+    rgba(10,4,8,0.95) 100%);
+  border-bottom:1px solid rgba(180,20,30,0.3);
+  padding:10px 32px 12px;
+  z-index:20;
+  box-shadow:0 4px 40px rgba(160,0,20,0.18);
+}
+/* decorative top rule */
+#boss-strip::before{
+  content:'';position:absolute;top:0;left:0;right:0;height:2px;
+  background:linear-gradient(90deg,
+    transparent 0%,rgba(180,20,30,0.4) 15%,rgba(220,30,50,0.7) 50%,rgba(180,20,30,0.4) 85%,transparent 100%);
+}
+#boss-identity{
+  display:flex;align-items:baseline;justify-content:center;gap:16px;
+  margin-bottom:5px;
+}
+#monster-name{
+  font-family:var(--font-title);
+  font-size:clamp(14px,2.4vw,22px);
+  color:#FF3344;
+  letter-spacing:0.12em;
+  text-align:center;
+  text-shadow:0 0 18px rgba(255,30,50,0.65),0 0 40px rgba(200,0,20,0.3);
+}
+#monster-title{
+  font-family:var(--font-ui);font-size:8px;
+  color:rgba(200,100,110,0.6);letter-spacing:5px;
+  text-transform:uppercase;text-align:center;
+  margin-bottom:6px;
+}
+/* HP bar track */
+#boss-hp-track{
+  position:relative;width:100%;height:18px;
+  background:rgba(0,0,0,0.85);
+  border:1px solid rgba(160,20,30,0.35);
+  overflow:hidden;
+}
+/* ghost drain bar (yellow, lags behind) */
+#monster-hp-ghost{
+  position:absolute;top:0;left:0;height:100%;
+  background:rgba(220,180,40,0.3);
+  transition:width 1.2s ease;
+  pointer-events:none;
+}
+#monster-hp-fill{
+  position:absolute;top:0;left:0;height:100%;
+  background:linear-gradient(90deg,#7A0010,#C01025,#EE2040,#FF4455);
+  transition:width 0.65s cubic-bezier(.4,0,.2,1);
+  overflow:hidden;
+}
+#monster-hp-fill::after{
+  content:'';position:absolute;inset:0;
+  background:linear-gradient(180deg,rgba(255,255,255,0.14),transparent 55%);
+}
+#monster-hp-fill::before{
+  content:'';position:absolute;top:0;bottom:0;width:70px;
+  background:linear-gradient(90deg,transparent,rgba(255,255,255,0.11),transparent);
+  animation:hpShimmer 2s linear infinite;left:-70px;
+}
+@keyframes hpShimmer{from{left:-70px}to{left:110%}}
+#monster-hp-fill.low-hp{
+  background:linear-gradient(90deg,#3A0000,#800000,#FF0808)!important;
+  animation:lowHpPulse 0.5s infinite;
+}
+@keyframes lowHpPulse{0%,100%{box-shadow:inset 0 0 6px rgba(255,0,0,0.4)}50%{box-shadow:inset 0 0 20px rgba(255,0,0,0.9)}}
+#monster-hp-text{
+  position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
+  font-family:var(--font-ui);font-size:9px;color:#fff;
+  text-shadow:1px 1px 3px #000;white-space:nowrap;z-index:3;letter-spacing:1px;
+}
+#phase-indicator{
+  display:inline-block;margin-top:5px;
+  font-family:var(--font-ui);font-size:8px;
+  color:#FF3344;letter-spacing:6px;text-transform:uppercase;
+  text-shadow:0 0 10px #FF3344;animation:phasePulse 0.7s infinite;
+  padding:3px 14px;border:1px solid rgba(255,40,60,0.3);
+  background:linear-gradient(90deg,rgba(100,0,10,0.25),rgba(150,5,20,0.15),rgba(100,0,10,0.25));
+}
+@keyframes phasePulse{0%,100%{opacity:1}50%{opacity:0.45}}
+/* hidden legacy container — game.js expects it for ghost bar injection */
+#boss-hp-section{display:none!important;}
+
+/* ═══════════════════════════════════════════════════════════
+   ROW 2 — ARENA BATTLE SCENE
+═══════════════════════════════════════════════════════════ */
+#battle-scene{
+  position:relative;
+  display:flex;align-items:flex-end;justify-content:space-between;
+  padding:0 2% 0;
+  overflow:hidden;min-height:0;
+}
+
+/* ── ARENA ENVIRONMENT ── */
+/* Background — deep dungeon stone + volumetric fog */
+#battle-scene::before{
+  content:'';position:absolute;inset:0;z-index:0;
+  background:
+    /* top fog */
+    linear-gradient(180deg,rgba(8,3,16,0.6) 0%,transparent 30%),
+    /* bottom shadow */
+    linear-gradient(0deg,rgba(0,0,0,0.7) 0%,transparent 35%),
+    /* stone wall subtle crosshatch */
+    repeating-linear-gradient(0deg,
+      rgba(255,255,255,0.007) 0,rgba(255,255,255,0.007) 1px,
+      transparent 1px,transparent 44px),
+    repeating-linear-gradient(90deg,
+      rgba(255,255,255,0.005) 0,rgba(255,255,255,0.005) 1px,
+      transparent 1px,transparent 66px);
+}
+/* Dungeon floor */
+#arena-floor{
+  position:absolute;bottom:0;left:0;right:0;height:110px;
+  z-index:1;pointer-events:none;
+  background:
+    repeating-linear-gradient(90deg,
+      rgba(200,168,74,0.055) 0,rgba(200,168,74,0.055) 1px,
+      transparent 1px,transparent 96px),
+    repeating-linear-gradient(0deg,
+      rgba(200,168,74,0.035) 0,rgba(200,168,74,0.035) 1px,
+      transparent 1px,transparent 36px),
+    linear-gradient(0deg,rgba(16,6,32,0.9) 0%,rgba(8,3,16,0.3) 70%,transparent 100%);
+  border-top:1px solid rgba(60,20,100,0.4);
+}
+/* Ground glow */
+#arena-floor::after{
+  content:'';position:absolute;bottom:0;left:0;right:0;height:3px;
+  background:linear-gradient(90deg,
+    transparent,rgba(60,30,140,0.55),rgba(200,168,74,0.35),rgba(60,30,140,0.55),transparent);
+  box-shadow:0 0 28px rgba(80,40,180,0.25),0 -18px 50px rgba(30,10,80,0.1);
+}
+
+/* ── STONE PILLARS ── */
+.pillar{
+  position:absolute;top:0;bottom:0;width:28px;z-index:2;
+  background:linear-gradient(90deg,
+    rgba(12,6,24,0.9),
+    rgba(22,12,44,0.75) 30%,
+    rgba(30,16,54,0.65) 50%,
+    rgba(22,12,44,0.75) 70%,
+    rgba(12,6,24,0.9));
+  border-left:1px solid rgba(80,50,140,0.18);
+  border-right:1px solid rgba(80,50,140,0.18);
+}
+.pillar::before{
+  content:'';position:absolute;top:0;left:-5px;right:-5px;height:24px;
+  background:linear-gradient(0deg,rgba(30,16,54,0.85),rgba(40,22,70,0.6));
+  border:1px solid rgba(100,60,180,0.15);
+}
+/* Horizontal stone band */
+.pillar::after{
+  content:'';position:absolute;top:35%;left:-3px;right:-3px;height:12px;
+  background:rgba(30,16,54,0.7);
+  border-top:1px solid rgba(100,60,180,0.12);
+  border-bottom:1px solid rgba(100,60,180,0.12);
+}
+
+/* ── TORCHES ── */
+.torch{
+  position:absolute;bottom:90px;z-index:4;width:10px;
+  display:flex;flex-direction:column;align-items:center;
+}
+.torch-body{
+  width:8px;height:28px;
+  background:linear-gradient(0deg,#2A1600,#5A3010,#7A4218);
+  border-radius:1px 1px 0 0;
+}
+.torch-flame{
+  width:14px;height:22px;
+  margin-top:-2px;
+  background:radial-gradient(ellipse at 50% 90%,
+    #FFEE00 0%,#FFA800 30%,#FF5500 60%,transparent 85%);
+  animation:flicker 0.12s ease-in-out infinite alternate;
+  filter:blur(1px);
+  border-radius:50% 50% 30% 30%;
+}
+@keyframes flicker{
+  0%  {transform:scaleX(1) scaleY(1) translateY(0);opacity:0.9;}
+  100%{transform:scaleX(1.35) scaleY(1.15) translateY(-2px);opacity:1;}
+}
+.torch-glow{
+  position:absolute;bottom:70px;
+  width:120px;height:120px;border-radius:50%;
+  background:radial-gradient(circle,rgba(255,140,30,0.22),transparent 68%);
+  animation:glowBreath 2.2s ease-in-out infinite alternate;
+  pointer-events:none;z-index:3;
+}
+@keyframes glowBreath{0%{opacity:0.5;transform:scale(0.9)}100%{opacity:0.85;transform:scale(1.1)}}
+
+/* ── EMBER PARTICLES ── */
+.embers{position:fixed;inset:0;pointer-events:none;z-index:1;overflow:hidden;}
+.ember{
+  position:absolute;bottom:-8px;border-radius:50%;
+  background:var(--gold);box-shadow:0 0 5px var(--gold-b);
+  animation:emberRise linear infinite;opacity:0;
+}
+@keyframes emberRise{
+  0%{opacity:0;transform:translateY(0) translateX(0) scale(1)}
+  10%{opacity:1}90%{opacity:0.5}
+  100%{opacity:0;transform:translateY(-100vh) translateX(var(--drift)) scale(0.2)}
+}
+
+/* ── RUNE PARTICLES ── */
+.rune{
+  position:absolute;font-family:serif;pointer-events:none;z-index:1;
+  animation:runeAscend linear infinite;opacity:0;
+  color:rgba(200,168,74,0.14);
+}
+@keyframes runeAscend{
+  0%{opacity:0;transform:translateY(0) rotate(0)}
+  8%{opacity:1}85%{opacity:0.28}
+  100%{opacity:0;transform:translateY(-75vh) rotate(210deg)}
+}
+
+/* ── PLAYER SIDE ── */
+#player-side{
+  display:flex;flex-direction:column;align-items:center;
+  flex-shrink:0;padding-bottom:10px;
+  position:relative;z-index:4;
+  margin-left:0.5%;
+}
+#player-label{
+  font-family:var(--font-ui);font-size:7px;
+  color:var(--green);letter-spacing:4px;text-transform:uppercase;
+  margin-bottom:6px;
+  text-shadow:0 0 10px rgba(34,187,68,0.5);
+  background:rgba(0,0,0,0.55);padding:2px 10px;
+  border:1px solid rgba(34,187,68,0.2);
+}
+#player-canvas-wrap{
+  position:relative;display:inline-block;
+  animation:playerBob 2.6s ease-in-out infinite;
+  filter:drop-shadow(0 0 14px rgba(34,170,68,0.3)) drop-shadow(0 22px 40px rgba(0,0,0,0.95));
+}
+#player-canvas-wrap::after{
+  content:'';position:absolute;bottom:-5px;left:10%;right:10%;height:14px;
+  background:radial-gradient(ellipse,rgba(34,187,68,0.45),transparent 70%);
+  filter:blur(5px);
+}
+#player-avatar-canvas{image-rendering:pixelated;display:block;width:200px;height:256px;}
+@keyframes playerBob{0%,100%{transform:translateY(0)}50%{transform:translateY(-7px)}}
+
+/* ── VS BADGE ── */
+#vs-badge{
+  position:absolute;left:50%;top:44%;transform:translate(-50%,-50%);
+  font-family:var(--font-title);font-size:18px;
+  color:transparent;-webkit-text-stroke:1px rgba(200,168,74,0.12);
+  letter-spacing:10px;pointer-events:none;z-index:5;
+}
+
+/* ── DIALOGUE BOX — cinematic RPG story window ── */
+#dialogue-container{
+  position:absolute;
+  z-index:50;
+  left:26%;right:2%;
+  bottom:10px;
+  min-height:88px;
+  background:linear-gradient(155deg,rgba(6,3,18,0.98),rgba(10,5,24,0.97));
+  border:1px solid rgba(200,168,74,0.4);
+  border-left:3px solid var(--gold-d);
+  padding:11px 16px 11px 14px;
+  clip-path:polygon(0 0,calc(100% - 10px) 0,100% 10px,100% 100%,10px 100%,0 calc(100% - 10px));
+  box-shadow:0 0 40px rgba(0,0,0,0.85);
+  transition:opacity 0.2s,transform 0.2s;
+}
+#dialogue-container.hidden{display:none!important;}
+#dialogue-container::after,#dialogue-container::before{display:none;}
+#dialogue-speaker{
+  font-family:var(--font-ui);font-size:8px;
+  color:var(--gold);letter-spacing:4px;text-transform:uppercase;
+  margin-bottom:7px;padding-bottom:6px;
+  border-bottom:1px solid rgba(200,168,74,0.18);
+  display:flex;align-items:center;gap:7px;
+}
+#dialogue-speaker::before{content:'▶';font-size:5px;color:var(--gold-d);}
+#dialogue-text{
+  font-family:var(--font-body);font-size:13px;
+  font-style:italic;line-height:1.85;
+  color:var(--txt);word-break:break-word;
+}
+#dialogue-continue{
+  font-family:var(--font-ui);font-size:6px;
+  color:var(--gold-d);margin-top:7px;
+  animation:blinkCont 0.9s infinite;cursor:pointer;text-align:right;
+}
+#dialogue-continue.hidden{display:none;}
+@keyframes blinkCont{0%,100%{opacity:0.25}50%{opacity:1}}
+
+/* ── BOSS SIDE ── */
+#boss-side{
+  display:flex;flex-direction:column;align-items:center;
+  flex-shrink:0;padding-bottom:10px;position:relative;z-index:4;
+}
+#monster-container{
+  position:relative;display:flex;align-items:flex-end;justify-content:center;
+  min-height:100px;overflow:visible;
+}
+#monster-container canvas{
+  max-height:calc(100vh - 280px);max-width:50vw;
+  width:auto;height:auto;display:block;image-rendering:pixelated;
+}
+/* Boss animations */
+.boss-canvas{
+  image-rendering:pixelated;display:block;
+  animation:bossFloat 3.4s ease-in-out infinite;
+  filter:
+    drop-shadow(0 0 26px rgba(200,30,30,0.55))
+    drop-shadow(0 0 52px rgba(180,10,10,0.28))
+    drop-shadow(0 28px 48px rgba(0,0,0,0.96));
+}
+@keyframes bossFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-13px)}}
+.boss-canvas.rage-mode{animation:rageBob 1.9s infinite,rageGlow 0.5s alternate infinite;}
+@keyframes rageBob{0%,100%{transform:translateY(0)}50%{transform:translateY(-16px)}}
+@keyframes rageGlow{
+  0%{filter:drop-shadow(0 0 28px #FF2200) drop-shadow(0 0 55px #880000) brightness(1.12)}
+  100%{filter:drop-shadow(0 0 55px #FF4400) drop-shadow(0 0 95px #FF0000) brightness(1.32)}
+}
+.boss-canvas.hit-anim{animation:bossHit 0.44s ease-out!important;}
+@keyframes bossHit{0%,100%{transform:translateX(0)}25%{transform:translateX(-20px) scale(0.92)}50%{transform:translateX(22px) scale(1.08)}75%{transform:translateX(-7px)}}
+.boss-canvas.last-stand{
+  animation:lastStand 1s ease-in-out infinite!important;
+  filter:drop-shadow(0 0 38px #FF0000) drop-shadow(0 0 75px #AA0000) brightness(1.32)!important;
+}
+@keyframes lastStand{0%,100%{transform:translateY(0) scale(1)}50%{transform:translateY(-8px) scale(1.04)}}
+.boss-canvas.dying{animation:bossDie 1.9s ease-out forwards!important;}
+@keyframes bossDie{
+  0%{opacity:1;transform:scale(1) translateY(0);filter:drop-shadow(0 0 55px #FF0000) brightness(2)}
+  40%{opacity:0.6;transform:scale(1.17) translateY(-20px);filter:drop-shadow(0 0 90px #FFAA00) brightness(3)}
+  100%{opacity:0;transform:scale(0.06) translateY(55px);filter:brightness(4)}
+}
+
+/* ═══════════════════════════════════════════════════════════
+   ROW 3 — COMMAND PANEL (questions + player HUD)
+═══════════════════════════════════════════════════════════ */
+#command-strip{
+  position:relative;z-index:10;
+  background:linear-gradient(0deg,rgba(6,2,14,0.99),rgba(10,4,22,0.96));
+  border-top:1px solid rgba(60,25,110,0.5);
+  display:flex;flex-direction:column;
+  padding:8px 18px 8px;gap:6px;
+  box-shadow:0 -6px 32px rgba(30,8,80,0.18);
+}
+/* top accent line */
+#command-strip::before{
+  content:'';position:absolute;top:-1px;left:4%;right:4%;height:1px;
+  background:linear-gradient(90deg,
+    transparent,rgba(80,35,160,0.5),var(--gold-d),var(--gold),var(--gold-d),rgba(80,35,160,0.5),transparent);
+  box-shadow:0 0 12px var(--gold-d);
+}
+
+/* ── QUESTION WINDOW ── */
+#combat-section{display:flex;flex-direction:column;gap:5px;}
+#combat-section.hidden{display:none!important;}
+#question-text{
+  background:linear-gradient(155deg,rgba(8,3,22,0.99),rgba(12,5,28,0.98));
+  border:1px solid rgba(200,168,74,0.22);
+  border-left:2px solid var(--gold-d);
+  padding:9px 16px;
+  font-family:var(--font-body);font-style:italic;
+  font-size:12.5px;line-height:1.85;
+  color:var(--txt);text-align:center;letter-spacing:0.15px;
+}
+
+/* ── ANSWER CHOICES — RPG command list ── */
+#choices-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:4px;}
+.choice-btn{
+  position:relative;
+  background:linear-gradient(155deg,rgba(8,3,20,0.99),rgba(5,2,14,0.99));
+  border:1px solid rgba(70,35,140,0.35);
+  border-left:2px solid rgba(90,45,160,0.4);
+  color:var(--txt);
+  padding:9px 54px 9px 38px;
+  font-family:var(--font-ui);font-size:10px;
+  cursor:pointer;transition:all 0.13s ease;
+  text-align:left;min-height:46px;line-height:1.7;
+  overflow:hidden;letter-spacing:0.15px;
+}
+/* RPG cursor ▶ */
+.choice-btn::before{
+  content:'▶';position:absolute;left:13px;top:50%;transform:translateY(-50%);
+  font-size:7px;color:rgba(200,168,74,0.35);
+  transition:color 0.12s,left 0.1s;
+}
+/* shimmer */
+.choice-btn::after{
+  content:'';position:absolute;inset:0;
+  background:linear-gradient(90deg,transparent,rgba(200,168,74,0.055),transparent);
+  transform:translateX(-100%);transition:transform 0.38s;
+}
+.choice-btn:hover{
+  border-color:rgba(200,168,74,0.5);
+  border-left-color:var(--gold);
+  color:var(--gold-b);
+  background:linear-gradient(155deg,rgba(14,7,36,0.99),rgba(9,4,24,0.99));
+  box-shadow:0 0 16px rgba(200,168,74,0.1),inset 0 0 6px rgba(200,168,74,0.035);
+  transform:translateX(4px);
+}
+.choice-btn:hover::before{color:var(--gold);left:15px;}
+.choice-btn:hover::after{transform:translateX(100%);}
+.choice-btn:active{transform:translateX(2px);}
+.choice-btn.correct{
+  border-color:rgba(34,190,70,0.7)!important;
+  border-left-color:#22BE46!important;
+  background:rgba(6,32,12,0.9)!important;
+  animation:correctPop 0.48s ease-out;
+}
+.choice-btn.wrong{
+  border-color:rgba(220,20,50,0.65)!important;
+  border-left-color:#DD1432!important;
+  background:rgba(32,4,8,0.9)!important;
+  animation:wrongRattle 0.48s ease-out;
+}
+@keyframes correctPop{0%{transform:translateX(0)}40%{transform:translateX(6px);box-shadow:0 0 20px rgba(34,190,70,0.4)}100%{transform:translateX(0)}}
+@keyframes wrongRattle{0%,100%{transform:translateX(0)}20%{transform:translateX(-8px)}40%{transform:translateX(8px)}60%{transform:translateX(-4px)}80%{transform:translateX(4px)}}
+
+/* Text input */
+#text-answer-container{display:flex;gap:7px;}
+#text-answer-input{
+  flex:1;background:rgba(6,3,14,0.96);
+  border:1px solid rgba(70,35,140,0.4);
+  border-bottom:2px solid var(--gold-d);
+  color:var(--txt);padding:9px 13px;
+  font-family:var(--font-body);font-style:italic;font-size:13px;
+  outline:none;transition:all 0.18s;
+}
+#text-answer-input:focus{
+  border-color:rgba(200,168,74,0.4);border-bottom-color:var(--gold);
+  box-shadow:0 0 12px rgba(200,168,74,0.1);color:var(--gold-b);
+}
+#text-answer-input::placeholder{color:var(--txt-d);}
+#text-submit-btn{
+  background:linear-gradient(155deg,#4A1C00,#8C3A00);
+  border:1px solid var(--gold-d);color:#fff;
+  padding:9px 16px;font-family:var(--font-ui);font-size:8px;
+  cursor:pointer;transition:all 0.14s;white-space:nowrap;
+  clip-path:polygon(6px 0,100% 0,100% calc(100% - 6px),calc(100% - 6px) 100%,0 100%,0 6px);
+}
+#text-submit-btn:hover{
+  background:linear-gradient(155deg,#8C3A00,var(--gold));
+  box-shadow:0 0 12px rgba(200,168,74,0.28);transform:translateY(-1px);
+}
+
+#combat-hint{
+  text-align:center;font-family:var(--font-ui);
+  font-size:9px;color:var(--txt-d);letter-spacing:1.5px;
+  min-height:8px;margin-top:1px;
+}
+
+/* ── PLAYER HUD — RPG stat bar ── */
+#player-hud{
+  display:grid;
+  grid-template-columns:42px 1fr auto auto;
+  align-items:center;
+  padding:5px 0 2px;
+  border-top:1px solid rgba(200,168,74,0.08);
+  gap:10px;
+}
+/* Portrait frame */
+#portrait-wrap{
+  width:42px;height:42px;
+  border:1px solid var(--gold-d);
+  background:rgba(0,0,0,0.55);
+  overflow:hidden;position:relative;flex-shrink:0;
+}
+#portrait-wrap::after{
+  content:'';position:absolute;inset:0;
+  box-shadow:inset 0 0 8px rgba(0,0,0,0.7);
+}
+#hud-portrait-canvas{
+  width:42px;height:42px;
+  image-rendering:pixelated;display:block;
+}
+/* Player info */
+#player-info{display:flex;flex-direction:column;gap:2px;min-width:0;}
+#player-name{
+  font-family:var(--font-title);font-size:10px;
+  color:var(--green);text-shadow:0 0 8px rgba(34,187,68,0.35);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+#player-level{font-family:var(--font-ui);font-size:8px;color:var(--gold-d);letter-spacing:1px;}
+#diff-badge{font-family:var(--font-ui);font-size:8px;color:var(--txt-d);letter-spacing:2px;}
+/* player-label alias so game.js label ref still works */
+#player-label{font-family:var(--font-ui);font-size:7px;color:var(--green);}
+
+/* Hearts */
+#player-hearts{display:flex;gap:5px;align-items:center;}
+.heart{position:relative;width:16px;height:16px;animation:heartBeat 1.9s ease-in-out infinite;}
+.heart::before,.heart::after{content:'';position:absolute;background:var(--red);border-radius:50%;box-shadow:0 0 5px var(--red);}
+.heart::before{width:16px;height:16px;top:-8px;left:0;}
+.heart::after{width:16px;height:16px;top:0;left:-8px;}
+.heart-inner{position:absolute;width:16px;height:16px;background:var(--red);transform:rotate(45deg);top:0;left:0;box-shadow:0 0 6px var(--red);z-index:1;}
+@keyframes heartBeat{0%,100%{transform:scale(1);filter:drop-shadow(0 0 3px var(--red))}10%{transform:scale(1.18);filter:drop-shadow(0 0 8px #FF2040)}20%{transform:scale(1)}30%{transform:scale(1.1)}40%{transform:scale(1)}}
+.heart.empty .heart-inner,.heart.empty::before,.heart.empty::after{background:#160A10;box-shadow:none;}
+.heart.empty{animation:none;filter:none;}
+.heart.danger{animation:heartDanger 0.33s infinite!important;}
+@keyframes heartDanger{0%,100%{transform:scale(1);filter:drop-shadow(0 0 8px #F00)}50%{transform:scale(1.28);filter:drop-shadow(0 0 18px #F00)}}
+.heart-lost{animation:heartShatter 0.65s ease-out forwards!important;}
+@keyframes heartShatter{0%{opacity:1;transform:scale(1) rotate(0)}40%{opacity:0.8;transform:scale(1.4) rotate(16deg)}100%{opacity:0;transform:scale(0.1) rotate(-90deg) translateY(-30px)}}
+
+/* Consumables */
+#consumable-bar{display:flex;gap:5px;align-items:center;}
+.potion-btn-inactive{background:rgba(40,40,40,0.4)!important;border-color:rgba(80,80,80,0.25)!important;color:rgba(120,120,120,0.35)!important;cursor:not-allowed!important;pointer-events:none!important;}
+
+/* ═══════════════════════════════════════════════════════════
+   SCREEN EFFECTS
+═══════════════════════════════════════════════════════════ */
+.flash-red::before{content:'';position:fixed;inset:0;background:rgba(190,15,20,0.28);animation:flashFx 0.34s ease-out;pointer-events:none;z-index:9990;}
+.flash-green::before{content:'';position:fixed;inset:0;background:rgba(20,170,55,0.13);animation:flashFx 0.34s ease-out;pointer-events:none;z-index:9990;}
+.flash-white::before{content:'';position:fixed;inset:0;background:rgba(255,255,255,0.34);animation:flashFx 0.3s ease-out;pointer-events:none;z-index:9990;}
+@keyframes flashFx{0%{opacity:1}100%{opacity:0}}
+.shake{animation:screenShake 0.34s ease-in-out;}
+@keyframes screenShake{0%,100%{transform:translate(0,0)}20%,60%{transform:translate(-5px,3px)}40%,80%{transform:translate(5px,-3px)}}
+
+/* Damage numbers */
+.damage-number{
+  position:fixed;font-family:var(--font-title);font-size:32px;
+  color:var(--gold-b);text-shadow:0 0 9px var(--gold),2px 2px 4px #000;
+  pointer-events:none;animation:dmgFloat 3.5s ease-out forwards;z-index:1000;
+}
+.damage-number.critical{font-size:44px;color:#fff;text-shadow:0 0 11px var(--gold-b),0 0 24px var(--gold);}
+@keyframes dmgFloat{0%{opacity:1;transform:translateY(0) scale(1)}15%{transform:translateY(-14px) scale(1.18)}100%{opacity:0;transform:translateY(-68px) scale(0.85)}}
+
+/* Projectile */
+.player-projectile{
+  position:fixed;width:15px;height:15px;border-radius:50%;
+  background:radial-gradient(circle,#AAFFAA,#22CC44,#116622);
+  box-shadow:0 0 11px #22FF44,0 0 26px #00CC22;
+  pointer-events:none;z-index:5000;transform:translate(-50%,-50%);
+}
+.player-projectile.critical{width:21px;height:21px;background:radial-gradient(circle,#FFF,#88FFAA,#22DD55);box-shadow:0 0 18px #44FF66,0 0 38px #00FF44;}
+
+@keyframes floatUp{0%{opacity:1;transform:translateY(0)}100%{opacity:0;transform:translateY(-50px)}}
+.hidden{display:none!important;}
+.disabled{opacity:0.38;pointer-events:none;}
+.monster-sprite{}
+
+/* ═══════════════════════════════════════════════════════════
+   OVERLAY SCREENS
+═══════════════════════════════════════════════════════════ */
+.overlay-screen{
+  position:fixed;inset:0;
+  background:rgba(4,1,10,0.97);
+  display:flex;align-items:center;justify-content:center;
+  z-index:10000;backdrop-filter:blur(4px);
+}
+.overlay-screen.hidden{display:none!important;}
+.screen-content{
+  text-align:center;padding:36px 40px;max-width:620px;width:92%;
+  border:1px solid var(--bord);
+  background:linear-gradient(155deg,rgba(10,4,20,0.99),rgba(6,2,14,0.99));
+  clip-path:polygon(0 0,calc(100% - 20px) 0,100% 20px,100% 100%,20px 100%,0 calc(100% - 20px));
+  box-shadow:0 0 55px rgba(200,168,74,0.06);
+}
+.victory-title{
+  font-family:var(--font-title);font-size:26px;
+  background:linear-gradient(180deg,#FFF9E0,var(--gold-b),var(--gold));
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
+  filter:drop-shadow(0 0 16px var(--gold));
+  animation:victoryGlow 1.5s infinite;margin-bottom:18px;display:block;
+}
+@keyframes victoryGlow{0%,100%{filter:drop-shadow(0 0 18px var(--gold))}50%{filter:drop-shadow(0 0 36px var(--gold-b))}}
+.defeat-title{font-family:var(--font-title);font-size:26px;color:#FF2040;text-shadow:0 0 18px rgba(200,10,30,0.7);margin-bottom:18px;}
+#victory-message,#defeat-message{font-size:10px;margin:10px 0;line-height:2;color:var(--txt);font-family:var(--font-ui);}
+#victory-rewards{background:rgba(200,168,74,0.035);border:1px solid rgba(200,168,74,0.16);padding:12px;margin:10px 0;text-align:left;}
+.action-btn{
+  display:inline-block;
+  background:linear-gradient(155deg,#4A1C00,#8C3A00);
+  border:1px solid var(--gold-d);color:#fff;
+  padding:10px 22px;font-family:var(--font-ui);font-size:9px;
+  cursor:pointer;margin:4px;transition:all 0.14s;
+  clip-path:polygon(7px 0,100% 0,100% calc(100% - 7px),calc(100% - 7px) 100%,0 100%,0 7px);
+}
+.action-btn:hover{background:linear-gradient(155deg,#8C3A00,var(--gold));color:#000;box-shadow:0 0 15px rgba(200,168,74,0.28);transform:translateY(-1px);}
+.action-btn.secondary{background:linear-gradient(155deg,#0C071A,#160E26);border-color:var(--bord);color:var(--txt-d);}
+.action-btn.secondary:hover{border-color:var(--bord-h);color:var(--txt);}
+#loading-screen .screen-content{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;min-height:190px;}
+.loading-spinner{width:48px;height:48px;border:3px solid rgba(200,168,74,0.13);border-top:3px solid var(--gold);border-right:3px solid var(--gold-b);border-radius:50%;animation:spin 0.8s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg)}}
+#loading-text{font-family:var(--font-ui);font-size:11px;color:var(--gold-d);letter-spacing:3px;animation:loadPulse 1.5s infinite;}
+@keyframes loadPulse{0%,100%{opacity:0.55}50%{opacity:1}}
+
+/* ═══════════════════════════════════════════════════════════
+   SF SUPER METER
+═══════════════════════════════════════════════════════════ */
+#super-meter-wrap{
+  position:fixed;bottom:12px;left:50%;transform:translateX(-50%);
+  z-index:4000;display:flex;flex-direction:column;align-items:center;
+  gap:3px;pointer-events:none;min-width:210px;
+}
+#super-meter-label{
+  font-family:var(--font-ui);font-size:7px;letter-spacing:4px;
+  color:var(--gold-d);opacity:0.7;text-transform:uppercase;
+}
+#super-meter-bar-outer{
+  width:210px;height:9px;
+  background:rgba(0,0,0,0.75);
+  border:1px solid rgba(200,168,74,0.3);overflow:hidden;
+}
+#super-meter-bar-fill{
+  height:100%;width:0%;
+  background:linear-gradient(90deg,#443388,#8866CC,#CC88FF,#FFF);
+  transition:width 0.38s ease;position:relative;
+}
+#super-meter-bar-fill::after{content:'';position:absolute;inset:0;background:linear-gradient(180deg,rgba(255,255,255,0.28),transparent 55%);}
+#super-meter-bar-fill.full{animation:superPulse 0.6s infinite;}
+@keyframes superPulse{0%,100%{filter:brightness(1)}50%{filter:brightness(1.55) drop-shadow(0 0 5px #CC88FF)}}
+#super-btn{
+  pointer-events:all;
+  background:linear-gradient(135deg,#280055,#5500AA);
+  border:1px solid #AA66FF;color:#fff;padding:4px 12px;
+  font-family:var(--font-ui);font-size:7px;
+  cursor:pointer;letter-spacing:1px;display:none;
+  clip-path:polygon(5px 0,100% 0,100% calc(100% - 5px),calc(100% - 5px) 100%,0 100%,0 5px);
+  transition:all 0.14s;
+}
+#super-btn:hover{background:linear-gradient(135deg,#5500AA,#9933EE);box-shadow:0 0 14px #AA66FF88;}
+#super-btn.visible{display:block;animation:superAppear 0.28s ease-out;}
+@keyframes superAppear{from{transform:scale(0.6);opacity:0}to{transform:scale(1);opacity:1}}
+
+/* ═══════════════════════════════════════════════════════════
+   MK / COMEBACK / SF OVERLAYS
+═══════════════════════════════════════════════════════════ */
+.mk-finish-overlay{position:fixed;inset:0;z-index:28000;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.72);pointer-events:none;}
+.mk-finish-text{font-family:var(--font-title);font-size:clamp(28px,7vw,62px);color:#FF2040;text-shadow:0 0 18px #FF0000,0 0 48px #880000,4px 4px 0 #000;letter-spacing:0.1em;animation:finishIn 0.38s cubic-bezier(0.2,1.8,0.4,1) forwards;}
+@keyframes finishIn{from{transform:scale(3.2);opacity:0}to{transform:scale(1);opacity:1}}
+
+.comeback-overlay{position:fixed;inset:0;z-index:25000;display:flex;align-items:center;justify-content:center;pointer-events:none;}
+.comeback-text{font-family:var(--font-title);font-size:clamp(34px,8vw,68px);background:linear-gradient(180deg,#FFF 0%,#FF4466 40%,#CC0022 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;filter:drop-shadow(0 0 26px #FF2244);animation:comebackIn 2.2s ease-out forwards;text-align:center;line-height:1.2;}
+@keyframes comebackIn{0%{opacity:0;transform:scale(0.4) rotate(-8deg)}30%{opacity:1;transform:scale(1.15) rotate(2deg)}60%{transform:scale(1) rotate(0)}85%{opacity:1}100%{opacity:0;transform:scale(1.04)}}
+
+.round-announce{position:fixed;inset:0;z-index:27000;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:8px;pointer-events:none;}
+.round-txt{font-family:var(--font-title);font-size:clamp(20px,5vw,44px);color:var(--gold-b);text-shadow:0 0 18px rgba(200,168,74,0.55),3px 3px 0 #000;animation:roundIn 0.33s cubic-bezier(0.2,1.6,0.4,1) forwards;opacity:0;letter-spacing:0.1em;}
+.fight-txt{font-family:var(--font-title);font-size:clamp(28px,7vw,60px);color:#FF2040;text-shadow:0 0 22px rgba(255,0,0,0.65),4px 4px 0 #000;animation:fightIn 0.38s cubic-bezier(0.2,1.8,0.4,1) 0.6s forwards;opacity:0;}
+@keyframes roundIn{from{opacity:0;transform:scale(2.5) translateY(-20px)}to{opacity:1;transform:scale(1) translateY(0)}}
+@keyframes fightIn{from{opacity:0;transform:scale(3.5)}to{opacity:1;transform:scale(1)}}
+
+.mk-fatality-screen{position:fixed;inset:0;z-index:35000;background:radial-gradient(ellipse at 50% 30%,rgba(30,4,8,1),rgba(4,1,10,1));display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;}
+.mk-fatality-title{font-family:var(--font-title);font-size:clamp(30px,8vw,70px);letter-spacing:0.08em;animation:fatalityIn 0.6s cubic-bezier(0.2,1.5,0.4,1) forwards;opacity:0;}
+.mk-fatality-title.fatality{background:linear-gradient(180deg,#FFF 0%,#FF4400 40%,#880000 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;filter:drop-shadow(0 0 28px #FF2200);}
+.mk-fatality-title.flawless{background:linear-gradient(180deg,#FFF 0%,#44FFAA 40%,#008844 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;filter:drop-shadow(0 0 28px #00FF88);}
+.mk-fatality-title.brutality{background:linear-gradient(180deg,#FFF 0%,#FFAA00 40%,#884400 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;filter:drop-shadow(0 0 28px #FF8800);}
+@keyframes fatalityIn{0%{opacity:0;transform:scale(0.3) rotate(-3deg)}60%{transform:scale(1.08) rotate(1deg)}100%{opacity:1;transform:scale(1) rotate(0)}}
+.mk-fatality-sub{font-family:var(--font-ui);font-size:12px;color:var(--txt-d);letter-spacing:5px;opacity:0;animation:fadeUp 0.4s ease 0.8s forwards;}
+.mk-fatality-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;max-width:480px;width:90%;opacity:0;animation:fadeUp 0.5s ease 1.2s forwards;}
+.mk-stat{background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.09);padding:11px 7px;text-align:center;clip-path:polygon(0 0,calc(100% - 6px) 0,100% 6px,100% 100%,6px 100%,0 calc(100% - 6px));}
+.mk-stat-label{font-family:var(--font-ui);font-size:7px;color:var(--txt-d);letter-spacing:2px;margin-bottom:4px;text-transform:uppercase;}
+.mk-stat-value{font-family:var(--font-title);font-size:20px;color:var(--gold-b);}
+.mk-fatality-btns{display:flex;gap:10px;margin-top:6px;opacity:0;animation:fadeUp 0.4s ease 1.8s forwards;}
+.mk-fatality-btn{background:linear-gradient(155deg,#180004,#2E0008);border:1px solid rgba(200,168,74,0.4);color:#fff;padding:9px 20px;font-family:var(--font-ui);font-size:8px;cursor:pointer;letter-spacing:1px;clip-path:polygon(5px 0,100% 0,100% calc(100% - 5px),calc(100% - 5px) 100%,0 100%,0 5px);transition:all 0.13s;}
+.mk-fatality-btn:hover{background:linear-gradient(155deg,#2E0008,#550010);box-shadow:0 0 12px rgba(200,168,74,0.2);}
+@keyframes fadeUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+
+/* ═══════════════════════════════════════════════════════════
+   FF PHASE 2 CUTSCENE
+═══════════════════════════════════════════════════════════ */
+.ff-cutscene{position:fixed;inset:0;z-index:30000;background:#000;overflow:hidden;}
+.ff-letterbox-top,.ff-letterbox-bottom{position:absolute;left:0;right:0;height:72px;background:#000;z-index:6;}
+.ff-letterbox-top{top:0;}
+.ff-letterbox-bottom{bottom:0;}
+.ff-scene-bg{position:absolute;inset:72px 0;background:linear-gradient(180deg,#060010 0%,#120025 45%,#1E003A 100%);overflow:hidden;}
+.ff-star{position:absolute;border-radius:50%;background:#fff;animation:starWink linear infinite;opacity:0;}
+@keyframes starWink{0%,100%{opacity:0.15;transform:scale(1)}50%{opacity:0.9;transform:scale(1.5)}}
+.ff-stage{position:absolute;left:0;right:0;top:72px;bottom:185px;display:flex;align-items:flex-end;justify-content:space-around;padding:0 5%;z-index:4;}
+.ff-char-wrap{display:flex;flex-direction:column;align-items:center;gap:5px;padding-bottom:14px;transform:translateY(55px);opacity:0;transition:transform 0.85s cubic-bezier(0.2,0.8,0.3,1),opacity 0.85s ease;}
+.ff-char-wrap.enter{transform:translateY(0);opacity:1;}
+.ff-boss-wrap{display:flex;flex-direction:column;align-items:center;gap:5px;padding-bottom:14px;transform:translateY(55px);opacity:0;transition:transform 0.9s cubic-bezier(0.2,0.8,0.3,1) 0.2s,opacity 0.9s ease 0.2s;}
+.ff-boss-wrap.enter{transform:translateY(0);opacity:1;}
+.ff-char-canvas{image-rendering:pixelated;display:block;}
+.ff-char-name{font-family:var(--font-ui);font-size:9px;letter-spacing:4px;color:var(--gold);text-shadow:0 0 7px rgba(200,168,74,0.6);text-transform:uppercase;white-space:nowrap;}
+.ff-char-title{font-family:var(--font-ui);font-size:7px;color:rgba(200,168,74,0.45);letter-spacing:2px;}
+.ff-phase-banner{position:absolute;top:88px;left:0;right:0;z-index:10;text-align:center;pointer-events:none;}
+.ff-phase-text{display:inline-block;font-family:var(--font-title);font-size:clamp(20px,5vw,46px);color:#FF3344;text-shadow:0 0 18px rgba(255,30,50,0.7),2px 2px 0 #000;letter-spacing:0.08em;opacity:0;transform:scaleX(0);animation:phaseSlam 0.48s cubic-bezier(0.2,1.5,0.4,1) 0.8s forwards;}
+@keyframes phaseSlam{from{opacity:0;transform:scaleX(0)}to{opacity:1;transform:scaleX(1)}}
+.ff-phase-sub{font-family:var(--font-ui);font-size:10px;color:rgba(200,0,20,0.65);letter-spacing:7px;text-transform:uppercase;display:block;margin-top:5px;opacity:0;animation:fadeUp 0.4s ease 1.5s forwards;}
+.ff-dialogue{position:absolute;bottom:76px;left:4%;right:4%;z-index:12;background:rgba(3,1,10,0.97);border:1px solid rgba(200,168,74,0.45);border-left:3px solid var(--gold-d);padding:13px 18px 11px;clip-path:polygon(0 0,calc(100% - 10px) 0,100% 10px,100% 100%,10px 100%,0 calc(100% - 10px));}
+.ff-dialogue-speaker{font-family:var(--font-ui);font-size:8px;letter-spacing:4px;color:var(--gold);text-transform:uppercase;margin-bottom:7px;padding-bottom:6px;border-bottom:1px solid rgba(200,168,74,0.18);}
+.ff-dialogue-text{font-family:var(--font-body);font-style:italic;font-size:13px;line-height:1.85;color:var(--txt);}
+.ff-dialogue-continue{font-family:var(--font-ui);font-size:6px;color:var(--gold-d);margin-top:7px;display:none;animation:blinkCont 0.9s infinite;cursor:pointer;text-align:right;}
+</style>
+</head>
+<body>
+
+<div class="embers" id="embers"></div>
+
+<!-- ═══════════════════════════════════════════════════════
+     MAIN GAME CONTAINER
+═══════════════════════════════════════════════════════════ -->
+<div id="game-container">
+
+  <!-- ROW 1: BOSS IDENTITY -->
+  <div id="boss-strip">
+    <div id="boss-identity">
+      <div id="monster-name">Summoning...</div>
+    </div>
+    <div id="monster-title"></div>
+    <div id="boss-hp-track">
+      <div id="monster-hp-ghost" style="width:100%"></div>
+      <div id="monster-hp-fill" style="width:100%"></div>
+      <div id="monster-hp-text">HP <span id="monster-hp-current">100</span> / <span id="monster-hp-max">100</span></div>
+    </div>
+    <div id="phase-indicator" class="hidden">☠ ENRAGE — PHASE II ☠</div>
+    <!-- required by game.js for ghost bar injection -->
+    <div id="boss-hp-section" style="display:none"></div>
+  </div>
+
+  <!-- ROW 2: ARENA -->
+  <div id="battle-scene">
+
+    <!-- Dungeon floor -->
+    <div id="arena-floor"></div>
+
+    <!-- Left pillar + torch -->
+    <div class="pillar" style="left:7%"></div>
+    <div class="torch" style="left:calc(7% + 36px)">
+      <div class="torch-body"></div>
+      <div class="torch-flame"></div>
+    </div>
+    <div class="torch-glow" style="left:calc(7% + 0px)"></div>
+
+    <!-- Right pillar + torch -->
+    <div class="pillar" style="right:7%"></div>
+    <div class="torch" style="right:calc(7% + 36px)">
+      <div class="torch-body"></div>
+      <div class="torch-flame"></div>
+    </div>
+    <div class="torch-glow" style="right:calc(7% + 0px)"></div>
+
+    <!-- Player -->
+    <div id="player-side">
+      <div id="player-label">Warrior Scholar</div>
+      <div id="player-canvas-wrap">
+        <canvas id="player-avatar-canvas" width="192" height="246"></canvas>
+      </div>
+    </div>
+
+    <!-- VS -->
+    <div id="vs-badge">VS</div>
+
+    <!-- Dialogue — RPG story window -->
+    <div id="dialogue-container" class="hidden">
+      <div id="dialogue-speaker">THE BOSS</div>
+      <div id="dialogue-text"></div>
+      <div id="dialogue-continue" class="hidden">▼ Click to Continue</div>
+    </div>
+
+    <!-- Boss -->
+    <div id="boss-side">
+      <div id="monster-container"></div>
+    </div>
+
+  </div><!-- /battle-scene -->
+
+  <!-- ROW 3: COMMAND PANEL -->
+  <div id="command-strip" id="battle-bottom">
+
+    <!-- Questions + choices -->
+    <div id="combat-section" class="hidden">
+      <div id="question-text"></div>
+      <div id="choices-grid" class="hidden"></div>
+      <div id="text-answer-container" class="hidden">
+        <input type="text" id="text-answer-input" placeholder="Speak your answer..." autocomplete="off">
+        <button id="text-submit-btn">Strike</button>
+      </div>
+      <div id="combat-hint"></div>
+    </div>
+
+    <!-- Player HUD -->
+    <div id="player-hud">
+      <div id="portrait-wrap">
+        <canvas id="hud-portrait-canvas" width="42" height="42"></canvas>
+      </div>
+      <div id="player-info">
+        <div id="player-name">Scholar</div>
+        <div id="player-level">Level <span id="level-number">1</span></div>
+        <div id="diff-badge"></div>
+      </div>
+      <div id="player-hearts">
+        <div class="heart"><div class="heart-inner"></div></div>
+        <div class="heart"><div class="heart-inner"></div></div>
+        <div class="heart"><div class="heart-inner"></div></div>
+      </div>
+      <div id="consumable-bar" style="display:flex"></div>
+    </div>
+
+  </div>
+
+</div><!-- /game-container -->
+
+<!-- ═══════════════════════════════════════════════════════
+     OVERLAY SCREENS
+═══════════════════════════════════════════════════════════ -->
+<div id="victory-screen" class="overlay-screen hidden">
+  <div class="screen-content">
+    <span class="victory-title">⚔ Victory ⚔</span>
+    <div id="victory-message"></div>
+    <div id="victory-rewards">
+      <div style="font-size:9px;margin-bottom:10px;color:var(--gold);letter-spacing:3px;font-family:var(--font-ui)">— Battle Report —</div>
+      <div id="rewards-list"></div>
+    </div>
+    <button class="action-btn" onclick="(async()=>await returnToStreamlit())()">Return</button>
+    <button class="action-btn secondary" onclick="location.reload()">Fight Again</button>
+  </div>
+</div>
+
+<div id="defeat-screen" class="overlay-screen hidden">
+  <div class="screen-content">
+    <h1 class="defeat-title">☠ Defeated ☠</h1>
+    <div id="defeat-message"></div>
+    <button class="action-btn" onclick="location.reload()">Try Again</button>
+    <button class="action-btn secondary" onclick="(async()=>await returnToStreamlit())()">Retreat</button>
+  </div>
+</div>
+
+<div id="loading-screen" class="overlay-screen">
+  <div class="screen-content">
+    <div class="loading-spinner"></div>
+    <div id="loading-text">Summoning...</div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════
+     SCRIPTS
+═══════════════════════════════════════════════════════════ -->
+
+<!-- 1. BACKEND_URL -->
+<script>
+(function(){
+  var p = new URLSearchParams(window.location.search).get('backend_url');
+  window.BACKEND_URL = p ? decodeURIComponent(p) : 'http://localhost:8000';
+})();
+</script>
+
+<!-- 2. Difficulty backgrounds + embers + runes -->
+<script>
+(function(){
+  var d = (new URLSearchParams(location.search)).get('difficulty') || 'hard';
+  var bgs = {
+    easy:      'radial-gradient(ellipse 130% 65% at 50% 0%,rgba(0,55,18,0.55),transparent 68%),radial-gradient(ellipse 60% 45% at 85% 90%,rgba(0,25,55,0.3),transparent),#040A06',
+    medium:    'radial-gradient(ellipse 130% 65% at 50% 0%,rgba(65,30,0,0.55),transparent 68%),radial-gradient(ellipse 60% 45% at 15% 85%,rgba(40,8,55,0.3),transparent),#080508',
+    hard:      'radial-gradient(ellipse 130% 68% at 50% 0%,rgba(88,0,22,0.58),transparent 68%),radial-gradient(ellipse 90% 55% at 50% 100%,rgba(42,0,88,0.32),transparent),#080210',
+    nightmare: 'radial-gradient(ellipse 150% 75% at 50% 0%,rgba(140,0,0,0.72),transparent 68%),radial-gradient(ellipse 110% 65% at 50% 100%,rgba(75,0,0,0.62),transparent),#0A0000'
+  };
+  document.body.style.background = bgs[d] || bgs.hard;
+
+  // Embers
+  document.addEventListener('DOMContentLoaded', function(){
+    var el = document.getElementById('embers');
+    for(var i=0; i<22; i++){
+      var e = document.createElement('div'); e.className='ember';
+      var dur=7+Math.random()*10, delay=Math.random()*dur, drift=(Math.random()-.5)*180;
+      e.style.cssText='left:'+(Math.random()*100)+'%;animation-duration:'+dur+'s;animation-delay:-'+delay+'s;--drift:'+drift+'px;width:'+(1+Math.random()*2.5)+'px;height:'+(1+Math.random()*2.5)+'px;';
+      el.appendChild(e);
+    }
+    // Rune particles
+    var sc = document.getElementById('battle-scene');
+    if(!sc) return;
+    var runes = ['ᚠ','ᚢ','ᚦ','ᚱ','ᚲ','ᛗ','ᛉ','ᛟ','ᚨ','ᛈ','ᛜ','ᚾ','ᛊ','ᛏ','ᛁ','ᛚ'];
+    for(var i=0; i<16; i++){
+      var r=document.createElement('div'); r.className='rune';
+      r.textContent=runes[i%runes.length];
+      var sz=8+Math.random()*10, dur2=12+Math.random()*22, delay2=-(Math.random()*dur2);
+      r.style.cssText='left:'+(2+Math.random()*96)+'%;bottom:-20px;font-size:'+sz+'px;animation-duration:'+dur2+'s;animation-delay:'+delay2+'s;';
+      sc.appendChild(r);
+    }
+  });
+})();
+</script>
+
+<!-- 3. Boss + Avatar (deferred so DOM is ready) -->
+<script src="js/boss.js" defer></script>
+<script src="js/Avatar.js" defer></script>
+
+<!-- 4. Core game logic -->
+<script src="js/game.js"></script>
+
+<!-- 5. Arena orchestration — all patches and enhancements -->
+<script>
+// ── Give #command-strip the legacy id #battle-bottom ──────────────
+// boss.js uses getBoundingClientRect on #battle-bottom for canvas sizing
+document.addEventListener('DOMContentLoaded', function(){
+  var cs = document.getElementById('command-strip');
+  if(cs && !document.getElementById('battle-bottom')){
+    cs.setAttribute('id','battle-bottom');
+  }
+});
+
+// ── Player projectile animation ────────────────────────────────────
+function animatePlayerAttack(playerEl, bossEl, onLand) {
+  var pr=playerEl.getBoundingClientRect(), br=bossEl.getBoundingClientRect();
+  var sx=pr.right-10, sy=pr.top+pr.height*0.35;
+  var ex=br.left+br.width*0.5, ey=br.top+br.height*0.4;
+  var proj=document.createElement('div');
+  proj.className='player-projectile';
+  proj.style.left=sx+'px'; proj.style.top=sy+'px';
+  document.body.appendChild(proj);
+  var t=0, cx=sx+(ex-sx)*0.62, cy=Math.min(sy,ey)-95;
+  function step(){
+    t+=0.016;
+    if(t>=1){
+      proj.style.transform='translate(-50%,-50%) scale(2.5)';
+      proj.style.opacity='0'; proj.style.transition='all 0.18s';
+      setTimeout(function(){ proj.remove(); },200);
+      if(onLand) onLand(); return;
+    }
+    var mt=1-t, x=mt*mt*sx+2*mt*t*cx+t*t*ex, y=mt*mt*sy+2*mt*t*cy+t*t*ey;
+    proj.style.left=x+'px'; proj.style.top=y+'px';
+    proj.style.transform='translate(-50%,-50%) scale('+(1+t*0.3)+')';
+    requestAnimationFrame(step);
+  }
+  requestAnimationFrame(step);
+}
+
+// ── HP ghost drain ─────────────────────────────────────────────────
+var _lastGhostPct=100;
+function updateHpGhost(){
+  var ghost=document.getElementById('monster-hp-ghost');
+  if(!ghost||typeof gameState==='undefined') return;
+  var pct=Math.max(0,(gameState.monsterHp/gameState.monsterMaxHp)*100);
+  if(pct<_lastGhostPct){ ghost.style.width=_lastGhostPct+'%'; setTimeout(function(){ghost.style.width=pct+'%';},650); _lastGhostPct=pct; }
+}
+
+// ── Utilities ──────────────────────────────────────────────────────
+function sleep(ms){ return new Promise(function(r){setTimeout(r,ms);}); }
+function flashColorOverlay(color,dur){
+  var ov=document.createElement('div');
+  ov.style.cssText='position:fixed;inset:0;background:'+color+';z-index:9990;pointer-events:none;';
+  document.body.appendChild(ov);
+  ov.animate([{opacity:0.8},{opacity:0}],{duration:dur||250,easing:'ease-out'}).onfinish=function(){ov.remove();};
+}
+
+// ── Super meter ────────────────────────────────────────────────────
+var SUPER={current:0,max:100,active:false};
+function buildSuperMeterUI(){
+  if(document.getElementById('super-meter-wrap')) return;
+  var w=document.createElement('div'); w.id='super-meter-wrap';
+  w.innerHTML='<div id="super-meter-label">Super</div><div id="super-meter-bar-outer"><div id="super-meter-bar-fill"></div></div><button id="super-btn">⚡ Super Move</button>';
+  document.body.appendChild(w);
+  document.getElementById('super-btn').onclick=triggerSuperMove;
+}
+function addSuperMeter(amt){
+  if(SUPER.active) return;
+  SUPER.current=Math.min(SUPER.max,SUPER.current+amt);
+  var fill=document.getElementById('super-meter-bar-fill'), btn=document.getElementById('super-btn');
+  if(fill) fill.style.width=(SUPER.current/SUPER.max*100)+'%';
+  if(SUPER.current>=SUPER.max){ if(fill) fill.classList.add('full'); if(btn) btn.classList.add('visible'); }
+}
+async function triggerSuperMove(){
+  if(SUPER.current<SUPER.max||SUPER.active) return;
+  if(typeof gameState==='undefined'||gameState.isAnimating||gameState.battleOver) return;
+  SUPER.active=true;
+  var fill=document.getElementById('super-meter-bar-fill'), btn=document.getElementById('super-btn');
+  SUPER.current=0;
+  if(fill){fill.style.width='0%';fill.classList.remove('full');}
+  if(btn) btn.classList.remove('visible');
+  flashColorOverlay('rgba(160,100,255,0.85)',100);
+  await sleep(80);
+  flashColorOverlay('rgba(255,255,255,0.9)',180);
+  await sleep(200);
+  var ov=document.createElement('div');
+  ov.style.cssText='position:fixed;inset:0;z-index:20000;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:10px;pointer-events:none;';
+  ov.innerHTML='<div style="font-family:var(--font-title);font-size:clamp(26px,7vw,62px);background:linear-gradient(180deg,#FFF 0%,#CC88FF 40%,#6600CC 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;filter:drop-shadow(0 0 28px #AA44FF);animation:fatalityIn 0.5s cubic-bezier(0.2,1.8,0.4,1) forwards;opacity:0;letter-spacing:0.1em;">⚡ SUPER MOVE ⚡</div><div style="font-family:var(--font-ui);font-size:10px;color:#CC88FF;letter-spacing:5px;animation:fadeUp 0.3s ease 0.5s forwards;opacity:0;text-transform:uppercase;">Critical Strike Unleashed</div>';
+  document.body.appendChild(ov);
+  await sleep(1400); ov.remove();
+  var superDmg=Math.floor((gameState.monsterMaxHp||100)*0.35);
+  gameState.monsterHp=Math.max(0,gameState.monsterHp-superDmg);
+  flashColorOverlay('rgba(130,70,255,0.4)',280);
+  if(typeof triggerMonsterHit==='function') triggerMonsterHit();
+  if(typeof showDamageNumber==='function') showDamageNumber(superDmg,true);
+  if(typeof updateMonsterHP==='function') updateMonsterHP();
+  var bc=document.getElementById('boss-main-canvas');
+  if(bc){bc.classList.add('hit-anim');setTimeout(function(){bc.classList.remove('hit-anim');},450);}
+  await sleep(400);
+  SUPER.active=false;
+  if(gameState.monsterHp<=0&&typeof handleVictory==='function') await handleVictory();
+}
+
+// ── Comeback ───────────────────────────────────────────────────────
+async function showComebackRevive(){
+  flashColorOverlay('rgba(255,25,55,0.75)',150);
+  await sleep(200);
+  var ov=document.createElement('div'); ov.className='comeback-overlay';
+  ov.innerHTML='<div class="comeback-text">⚡ COMEBACK ⚡<br><span style="font-size:0.44em;letter-spacing:0.12em">Double Damage Active</span></div>';
+  document.body.appendChild(ov);
+  await sleep(2400); ov.remove();
+  gameState._comebackCharges=3;
+  if(typeof showFloatingMessage==='function') showFloatingMessage('⚡ Comeback — 3 hits ×2 DMG','#FF4466');
+}
+
+// ── MK: Finish Him ─────────────────────────────────────────────────
+var _finishHimShown=false;
+async function showFinishHim(){
+  _finishHimShown=true;
+  var ov=document.createElement('div'); ov.className='mk-finish-overlay';
+  ov.innerHTML='<div class="mk-finish-text">FINISH HIM!</div>';
+  document.body.appendChild(ov);
+  var gc=document.getElementById('game-container');
+  if(gc) gc.style.filter='saturate(0.2) brightness(0.65)';
+  await sleep(2200);
+  if(gc) gc.style.filter='';
+  ov.remove();
+}
+
+// ── MK: Fatality screen ────────────────────────────────────────────
+async function showFatalityScreen(accuracy,maxCombo,grade,timeSec){
+  var tc,tt,ts;
+  if(accuracy===100||(typeof gameState!=='undefined'&&gameState.playerHp>=gameState.playerMaxHp)){
+    tc='flawless';tt='FLAWLESS VICTORY';ts='Not a Scratch';
+  } else if(maxCombo>=8){
+    tc='brutality';tt='BRUTALITY!';ts='Devastating Combo';
+  } else {
+    tc='fatality';tt='FATALITY!';ts='Knowledge Obliterated';
+  }
+  var mins=Math.floor(timeSec/60),secs=timeSec%60;
+  var wrong=typeof gameState!=='undefined'?gameState.totalAnswered-gameState.score:0;
+  var correct=typeof gameState!=='undefined'?gameState.score:0;
+  var screen=document.createElement('div'); screen.className='mk-fatality-screen';
+  screen.innerHTML=
+    '<div class="mk-fatality-title '+tc+'">'+tt+'</div>'
+    +'<div class="mk-fatality-sub">'+ts+'</div>'
+    +'<div class="mk-fatality-stats">'
+    +'<div class="mk-stat"><div class="mk-stat-label">Accuracy</div><div class="mk-stat-value" style="color:#4466FF">'+accuracy+'%</div></div>'
+    +'<div class="mk-stat"><div class="mk-stat-label">Grade</div><div class="mk-stat-value" style="color:var(--gold-b)">'+grade+'</div></div>'
+    +'<div class="mk-stat"><div class="mk-stat-label">Max Combo</div><div class="mk-stat-value" style="color:#FF8800">'+maxCombo+'×</div></div>'
+    +'<div class="mk-stat"><div class="mk-stat-label">Correct</div><div class="mk-stat-value" style="color:#22CC66">'+correct+'</div></div>'
+    +'<div class="mk-stat"><div class="mk-stat-label">Time</div><div class="mk-stat-value" style="color:var(--gold-b);font-size:16px">'+mins+'m '+secs+'s</div></div>'
+    +'<div class="mk-stat"><div class="mk-stat-label">Wrong</div><div class="mk-stat-value" style="color:#CC2233">'+wrong+'</div></div>'
+    +'</div>'
+    +'<div class="mk-fatality-btns">'
+    +'<button class="mk-fatality-btn" id="mk-ret">Return</button>'
+    +'<button class="mk-fatality-btn" id="mk-again">Fight Again</button>'
+    +'</div>';
+  document.body.appendChild(screen);
+  screen.querySelector('#mk-ret').onclick=async function(){screen.remove();if(typeof returnToStreamlit==='function')returnToStreamlit();};
+  screen.querySelector('#mk-again').onclick=function(){screen.remove();location.reload();};
+}
+
+// ── FF Phase 2 Cutscene ────────────────────────────────────────────
+async function showFFPhase2Cutscene(bossName,tauntLine){
+  return new Promise(async function(resolve){
+    var scene=document.createElement('div'); scene.className='ff-cutscene';
+    var stars='';
+    for(var i=0;i<65;i++){
+      var x=Math.random()*100,y=Math.random()*100,s=(0.5+Math.random()*2.2).toFixed(1),dur=(2+Math.random()*4.5).toFixed(1),del=(Math.random()*4.5).toFixed(1);
+      stars+='<div class="ff-star" style="left:'+x+'%;top:'+y+'%;width:'+s+'px;height:'+s+'px;animation-duration:'+dur+'s;animation-delay:-'+del+'s;"></div>';
+    }
+    var pScale=4,pW=64*pScale,pH=82*pScale;
+    var bP=7,bW=32*bP,bH=40*bP;
+    var stageH=Math.floor(window.innerHeight*0.42);
+    var bDH=stageH,bDW=Math.floor(bDH*(bW/bH));
+    var pDH=Math.min(stageH-20,240),pDW=Math.floor(pDH*(pW/pH));
+    scene.innerHTML=
+      '<div class="ff-letterbox-top"></div>'
+      +'<div class="ff-letterbox-bottom"></div>'
+      +'<div class="ff-scene-bg">'+stars+'</div>'
+      +'<div class="ff-stage">'
+        +'<div class="ff-char-wrap" id="ff-p-wrap">'
+          +'<canvas id="ff-p-canvas" class="ff-char-canvas" width="'+pW+'" height="'+pH+'" style="width:'+pDW+'px;height:'+pDH+'px"></canvas>'
+          +'<div class="ff-char-name">'+((typeof gameState!=='undefined'&&gameState.username)||'Scholar')+'</div>'
+          +'<div class="ff-char-title">'+((typeof gameState!=='undefined'&&gameState.playerTitle)||'Knowledge Seeker')+'</div>'
+        +'</div>'
+        +'<div class="ff-boss-wrap" id="ff-b-wrap">'
+          +'<canvas id="ff-b-canvas" class="ff-char-canvas" width="'+bW+'" height="'+bH+'" style="width:'+bDW+'px;height:'+bDH+'px"></canvas>'
+          +'<div class="ff-char-name" style="color:#FF4444;text-shadow:0 0 7px rgba(255,0,0,0.55)">'+bossName.toUpperCase()+'</div>'
+          +'<div class="ff-char-title" style="color:rgba(180,80,80,0.6)">Enraged Form</div>'
+        +'</div>'
+      +'</div>'
+      +'<div class="ff-phase-banner">'
+        +'<div class="ff-phase-text">☠ Phase II Begins ☠</div>'
+        +'<span class="ff-phase-sub">True Power Unleashed</span>'
+      +'</div>'
+      +'<div class="ff-dialogue" id="ff-dlg" style="opacity:0;transition:opacity 0.4s">'
+        +'<div class="ff-dialogue-speaker">'+bossName.toUpperCase()+'</div>'
+        +'<div class="ff-dialogue-text" id="ff-dlg-text"></div>'
+        +'<div class="ff-dialogue-continue" id="ff-dlg-cont">▼ Tap to Continue</div>'
+      +'</div>';
+    document.body.appendChild(scene);
+    // Render player
+    var pc=document.getElementById('ff-p-canvas');
+    if(pc&&typeof renderAvatar==='function'){
+      var eq={};
+      try{var src=document.getElementById('player-avatar-canvas');if(src&&src.dataset.equipped)eq=JSON.parse(src.dataset.equipped);}catch(e){}
+      renderAvatar(pc,eq,pScale);
+    }
+    // Render boss
+    var bc=document.getElementById('ff-b-canvas');
+    if(bc){
+      var fns=[
+        typeof drawDragonBoss==='function'?drawDragonBoss:null,
+        typeof drawGolemBoss==='function'?drawGolemBoss:null,
+        typeof drawSpecterBoss==='function'?drawSpecterBoss:null,
+        typeof drawTitanBoss==='function'?drawTitanBoss:null,
+        typeof drawLeviathanBoss==='function'?drawLeviathanBoss:null,
+      ];
+      var bt=typeof getBossType==='function'?getBossType():0;
+      var fn=fns[bt]||fns.find(function(f){return f!==null;});
+      if(fn) fn(bc,true);
+    }
+    await sleep(350);
+    var pw=document.getElementById('ff-p-wrap');if(pw)pw.classList.add('enter');
+    await sleep(280);
+    var bw=document.getElementById('ff-b-wrap');if(bw)bw.classList.add('enter');
+    await sleep(2100);
+    var dlg=document.getElementById('ff-dlg');if(dlg)dlg.style.opacity='1';
+    await new Promise(function(res2){
+      var tel=document.getElementById('ff-dlg-text'),cel=document.getElementById('ff-dlg-cont');
+      if(!tel){res2();return;}
+      var i=0,text=tauntLine;
+      var iv=setInterval(function(){
+        if(i<text.length) tel.textContent+=text[i++];
+        else{
+          clearInterval(iv);
+          if(cel)cel.style.display='block';
+          function onC(){scene.removeEventListener('click',onC);res2();}
+          scene.addEventListener('click',onC);
+          setTimeout(onC,4500);
+        }
+      },20);
+    });
+    scene.style.transition='opacity 0.5s'; scene.style.opacity='0';
+    await sleep(520); scene.remove(); resolve();
+  });
+}
+
+// ── Round announce ─────────────────────────────────────────────────
+async function showRoundAnnounce(phase){
+  var ov=document.createElement('div'); ov.className='round-announce';
+  ov.innerHTML='<div class="round-txt">'+(phase===2?'Phase II':'Round 1')+'</div><div class="fight-txt">Fight!</div>';
+  document.body.appendChild(ov);
+  await sleep(1650);
+  ov.style.transition='opacity 0.3s'; ov.style.opacity='0';
+  await sleep(320); ov.remove();
+}
+
+// ── BOAST/SHOCKED/DEATH dialogue pools ────────────────────────────
+var BOAST_TAUNTS=['Face this question if you dare...','Your knowledge crumbles before me.','Let us see if your feeble mind can handle this.','Answer this, scholar — if you can.','I have broken stronger minds than yours.','Here is wisdom you clearly do not possess.','This question has shattered greater warriors.','Can you even comprehend what comes next?'];
+var SHOCKED_TAUNTS=['How did you know that?!','Impossible...','A lucky strike. It will not happen again.','You... actually knew that.','Grr... don\'t think you\'ve won.','Fine. Face what comes next.','You got lucky. I will not be so careless.'];
+var LAST_STAND_LINES=['You dare wound me?! I AM ETERNAL. I have outlasted civilisations. You CANNOT end me!','My power transcends your understanding! I have existed since knowledge first formed!','Impossible! I am the keeper of all wisdom! I cannot fall to a mere student!'];
+var DEATH_LINES=['No... this cannot be... I am... eternal... how could a student...','Defeated... by YOU... this is... impossible...','No... I refuse to accept this... I was... I WAS...'];
+function pickRandom(arr){return arr[Math.floor(Math.random()*arr.length)];}
+
+window.addEventListener('load',function(){
+
+  // Ensure battle-bottom alias exists for boss.js sizing
+  var cs=document.getElementById('command-strip')||document.getElementById('battle-bottom');
+  if(cs) cs.id='battle-bottom';
+
+  // Portrait copy
+  function copyPortrait(){
+    var full=document.getElementById('player-avatar-canvas'),p=document.getElementById('hud-portrait-canvas');
+    if(!full||!p) return;
+    var ctx=p.getContext('2d'); ctx.imageSmoothingEnabled=false; ctx.clearRect(0,0,42,42);
+    ctx.drawImage(full,0,0,full.width,Math.floor(full.height*0.46),0,0,42,42);
+  }
+  setTimeout(copyPortrait,2000); setTimeout(copyPortrait,4000);
+
+  // Position dialogue
+  function positionDlg(){
+    var scene=document.getElementById('battle-scene'),bossEl=document.getElementById('boss-side'),dlg=document.getElementById('dialogue-container');
+    if(!scene||!bossEl||!dlg) return;
+    var sr=scene.getBoundingClientRect(),br=bossEl.getBoundingClientRect();
+    dlg.style.position='absolute';
+    dlg.style.right='2%';
+    dlg.style.left='26%';
+    dlg.style.bottom='10px';
+    dlg.style.top='auto';
+  }
+  setTimeout(positionDlg,500);
+  window.addEventListener('resize',positionDlg);
+
+  // Boss draw observer
+  var mc=document.getElementById('monster-container');
+  if(mc){
+    var drawn=false;
+    new MutationObserver(function(){
+      if(drawn||!mc.querySelector('canvas'))return;
+      drawn=true;
+      if(typeof initDragonSprite==='function')initDragonSprite();
+      setTimeout(positionDlg,300);
+    }).observe(mc,{childList:true,subtree:true});
+  }
+
+  // Init avatar
+  if(typeof initPlayerAvatar==='function')
+    initPlayerAvatar('player-avatar-canvas',5,window.BACKEND_URL||'http://localhost:8000',null);
+  var ac=document.getElementById('player-avatar-canvas');
+  if(ac) new MutationObserver(function(_,obs){copyPortrait();obs.disconnect();}).observe(ac,{attributes:true});
+
+  // Fix hearts
+  function fixHearts(){
+    document.querySelectorAll('.heart').forEach(function(h){
+      if(!h.querySelector('.heart-inner')){var d=document.createElement('div');d.className='heart-inner';h.appendChild(d);}
+    });
+  }
+  fixHearts();
+  var _rph=window.renderPlayerHearts;
+  if(_rph) window.renderPlayerHearts=function(){_rph.apply(this,arguments);fixHearts();};
+
+  // Phase 2 redraw observer
+  var pi=document.getElementById('phase-indicator');
+  if(pi) new MutationObserver(function(muts){
+    muts.forEach(function(m){if(!pi.classList.contains('hidden')&&typeof redrawBossPhase2==='function')redrawBossPhase2();});
+  }).observe(pi,{attributes:true,attributeFilter:['class']});
+
+  // Patch loseHeart → boss attack anim
+  var _lh=window.loseHeart;
+  if(_lh) window.loseHeart=function(){
+    var boss=document.getElementById('boss-main-canvas')||mc,player=document.getElementById('player-canvas-wrap');
+    if(boss&&player&&typeof animateBossAttack==='function') animateBossAttack(boss,player,function(){_lh();});
+    else _lh();
+  };
+
+  // Patch updateMonsterHP → also drain ghost
+  var _umhp=window.updateMonsterHP;
+  if(_umhp) window.updateMonsterHP=function(){_umhp.apply(this,arguments);updateHpGhost();};
+
+  // Build super meter
+  buildSuperMeterUI();
+
+  // PATCH: displayQuestion → FINISH HIM + boss taunts
+  var _origDQ=window.displayQuestion;
+  if(_origDQ) window.displayQuestion=async function(){
+    if(typeof gameState==='undefined'||gameState.battleOver) return;
+    if(gameState.monsterHp<=0){await handleVictory();return;}
+    if(gameState.playerHp<=0){await handleDefeat();if(gameState.battleOver)return;}
+    if(!_finishHimShown&&gameState.monsterHp>0&&gameState.monsterHp<=gameState.monsterMaxHp*0.10) await showFinishHim();
+    while(gameState.currentQuestionIndex<gameState.questions.length){
+      var q=gameState.questions[gameState.currentQuestionIndex];
+      var qHash=q.question.toLowerCase().trim();
+      if(gameState.askedQuestionHashes.has(qHash)){gameState.currentQuestionIndex++;continue;}
+      gameState.askedQuestionHashes.add(qHash);
+      gameState.questionStartTime=Date.now();
+      var hpPct=gameState.monsterHp/gameState.monsterMaxHp;
+      if(hpPct>0&&hpPct<=0.15&&!gameState._lastStandShown){
+        gameState._lastStandShown=true;
+        var bossC=document.getElementById('boss-main-canvas');if(bossC)bossC.classList.add('last-stand');
+        var ll=(gameState.bossData&&gameState.bossData.last_stand_taunt)||pickRandom(LAST_STAND_LINES);
+        await showDialogue(gameState.monster.name.toUpperCase(),ll,true);
+      } else {
+        var bp=gameState.monster.taunts&&gameState.monster.taunts.boast;
+        var bl=bp?(Array.isArray(bp)?pickRandom(bp):bp):pickRandom(BOAST_TAUNTS);
+        await showDialogue(gameState.monster.name.toUpperCase(),bl,false);
+      }
+      document.getElementById('combat-section').classList.remove('hidden');
+      document.getElementById('question-text').textContent=q.question;
+      if(typeof updateCombatHint==='function')updateCombatHint(q);
+      if(typeof enableInputs==='function')enableInputs();
+      if(q.options&&q.options.length>0){if(typeof showMCQOptions==='function')showMCQOptions(q);}
+      else{if(typeof showTextInput==='function')showTextInput(q);}
+      if(gameState.timerEnabled&&gameState.timePerQuestion>0){if(typeof startQuestionTimer==='function')startQuestionTimer(q);}
+      var rem=gameState.questions.length-gameState.currentQuestionIndex-1;
+      if(rem<=3&&gameState.fetchAttempts<gameState.maxFetchAttempts&&!gameState._bgFetching){
+        gameState._bgFetching=true;
+        fetchQuestions(gameState.phase===2?'hard':'normal',gameState.phase).then(function(){gameState._bgFetching=false;}).catch(function(){gameState._bgFetching=false;});
+      }
+      return;
+    }
+    if(gameState.fetchAttempts>=gameState.maxFetchAttempts){
+      if(gameState.monsterHp<=gameState.monsterMaxHp*0.25){gameState.monsterHp=0;updateMonsterHP();await handleVictory();}
+      else await handleStalemate();
+      return;
+    }
+    try{
+      var n=await fetchQuestions(gameState.phase===2?'hard':'normal',gameState.phase);
+      if(!n){if(gameState.monsterHp<=gameState.monsterMaxHp*0.25){gameState.monsterHp=0;updateMonsterHP();await handleVictory();}else await handleStalemate();return;}
+      await window.displayQuestion();
+    }catch(e){if(gameState.monsterHp<=gameState.monsterMaxHp*0.5){gameState.monsterHp=0;updateMonsterHP();await handleVictory();}else await handleStalemate();}
+  };
+
+  // PATCH: handleCorrectAnswer → super + comeback + shocked taunt
+  var _origCA=window.handleCorrectAnswer;
+  if(_origCA) window.handleCorrectAnswer=async function(question){
+    if(gameState._comebackCharges>0){
+      gameState._comebackCharges--;
+      var xd=Math.floor((15+gameState.level*3)*0.85);
+      gameState.monsterHp=Math.max(0,gameState.monsterHp-xd);
+      if(typeof showFloatingMessage==='function')showFloatingMessage('⚡ Comeback +'+xd+'!','#FF4466');
+      if(typeof updateMonsterHP==='function')updateMonsterHP();
+      if(gameState._comebackCharges===0&&typeof showFloatingMessage==='function')showFloatingMessage('Comeback over','#888');
+    }
+    await _origCA.apply(this,arguments);
+    addSuperMeter(12);
+    var sp=gameState.monster.taunts&&gameState.monster.taunts.hit||SHOCKED_TAUNTS;
+    await showDialogue(gameState.monster.name.toUpperCase(),Array.isArray(sp)?pickRandom(sp):sp,false);
+  };
+
+  // PATCH: handleWrongAnswer → super on hit + mock taunt
+  var _origWA=window.handleWrongAnswer;
+  if(_origWA) window.handleWrongAnswer=async function(question,correctAnswer,isTimeout){
+    await _origWA.apply(this,arguments);
+    addSuperMeter(20);
+    var mp2=gameState.monster.taunts&&gameState.monster.taunts.miss;
+    var ml=mp2?(Array.isArray(mp2)?pickRandom(mp2):mp2):pickRandom(['Pathetic.','Your knowledge is nothing.','Study harder, mortal.','Too slow. Too weak.']);
+    await showDialogue(gameState.monster.name.toUpperCase(),ml,false);
+  };
+
+  // PATCH: handleDefeat → comeback mechanic
+  var _origDef=window.handleDefeat;
+  if(_origDef) window.handleDefeat=async function(){
+    var pc2=typeof getTotalHealCount==='function'?getTotalHealCount():0;
+    if(pc2>0){
+      var _op=window.showPotionRescuePrompt;
+      window.showPotionRescuePrompt=async function(count){
+        var rescued=await _op.call(this,count);
+        if(rescued)await showComebackRevive();
+        window.showPotionRescuePrompt=_op;
+        return rescued;
+      };
+    }
+    return await _origDef.apply(this,arguments);
+  };
+
+  // PATCH: triggerPhase2 → FF cutscene + round announce
+  var _origP2=window.triggerPhase2;
+  if(_origP2) window.triggerPhase2=async function(){
+    if(typeof gameState==='undefined'||gameState.phase===2) return;
+    var tl=(gameState.bossData&&(gameState.bossData.phase2_taunts?.[0]||gameState.bossData.phase2_taunt))||'You dare wound me?! Now witness my TRUE power!';
+    var bn=(gameState.monster&&gameState.monster.name)||'THE BOSS';
+    await showFFPhase2Cutscene(bn,tl);
+    await showRoundAnnounce(2);
+    var _sd=window.showDialogue,skip=0;
+    window.showDialogue=async function(){if(skip++<2)return Promise.resolve();return _sd.apply(this,arguments);};
+    await _origP2.apply(this,arguments);
+    window.showDialogue=_sd;
+  };
+
+  // PATCH: handleVictory → boss death anim → MK fatality (no old screen)
+  var _origV=window.handleVictory;
+  if(_origV) window.handleVictory=async function(){
+    if(typeof gameState!=='undefined'&&gameState.battleOver) return;
+    if(typeof gameState!=='undefined'){
+      gameState.battleOver=true;
+      if(typeof clearQuestionTimer==='function')clearQuestionTimer();
+    }
+    var bc2=document.getElementById('boss-main-canvas');
+    if(bc2)bc2.classList.remove('last-stand');
+    var dl=(gameState.bossData&&gameState.bossData.defeat_taunt)||(gameState.monster&&gameState.monster.taunts&&gameState.monster.taunts.defeat)||pickRandom(DEATH_LINES);
+    await showDialogue((gameState.monster&&gameState.monster.name.toUpperCase())||'BOSS',dl,true);
+    if(bc2){bc2.classList.add('dying');await sleep(1950);}
+    var et=Date.now(),tt2=Math.floor(((et-(gameState.startTime||et))/1000));
+    var acc=gameState.totalAnswered>0?Math.round((gameState.score/gameState.totalAnswered)*100):0;
+    var grade=acc>=95?'S+':acc>=90?'S':acc>=80?'A':acc>=70?'B':acc>=60?'C':acc>=50?'D':'F';
+    if(typeof savePersonalBest==='function')savePersonalBest(gameState.topic,gameState.difficulty,tt2,acc,grade);
+    if(typeof saveGhostRun==='function')saveGhostRun(gameState.topic,gameState.difficulty);
+    if(typeof clearProgress==='function')clearProgress();
+    try{localStorage.removeItem('cmai_active_boss');}catch(e){}
+    if(gameState.userId){
+      fetch(BACKEND_URL+'/rewards/award',{method:'POST',credentials:'include',headers:{'Content-Type':'application/json'},body:JSON.stringify({user_id:gameState.userId,action_type:'boss_defeat',accuracy:gameState.totalAnswered>0?(gameState.score/gameState.totalAnswered):0,difficulty:gameState.difficulty==='nightmare'?2.5:gameState.difficulty==='hard'?1.8:gameState.difficulty==='medium'?1.5:1.2,combo_count:gameState.maxCombo||1})}).then(function(r){if(r.ok)return r.json();}).then(function(d){if(d&&d.ok)gameState._battleRewards=d;}).catch(function(){});
+      fetch(BACKEND_URL+'/arena/leaderboard',{method:'POST',credentials:'include',headers:{'Content-Type':'application/json'},body:JSON.stringify({user_id:gameState.userId,topic:gameState.topic,difficulty:gameState.difficulty,grade:grade,accuracy:acc,time:tt2,date:new Date().toISOString().slice(0,10)})}).catch(function(){});
+    }
+    await showFatalityScreen(acc,gameState.maxCombo,grade,tt2);
+  };
+
+  // PATCH: initializeBattle → Round 1 announce
+  var _origInit=window.initializeBattle;
+  if(_origInit) window.initializeBattle=async function(){
+    await _origInit.apply(this,arguments);
+    await sleep(400);
+    await showRoundAnnounce(1);
+  };
+
+  // Diff badge colour
+  var dbg=document.getElementById('diff-badge');
+  if(dbg){
+    var d2=(new URLSearchParams(location.search)).get('difficulty')||'hard';
+    var dc={easy:'#22CC66',medium:'#EE8800',hard:'#CC1122',nightmare:'#FF0000'};
+    dbg.style.color=dc[d2]||dc.hard;dbg.style.textShadow='0 0 8px '+(dc[d2]||dc.hard)+'55';
+  }
+
+  // Low-HP vignette
+  var _vig=null;
+  setInterval(function(){
+    if(typeof gameState==='undefined') return;
+    if(gameState.playerHp===1&&gameState.playerMaxHp>1){
+      if(!_vig){
+        _vig=document.createElement('div');
+        _vig.style.cssText='position:fixed;inset:0;z-index:9995;pointer-events:none;box-shadow:inset 0 0 100px rgba(200,0,0,0.32);animation:vigPulse 1s ease-in-out infinite alternate;';
+        if(!document.getElementById('vig-anim')){var s=document.createElement('style');s.id='vig-anim';s.textContent='@keyframes vigPulse{from{box-shadow:inset 0 0 80px rgba(200,0,0,0.22)}to{box-shadow:inset 0 0 140px rgba(255,0,0,0.48)}}';document.head.appendChild(s);}
+        document.body.appendChild(_vig);
+      }
+    } else {if(_vig){_vig.remove();_vig=null;}}
+  },500);
+
+  // Move-type tags on answer buttons
+  var MTYPES=[{n:'Recall',c:'#5588FF'},{n:'Analyze',c:'#AA44FF'},{n:'Define',c:'#22AACC'},{n:'Apply',c:'#FF8822'}];
+  var cGrid=document.getElementById('choices-grid')||document.body;
+  new MutationObserver(function(){
+    document.querySelectorAll('.choice-btn:not([data-t])').forEach(function(btn){
+      btn.setAttribute('data-t','1');
+      var idx=parseInt(btn.dataset.index||'0')%4,t=MTYPES[idx];
+      var tag=document.createElement('span');
+      tag.textContent=t.n;
+      tag.style.cssText='position:absolute;right:10px;top:50%;transform:translateY(-50%);font-family:var(--font-ui);font-size:7px;letter-spacing:2px;color:'+t.c+';opacity:0.5;white-space:nowrap;pointer-events:none;text-transform:uppercase';
+      btn.appendChild(tag);
+    });
+  }).observe(cGrid,{childList:true,subtree:true});
+
+  console.log('[Arena] RPG × PvP × Storytelling — fully loaded');
+});
+</script>
+</body>
+</html>

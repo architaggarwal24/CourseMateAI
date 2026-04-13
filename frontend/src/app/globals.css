@@ -1,0 +1,204 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-bg-primary text-text-primary;
+  }
+}
+
+/* Markdown styling for notes */
+.notes-canvas {
+  @apply max-w-none text-text-secondary;
+  line-height: 1.7;
+}
+
+.notes-canvas h1 {
+  @apply text-2xl font-bold text-text-primary mb-4 mt-6;
+}
+
+.notes-canvas h2 {
+  @apply text-xl font-semibold text-text-primary mb-3 mt-5;
+}
+
+.notes-canvas h3 {
+  @apply text-lg font-medium text-text-secondary mb-2 mt-4;
+}
+
+.notes-canvas h4 {
+  @apply text-base font-medium text-text-secondary mb-2 mt-3;
+}
+
+.notes-canvas p {
+  @apply text-text-secondary mb-3;
+  line-height: 1.7;
+}
+
+.notes-canvas ul,
+.notes-canvas ol {
+  @apply text-text-secondary mb-3 ml-6;
+}
+
+.notes-canvas ul {
+  @apply list-disc;
+}
+
+.notes-canvas ol {
+  @apply list-decimal;
+}
+
+.notes-canvas li {
+  @apply mb-1;
+  line-height: 1.6;
+}
+
+.notes-canvas code {
+  @apply bg-bg-card text-accent-blue px-1 py-0.5 rounded text-sm font-mono;
+}
+
+.notes-canvas pre {
+  @apply bg-bg-card border border-border-subtle rounded-lg p-4 mb-4 overflow-x-auto;
+}
+
+.notes-canvas pre code {
+  @apply bg-transparent p-0 text-text-secondary;
+}
+
+.notes-canvas blockquote {
+  @apply border-l-4 border-accent-gold pl-4 italic text-text-muted mb-4;
+}
+
+.notes-canvas table {
+  @apply w-full border-collapse mb-4;
+}
+
+.notes-canvas th,
+.notes-canvas td {
+  @apply border border-border-subtle px-3 py-2 text-sm;
+}
+
+.notes-canvas th {
+  @apply bg-bg-card font-semibold text-text-primary;
+}
+
+.notes-canvas td {
+  @apply text-text-secondary;
+}
+
+.notes-canvas a {
+  @apply text-accent-blue hover:text-accent-purple underline;
+}
+
+.notes-canvas hr {
+  @apply border-border-subtle my-6;
+}
+
+.notes-canvas strong {
+  @apply font-semibold text-text-primary;
+}
+
+.notes-canvas em {
+  @apply italic;
+}
+
+.notes-canvas img {
+  @apply max-w-full h-auto rounded-lg;
+}
+/* ── Subtle scrollbars — applied to all panel scrollers ─────── */
+.sidebar-scroll,
+.chat-scroll,
+.notes-scroll,
+.arena-scroll,
+.panel-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255,255,255,0.08) transparent;
+}
+
+.sidebar-scroll::-webkit-scrollbar,
+.chat-scroll::-webkit-scrollbar,
+.notes-scroll::-webkit-scrollbar,
+.arena-scroll::-webkit-scrollbar,
+.panel-scroll::-webkit-scrollbar {
+  width: 3px;
+}
+
+.sidebar-scroll::-webkit-scrollbar-track,
+.chat-scroll::-webkit-scrollbar-track,
+.notes-scroll::-webkit-scrollbar-track,
+.arena-scroll::-webkit-scrollbar-track,
+.panel-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.sidebar-scroll::-webkit-scrollbar-thumb,
+.chat-scroll::-webkit-scrollbar-thumb,
+.notes-scroll::-webkit-scrollbar-thumb,
+.arena-scroll::-webkit-scrollbar-thumb,
+.panel-scroll::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 99px;
+}
+
+.sidebar-scroll::-webkit-scrollbar-thumb:hover,
+.chat-scroll::-webkit-scrollbar-thumb:hover,
+.notes-scroll::-webkit-scrollbar-thumb:hover,
+.arena-scroll::-webkit-scrollbar-thumb:hover,
+.panel-scroll::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+/* Hide scrollbar when not hovered */
+.sidebar-scroll:not(:hover)::-webkit-scrollbar-thumb,
+.chat-scroll:not(:hover)::-webkit-scrollbar-thumb,
+.notes-scroll:not(:hover)::-webkit-scrollbar-thumb,
+.arena-scroll:not(:hover)::-webkit-scrollbar-thumb,
+.panel-scroll:not(:hover)::-webkit-scrollbar-thumb {
+  background: transparent;
+}
+/* ── Appearance Settings ─────────────────────────────────────────────────── */
+
+/* Font size: Large mode */
+html.text-lg-mode {
+  font-size: 17px;
+}
+html.text-lg-mode .pixel-font {
+  font-size: 1.05em;
+}
+
+/* Reduce animations */
+html.reduce-animations *,
+html.reduce-animations *::before,
+html.reduce-animations *::after {
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.01ms !important;
+}
+/* Functional loading indicators are exempt — users still need to know something is loading */
+html.reduce-animations .animate-spin {
+  animation: spin 0.8s linear infinite !important;
+}
+html.reduce-animations .loading-dot {
+  animation-duration: 0.8s !important;
+  animation-iteration-count: infinite !important;
+  opacity: 0.4;
+}
+
+/* Loading dots keyframes */
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+@keyframes loading-bounce {
+  0%, 80%, 100% { transform: scale(0.6); opacity: 0.4; }
+  40% { transform: scale(1); opacity: 1; }
+}
+.loading-dot {
+  animation: loading-bounce 1.2s ease-in-out infinite;
+  animation-fill-mode: both;
+}
+.loading-dot:nth-child(1) { animation-delay: 0s; }
+.loading-dot:nth-child(2) { animation-delay: 0.2s; }
+.loading-dot:nth-child(3) { animation-delay: 0.4s; }
