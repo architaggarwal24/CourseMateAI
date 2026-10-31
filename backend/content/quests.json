@@ -1,0 +1,165 @@
+{
+  "schema_version": 1,
+  "notes": [
+    "Daily quests: a player at level L can be offered the quests of every daily group whose min_level <= L, limited to quests whose own level_required <= L. Weekly and special groups are not offered as daily quests."
+  ],
+  "groups": [
+    {
+      "id": "tier_1_daily",
+      "kind": "daily",
+      "min_level": 1,
+      "quests": [
+        {
+          "quest_type": "ask_questions",
+          "description": "Ask 10 questions in Chat",
+          "target_count": 10,
+          "reward_xp": 50,
+          "reward_coins": 25,
+          "level_required": 1,
+          "icon": "💬"
+        },
+        {
+          "quest_type": "complete_quizzes",
+          "description": "Complete 3 quizzes",
+          "target_count": 3,
+          "reward_xp": 60,
+          "reward_coins": 30,
+          "level_required": 1,
+          "icon": "📝"
+        },
+        {
+          "quest_type": "maintain_streak",
+          "description": "Do any study activity today",
+          "target_count": 1,
+          "reward_xp": 50,
+          "reward_coins": 100,
+          "level_required": 1,
+          "icon": "🔥"
+        }
+      ]
+    },
+    {
+      "id": "tier_2_daily",
+      "kind": "daily",
+      "min_level": 5,
+      "quests": [
+        {
+          "quest_type": "generate_notes",
+          "description": "Generate notes twice",
+          "target_count": 2,
+          "reward_xp": 70,
+          "reward_coins": 35,
+          "level_required": 5,
+          "icon": "📓"
+        },
+        {
+          "quest_type": "perfect_quiz",
+          "description": "Get 100% on any quiz",
+          "target_count": 1,
+          "reward_xp": 100,
+          "reward_coins": 50,
+          "level_required": 5,
+          "icon": "⭐"
+        },
+        {
+          "quest_type": "ask_deep_questions",
+          "description": "Ask 5 detailed questions (20+ words)",
+          "target_count": 5,
+          "reward_xp": 90,
+          "reward_coins": 45,
+          "level_required": 5,
+          "icon": "🤔"
+        }
+      ]
+    },
+    {
+      "id": "tier_3_daily",
+      "kind": "daily",
+      "min_level": 10,
+      "quests": [
+        {
+          "quest_type": "arena_rounds",
+          "description": "Complete 2 arena rounds",
+          "target_count": 2,
+          "reward_xp": 120,
+          "reward_coins": 60,
+          "level_required": 10,
+          "icon": "⚔️"
+        },
+        {
+          "quest_type": "defeat_boss",
+          "description": "Defeat 1 boss in Battle Arena",
+          "target_count": 1,
+          "reward_xp": 160,
+          "reward_coins": 90,
+          "level_required": 10,
+          "icon": "🐉"
+        },
+        {
+          "quest_type": "quiz_master",
+          "description": "Score 90%+ on 3 quizzes",
+          "target_count": 3,
+          "reward_xp": 150,
+          "reward_coins": 75,
+          "level_required": 10,
+          "icon": "🏆"
+        }
+      ]
+    },
+    {
+      "id": "tier_4_daily",
+      "kind": "daily",
+      "min_level": 15,
+      "quests": [
+        {
+          "quest_type": "quiz_perfectionist",
+          "description": "Get 100% on 3 quizzes",
+          "target_count": 3,
+          "reward_xp": 220,
+          "reward_coins": 110,
+          "level_required": 15,
+          "icon": "💯"
+        },
+        {
+          "quest_type": "notes_scholar",
+          "description": "Generate detailed notes 5 times",
+          "target_count": 5,
+          "reward_xp": 170,
+          "reward_coins": 85,
+          "level_required": 15,
+          "icon": "📖"
+        },
+        {
+          "quest_type": "study_flashcards",
+          "description": "Study 3 flashcard decks",
+          "target_count": 3,
+          "reward_xp": 120,
+          "reward_coins": 40,
+          "level_required": 1,
+          "icon": "🃏"
+        }
+      ]
+    },
+    {
+      "id": "weekly_challenges",
+      "kind": "weekly",
+      "quests": [
+        {
+          "quest_type": "boss_hunter",
+          "description": "Defeat 5 bosses this week",
+          "target_count": 5,
+          "reward_xp": 400,
+          "reward_coins": 300,
+          "level_required": 10,
+          "icon": "🎖️",
+          "duration": "weekly"
+        }
+      ]
+    },
+    {
+      "id": "special_events",
+      "kind": "special",
+      "quests": []
+    }
+  ]
+}

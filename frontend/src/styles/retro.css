@@ -1,0 +1,9 @@
+/* Play-theme-only rules. Everything here applies inside <ThemeScope theme="play"> and nowhere else
+ * (the Study theme never gets pixel borders). Colours, shadows and the label font come from tokens.css. */
+
+[data-theme="play"] .retro-border {
+  box-shadow:
+    inset -4px -4px 0 rgba(0, 0, 0, 0.4),
+    inset 4px 4px 0 rgba(255, 255, 255, 0.1);
+  image-rendering: pixelated;
+}

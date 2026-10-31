@@ -1,0 +1,15 @@
+/* "Damage +12%" chips: what a piece of gear does in the arena. */
+.gear-chips { display: flex; flex-wrap: wrap; gap: var(--space-1); margin: 0; padding: 0; list-style: none; }
+.gear-chip {
+  display: inline-flex; align-items: baseline; gap: 0.35rem; padding: 0.15rem 0.55rem;
+  border: 1px solid color-mix(in srgb, var(--color-reward) 40%, transparent); border-radius: var(--radius-full);
+  background: color-mix(in srgb, var(--color-reward) 10%, transparent); font-size: 0.75rem; line-height: 1.4;
+}
+.gear-chip__label { color: var(--color-text-secondary); }
+.gear-chip__value { color: var(--color-reward); font-weight: 700; }
+.gear-chip[data-kind="hp"] { border-color: color-mix(in srgb, var(--color-danger-text) 45%, transparent); background: color-mix(in srgb, var(--color-danger) 14%, transparent); }
+.gear-chip[data-kind="hp"] .gear-chip__value { color: var(--color-danger-text); }
+.gear-chip[data-kind="time"] { border-color: color-mix(in srgb, var(--color-accent-text) 45%, transparent); background: color-mix(in srgb, var(--color-accent) 16%, transparent); }
+.gear-chip[data-kind="time"] .gear-chip__value { color: var(--color-accent-text); }
+.gear-chip[data-kind="strike"] { border-color: color-mix(in srgb, var(--color-accent-alt-text) 45%, transparent); background: color-mix(in srgb, var(--color-accent-alt) 16%, transparent); }
+.gear-chip[data-kind="strike"] .gear-chip__value { color: var(--color-accent-alt-text); }

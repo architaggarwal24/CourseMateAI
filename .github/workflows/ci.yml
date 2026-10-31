@@ -1,0 +1,63 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: |
+            backend/requirements.txt
+            backend/requirements-dev.txt
+      # CPU-only torch first: the default PyPI wheel drags in ~4 GB of CUDA libraries.
+      - run: pip install torch --index-url https://download.pytorch.org/whl/cpu
+      - run: pip install -r requirements-dev.txt
+      - run: pytest
+
+      # The generated TypeScript client must match the backend API: regenerate it and fail on any difference.
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Generated API client is up to date
+        working-directory: frontend
+        run: |
+          npm ci
+          npm run gen:api
+          if [ -n "$(git status --porcelain -- ../backend/openapi.json src/lib/api/generated)" ]; then
+            git status --short -- ../backend/openapi.json src/lib/api/generated
+            git --no-pager diff --stat -- ../backend/openapi.json src/lib/api/generated
+            echo "::error::Generated API client is stale. Run 'make gen-api' (or 'npm run gen:api' in frontend/) and commit the result."
+            exit 1
+          fi
+
+  frontend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build

@@ -1,0 +1,292 @@
+/* Design tokens and the two themes.
+ *
+ *   :root (and [data-theme="study"])  STUDY — "graphite glass". Premium, calm SaaS: near-black graphite, frosted glass
+ *                                      panels, ONE indigo accent, a slow aurora behind the page. Geist 16px/1.6.
+ *                                      Legacy "gold"/"purple" interactive highlights resolve to the same indigo.
+ *   [data-theme="play"]               PLAY — "arcane glass". The game layer (Hero, Arena): indigo night, violet + gold,
+ *                                      glow, particles, tinted glass. A pixel font for short labels and numbers only
+ *                                      (three words at most); body text stays Geist.
+ *
+ * Wrap a play screen in <ThemeScope theme="play">. Tailwind colours (app/globals.css @theme) point at these
+ * variables, so utilities like bg-panel / text-fg / text-ink-gold resolve per theme.
+ *
+ * Two kinds of colour live here:
+ *   --color-*   OPAQUE hex values. They are what contrast is computed against (src/styles/tokens.test.ts fails the
+ *               build if a text/fill pair drops below WCAG AA). A glass panel's --color-elevated is the colour that
+ *               panel actually reads as on the page.
+ *   --glass-*, --aurora-*, --glow-*   translucent paint for surfaces and light (rgba): never used for text.
+ *
+ * Variable names are prefixed (--color-*) on purpose: some screens set their own local --accent / --shadow.
+ */
+
+:root,
+[data-theme="study"] {
+  color-scheme: dark;
+
+  /* surfaces (opaque equivalents of what the glass reads as) */
+  --color-surface: #101117;            /* page */
+  --color-surface-sunken: #0c0d12;     /* sidebar, header bands */
+  --color-elevated: #16181f;           /* cards, inputs, menus */
+  --color-elevated-hover: #1e2029;
+
+  /* lines */
+  --color-border-subtle: #1f222b;
+  --color-border: #2a2e3a;
+  --color-border-strong: #424859;
+
+  /* text */
+  --color-text: #f4f5f8;
+  --color-text-secondary: #c9cdd8;
+  --color-muted: #979eae;
+
+  /* the one accent: indigo (fill / text-and-borders / text on the fill) */
+  --color-accent: #5a55ee;
+  --color-accent-text: #aab2ff;
+  --color-on-accent: #ffffff;
+  /* legacy "purple" and "gold" highlights: the same indigo in Study */
+  --color-accent-alt: var(--color-accent);
+  --color-accent-alt-text: var(--color-accent-text);
+  --color-on-accent-alt: var(--color-on-accent);
+  --color-highlight: var(--color-accent);
+  --color-highlight-text: var(--color-accent-text);
+  --color-on-highlight: var(--color-on-accent);
+
+  /* status */
+  --color-success: #17784a;
+  --color-success-text: #5fd59a;
+  --color-on-success: #ffffff;
+  --color-warning: #b86e00;
+  --color-warning-text: #f5b942;
+  --color-on-warning: #1a1300;
+  --color-danger: #c2362f;
+  --color-danger-text: #ff8a80;
+  --color-on-danger: #ffffff;
+  --color-reward: #f5b942;             /* XP / coins: readable as text and as a fill */
+  --color-on-reward: #1a1300;
+
+  /* rarity */
+  --color-rarity-common: #aab0bb;
+  --color-rarity-rare: #6db3ff;
+  --color-rarity-epic: #c79bff;
+  --color-rarity-legendary: #ffb84d;
+
+  /* scrollbars */
+  --color-scroll-thumb: rgba(255, 255, 255, 0.08);
+  --color-scroll-thumb-hover: rgba(255, 255, 255, 0.16);
+
+  /* glass: translucent fills over the aurora. Blur is the frosting; the inset highlight is the lit top edge. */
+  --glass-bg: rgba(22, 24, 33, 0.52);
+  --glass-bg-strong: rgba(24, 26, 36, 0.82);
+  --glass-bg-hover: rgba(32, 35, 46, 0.66);
+  --glass-tint: rgba(255, 255, 255, 0.025);
+  --glass-border: rgba(255, 255, 255, 0.075);
+  --glass-border-strong: rgba(255, 255, 255, 0.14);
+  --glass-highlight: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  --glass-blur: 18px;
+  --glass-shadow: 0 1px 1px rgba(0, 0, 0, 0.25), 0 12px 40px -12px rgba(0, 0, 0, 0.6);
+
+  /* light: aurora blobs, cursor spotlight, glows */
+  --aurora-a: rgba(90, 85, 238, 0.3);
+  --aurora-b: rgba(45, 180, 200, 0.14);
+  --aurora-c: rgba(160, 90, 230, 0.14);
+  --spotlight: rgba(170, 178, 255, 0.10);
+  --spotlight-border: rgba(170, 178, 255, 0.45);
+  --glow-accent: rgba(90, 85, 238, 0.45);
+  --glow-success: rgba(95, 213, 154, 0.35);
+  --glow-danger: rgba(255, 110, 100, 0.35);
+  --glow-reward: rgba(245, 185, 66, 0.4);
+  --sheen: rgba(255, 255, 255, 0.16);
+  --grain-opacity: 0.035;
+  --scrim: rgba(5, 6, 10, 0.62);
+
+  /* spacing (4px scale) */
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.5rem;
+  --space-6: 2rem;
+  --space-7: 3rem;
+  --space-8: 4rem;
+
+  /* shape */
+  --radius-sm: 10px;
+  --radius-md: 14px;
+  --radius-lg: 20px;
+  --radius-xl: 28px;
+  --radius-full: 9999px;
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.35);
+  --shadow-md: 0 10px 30px -8px rgba(0, 0, 0, 0.55), 0 1px 2px rgba(0, 0, 0, 0.3);
+  --shadow-lg: 0 30px 80px -20px rgba(0, 0, 0, 0.7), 0 2px 6px rgba(0, 0, 0, 0.35);
+  --shadow-glow: 0 0 0 1px rgba(170, 178, 255, 0.22), 0 8px 28px -4px rgba(90, 85, 238, 0.45);
+  --edge-light: inset 0 1px 0 rgba(255, 255, 255, 0.06);        /* the faint top edge that lifts a surface */
+
+  /* fills */
+  --gradient-accent: linear-gradient(180deg, #6b67ff 0%, #5a55ee 55%, #4c45e0 100%);
+  --gradient-page: radial-gradient(1200px 600px at 12% -10%, var(--aurora-a), transparent 60%),
+    radial-gradient(900px 500px at 100% 0%, var(--aurora-b), transparent 60%);
+  --gradient-card: linear-gradient(180deg, rgba(255, 255, 255, 0.03), rgba(255, 255, 255, 0) 40%);
+  --gradient-reward: linear-gradient(180deg, #ffd166 0%, #f5b942 100%);
+  --gradient-sheen: linear-gradient(105deg, transparent 20%, var(--sheen) 45%, transparent 70%);
+  --gradient-border: conic-gradient(from var(--border-angle, 0deg), transparent 0deg, var(--spotlight-border) 60deg, transparent 140deg);
+  --gradient-text: linear-gradient(180deg, #ffffff 0%, #c9cdd8 100%);
+  --gradient-text-accent: linear-gradient(90deg, #c7ccff 0%, #8f8bff 50%, #7fd8e6 100%);
+  --gradient-arena-stars: none;
+  --gradient-arena-sky: none;
+  --gradient-arena-sky-rage: none;
+  --gradient-arena-floor: none;
+  --gradient-hp: linear-gradient(180deg, #ff7a7e 0%, #d7343a 100%);
+  --gradient-xp: linear-gradient(90deg, #6b67ff 0%, #9d8bff 100%);
+
+  /* focus ring: an outline in the accent, set off from the element by a gap */
+  --focus-ring-color: var(--color-accent-text);
+  --focus-ring-width: 2px;
+  --focus-ring-offset: 2px;
+
+  /* motion: enter slower than exit; springs for anything the hand moves */
+  --motion-fast: 120ms;
+  --motion-base: 200ms;
+  --motion-slow: 340ms;
+  --motion-ease: cubic-bezier(0.2, 0, 0, 1);
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-spring: linear(0, 0.006, 0.025 2.8%, 0.101 6.1%, 0.539 18.9%, 0.721 25.3%, 0.849 31.5%, 0.937 38.1%, 0.968 41.8%, 0.991 45.7%, 1.006 50.1%, 1.015 55%, 1.017 63.9%, 1.001 85.9%, 1);
+
+  /* type */
+  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  --font-label: var(--font-sans);      /* .pixel-font: Geist in Study */
+  --label-tracking: 0;
+  --heading-tracking: -0.022em;
+  --line-height-body: 1.6;
+  --measure: 72ch;                     /* widest a block of reading text gets */
+}
+
+[data-theme="play"] {
+  color-scheme: dark;
+
+  /* indigo night: deep, saturated, never pure black */
+  --color-surface: #0d0a22;
+  --color-surface-sunken: #08061a;
+  --color-elevated: #17123a;
+  --color-elevated-hover: #211a4e;
+
+  --color-border-subtle: #251c55;
+  --color-border: #33296e;
+  --color-border-strong: #4d3f9a;
+
+  --color-text: #f4f1ff;
+  --color-text-secondary: #dad4f6;
+  --color-muted: #a59ed2;
+
+  /* violet is the accent; gold is the highlight / reward */
+  --color-accent: #6a49f2;
+  --color-accent-text: #bcabff;
+  --color-on-accent: #ffffff;
+  --color-accent-alt: #9b4fe0;
+  --color-accent-alt-text: #dab8ff;
+  --color-on-accent-alt: #ffffff;
+  --color-highlight: #ffc23d;
+  --color-highlight-text: #ffc23d;
+  --color-on-highlight: #1d1300;
+
+  --color-success: #1f7a45;
+  --color-success-text: #62dc93;
+  --color-on-success: #ffffff;
+  --color-warning: #b86e00;
+  --color-warning-text: #ffb830;
+  --color-on-warning: #1a1300;
+  --color-danger: #c8383a;
+  --color-danger-text: #ff8f94;
+  --color-on-danger: #ffffff;
+  --color-reward: #ffc23d;
+  --color-on-reward: #1d1300;
+
+  --color-scroll-thumb: rgba(188, 171, 255, 0.14);
+  --color-scroll-thumb-hover: rgba(188, 171, 255, 0.3);
+
+  --glass-bg: rgba(26, 19, 66, 0.55);
+  --glass-bg-strong: rgba(24, 18, 60, 0.85);
+  --glass-bg-hover: rgba(36, 27, 86, 0.62);
+  --glass-tint: rgba(150, 120, 255, 0.04);
+  --glass-border: rgba(188, 171, 255, 0.14);
+  --glass-border-strong: rgba(188, 171, 255, 0.28);
+  --glass-highlight: inset 0 1px 0 rgba(255, 255, 255, 0.09);
+  --glass-blur: 16px;
+  --glass-shadow: 0 1px 1px rgba(5, 2, 20, 0.4), 0 16px 48px -12px rgba(5, 2, 20, 0.8);
+
+  --aurora-a: rgba(106, 73, 242, 0.32);
+  --aurora-b: rgba(255, 194, 61, 0.10);
+  --aurora-c: rgba(230, 70, 190, 0.16);
+  --spotlight: rgba(188, 171, 255, 0.14);
+  --spotlight-border: rgba(255, 194, 61, 0.6);
+  --glow-accent: rgba(122, 90, 255, 0.6);
+  --glow-success: rgba(98, 220, 147, 0.5);
+  --glow-danger: rgba(255, 90, 100, 0.55);
+  --glow-reward: rgba(255, 194, 61, 0.55);
+  --sheen: rgba(255, 255, 255, 0.22);
+  --grain-opacity: 0.05;
+  --scrim: rgba(6, 3, 20, 0.7);
+
+  --radius-sm: 10px;
+  --radius-md: 14px;
+  --radius-lg: 22px;
+  --radius-xl: 30px;
+  --shadow-sm: 0 1px 2px rgba(5, 2, 20, 0.5);
+  --shadow-md: 0 12px 34px -8px rgba(5, 2, 20, 0.7), 0 1px 2px rgba(5, 2, 20, 0.4);
+  --shadow-lg: 0 34px 90px -20px rgba(5, 2, 20, 0.85), 0 2px 6px rgba(5, 2, 20, 0.5);
+  --shadow-glow: 0 0 0 1px rgba(188, 171, 255, 0.3), 0 10px 34px -4px rgba(106, 73, 242, 0.6);
+  --edge-light: inset 0 1px 0 rgba(255, 255, 255, 0.09);
+
+  --gradient-accent: linear-gradient(180deg, #8668ff 0%, #6a49f2 55%, #5434d8 100%);
+  --gradient-page: radial-gradient(1100px 560px at 15% -10%, var(--aurora-a), transparent 60%),
+    radial-gradient(900px 520px at 100% 5%, var(--aurora-c), transparent 60%),
+    radial-gradient(700px 400px at 50% 110%, var(--aurora-b), transparent 60%);
+  --gradient-card: linear-gradient(180deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0) 45%);
+  --gradient-reward: linear-gradient(180deg, #ffd466 0%, #f2ab1f 100%);
+  --gradient-sheen: linear-gradient(105deg, transparent 20%, var(--sheen) 45%, transparent 70%);
+  --gradient-border: conic-gradient(from var(--border-angle, 0deg), transparent 0deg, var(--spotlight-border) 60deg, rgba(188, 171, 255, 0.6) 120deg, transparent 180deg);
+  --gradient-text: linear-gradient(180deg, #ffffff 0%, #dad4f6 100%);
+  --gradient-text-accent: linear-gradient(90deg, #ffe08a 0%, #ffc23d 40%, #c79bff 100%);
+  /* the arena's night sky and its floor (calm and enraged) */
+  --gradient-arena-sky: linear-gradient(180deg, #120a3a 0%, #2a176a 52%, #61308a 100%);
+  --gradient-arena-sky-rage: linear-gradient(180deg, #24081f 0%, #551240 52%, #a8383f 100%);
+  --gradient-arena-floor: linear-gradient(180deg, #2b1d5a 0%, #120b2c 100%);
+  --gradient-arena-stars: radial-gradient(1.5px 1.5px at 12% 22%, var(--color-text) 50%, transparent), radial-gradient(1px 1px at 28% 12%, var(--color-text) 50%, transparent),
+    radial-gradient(1.5px 1.5px at 62% 18%, var(--color-text) 50%, transparent), radial-gradient(1px 1px at 78% 10%, var(--color-text) 50%, transparent),
+    radial-gradient(1px 1px at 90% 28%, var(--color-text) 50%, transparent), radial-gradient(1px 1px at 38% 30%, var(--color-text) 50%, transparent);
+  --gradient-hp: linear-gradient(180deg, #ff6b6f 0%, #d7343a 100%);
+  --gradient-xp: linear-gradient(90deg, #7b5cff 0%, #c08cff 60%, #ffc23d 100%);
+
+  --focus-ring-color: var(--color-highlight-text);
+
+  --motion-fast: 100ms;
+  --motion-base: 180ms;
+  --motion-slow: 320ms;
+
+  /* the pixel font is for short labels and numbers (3 words at most); body text stays Geist */
+  --font-label: var(--font-pixel), ui-monospace, "Courier New", monospace;
+  --label-tracking: 0.05em;
+}
+
+/* A scope adds no box of its own: it only switches the variables for what is inside it. */
+.theme-scope {
+  display: contents;
+  color: var(--color-text);
+  font-family: var(--font-sans);
+}
+
+/* The conic border's angle is animatable only once it is a registered property. */
+@property --border-angle {
+  syntax: "<angle>";
+  initial-value: 0deg;
+  inherits: false;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root,
+  [data-theme] {
+    --motion-fast: 0.01ms;
+    --motion-base: 0.01ms;
+    --motion-slow: 0.01ms;
+  }
+}

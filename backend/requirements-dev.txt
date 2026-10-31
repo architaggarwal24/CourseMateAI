@@ -1,0 +1,6 @@
+-r requirements.txt
+pytest>=8
+httpx>=0.27          # FastAPI TestClient
+reportlab>=4         # generates sample PDFs for upload tests
+pytest-asyncio>=1.4        # async tests (asyncio_mode = auto in pytest.ini)
+PyJWT==2.15.1       # only to forge an old-style login token in tests/test_sessions.py

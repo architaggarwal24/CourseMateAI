@@ -1,0 +1,118 @@
+/* Pixel arena: crisp nearest-neighbour sprites, the fight stage, roster and bestiary. */
+
+.pixel-canvas { image-rendering: pixelated; image-rendering: crisp-edges; display: block; }
+
+.px-section-title { font-size: 0.8rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--color-reward); margin: 0 0 var(--space-3); }
+
+/* ── fight stage ─────────────────────────────────────────────────────────── */
+.px-arena {
+  position: relative; width: 100%; aspect-ratio: 16 / 9; overflow: hidden;
+  border-radius: var(--radius-lg); background: var(--color-surface-sunken);
+  border: 1px solid var(--color-border);
+  box-shadow: 0 20px 60px -20px rgba(0, 0, 0, 0.7), inset 0 0 0 1px rgba(255, 255, 255, 0.04);
+}
+.px-arena[data-rage] { box-shadow: 0 0 0 1px var(--color-danger), 0 0 50px -10px var(--color-danger); }
+.px-arena__canvas { position: absolute; inset: 0; width: 100%; height: 100%; image-rendering: pixelated; image-rendering: crisp-edges; }
+.px-arena__speech {
+  position: absolute; right: 6%; top: 6%; max-width: 46%; margin: 0;
+  padding: 0.45rem 0.7rem; font-size: 0.78rem; line-height: 1.35; color: var(--color-text);
+  background: rgba(8, 6, 20, 0.82); border: 2px solid var(--color-text); border-radius: 2px;
+  box-shadow: 3px 3px 0 rgba(0, 0, 0, 0.6);
+  animation: px-speech 0.25s steps(3) both;
+}
+@keyframes px-speech { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
+.px-arena__banner {
+  position: absolute; inset: 0; display: grid; place-items: center; margin: 0; pointer-events: none;
+  font-size: clamp(2rem, 8vw, 4.5rem); letter-spacing: 0.06em; color: var(--color-reward);
+  text-shadow: 4px 4px 0 rgba(0, 0, 0, 0.85), -2px -2px 0 rgba(0, 0, 0, 0.85), 0 0 24px rgba(245, 185, 66, 0.55);
+}
+.px-arena__banner[data-tone="rage"], .px-arena__banner[data-tone="lose"] { color: var(--color-danger-text); text-shadow: 4px 4px 0 rgba(0, 0, 0, 0.85), 0 0 24px rgba(239, 68, 68, 0.6); }
+.px-arena__floaters { position: absolute; inset: 0; pointer-events: none; }
+.px-arena__floaters .arena-floater[data-side="hero"] { left: 22%; top: 38%; }
+.px-arena__floaters .arena-floater[data-side="boss"] { left: auto; right: 26%; top: 34%; }
+
+/* ── roster ──────────────────────────────────────────────────────────────── */
+.px-roster__grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-3); }
+@media (min-width: 640px) { .px-roster__grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (min-width: 1100px) { .px-roster__grid { grid-template-columns: repeat(6, minmax(0, 1fr)); } }
+.px-hero-card {
+  position: relative; display: grid; gap: 0.15rem; justify-items: center; text-align: center; cursor: pointer;
+  padding: var(--space-3) var(--space-2) var(--space-4); border-radius: var(--radius-md);
+  background: linear-gradient(180deg, color-mix(in oklab, var(--hero-accent) 14%, transparent), transparent 70%), var(--color-elevated);
+  border: 1px solid var(--color-border); color: var(--color-text);
+  transition: transform var(--motion-fast) ease, border-color var(--motion-fast) ease, box-shadow var(--motion-fast) ease;
+}
+.px-hero-card:hover { transform: translateY(-3px); border-color: color-mix(in oklab, var(--hero-accent) 60%, transparent); }
+.px-hero-card[aria-checked="true"] {
+  border-color: var(--hero-accent);
+  box-shadow: 0 0 0 1px var(--hero-accent), 0 10px 30px -12px var(--hero-accent);
+}
+.px-hero-card[aria-checked="true"]::after {
+  content: "SELECTED"; position: absolute; top: 0.4rem; right: 0.4rem; font-family: var(--font-label); font-size: 0.55rem;
+  padding: 0.1rem 0.3rem; background: var(--hero-accent); color: var(--color-surface); border-radius: 2px;
+}
+.px-hero-card:focus-visible { outline: 2px solid var(--focus-ring-color); outline-offset: 2px; }
+.px-hero-card__stage, .px-beast__stage { position: relative; height: 7.5rem; width: 100%; }
+.px-hero-card__sprite, .px-beast__sprite { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; object-position: 50% 100%; }
+.px-hero-card__name { font-size: 0.85rem; margin-top: var(--space-2); }
+.px-hero-card__style { font-size: 0.7rem; color: var(--hero-accent); text-transform: uppercase; letter-spacing: 0.08em; }
+.px-hero-card__blurb { font-size: 0.72rem; color: var(--color-muted); line-height: 1.35; }
+
+/* ── bestiary ────────────────────────────────────────────────────────────── */
+.px-bestiary__grid { list-style: none; padding: 0; margin: var(--space-3) 0 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(11rem, 1fr)); gap: var(--space-3); }
+.px-beast {
+  display: grid; gap: 0.15rem; padding: var(--space-3); border-radius: var(--radius-md);
+  background: radial-gradient(120% 80% at 50% 100%, color-mix(in oklab, var(--beast-accent) 22%, transparent), transparent 70%), var(--color-elevated);
+  border: 1px solid var(--color-border);
+}
+.px-beast__stage { height: 8rem; }
+.px-beast__name { font-size: 0.8rem; color: var(--beast-accent); margin-top: var(--space-2); }
+.px-beast__origin { font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--color-muted); }
+.px-beast__lore { font-size: 0.72rem; line-height: 1.35; color: var(--color-text-secondary); }
+
+@media (prefers-reduced-motion: reduce) {
+  .px-hero-card { transition: none; }
+  .px-arena__speech { animation: none; }
+}
+
+/* ── fighter HUD (battle) ────────────────────────────────────────────────── */
+.arena-col--scene { container-type: inline-size; }
+.ff-hud { gap: var(--space-3); }
+@container (min-width: 620px) {
+  .ff-hud { grid-template-columns: minmax(0, 1fr) auto minmax(0, 1.25fr); grid-template-areas: "you mid boss"; align-items: start; }
+}
+.ff-hud__side { display: flex; align-items: flex-start; gap: var(--space-3); min-width: 0; }
+.ff-hud__side--boss { flex-direction: row-reverse; }
+.ff-hud__bossinfo { display: grid; gap: var(--space-1); min-width: 0; flex: 1; }
+.ff-hud__portrait {
+  flex: none; width: 3.5rem; height: 3.5rem; display: block; position: relative;
+  background: radial-gradient(circle at 50% 70%, color-mix(in oklab, var(--hero-accent) 35%, transparent), var(--color-surface-sunken) 75%);
+  border: 2px solid var(--hero-accent); border-radius: 3px;
+  box-shadow: 2px 2px 0 rgba(0, 0, 0, 0.55), inset 0 0 0 1px rgba(0, 0, 0, 0.6);
+  overflow: hidden;
+}
+.ff-hud__face { position: absolute; inset: 2px; width: calc(100% - 4px); height: calc(100% - 4px); object-fit: contain; object-position: 50% 100%; }
+.ff-hud__name { font-size: 0.8rem; color: var(--color-text); letter-spacing: 0.04em; }
+.ff-hud .arena-hud__name { font-size: 0.95rem; letter-spacing: 0.03em; }
+.ff-hud .arena-bar { height: 1rem; border-radius: 2px; border: 2px solid var(--color-reward); box-shadow: 2px 2px 0 rgba(0, 0, 0, 0.55); }
+.ff-hud .arena-bar > span { border-radius: 0; }
+.ff-hud .arena-hearts { gap: 1px; }
+
+.arena-result__sprite { width: 100%; height: 12rem; object-fit: contain; object-position: 50% 100%; }
+
+@media (max-width: 599px) {
+  .ff-hud__portrait { width: 2.75rem; height: 2.75rem; }
+}
+
+@media (min-width: 1100px) {
+  .arena--battle { grid-template-columns: minmax(0, 1.45fr) minmax(0, 1fr); }
+}
+@container (min-width: 560px) {
+  .ff-hud { grid-template-columns: minmax(0, 1fr) auto minmax(0, 1.25fr); grid-template-areas: "you mid boss"; align-items: start; }
+}
+
+.arena-summon__sprite { width: 100%; height: 12rem; object-fit: contain; object-position: 50% 100%; }
+.arena-summon__name .pixel-font { color: var(--color-reward); }
+
+/* keep the verdict's buttons clear of the phone's bottom navigation dock when scrolled into view */
+.arena-verdict__actions .ui-btn { scroll-margin-bottom: 7.5rem; }

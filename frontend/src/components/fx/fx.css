@@ -1,0 +1,191 @@
+/* Effects: light that follows the pointer, ambient backgrounds, reveal and press feedback.
+ * Colours are tokens only (src/styles/tokens.css): the same effect is indigo in Study and violet/gold in Play.
+ * Every effect is decorative (aria-hidden, pointer-events: none) and switches off under prefers-reduced-motion. */
+
+/* ── Pointer spotlight ───────────────────────────────────────────────────────────────────────────────────────── *
+ * usePointerVars() writes --mx / --my (px, relative to the element) and --hover (0/1). The light is a radial fill on
+ * ::before and a lit border on ::after (a masked ring), both fading in on hover. */
+.fx-spotlight { position: relative; isolation: isolate; }
+.fx-spotlight::before,
+.fx-spotlight::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  opacity: var(--hover, 0);
+  transition: opacity var(--motion-slow) var(--motion-ease);
+}
+.fx-spotlight::before {
+  z-index: -1;               /* above the element's own background (it is isolated), below its content */
+  background: radial-gradient(var(--spot-size, 420px) circle at var(--mx, 50%) var(--my, 50%), var(--spotlight), transparent 65%);
+}
+.fx-spotlight::after {
+  z-index: 2;
+  padding: 1px;
+  background: radial-gradient(var(--spot-ring, 260px) circle at var(--mx, 50%) var(--my, 50%), var(--spotlight-border), transparent 70%);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0);
+}
+
+/* ── Button sheen + press ripple ──────────────────────────────────────────────────────────────────────────────── */
+.fx-sheen::before {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  z-index: -1;
+  border-radius: inherit;
+  background: var(--gradient-sheen);
+  background-size: 250% 100%;
+  background-position: 130% 0;
+  background-repeat: no-repeat;
+  opacity: 0;
+  pointer-events: none;
+  transition: background-position 900ms var(--ease-out-expo), opacity var(--motion-base) var(--motion-ease);
+}
+.fx-sheen:hover:not(:disabled)::before { background-position: -30% 0; opacity: 1; }
+
+.fx-ripple {
+  position: absolute;
+  z-index: -1;
+  width: 12px;
+  height: 12px;
+  margin: -6px 0 0 -6px;
+  border-radius: 50%;
+  background: currentColor;
+  opacity: 0.28;
+  pointer-events: none;
+  transform: scale(0);
+  animation: fx-ripple 620ms var(--ease-out-expo) forwards;
+}
+@keyframes fx-ripple { to { transform: scale(var(--ripple-scale, 30)); opacity: 0; } }
+
+/* Spark burst (reward / play actions): small rays flung out from the click point. */
+.fx-spark {
+  position: fixed;
+  z-index: 9999;
+  width: 2px;
+  height: 9px;
+  margin: -4px 0 0 -1px;
+  border-radius: 2px;
+  background: var(--spark-color, var(--color-highlight-text));
+  box-shadow: 0 0 6px var(--spark-color, var(--color-highlight-text));
+  pointer-events: none;
+  transform: rotate(var(--a)) translateY(0) scaleY(1);
+  animation: fx-spark 520ms var(--ease-out-expo) forwards;
+}
+@keyframes fx-spark {
+  to { transform: rotate(var(--a)) translateY(calc(-1 * var(--d, 26px))) scaleY(0.2); opacity: 0; }
+}
+
+/* ── Animated conic border ("border beam") ───────────────────────────────────────────────────────────────────── *
+ * .fx-beam draws it on ::after; on an element that already uses ::after (a .fx-spotlight), add a child
+ * <span class="fx-ring" aria-hidden="true" /> instead. */
+.fx-beam { position: relative; isolation: isolate; }
+.fx-ring {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  padding: 1px;
+  border-radius: inherit;
+  background: var(--gradient-border);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0);
+  pointer-events: none;
+  animation: border-spin 5s linear infinite;
+}
+.fx-beam::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  padding: 1px;
+  border-radius: inherit;
+  background: var(--gradient-border);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0);
+  pointer-events: none;
+  animation: border-spin 5s linear infinite;
+}
+
+/* ── Shiny text (a sweep of light across a heading) ──────────────────────────────────────────────────────────── */
+.fx-shiny {
+  background: linear-gradient(110deg, var(--color-muted) 35%, var(--color-text) 50%, var(--color-muted) 65%);
+  background-size: 250% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: shimmer 3.2s linear infinite;
+}
+
+/* ── Ambient page background ─────────────────────────────────────────────────────────────────────────────────── *
+ * Three soft colour blobs drifting under everything, plus film grain. Fixed, behind the content, never interactive. */
+.fx-aurora {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+.fx-aurora__blob {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(80px);
+  opacity: 0.9;
+  will-change: transform;
+  animation: aurora 26s ease-in-out infinite alternate;
+}
+.fx-aurora__blob--a { width: 55vw; height: 45vh; left: -10vw; top: -18vh; background: var(--aurora-a); }
+.fx-aurora__blob--b { width: 45vw; height: 40vh; right: -12vw; top: -10vh; background: var(--aurora-b); animation-duration: 32s; animation-delay: -8s; }
+.fx-aurora__blob--c { width: 50vw; height: 40vh; left: 25vw; bottom: -25vh; background: var(--aurora-c); animation-duration: 38s; animation-delay: -14s; }
+/* a fine dot grid that fades out towards the edges */
+.fx-aurora__grid {
+  position: absolute;
+  inset: 0;
+  background-image: radial-gradient(circle at 1px 1px, var(--glass-border) 1px, transparent 0);
+  background-size: 28px 28px;
+  -webkit-mask-image: radial-gradient(ellipse 70% 55% at 50% 0%, #000 30%, transparent 75%);
+  mask-image: radial-gradient(ellipse 70% 55% at 50% 0%, #000 30%, transparent 75%);
+  opacity: 0.55;
+}
+.fx-grain {
+  position: absolute;
+  inset: -50%;
+  z-index: 0;
+  pointer-events: none;
+  opacity: var(--grain-opacity);
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 0.9 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+  mix-blend-mode: overlay;
+}
+
+/* ── Starfield canvas (Play) ─────────────────────────────────────────────────────────────────────────────────── */
+.fx-stars { position: absolute; inset: 0; z-index: 0; width: 100%; height: 100%; pointer-events: none; }
+
+/* ── Tilt card ───────────────────────────────────────────────────────────────────────────────────────────────── */
+.fx-tilt { transform-style: preserve-3d; will-change: transform; }
+.fx-tilt__glare {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  border-radius: inherit;
+  pointer-events: none;
+  background: radial-gradient(circle at var(--gx, 50%) var(--gy, 50%), var(--sheen), transparent 55%);
+  opacity: var(--hover, 0);
+  mix-blend-mode: overlay;
+  transition: opacity var(--motion-slow) var(--motion-ease);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fx-aurora__blob, .fx-beam::after, .fx-ring, .fx-shiny { animation: none !important; }
+  .fx-ripple, .fx-spark { display: none; }
+  .fx-sheen::before { transition: none; }
+}
+html.reduce-animations .fx-aurora__blob,
+html.reduce-animations .fx-beam::after,
+html.reduce-animations .fx-ring,
+html.reduce-animations .fx-shiny { animation: none !important; }
+html.reduce-animations .fx-ripple,
+html.reduce-animations .fx-spark { display: none; }

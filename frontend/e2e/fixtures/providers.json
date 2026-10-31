@@ -1,0 +1,240 @@
+{
+ "providers": [
+  {
+   "id": "gemini",
+   "label": "Google Gemini",
+   "kind": "gemini",
+   "cost": "free",
+   "hint": "Free tier, no credit card. Free-tier prompts may be used by Google to improve its products.",
+   "key_url": "https://aistudio.google.com/apikey",
+   "key_placeholder": "AIza...",
+   "needs_key": true,
+   "base_url_mode": "none",
+   "default_base_url": "",
+   "models": [
+    {
+     "id": "gemini-3.8-flash",
+     "label": "Gemini 3.8 Flash",
+     "free": true,
+     "note": "Newest and smartest Flash model"
+    },
+    {
+     "id": "gemini-3.7-flash",
+     "label": "Gemini 3.7 Flash",
+     "free": true,
+     "note": "Fast, reliable all-rounder"
+    },
+    {
+     "id": "gemini-3.5-flash-lite",
+     "label": "Gemini 3.5 Flash-Lite",
+     "free": true,
+     "note": "Lightest — best if you hit rate limits"
+    },
+    {
+     "id": "gemini-3.1-flash-lite",
+     "label": "Gemini 3.1 Flash-Lite",
+     "free": true,
+     "note": "Light and cheap, older generation"
+    }
+   ],
+   "default_model": "gemini-3.8-flash",
+   "presets": [],
+   "dev_only": false,
+   "allow_custom_model": true
+  },
+  {
+   "id": "nvidia-nim",
+   "label": "NVIDIA NIM",
+   "kind": "openai_compat",
+   "cost": "free",
+   "hint": "Free open models (~40 requests/min) with a free NVIDIA Developer account — no credit card.",
+   "key_url": "https://build.nvidia.com/settings/api-keys",
+   "key_placeholder": "nvapi-...",
+   "needs_key": true,
+   "base_url_mode": "fixed",
+   "default_base_url": "https://integrate.api.nvidia.com/v1",
+   "models": [
+    {
+     "id": "meta/llama-3.3-70b-instruct",
+     "label": "Llama 3.3 70B Instruct",
+     "free": true,
+     "note": "Dependable, follows formats well"
+    },
+    {
+     "id": "nvidia/llama-3.3-nemotron-super-49b-v1.5",
+     "label": "Nemotron Super 49B v1.5",
+     "free": true,
+     "note": "NVIDIA-tuned reasoning"
+    },
+    {
+     "id": "nvidia/nemotron-3-super-120b-a12b",
+     "label": "Nemotron 3 Super 120B",
+     "free": true,
+     "note": "Largest NVIDIA option"
+    },
+    {
+     "id": "qwen/qwen3.5-122b-a10b",
+     "label": "Qwen 3.5 122B",
+     "free": true,
+     "note": "Strong multilingual"
+    },
+    {
+     "id": "openai/gpt-oss-20b",
+     "label": "gpt-oss 20B",
+     "free": true,
+     "note": "Small and quick"
+    }
+   ],
+   "default_model": "meta/llama-3.3-70b-instruct",
+   "presets": [],
+   "dev_only": false,
+   "allow_custom_model": true
+  },
+  {
+   "id": "openai-compatible",
+   "label": "OpenAI-compatible",
+   "kind": "openai_compat",
+   "cost": "paid",
+   "hint": "Any service that speaks the OpenAI chat API (OpenRouter, Groq, CodeCraft API, LM Studio, …). Enter its base URL, your key and a model id.",
+   "key_url": "",
+   "key_placeholder": "Your provider's API key",
+   "needs_key": true,
+   "base_url_mode": "required",
+   "default_base_url": "",
+   "models": [],
+   "default_model": "",
+   "presets": [
+    {
+     "label": "CodeCraft API",
+     "url": "https://codecraftapi.com/v1",
+     "hint": "Key starts with cc_"
+    },
+    {
+     "label": "OpenRouter",
+     "url": "https://openrouter.ai/api/v1",
+     "hint": "Free models end in :free"
+    },
+    {
+     "label": "Groq",
+     "url": "https://api.groq.com/openai/v1",
+     "hint": "Has a free tier"
+    },
+    {
+     "label": "Cerebras",
+     "url": "https://api.cerebras.ai/v1",
+     "hint": "Has a free tier"
+    }
+   ],
+   "dev_only": false,
+   "allow_custom_model": true
+  },
+  {
+   "id": "openai",
+   "label": "OpenAI",
+   "kind": "openai",
+   "cost": "paid",
+   "hint": "OpenAI has no free API tier — you need a funded account. (Accounts that opt in to OpenAI's data-sharing program may get free daily tokens.)",
+   "key_url": "https://platform.openai.com/api-keys",
+   "key_placeholder": "sk-...",
+   "needs_key": true,
+   "base_url_mode": "none",
+   "default_base_url": "",
+   "models": [
+    {
+     "id": "gpt-5.4-nano",
+     "label": "GPT-5.4 nano",
+     "free": false,
+     "note": "Cheapest current model"
+    },
+    {
+     "id": "gpt-5.4-mini",
+     "label": "GPT-5.4 mini",
+     "free": false,
+     "note": "Stronger, still inexpensive"
+    }
+   ],
+   "default_model": "gpt-5.4-nano",
+   "presets": [],
+   "dev_only": false,
+   "allow_custom_model": true
+  },
+  {
+   "id": "claude",
+   "label": "Anthropic Claude",
+   "kind": "anthropic",
+   "cost": "paid",
+   "hint": "Anthropic has no free API tier — you need credits on your own account.",
+   "key_url": "https://console.anthropic.com/settings/keys",
+   "key_placeholder": "sk-ant-...",
+   "needs_key": true,
+   "base_url_mode": "none",
+   "default_base_url": "",
+   "models": [
+    {
+     "id": "claude-haiku-4-5-20251001",
+     "label": "Claude Haiku 4.5",
+     "free": false,
+     "note": "Cheapest Claude"
+    },
+    {
+     "id": "claude-sonnet-5-5",
+     "label": "Claude Sonnet 5.5",
+     "free": false,
+     "note": "Best balance of quality and cost"
+    }
+   ],
+   "default_model": "claude-haiku-4-5-20251001",
+   "presets": [],
+   "dev_only": false,
+   "allow_custom_model": true
+  },
+  {
+   "id": "ollama",
+   "label": "Ollama (local)",
+   "kind": "ollama",
+   "cost": "local",
+   "hint": "LOCAL TESTING ONLY. Runs models on this machine — install Ollama, then `ollama pull <model>`.",
+   "key_url": "https://ollama.com/download",
+   "key_placeholder": "API key",
+   "needs_key": false,
+   "base_url_mode": "optional",
+   "default_base_url": "http://localhost:11434",
+   "models": [
+    {
+     "id": "llama3.2:3b",
+     "label": "Llama 3.2 3B",
+     "free": true,
+     "note": "Tiny, runs on most laptops"
+    },
+    {
+     "id": "qwen3:8b",
+     "label": "Qwen 3 8B",
+     "free": true,
+     "note": "Good quality, ~8 GB RAM"
+    },
+    {
+     "id": "gemma3:4b",
+     "label": "Gemma 3 4B",
+     "free": true,
+     "note": "Compact and capable"
+    },
+    {
+     "id": "llama3.1:8b",
+     "label": "Llama 3.1 8B",
+     "free": true,
+     "note": "Solid general model"
+    },
+    {
+     "id": "gpt-oss:20b",
+     "label": "gpt-oss 20B",
+     "free": true,
+     "note": "Needs ~16 GB RAM"
+    }
+   ],
+   "default_model": "llama3.2:3b",
+   "presets": [],
+   "dev_only": true,
+   "allow_custom_model": true
+  }
+ ]
+}

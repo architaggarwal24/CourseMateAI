@@ -1,0 +1,953 @@
+{
+  "schema_version": 1,
+  "notes": [
+    "BONUS FIELDS (applied passively while the item is equipped): xp_pct = extra XP (0.05 = +5%); coin_pct = extra coins; combo_xp_pct = extra XP from answer combos; arena_hints = extra hint charges in the arena; streak_freeze_days = earn a streak freeze every N days of streak.",
+    "CONSUMABLE EFFECT (consumable items, triggered once from inventory): heal_1 = restore 1 heart in the arena; fifty_fifty = a 50/50 lifeline in the arena; xp_boost_1h = +50% XP for 1 hour; xp_boost_2h = +100% XP for 2 hours; coin_boost_1h = +50% coins for 1 hour; streak_freeze = grant 1 streak freeze; reset_daily_quests = refresh today's daily quests.",
+    "Each tier lists items of one category. level_required defaults to the tier's unlocks_at_level; an item is never available before it. Shop categories are listed in the order the shop shows them.",
+    "BATTLE FIELDS (applied in the arena while the item is equipped, decided by the server when a battle starts): damage_pct = extra damage on every right answer (0.1 = +10%); hp = extra hearts; time_sec = extra seconds on every question; strike = flat extra damage the pet adds on each right answer once the combo reaches 3."
+  ],
+  "categories": [
+    {
+      "id": "headgear",
+      "unlock_level": 1,
+      "name": "Headgear",
+      "icon": "🎩",
+      "description": "Hats, crowns & headwear — some grant Arena hint charges or XP bonuses"
+    },
+    {
+      "id": "armor",
+      "unlock_level": 1,
+      "name": "Armor & Outfits",
+      "icon": "🛡️",
+      "description": "Outfits — expensive ones grant permanent XP & coin bonuses"
+    },
+    {
+      "id": "weapon",
+      "unlock_level": 10,
+      "name": "Weapons",
+      "icon": "⚔️",
+      "description": "Weapons — mid-tier+ boost XP from answer combos"
+    },
+    {
+      "id": "pet",
+      "unlock_level": 20,
+      "name": "Pets",
+      "icon": "🐾",
+      "description": "Companions — grant passive XP/coin bonuses & auto streak freezes"
+    },
+    {
+      "id": "potion",
+      "unlock_level": 5,
+      "name": "Potions",
+      "icon": "🧪",
+      "description": "Consumables — Arena heals, XP boosts, streak shields & quest resets"
+    },
+    {
+      "id": "title",
+      "unlock_level": 30,
+      "name": "Titles",
+      "icon": "🏆",
+      "description": "Prestige titles — rare ones grant small stat bonuses"
+    }
+  ],
+  "tiers": [
+    {
+      "id": "armor_fighting_gi",
+      "category": "armor",
+      "unlocks_at_level": 1,
+      "items": [
+        {
+          "id": "armor_gi_white",
+          "type": "armor",
+          "name": "White Karate Gi",
+          "description": "Crisp white gi with crossed lapels and a black belt. A fighter's classic. Purely cosmetic.",
+          "price": 0,
+          "sprite": "🥋",
+          "level_required": 1
+        },
+        {
+          "id": "armor_gi_red",
+          "type": "armor",
+          "name": "Red Fighter's Hakama",
+          "description": "Bare-chested warrior with wide red gi pants and a pink sash. Pure power. Purely cosmetic.",
+          "price": 0,
+          "sprite": "🔴",
+          "level_required": 1
+        },
+        {
+          "id": "armor_gi_blue",
+          "type": "armor",
+          "name": "Blue Fighter's Hakama",
+          "description": "Bare-chested fighter with wide blue gi pants and a golden belt. Swift and precise. Purely cosmetic.",
+          "price": 0,
+          "sprite": "🔵",
+          "level_required": 1
+        }
+      ]
+    },
+    {
+      "id": "armor_starter",
+      "category": "armor",
+      "unlocks_at_level": 5,
+      "items": [
+        {
+          "id": "armor_shirt_basic",
+          "type": "armor",
+          "name": "Street Legend Tee",
+          "description": "Clean white tee with a pocket detail. Classic drip, purely cosmetic.",
+          "price": 50,
+          "sprite": "👕",
+          "level_required": 5
+        },
+        {
+          "id": "armor_hoodie_gray",
+          "type": "armor",
+          "name": "Phantom Hoodie",
+          "description": "Oversized grey hoodie with a hidden kangaroo pocket. Lowkey but iconic.",
+          "price": 80,
+          "sprite": "🧥",
+          "level_required": 5
+        }
+      ]
+    },
+    {
+      "id": "armor_tier1",
+      "category": "armor",
+      "unlocks_at_level": 5,
+      "items": [
+        {
+          "id": "armor_robe_blue",
+          "type": "armor",
+          "name": "Azure Scholar's Vestments",
+          "description": "Deep sapphire robes with gold-trimmed bell sleeves. +5% XP on all activities.",
+          "price": 250,
+          "sprite": "🥋",
+          "level_required": 6,
+          "bonus": {
+            "xp_pct": 0.05
+          },
+          "battle": {
+            "hp": 1
+          }
+        },
+        {
+          "id": "armor_jacket_cool",
+          "type": "armor",
+          "name": "Midnight Rider Jacket",
+          "description": "Sleek black leather jacket with V-lapels and combat boots. +5% coins.",
+          "price": 300,
+          "sprite": "🧥",
+          "level_required": 6,
+          "bonus": {
+            "coin_pct": 0.05
+          },
+          "battle": {
+            "hp": 1
+          }
+        }
+      ]
+    },
+    {
+      "id": "armor_tier2",
+      "category": "armor",
+      "unlocks_at_level": 5,
+      "items": [
+        {
+          "id": "armor_wizard_purple",
+          "type": "armor",
+          "name": "Void Weaver's Garments",
+          "description": "Swirling purple robes etched with arcane runes. +10% XP on all activities.",
+          "price": 800,
+          "sprite": "🧙",
+          "level_required": 10,
+          "bonus": {
+            "xp_pct": 0.1
+          },
+          "battle": {
+            "hp": 2
+          }
+        },
+        {
+          "id": "armor_knight_silver",
+          "type": "armor",
+          "name": "Titanfall Plate",
+          "description": "Gleaming titanium plate with spiked pauldrons and sabatons. +10% coins.",
+          "price": 900,
+          "sprite": "🛡️",
+          "level_required": 10,
+          "bonus": {
+            "coin_pct": 0.1
+          },
+          "battle": {
+            "hp": 3
+          }
+        }
+      ]
+    },
+    {
+      "id": "armor_tier3",
+      "category": "armor",
+      "unlocks_at_level": 5,
+      "items": [
+        {
+          "id": "armor_knight_gold",
+          "type": "armor",
+          "name": "Sol Emperor's Plate",
+          "description": "Forged from solidified sunlight. Jeweled crest. +15% XP and +10% coins.",
+          "price": 2500,
+          "sprite": "⚜️",
+          "level_required": 18,
+          "bonus": {
+            "xp_pct": 0.15,
+            "coin_pct": 0.1
+          },
+          "battle": {
+            "hp": 4
+          }
+        },
+        {
+          "id": "armor_dragon_scale",
+          "type": "armor",
+          "name": "Ignis Wyrm Scale Mail",
+          "description": "Scales harvested from a volcano dragon. Shoulder spikes glow faintly. +20% XP and +15% coins.",
+          "price": 4000,
+          "sprite": "🐉",
+          "level_required": 22,
+          "bonus": {
+            "xp_pct": 0.2,
+            "coin_pct": 0.15
+          },
+          "battle": {
+            "hp": 5
+          }
+        },
+        {
+          "id": "armor_legends_mantle",
+          "type": "armor",
+          "name": "Astral Conqueror's Mantle",
+          "description": "A robe that pulses with starlight. Worn only by those who shaped history. +30% XP and +20% coins.",
+          "price": 8000,
+          "sprite": "✨",
+          "level_required": 28,
+          "bonus": {
+            "xp_pct": 0.3,
+            "coin_pct": 0.2
+          },
+          "battle": {
+            "hp": 6
+          }
+        }
+      ]
+    },
+    {
+      "id": "headgear_fighting",
+      "category": "headgear",
+      "unlocks_at_level": 1,
+      "items": [
+        {
+          "id": "hat_headband_red",
+          "type": "headgear",
+          "name": "Red Fighter's Headband",
+          "description": "A bold red cloth headband worn by champions. The mark of a true martial artist. Purely cosmetic.",
+          "price": 0,
+          "sprite": "🔴",
+          "level_required": 1
+        },
+        {
+          "id": "hat_headband_blue",
+          "type": "headgear",
+          "name": "Blue Fighter's Headband",
+          "description": "A deep blue headband — focused, calm, and ready for battle. Purely cosmetic.",
+          "price": 0,
+          "sprite": "🔵",
+          "level_required": 1
+        },
+        {
+          "id": "hat_headband_white",
+          "type": "headgear",
+          "name": "White Headband",
+          "description": "A clean white training headband. Simple. Disciplined. Purely cosmetic.",
+          "price": 0,
+          "sprite": "⬜",
+          "level_required": 1
+        }
+      ]
+    },
+    {
+      "id": "headgear_starter",
+      "category": "headgear",
+      "unlocks_at_level": 7,
+      "items": [
+        {
+          "id": "hat_baseball_red",
+          "type": "headgear",
+          "name": "Crimson Street Cap",
+          "description": "Bold red snapback. Low-key flex. Purely cosmetic.",
+          "price": 50,
+          "sprite": "🧢",
+          "level_required": 7
+        },
+        {
+          "id": "hat_beanie_blue",
+          "type": "headgear",
+          "name": "Frostwave Beanie",
+          "description": "Thick knitted winter beanie in deep ocean blue. Purely cosmetic.",
+          "price": 50,
+          "sprite": "🎓",
+          "level_required": 7
+        }
+      ]
+    },
+    {
+      "id": "headgear_tier1",
+      "category": "headgear",
+      "unlocks_at_level": 7,
+      "items": [
+        {
+          "id": "hat_headphones",
+          "type": "headgear",
+          "name": "Neural Link Headphones",
+          "description": "Noise-cancelling over-ears with glowing cables. +1 free hint charge every Arena battle.",
+          "price": 200,
+          "sprite": "🎧",
+          "level_required": 8,
+          "bonus": {
+            "arena_hints": 1
+          },
+          "battle": {
+            "time_sec": 3
+          }
+        },
+        {
+          "id": "hat_wizard",
+          "type": "headgear",
+          "name": "Archmage's Pointed Hat",
+          "description": "Tall midnight hat with a golden constellation band. +5% XP on all activities.",
+          "price": 300,
+          "sprite": "🎩",
+          "level_required": 9,
+          "bonus": {
+            "xp_pct": 0.05
+          },
+          "battle": {
+            "time_sec": 3
+          }
+        }
+      ]
+    },
+    {
+      "id": "headgear_tier2",
+      "category": "headgear",
+      "unlocks_at_level": 7,
+      "items": [
+        {
+          "id": "hat_crown_bronze",
+          "type": "headgear",
+          "name": "Verdant Crown of Learning",
+          "description": "Bronze circlet set with emerald and sapphire gems. +5% XP and +5% coins.",
+          "price": 500,
+          "sprite": "👑",
+          "level_required": 10,
+          "bonus": {
+            "xp_pct": 0.05,
+            "coin_pct": 0.05
+          },
+          "battle": {
+            "time_sec": 3
+          }
+        },
+        {
+          "id": "hat_ninja",
+          "type": "headgear",
+          "name": "Shadow Veil Headband",
+          "description": "Midnight-black cloth mask, only eyes visible. Stealth study mode. +10% XP.",
+          "price": 700,
+          "sprite": "🥷",
+          "level_required": 12,
+          "bonus": {
+            "xp_pct": 0.1
+          },
+          "battle": {
+            "time_sec": 4
+          }
+        }
+      ]
+    },
+    {
+      "id": "headgear_tier3",
+      "category": "headgear",
+      "unlocks_at_level": 7,
+      "items": [
+        {
+          "id": "hat_crown_silver",
+          "type": "headgear",
+          "name": "Glacial Silver Crown",
+          "description": "Frosted silver crown with icy-blue gems. +10% XP and +5% coins.",
+          "price": 1000,
+          "sprite": "👑",
+          "level_required": 14,
+          "bonus": {
+            "xp_pct": 0.1,
+            "coin_pct": 0.05
+          },
+          "battle": {
+            "time_sec": 5
+          }
+        },
+        {
+          "id": "hat_samurai",
+          "type": "headgear",
+          "name": "Oni-Sealed War Helm",
+          "description": "Lacquered kabuto with a golden hachimaki. +10% coins and +1 arena hint.",
+          "price": 1200,
+          "sprite": "⛩️",
+          "level_required": 15,
+          "bonus": {
+            "coin_pct": 0.1,
+            "arena_hints": 1
+          },
+          "battle": {
+            "time_sec": 6
+          }
+        },
+        {
+          "id": "hat_crown_gold",
+          "type": "headgear",
+          "name": "Solaris Crown",
+          "description": "Blazing gold crown radiating warm light. +15% XP and +10% coins.",
+          "price": 2000,
+          "sprite": "👑",
+          "level_required": 18,
+          "bonus": {
+            "xp_pct": 0.15,
+            "coin_pct": 0.1
+          },
+          "battle": {
+            "time_sec": 8
+          }
+        }
+      ]
+    },
+    {
+      "id": "weapon_starter",
+      "category": "weapon",
+      "unlocks_at_level": 10,
+      "items": [
+        {
+          "id": "weapon_pencil",
+          "type": "weapon",
+          "name": "Scholar's Pencil",
+          "description": "The pen is mightier. A classic HB pencil, always sharp.",
+          "price": 100,
+          "sprite": "✏️",
+          "level_required": 10,
+          "battle": {
+            "damage_pct": 0.05
+          }
+        },
+        {
+          "id": "weapon_ruler",
+          "type": "weapon",
+          "name": "Precision Ruler",
+          "description": "Steel-edged ruler. Measures angles AND opponent confidence.",
+          "price": 120,
+          "sprite": "📏",
+          "level_required": 10,
+          "battle": {
+            "damage_pct": 0.05
+          }
+        }
+      ]
+    },
+    {
+      "id": "weapon_tier1",
+      "category": "weapon",
+      "unlocks_at_level": 10,
+      "items": [
+        {
+          "id": "weapon_sword_bronze",
+          "type": "weapon",
+          "name": "Dawnsteel Twin Blades",
+          "description": "Bronze dual swords with leather-wrapped hilts. ✦✦ Dual wield! +5% combo XP.",
+          "price": 400,
+          "sprite": "⚔️",
+          "level_required": 10,
+          "bonus": {
+            "combo_xp_pct": 0.05
+          },
+          "battle": {
+            "damage_pct": 0.1
+          }
+        },
+        {
+          "id": "weapon_bow",
+          "type": "weapon",
+          "name": "Ashwood Recurve Bow",
+          "description": "Elegant recurve bow carved from ancient ashwood. +5% XP.",
+          "price": 500,
+          "sprite": "🏹",
+          "level_required": 11,
+          "bonus": {
+            "xp_pct": 0.05
+          },
+          "battle": {
+            "damage_pct": 0.12
+          }
+        },
+        {
+          "id": "weapon_staff_wood",
+          "type": "weapon",
+          "name": "Emberwood Quarterstaff",
+          "description": "Gnarled forest staff with a glowing crystal tip. +5% XP.",
+          "price": 450,
+          "sprite": "🪄",
+          "level_required": 11,
+          "bonus": {
+            "xp_pct": 0.05
+          },
+          "battle": {
+            "damage_pct": 0.12
+          }
+        }
+      ]
+    },
+    {
+      "id": "weapon_tier2",
+      "category": "weapon",
+      "unlocks_at_level": 10,
+      "items": [
+        {
+          "id": "weapon_sword_silver",
+          "type": "weapon",
+          "name": "Moonblade Twin Swords",
+          "description": "Silver dual blades that shimmer like moonlight. ✦✦ Dual wield! +10% combo XP.",
+          "price": 900,
+          "sprite": "⚔️",
+          "level_required": 13,
+          "bonus": {
+            "combo_xp_pct": 0.1
+          },
+          "battle": {
+            "damage_pct": 0.16
+          }
+        },
+        {
+          "id": "weapon_hammer",
+          "type": "weapon",
+          "name": "Thundercrack War Hammer",
+          "description": "Rune-carved warhammer that crackles with energy. +8% XP.",
+          "price": 1000,
+          "sprite": "🔨",
+          "level_required": 14,
+          "bonus": {
+            "xp_pct": 0.08
+          },
+          "battle": {
+            "damage_pct": 0.18
+          }
+        },
+        {
+          "id": "weapon_staff_crystal",
+          "type": "weapon",
+          "name": "Aqua Prism Staff",
+          "description": "A crystal-topped staff refracting arcane light. +10% XP.",
+          "price": 1100,
+          "sprite": "💎",
+          "level_required": 14,
+          "bonus": {
+            "xp_pct": 0.1
+          },
+          "battle": {
+            "damage_pct": 0.2
+          }
+        }
+      ]
+    },
+    {
+      "id": "weapon_tier3",
+      "category": "weapon",
+      "unlocks_at_level": 10,
+      "items": [
+        {
+          "id": "weapon_sword_excalibur",
+          "type": "weapon",
+          "name": "Excalibur Twin Blades",
+          "description": "Gold-hilted legendary swords etched with celestial runes. ✦✦ Dual wield! +15% combo XP.",
+          "price": 2500,
+          "sprite": "✨",
+          "level_required": 18,
+          "bonus": {
+            "combo_xp_pct": 0.15
+          },
+          "battle": {
+            "damage_pct": 0.28
+          }
+        },
+        {
+          "id": "weapon_staff_legendary",
+          "type": "weapon",
+          "name": "Infernal Codex Staff",
+          "description": "A staff crowned with a swirling tome of forbidden power. +15% XP.",
+          "price": 3000,
+          "sprite": "🌟",
+          "level_required": 20,
+          "bonus": {
+            "xp_pct": 0.15
+          },
+          "battle": {
+            "damage_pct": 0.3
+          }
+        }
+      ]
+    },
+    {
+      "id": "pet_starter",
+      "category": "pet",
+      "unlocks_at_level": 20,
+      "items": [
+        {
+          "id": "pet_cat_orange",
+          "type": "pet",
+          "name": "Pyra the Ember Cat",
+          "description": "A flame-furred tabby who naps on your notes. +5% XP.",
+          "price": 300,
+          "sprite": "🐱",
+          "level_required": 20,
+          "bonus": {
+            "xp_pct": 0.05
+          },
+          "battle": {
+            "strike": 4
+          }
+        },
+        {
+          "id": "pet_dog_brown",
+          "type": "pet",
+          "name": "Rex the Thunder Hound",
+          "description": "Loyal storm-furred hound who carries your bag. +5% coins.",
+          "price": 300,
+          "sprite": "🐶",
+          "level_required": 20,
+          "bonus": {
+            "coin_pct": 0.05
+          },
+          "battle": {
+            "strike": 4
+          }
+        },
+        {
+          "id": "pet_owl",
+          "type": "pet",
+          "name": "Athena the Celestial Owl",
+          "description": "Golden-eyed scholar owl that whispers answers. +8% XP and +1 arena hint.",
+          "price": 500,
+          "sprite": "🦉",
+          "level_required": 21,
+          "bonus": {
+            "xp_pct": 0.08,
+            "arena_hints": 1
+          },
+          "battle": {
+            "strike": 6
+          }
+        }
+      ]
+    },
+    {
+      "id": "pet_tier2",
+      "category": "pet",
+      "unlocks_at_level": 20,
+      "items": [
+        {
+          "id": "pet_panda",
+          "type": "pet",
+          "name": "Kai the Storm Panda",
+          "description": "A rare black-and-white panda crackling with static energy. +8% XP, +5% coins.",
+          "price": 700,
+          "sprite": "🐼",
+          "level_required": 21,
+          "bonus": {
+            "xp_pct": 0.08,
+            "coin_pct": 0.05
+          },
+          "battle": {
+            "strike": 6
+          }
+        },
+        {
+          "id": "pet_fox",
+          "type": "pet",
+          "name": "Zephyr the Void Fox",
+          "description": "A silver-tipped fox that phases through shadows. +10% XP, auto streak freeze every 14 days.",
+          "price": 900,
+          "sprite": "🦊",
+          "level_required": 22,
+          "bonus": {
+            "xp_pct": 0.1,
+            "streak_freeze_days": 14
+          },
+          "battle": {
+            "strike": 8
+          }
+        },
+        {
+          "id": "pet_unicorn",
+          "type": "pet",
+          "name": "Lumis the Starbound Unicorn",
+          "description": "A unicorn whose mane trails stardust. MOUNT. +12% XP and +8% coins.",
+          "price": 1500,
+          "sprite": "🦄",
+          "level_required": 23,
+          "bonus": {
+            "xp_pct": 0.12,
+            "coin_pct": 0.08
+          },
+          "battle": {
+            "strike": 10
+          }
+        },
+        {
+          "id": "pet_dragon_baby",
+          "type": "pet",
+          "name": "Ignis the Hatchling Dragon",
+          "description": "A tiny dragon who breathes XP bubbles. MOUNT. +10% XP, +10% coins. Streak freeze every 10 days.",
+          "price": 2000,
+          "sprite": "🐲",
+          "level_required": 24,
+          "bonus": {
+            "xp_pct": 0.1,
+            "coin_pct": 0.1,
+            "streak_freeze_days": 10
+          },
+          "battle": {
+            "strike": 12
+          }
+        }
+      ]
+    },
+    {
+      "id": "pet_tier3",
+      "category": "pet",
+      "unlocks_at_level": 20,
+      "items": [
+        {
+          "id": "pet_phoenix",
+          "type": "pet",
+          "name": "Solara the Reborn Phoenix",
+          "description": "A blazing firebird reborn from ash each dawn. MOUNT. +15% XP, +10% coins. Streak freeze every 7 days.",
+          "price": 3000,
+          "sprite": "🦅",
+          "level_required": 25,
+          "bonus": {
+            "xp_pct": 0.15,
+            "coin_pct": 0.1,
+            "streak_freeze_days": 7
+          },
+          "battle": {
+            "strike": 14
+          }
+        },
+        {
+          "id": "pet_lion_golden",
+          "type": "pet",
+          "name": "Aurum the Solar Lion",
+          "description": "Golden-maned lion whose roar echoes across the cosmos. MOUNT. +10% XP and +20% coins.",
+          "price": 4000,
+          "sprite": "🦁",
+          "level_required": 27,
+          "bonus": {
+            "xp_pct": 0.1,
+            "coin_pct": 0.2
+          },
+          "battle": {
+            "strike": 14
+          }
+        },
+        {
+          "id": "pet_dragon_ancient",
+          "type": "pet",
+          "name": "Erebus the Elder Dragon",
+          "description": "An ancient obsidian dragon older than memory itself. MOUNT. +25% XP, +20% coins. Streak freeze every 5 days.",
+          "price": 6000,
+          "sprite": "🐉",
+          "level_required": 30,
+          "bonus": {
+            "xp_pct": 0.25,
+            "coin_pct": 0.2,
+            "streak_freeze_days": 5
+          },
+          "battle": {
+            "strike": 20
+          }
+        }
+      ]
+    },
+    {
+      "id": "potions",
+      "category": "potion",
+      "unlocks_at_level": 5,
+      "items": [
+        {
+          "id": "potion_health_small",
+          "type": "potion",
+          "name": "Crimson Vial",
+          "arena_only": true,
+          "description": "Restore 1 heart mid-Arena battle. Use from the potion bar before you fall.",
+          "price": 80,
+          "sprite": "🧪",
+          "consumable": true,
+          "effect": "heal_1",
+          "level_required": 5
+        },
+        {
+          "id": "fifty_fifty",
+          "type": "potion",
+          "name": "Veil of Duality",
+          "arena_only": true,
+          "description": "Tear the veil between truth and deception — 2 wrong answers crumble to dust. Arena only.",
+          "price": 60,
+          "sprite": "⚖️",
+          "consumable": true,
+          "effect": "fifty_fifty",
+          "level_required": 5
+        },
+        {
+          "id": "potion_xp_boost",
+          "type": "potion",
+          "name": "Sage's Elixir",
+          "description": "+50% XP earned for 1 hour. The ancient taste of knowledge.",
+          "price": 150,
+          "sprite": "⚗️",
+          "consumable": true,
+          "effect": "xp_boost_1h",
+          "level_required": 7
+        },
+        {
+          "id": "potion_coin_boost",
+          "type": "potion",
+          "name": "Midas Tonic",
+          "description": "+50% coins earned for 1 hour. Everything you touch turns to gold.",
+          "price": 150,
+          "sprite": "💰",
+          "consumable": true,
+          "effect": "coin_boost_1h",
+          "level_required": 7
+        },
+        {
+          "id": "potion_streak_shield",
+          "type": "potion",
+          "name": "Temporal Shield Flask",
+          "description": "Grants 1 streak freeze token. Activates automatically if you miss a day — no action needed.",
+          "price": 250,
+          "sprite": "🛡️",
+          "consumable": true,
+          "effect": "streak_freeze",
+          "level_required": 9
+        },
+        {
+          "id": "potion_xp_boost_2h",
+          "type": "potion",
+          "name": "Grand Arcane Elixir",
+          "description": "+100% XP earned for 1 hour. Pure distilled brilliance.",
+          "price": 400,
+          "sprite": "🌟",
+          "consumable": true,
+          "effect": "xp_boost_2h",
+          "level_required": 12
+        },
+        {
+          "id": "potion_quest_reset",
+          "type": "potion",
+          "name": "Chrono Vortex Flask",
+          "description": "Reset your daily quests instantly. Bend time to your will.",
+          "price": 600,
+          "sprite": "⏳",
+          "consumable": true,
+          "effect": "reset_daily_quests",
+          "level_required": 15
+        }
+      ]
+    },
+    {
+      "id": "titles",
+      "category": "title",
+      "unlocks_at_level": 30,
+      "items": [
+        {
+          "id": "title_scholar",
+          "type": "title",
+          "name": "📚 The Scholar",
+          "description": "Earned by those who pursue knowledge relentlessly. Purely cosmetic.",
+          "price": 500,
+          "sprite": "📚",
+          "level_required": 30
+        },
+        {
+          "id": "title_quiz_master",
+          "type": "title",
+          "name": "🎯 Quiz Sovereign",
+          "description": "Master of every quiz format. +3% XP on all activities.",
+          "price": 1000,
+          "sprite": "🎯",
+          "level_required": 30,
+          "bonus": {
+            "xp_pct": 0.03
+          }
+        },
+        {
+          "id": "title_arena_champ",
+          "type": "title",
+          "name": "⚔️ Arena Overlord",
+          "description": "Undefeated in the arena. +5% XP and +5% coins.",
+          "price": 2000,
+          "sprite": "⚔️",
+          "level_required": 33,
+          "bonus": {
+            "xp_pct": 0.05,
+            "coin_pct": 0.05
+          }
+        },
+        {
+          "id": "title_the_eternal",
+          "type": "title",
+          "name": "♾️ The Undying",
+          "description": "Has outlasted civilisations. Their name echoes forever. +8% XP and +5% coins.",
+          "price": 4000,
+          "sprite": "♾️",
+          "level_required": 36,
+          "bonus": {
+            "xp_pct": 0.08,
+            "coin_pct": 0.05
+          }
+        },
+        {
+          "id": "title_dragon_slayer",
+          "type": "title",
+          "name": "🐉 Dragonbane",
+          "description": "Slayer of ancient wyrms. Fear follows this name. +10% XP, +5% coins.",
+          "price": 5000,
+          "sprite": "🐉",
+          "level_required": 38,
+          "bonus": {
+            "xp_pct": 0.1,
+            "coin_pct": 0.05
+          }
+        },
+        {
+          "id": "title_legend",
+          "type": "title",
+          "name": "👑 Living Legend",
+          "description": "The ultimate achievement. Songs are written about you. +12% XP, +10% coins, +2 Arena hints.",
+          "price": 10000,
+          "sprite": "👑",
+          "level_required": 40,
+          "bonus": {
+            "xp_pct": 0.12,
+            "coin_pct": 0.1,
+            "arena_hints": 2
+          }
+        }
+      ]
+    }
+  ]
+}

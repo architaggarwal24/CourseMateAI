@@ -1,0 +1,21 @@
+{
+  "schema_version": 1,
+  "notes": [
+    "Expedition relics (docs/arena-v2.md section 4). A relic is owned for the rest of the run. What each id DOES is code (services/expedition_service.py + services/arena_service.py); this file holds the names, texts, shop prices and how often each is offered. A new id needs code too (game_content.KNOWN_RELICS).",
+    "weight: relative chance to be offered (treasure, relic choice, shop stock). price: run gold in the shop."
+  ],
+  "relics": [
+    {"id": "owl_feather", "name": "Owl Feather", "description": "+5 seconds on every question.", "rarity": "common", "price": 45, "weight": 10},
+    {"id": "whetstone", "name": "Whetstone", "description": "Heavy costs 1 Focus instead of 2.", "rarity": "uncommon", "price": 60, "weight": 8},
+    {"id": "aegis", "name": "Aegis", "description": "The first wrong answer of each battle costs no hearts.", "rarity": "uncommon", "price": 60, "weight": 8},
+    {"id": "phoenix_ash", "name": "Phoenix Ash", "description": "Once per run, revive with 3 hearts instead of falling.", "rarity": "rare", "price": 90, "weight": 5},
+    {"id": "scholar_lens", "name": "Scholar's Lens", "description": "Weakness hits deal triple damage instead of double.", "rarity": "uncommon", "price": 65, "weight": 7},
+    {"id": "quill", "name": "Quill", "description": "A correct Jab grants +2 extra Focus (instead of +1).", "rarity": "common", "price": 45, "weight": 10},
+    {"id": "hourglass", "name": "Hourglass", "description": "The first Timewarp of each battle is free.", "rarity": "common", "price": 40, "weight": 10},
+    {"id": "lucky_coin", "name": "Lucky Coin", "description": "+25% gold from battles.", "rarity": "common", "price": 40, "weight": 10},
+    {"id": "iron_will", "name": "Iron Will", "description": "+2 max hearts (and 2 hearts now).", "rarity": "uncommon", "price": 70, "weight": 7},
+    {"id": "focus_crystal", "name": "Focus Crystal", "description": "Start every battle with 2 Focus.", "rarity": "uncommon", "price": 60, "weight": 8},
+    {"id": "vampiric_tome", "name": "Vampiric Tome", "description": "Heal 1 heart every time your combo reaches 5.", "rarity": "rare", "price": 80, "weight": 5},
+    {"id": "ink_bomb", "name": "Ink Bomb", "description": "Boss shields are halved.", "rarity": "common", "price": 40, "weight": 9}
+  ]
+}

@@ -1,0 +1,40 @@
+{
+ "quests": [
+  {
+   "user_id": "1",
+   "quest_date_utc": "2026-10-15",
+   "quest_type": "ask_questions",
+   "target_count": 10,
+   "current_count": 0,
+   "reward_xp": 50,
+   "reward_coins": 25,
+   "completed": 0,
+   "claimed": 0,
+   "description": "Ask 10 questions in Chat"
+  },
+  {
+   "user_id": "1",
+   "quest_date_utc": "2026-10-15",
+   "quest_type": "complete_quizzes",
+   "target_count": 3,
+   "current_count": 0,
+   "reward_xp": 60,
+   "reward_coins": 30,
+   "completed": 0,
+   "claimed": 0,
+   "description": "Complete 3 quizzes"
+  },
+  {
+   "user_id": "1",
+   "quest_date_utc": "2026-10-15",
+   "quest_type": "maintain_streak",
+   "target_count": 1,
+   "current_count": 0,
+   "reward_xp": 50,
+   "reward_coins": 100,
+   "completed": 0,
+   "claimed": 0,
+   "description": "Do any study activity today"
+  }
+ ]
+}

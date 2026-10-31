@@ -1,0 +1,333 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@plugin "@tailwindcss/typography";
+
+@custom-variant dark (&:is(.dark *));
+
+/* Tailwind's colours are the design tokens (src/styles/tokens.css), so every utility resolves per theme (Study at
+ * :root, Play inside data-theme="play"). `inline` makes each utility use var(--token) directly; opacity modifiers
+ * (bg-ink-blue/10) are mixed in with color-mix by Tailwind v4.
+ *
+ * Names never equal a token's own name (no --color-text here), so a theme variable can never shadow a token.
+ *   canvas / sunken / panel / panel-hover   page, sidebar band, card, card hover
+ *   line-subtle / line / line-strong        borders
+ *   fg / fg-2 / fg-muted                    text
+ *   accent-*                                FILLS  (bg-accent-blue: the button blue, gold, ...)
+ *   ink-*                                   INK    (text-ink-gold, border-ink-red: the readable variant)
+ */
+@theme inline {
+  --color-canvas: var(--color-surface);
+  --color-sunken: var(--color-surface-sunken);
+  --color-panel: var(--color-elevated);
+  --color-panel-hover: var(--color-elevated-hover);
+
+  --color-line-subtle: var(--color-border-subtle);
+  --color-line: var(--color-border);
+  --color-line-strong: var(--color-border-strong);
+
+  --color-fg: var(--color-text);
+  --color-fg-2: var(--color-text-secondary);
+  --color-fg-muted: var(--color-muted);
+
+  --color-accent-gold: var(--color-highlight);
+  --color-accent-green: var(--color-success);
+  --color-accent-red: var(--color-danger);
+  --color-accent-blue: var(--color-accent);
+  --color-accent-purple: var(--color-accent-alt);
+
+  --color-ink-gold: var(--color-highlight-text);
+  --color-ink-green: var(--color-success-text);
+  --color-ink-red: var(--color-danger-text);
+  --color-ink-blue: var(--color-accent-text);
+  --color-ink-purple: var(--color-accent-alt-text);
+
+  --color-glass: var(--glass-bg);
+
+  /* --font-sans, --font-mono, --radius-* and --ease-* share Tailwind's names on purpose: the unlayered tokens
+   * override Tailwind's defaults, so font-sans / rounded-lg / ... follow the theme. */
+
+  --animate-shimmer: shimmer 2.2s linear infinite;
+  --animate-aurora: aurora 22s ease-in-out infinite alternate;
+  --animate-float: float 6s ease-in-out infinite;
+  --animate-border-spin: border-spin 4s linear infinite;
+}
+
+@layer base {
+  *,
+  ::after,
+  ::before {
+    border-color: var(--color-border);
+  }
+  html {
+    font-size: 16px;
+    line-height: var(--line-height-body);
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+  body {
+    background-color: var(--color-surface);
+    color: var(--color-text);
+    font-family: var(--font-sans);
+    font-feature-settings: "ss01", "cv11";
+  }
+  h1, h2, h3 {
+    letter-spacing: var(--heading-tracking);
+  }
+  button:not(:disabled),
+  [role="button"]:not([aria-disabled="true"]),
+  a[href],
+  label[for],
+  summary {
+    cursor: pointer;
+  }
+  ::selection {
+    background: var(--glow-accent);
+    color: var(--color-text);
+  }
+  /* Keyboard focus: a ring in the theme's focus colour (elements that style their own focus keep it). */
+  :focus-visible {
+    outline: var(--focus-ring-width) solid var(--focus-ring-color);
+    outline-offset: var(--focus-ring-offset);
+  }
+}
+
+@layer components {
+  /* Short labels and numbers. Geist in Study; the pixel font inside a play scope (see styles/tokens.css). */
+  .pixel-font {
+    font-family: var(--font-label);
+    letter-spacing: var(--label-tracking);
+  }
+  .font-num {
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Frosted glass. `.glass` is a panel; `.glass-strong` is for things that float (menus, modals, toasts). */
+  .glass {
+    background: var(--gradient-card), var(--glass-bg);
+    border: 1px solid var(--glass-border);
+    box-shadow: var(--glass-highlight), var(--glass-shadow);
+    backdrop-filter: blur(var(--glass-blur)) saturate(140%);
+    -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(140%);
+  }
+  .glass-strong {
+    background: var(--gradient-card), var(--glass-bg-strong);
+    border: 1px solid var(--glass-border-strong);
+    box-shadow: var(--glass-highlight), var(--shadow-lg);
+    backdrop-filter: blur(calc(var(--glass-blur) * 1.4)) saturate(150%);
+    -webkit-backdrop-filter: blur(calc(var(--glass-blur) * 1.4)) saturate(150%);
+  }
+
+  /* Headline text painted with a gradient. */
+  .text-gradient {
+    background: var(--gradient-text);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+  /* TextReveal animates words as transformed inline-blocks, which a parent's background-clip cannot paint through:
+   * each word carries the gradient itself. */
+  .text-gradient > [aria-hidden],
+  .text-gradient-accent > [aria-hidden] {
+    background: inherit;
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+  .text-gradient-accent {
+    background: var(--gradient-text-accent);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+
+  /* Keyboard hint chip: <kbd class="kbd">K</kbd> */
+  .kbd {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 1.4em;
+    height: 1.4em;
+    padding: 0 0.35em;
+    border-radius: 6px;
+    border: 1px solid var(--glass-border-strong);
+    background: var(--glass-tint);
+    box-shadow: inset 0 -1px 0 var(--glass-border);
+    font-family: var(--font-mono);
+    font-size: 0.72em;
+    color: var(--color-muted);
+  }
+}
+
+@keyframes shimmer {
+  from { background-position: 200% 0; }
+  to { background-position: -200% 0; }
+}
+@keyframes aurora {
+  0% { transform: translate3d(0, 0, 0) rotate(0deg) scale(1); }
+  50% { transform: translate3d(4%, -3%, 0) rotate(8deg) scale(1.08); }
+  100% { transform: translate3d(-4%, 3%, 0) rotate(-6deg) scale(1.02); }
+}
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-6px); }
+}
+@keyframes border-spin {
+  to { --border-angle: 360deg; }
+}
+
+/* Skip link: first thing a keyboard user reaches; hidden until focused. */
+.skip-link {
+  position: absolute;
+  left: var(--space-3, 0.75rem);
+  top: -4rem;
+  z-index: 10000;
+  padding: var(--space-2, 0.5rem) var(--space-4, 1rem);
+  border-radius: var(--radius-md, 0.5rem);
+  background: var(--color-accent);
+  color: var(--color-on-accent);
+  font-weight: 600;
+  text-decoration: none;
+}
+.skip-link:focus { top: var(--space-3, 0.75rem); }
+
+/* prefers-reduced-motion: no ambient or effect animation anywhere (Hero, the arena, toasts, the kit). Loading
+ * indicators are the exception: they stay, calmer, because they carry information. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-delay: 0s !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    transition-delay: 0s !important;
+    scroll-behavior: auto !important;
+  }
+  .animate-spin, .ui-spinner, .loading-dot, .av-spinner {
+    animation-duration: 2s !important;
+    animation-iteration-count: infinite !important;
+  }
+}
+
+/* ── Markdown styling for notes ─────────────────────────────────────────────── */
+.notes-canvas {
+  color: var(--color-text-secondary);
+  max-width: var(--measure);
+  line-height: 1.75;
+}
+.notes-canvas h1 { font-size: 1.6rem; font-weight: 700; color: var(--color-text); margin: 1.75rem 0 1rem; letter-spacing: var(--heading-tracking); }
+.notes-canvas h2 { font-size: 1.3rem; font-weight: 650; color: var(--color-text); margin: 1.5rem 0 0.75rem; letter-spacing: var(--heading-tracking); }
+.notes-canvas h3 { font-size: 1.1rem; font-weight: 600; color: var(--color-text-secondary); margin: 1.25rem 0 0.5rem; }
+.notes-canvas h4 { font-size: 1rem; font-weight: 600; color: var(--color-text-secondary); margin: 1rem 0 0.5rem; }
+.notes-canvas p { margin-bottom: 0.85rem; }
+.notes-canvas ul, .notes-canvas ol { margin: 0 0 0.85rem 1.5rem; }
+.notes-canvas ul { list-style: disc; }
+.notes-canvas ol { list-style: decimal; }
+.notes-canvas li { margin-bottom: 0.3rem; line-height: 1.65; }
+.notes-canvas li::marker { color: var(--color-accent-text); }
+.notes-canvas code {
+  background: var(--glass-tint);
+  border: 1px solid var(--glass-border);
+  color: var(--color-accent-text);
+  padding: 0.1rem 0.35rem;
+  border-radius: 6px;
+  font-size: 0.875em;
+  font-family: var(--font-mono);
+}
+.notes-canvas pre {
+  background: var(--color-surface-sunken);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-md);
+  padding: 1rem;
+  margin-bottom: 1rem;
+  overflow-x: auto;
+}
+.notes-canvas pre code { background: transparent; border: 0; padding: 0; color: var(--color-text-secondary); }
+.notes-canvas blockquote {
+  border-left: 3px solid var(--color-highlight-text);
+  padding: 0.25rem 0 0.25rem 1rem;
+  font-style: italic;
+  color: var(--color-muted);
+  margin-bottom: 1rem;
+  background: var(--glass-tint);
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+}
+.notes-canvas table { width: 100%; border-collapse: collapse; margin-bottom: 1rem; }
+.notes-canvas th, .notes-canvas td { border: 1px solid var(--color-border-subtle); padding: 0.5rem 0.75rem; font-size: 0.875rem; }
+.notes-canvas th { background: var(--color-elevated); font-weight: 600; color: var(--color-text); }
+.notes-canvas a { color: var(--color-accent-text); text-decoration: underline; text-underline-offset: 3px; }
+.notes-canvas a:hover { color: var(--color-accent-alt-text); }
+.notes-canvas hr { border-color: var(--color-border-subtle); margin: 1.5rem 0; }
+.notes-canvas strong { font-weight: 600; color: var(--color-text); }
+.notes-canvas em { font-style: italic; }
+.notes-canvas img { max-width: 100%; height: auto; border-radius: var(--radius-md); }
+
+/* Typography plugin colours follow the theme. */
+.prose {
+  --tw-prose-body: var(--color-text-secondary);
+  --tw-prose-headings: var(--color-text);
+  --tw-prose-bold: var(--color-text);
+  --tw-prose-links: var(--color-accent-text);
+  --tw-prose-code: var(--color-accent-text);
+  --tw-prose-quotes: var(--color-muted);
+  --tw-prose-bullets: var(--color-accent-text);
+  --tw-prose-counters: var(--color-muted);
+  --tw-prose-hr: var(--color-border-subtle);
+  --tw-prose-th-borders: var(--color-border);
+  --tw-prose-td-borders: var(--color-border-subtle);
+  --tw-prose-invert-body: var(--color-text-secondary);
+  --tw-prose-invert-headings: var(--color-text);
+  --tw-prose-invert-bold: var(--color-text);
+  --tw-prose-invert-links: var(--color-accent-text);
+  --tw-prose-invert-code: var(--color-accent-text);
+  --tw-prose-invert-quotes: var(--color-muted);
+  --tw-prose-invert-bullets: var(--color-accent-text);
+  --tw-prose-invert-hr: var(--color-border-subtle);
+  max-width: none;
+}
+
+/* ── Appearance Settings (Account → Settings → Appearance; applied to <html> before first paint, see app/layout) ── */
+
+/* Font size: Large mode */
+html.text-lg-mode {
+  font-size: 17px;
+}
+html.text-lg-mode .pixel-font {
+  font-size: 1.05em;
+}
+
+/* Reduce animations: the same as the OS "reduce motion" setting, for this app only. (Motion-library animations
+ * follow it too: components/Providers.tsx switches MotionConfig to reducedMotion="always".) */
+html.reduce-animations *,
+html.reduce-animations *::before,
+html.reduce-animations *::after {
+  animation-duration: 0.01ms !important;
+  animation-delay: 0s !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.01ms !important;
+  transition-delay: 0s !important;
+  scroll-behavior: auto !important;
+}
+/* Functional loading indicators are exempt — users still need to know something is loading */
+html.reduce-animations .animate-spin,
+html.reduce-animations .ui-spinner {
+  animation-duration: 2s !important;
+  animation-iteration-count: infinite !important;
+}
+html.reduce-animations .loading-dot {
+  animation-duration: 0.8s !important;
+  animation-iteration-count: infinite !important;
+  opacity: 0.4;
+}
+
+/* Loading dots keyframes */
+@keyframes loading-bounce {
+  0%, 80%, 100% { transform: scale(0.6); opacity: 0.4; }
+  40% { transform: scale(1); opacity: 1; }
+}
+.loading-dot {
+  animation: loading-bounce 1.2s ease-in-out infinite;
+  animation-fill-mode: both;
+}
+.loading-dot:nth-child(1) { animation-delay: 0s; }
+.loading-dot:nth-child(2) { animation-delay: 0.2s; }
+.loading-dot:nth-child(3) { animation-delay: 0.4s; }

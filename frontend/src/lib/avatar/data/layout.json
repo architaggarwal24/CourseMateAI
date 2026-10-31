@@ -1,0 +1,90 @@
+{
+ "CW": 64,
+ "CH": 82,
+ "CHAR_X": 22,
+ "CHAR_Y": 2,
+ "CHAR_Y_MOUNTED": 10,
+ "MOUNT_X": 8,
+ "MOUNT_Y": 50,
+ "SPET_X": 2,
+ "SPET_Y": 18,
+ "WEAPON_X": 44,
+ "WEAPON_Y": 14,
+ "WEAPON_LEFT_X": 10,
+ "WEAPON_LEFT_Y": 14,
+ "FACE_COL_START": 4,
+ "FACE_COL_END": 15,
+ "FACE_ROW_START": 0,
+ "FACE_ROW_END": 17,
+ "L_ARM_X": 19,
+ "L_ARM_Y": 16,
+ "R_ARM_X": 41,
+ "R_ARM_Y": 16,
+ "armX": {
+  "default": {
+   "L": 19,
+   "R": 41
+  },
+  "skinny": {
+   "L": 20,
+   "R": 41
+  },
+  "muscular": {
+   "L": 18,
+   "R": 41
+  },
+  "female": {
+   "L": 19,
+   "R": 41
+  }
+ },
+ "dualWield": [
+  "weapon_sword_bronze",
+  "weapon_sword_silver",
+  "weapon_sword_excalibur"
+ ],
+ "mounts": [
+  "pet_dragon_baby",
+  "pet_phoenix",
+  "pet_unicorn",
+  "pet_dragon_ancient",
+  "pet_lion_golden"
+ ],
+ "guardStance": [
+  "armor_gi_white",
+  "armor_gi_red",
+  "armor_gi_blue"
+ ],
+ "bodyTypes": {
+  "male_default": {
+   "head": "male",
+   "arms": "skinny",
+   "female": false
+  },
+  "male_athletic": {
+   "head": "male",
+   "arms": "muscular",
+   "female": false
+  },
+  "female_elegant": {
+   "head": "female",
+   "arms": "default",
+   "female": true
+  },
+  "female_sporty": {
+   "head": "femaleSporty",
+   "arms": "default",
+   "female": true
+  },
+  "default": {
+   "head": "male",
+   "arms": "default",
+   "female": false
+  }
+ },
+ "faceDefaults": {
+  "iris": "#2255DD",
+  "pupil": "#060810",
+  "lip": "#C02010"
+ }
+}

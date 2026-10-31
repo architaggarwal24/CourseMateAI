@@ -1,0 +1,31 @@
+services:
+  backend:
+    build: ./backend
+    env_file:
+      # backend/.env holds JWT_SECRET and ENCRYPTION_KEY (copy backend/.env.example). If it is missing the backend
+      # stops at startup and its log says exactly what to set.
+      - path: ./backend/.env
+        required: false
+    ports:
+      - "8000:8000"
+    volumes:
+      - coursemate_data:/app/data                    # SQLite database
+      - coursemate_uploads:/app/uploads              # PDF files and search indexes
+      - embedding_models:/app/.cache/huggingface     # the embedding model (downloaded once, ~1.3 GB by default)
+    # (the image's HEALTHCHECK - GET /api/v1/health - is what "service_healthy" below waits for)
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        BACKEND_URL: http://backend:8000
+    depends_on:
+      backend:
+        condition: service_healthy
+    ports:
+      - "3000:3000"
+
+volumes:
+  coursemate_data:
+  coursemate_uploads:
+  embedding_models:

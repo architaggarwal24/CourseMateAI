@@ -1,0 +1,55 @@
+/* The hero's poses. The SVG parts carry class names; the arena puts a pose on the figure and these move the parts.
+   Everything here is switched off by prefers-reduced-motion (the pose still changes the face and the final posture). */
+
+.hf { display: block; max-width: 100%; height: auto; }
+.hf-body { transform-origin: 100px 272px; transform-box: view-box; }
+.hf-armL, .hf-armR { transform-origin: 0 0; transition: transform var(--motion-base, 200ms) ease-out; }
+
+/* resting arms: hanging a little away from the body; a weapon arm is raised so the weapon stands up */
+.hf-armL { transform: rotate(9deg); }
+.hf-armR { transform: rotate(-9deg); }
+.hf-armR[data-armed="true"] { transform: rotate(-22deg); }
+
+@keyframes hf-breathe { 0%, 100% { transform: scale(1, 1); } 50% { transform: scale(1.012, 1.018); } }
+@keyframes hf-lunge {
+  0% { transform: translateX(0); }
+  35% { transform: translateX(-14px) scale(0.99, 1.01); }
+  60% { transform: translateX(96px); }
+  100% { transform: translateX(0); }
+}
+@keyframes hf-slash {
+  0% { transform: rotate(-22deg); }
+  35% { transform: rotate(-150deg); }
+  62% { transform: rotate(52deg); }
+  100% { transform: rotate(-22deg); }
+}
+@keyframes hf-hurt {
+  0% { transform: translateX(0); filter: none; }
+  15% { transform: translateX(-12px) rotate(-3deg); filter: brightness(2) saturate(0.3); }
+  35% { transform: translateX(8px) rotate(2deg); filter: none; }
+  55% { transform: translateX(-5px); }
+  100% { transform: translateX(0); }
+}
+@keyframes hf-hop { 0%, 100% { transform: translateY(0); } 40% { transform: translateY(-26px); } 70% { transform: translateY(0); } }
+@keyframes hf-pet-bob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-3px); } }
+
+.hf[data-animate="true"] .hf-body { animation: hf-breathe 3.4s ease-in-out infinite; }
+.hf[data-pose="attack"] .hf-body { animation: hf-lunge 0.7s cubic-bezier(0.3, 0, 0.2, 1); }
+.hf[data-pose="attack"] .hf-armR { animation: hf-slash 0.7s cubic-bezier(0.3, 0, 0.2, 1); }
+.hf[data-pose="attack"] .hf-armL { transform: rotate(-30deg); }
+.hf[data-pose="hurt"] .hf-body { animation: hf-hurt 0.55s ease-out; }
+.hf[data-pose="victory"] .hf-body { animation: hf-hop 0.7s ease-in-out 2; }
+.hf[data-pose="victory"] .hf-armL { transform: rotate(150deg); }
+.hf[data-pose="victory"] .hf-armR { transform: rotate(-150deg); }
+.hf[data-pose="defeat"] .hf-body { transform: rotate(-78deg) translate(-26px, 14px); transition: transform 0.6s cubic-bezier(0.5, 0, 0.7, 1); }
+.hf[data-pose="defeat"] .hf-armL { transform: rotate(40deg); }
+.hf[data-pose="defeat"] .hf-armR { transform: rotate(-40deg); }
+.hf[data-animate="true"] .hf-pet { animation: hf-pet-bob 2.6s ease-in-out infinite; }
+
+@media (prefers-reduced-motion: reduce) {
+  .hf *, .hf { animation: none !important; transition: none !important; }
+}
+
+/* The round head-and-shoulders portrait (header, menu, battle HUD). */
+.hero-face { position: relative; display: inline-grid; flex: none; place-items: center; overflow: hidden; border-radius: var(--radius-full, 9999px); background: var(--color-surface-sunken); }
+.hero-face .hf { max-width: none; }

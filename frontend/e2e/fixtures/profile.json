@@ -1,0 +1,32 @@
+{
+ "progress": {
+  "user_id": "1",
+  "total_xp": 0,
+  "current_level": 1,
+  "coins": 0,
+  "streak_days": 0,
+  "last_active_utc": null,
+  "streak_freezes": 0,
+  "total_arena_rounds": 0,
+  "total_bosses_defeated": 0,
+  "total_quizzes_completed": 0,
+  "total_chat_questions": 0,
+  "total_chat_bundles": 0,
+  "total_notes_generated": 0,
+  "total_flashcards_studied": 0,
+  "best_quiz_accuracy": 0,
+  "nightmare_bosses_defeated": 0,
+  "created_at": "2026-10-15T10:08:15.395653+00:00",
+  "updated_at": "2026-10-15T10:08:15.395653+00:00",
+  "xp_into_level": 0,
+  "xp_to_next": 100
+ },
+ "avatar": {
+  "user_id": "1",
+  "equipped_json": "{}",
+  "owned_json": "[]",
+  "created_at": "2026-10-15T10:08:15.395653+00:00",
+  "updated_at": "2026-10-15T10:08:15.395653+00:00"
+ },
+ "guest_mode": false
+}

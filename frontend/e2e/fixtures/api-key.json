@@ -1,0 +1,8 @@
+{
+ "has_key": true,
+ "provider": "gemini",
+ "provider_label": "Google Gemini",
+ "provider_supported": true,
+ "model": null,
+ "base_url": null
+}

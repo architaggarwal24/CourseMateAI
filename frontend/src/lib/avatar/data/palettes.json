@@ -1,0 +1,178 @@
+{
+ "skin": [
+  {
+   "id": "ivory",
+   "label": "Ivory",
+   "b": "#FFDBB4",
+   "m": "#EDB97A",
+   "d": "#C8833E",
+   "o": "#7A3A10"
+  },
+  {
+   "id": "tan",
+   "label": "Tan",
+   "b": "#D4956A",
+   "m": "#B87040",
+   "d": "#8C4A1E",
+   "o": "#4A2008"
+  },
+  {
+   "id": "brown",
+   "label": "Brown",
+   "b": "#A0693A",
+   "m": "#7A4A1E",
+   "d": "#5C3010",
+   "o": "#321404"
+  },
+  {
+   "id": "deep",
+   "label": "Deep",
+   "b": "#614126",
+   "m": "#422A12",
+   "d": "#2C1606",
+   "o": "#160802"
+  }
+ ],
+ "hair": [
+  {
+   "id": "black",
+   "label": "Black",
+   "c": "#111111",
+   "h": "#2A2A2A"
+  },
+  {
+   "id": "auburn",
+   "label": "Auburn",
+   "c": "#5C2000",
+   "h": "#883000"
+  },
+  {
+   "id": "honey",
+   "label": "Honey",
+   "c": "#C87820",
+   "h": "#E8A040"
+  },
+  {
+   "id": "flaxen",
+   "label": "Flaxen",
+   "c": "#E8D060",
+   "h": "#F5E888"
+  },
+  {
+   "id": "silver",
+   "label": "Silver",
+   "c": "#888888",
+   "h": "#BBBBBB"
+  },
+  {
+   "id": "cobalt",
+   "label": "Cobalt",
+   "c": "#1A3A8C",
+   "h": "#2A5ACC"
+  },
+  {
+   "id": "violet",
+   "label": "Violet",
+   "c": "#5A1A8C",
+   "h": "#8A2ACC"
+  },
+  {
+   "id": "scarlet",
+   "label": "Scarlet",
+   "c": "#8C1A10",
+   "h": "#CC2A18"
+  }
+ ],
+ "eyes": [
+  {
+   "id": "blue",
+   "label": "Ocean Blue",
+   "iris": "#2255DD",
+   "pupil": "#060810"
+  },
+  {
+   "id": "green",
+   "label": "Forest Green",
+   "iris": "#1A8844",
+   "pupil": "#052218"
+  },
+  {
+   "id": "brown",
+   "label": "Warm Brown",
+   "iris": "#7A4A1E",
+   "pupil": "#1A0800"
+  },
+  {
+   "id": "hazel",
+   "label": "Golden Hazel",
+   "iris": "#BB7722",
+   "pupil": "#2A1400"
+  },
+  {
+   "id": "grey",
+   "label": "Steel Grey",
+   "iris": "#7788AA",
+   "pupil": "#1A2230"
+  },
+  {
+   "id": "violet",
+   "label": "Violet Storm",
+   "iris": "#8833CC",
+   "pupil": "#1A0830"
+  },
+  {
+   "id": "amber",
+   "label": "Amber Blaze",
+   "iris": "#CC6611",
+   "pupil": "#3A1800"
+  },
+  {
+   "id": "crimson",
+   "label": "Crimson Fire",
+   "iris": "#CC2222",
+   "pupil": "#3A0808"
+  }
+ ],
+ "lips": [
+  {
+   "id": "natural",
+   "label": "Natural",
+   "color": "#C07060"
+  },
+  {
+   "id": "rosy",
+   "label": "Rose Pink",
+   "color": "#DD4488"
+  },
+  {
+   "id": "bold_red",
+   "label": "Bold Red",
+   "color": "#CC1122"
+  },
+  {
+   "id": "plum",
+   "label": "Plum",
+   "color": "#883366"
+  },
+  {
+   "id": "coral",
+   "label": "Coral",
+   "color": "#FF7744"
+  },
+  {
+   "id": "nude",
+   "label": "Nude Beige",
+   "color": "#D4A882"
+  },
+  {
+   "id": "berry",
+   "label": "Berry",
+   "color": "#662244"
+  },
+  {
+   "id": "gloss",
+   "label": "Gloss Clear",
+   "color": "#FFBBCC"
+  }
+ ]
+}

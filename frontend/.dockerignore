@@ -1,0 +1,16 @@
+# Secrets and local state never go into an image
+.env
+.env.*
+!.env.local.example
+
+# Build output and installed packages are produced inside the image
+node_modules/
+.next/
+out/
+coverage/
+tsconfig.tsbuildinfo
+*.log
+.git/
+.gitignore
+.dockerignore
+Dockerfile

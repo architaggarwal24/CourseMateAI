@@ -1,0 +1,48 @@
+{
+  "schema_version": 1,
+  "notes": [
+    "Base XP / coins per rewarded action and how many times per local day it can be rewarded. tier_multiplier: rewards grow by bonus_per_tier for every levels_per_tier levels. A level-up pays level_up_bonus_coins_per_level x the new level in coins."
+  ],
+  "actions": {
+    "arena_round_complete": {
+      "xp": 120,
+      "coins": 35,
+      "daily_cap": 15
+    },
+    "boss_defeat": {
+      "xp": 350,
+      "coins": 120,
+      "daily_cap": 5
+    },
+    "quiz_complete": {
+      "xp": 100,
+      "coins": 25,
+      "daily_cap": 30
+    },
+    "chat_bundle_5": {
+      "xp": 35,
+      "coins": 10,
+      "daily_cap": 10
+    },
+    "notes_generation": {
+      "xp": 45,
+      "coins": 8,
+      "daily_cap": 10
+    },
+    "flashcard_complete": {
+      "xp": 55,
+      "coins": 12,
+      "daily_cap": 10
+    },
+    "expedition_complete": {
+      "xp": 400,
+      "coins": 140,
+      "daily_cap": 3
+    }
+  },
+  "tier_multiplier": {
+    "levels_per_tier": 5,
+    "bonus_per_tier": 0.3
+  },
+  "level_up_bonus_coins_per_level": 50
+}

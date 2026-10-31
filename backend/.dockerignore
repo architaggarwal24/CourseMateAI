@@ -1,0 +1,23 @@
+# Secrets and local state never go into an image
+.env
+.env.*
+!.env.example
+data/
+uploads/
+*.db
+*.db-wal
+*.db-shm
+
+# Not needed to run the app
+tests/
+.pytest_cache/
+.ruff_cache/
+.venv/
+venv/
+__pycache__/
+*.pyc
+*.log
+.git/
+.gitignore
+.dockerignore
+Dockerfile

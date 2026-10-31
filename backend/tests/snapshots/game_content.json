@@ -1,0 +1,7180 @@
+{
+ "achievements_db_rows": [
+  {
+   "achievement_id": "first_quiz",
+   "description": "Complete your first quiz",
+   "name": "First Steps",
+   "reward_coins": 20,
+   "reward_cosmetic_id": null,
+   "reward_xp": 50,
+   "tier": "common",
+   "unlock_threshold": 1,
+   "unlock_type": "total_quizzes_completed"
+  },
+  {
+   "achievement_id": "quiz_10",
+   "description": "Complete 10 quizzes",
+   "name": "Quiz Apprentice",
+   "reward_coins": 100,
+   "reward_cosmetic_id": null,
+   "reward_xp": 200,
+   "tier": "common",
+   "unlock_threshold": 10,
+   "unlock_type": "total_quizzes_completed"
+  },
+  {
+   "achievement_id": "quiz_50",
+   "description": "Complete 50 quizzes",
+   "name": "Quiz Veteran",
+   "reward_coins": 250,
+   "reward_cosmetic_id": null,
+   "reward_xp": 500,
+   "tier": "rare",
+   "unlock_threshold": 50,
+   "unlock_type": "total_quizzes_completed"
+  },
+  {
+   "achievement_id": "quiz_100",
+   "description": "Complete 100 quizzes",
+   "name": "Quiz Master",
+   "reward_coins": 500,
+   "reward_cosmetic_id": "badge_quiz_master",
+   "reward_xp": 1000,
+   "tier": "epic",
+   "unlock_threshold": 100,
+   "unlock_type": "total_quizzes_completed"
+  },
+  {
+   "achievement_id": "streak_3",
+   "description": "Maintain a 3-day streak",
+   "name": "Getting Started",
+   "reward_coins": 50,
+   "reward_cosmetic_id": null,
+   "reward_xp": 100,
+   "tier": "common",
+   "unlock_threshold": 3,
+   "unlock_type": "streak_days"
+  },
+  {
+   "achievement_id": "streak_7",
+   "description": "Maintain a 7-day streak",
+   "name": "Week Warrior",
+   "reward_coins": 150,
+   "reward_cosmetic_id": "badge_week_warrior",
+   "reward_xp": 300,
+   "tier": "rare",
+   "unlock_threshold": 7,
+   "unlock_type": "streak_days"
+  },
+  {
+   "achievement_id": "streak_14",
+   "description": "Maintain a 14-day streak",
+   "name": "Fortnight Scholar",
+   "reward_coins": 300,
+   "reward_cosmetic_id": "badge_fortnight",
+   "reward_xp": 600,
+   "tier": "rare",
+   "unlock_threshold": 14,
+   "unlock_type": "streak_days"
+  },
+  {
+   "achievement_id": "streak_30",
+   "description": "Maintain a 30-day streak",
+   "name": "Monthly Legend",
+   "reward_coins": 750,
+   "reward_cosmetic_id": "badge_monthly_legend",
+   "reward_xp": 1500,
+   "tier": "legendary",
+   "unlock_threshold": 30,
+   "unlock_type": "streak_days"
+  },
+  {
+   "achievement_id": "first_boss",
+   "description": "Defeat your first boss",
+   "name": "Boss Hunter",
+   "reward_coins": 100,
+   "reward_cosmetic_id": null,
+   "reward_xp": 150,
+   "tier": "common",
+   "unlock_threshold": 1,
+   "unlock_type": "total_bosses_defeated"
+  },
+  {
+   "achievement_id": "boss_5",
+   "description": "Defeat 5 bosses",
+   "name": "Monster Slayer",
+   "reward_coins": 200,
+   "reward_cosmetic_id": null,
+   "reward_xp": 400,
+   "tier": "rare",
+   "unlock_threshold": 5,
+   "unlock_type": "total_bosses_defeated"
+  },
+  {
+   "achievement_id": "boss_10",
+   "description": "Defeat 10 bosses",
+   "name": "Dragon Bane",
+   "reward_coins": 400,
+   "reward_cosmetic_id": "badge_dragon_bane",
+   "reward_xp": 800,
+   "tier": "epic",
+   "unlock_threshold": 10,
+   "unlock_type": "total_bosses_defeated"
+  },
+  {
+   "achievement_id": "boss_25",
+   "description": "Defeat 25 bosses",
+   "name": "Boss Destroyer",
+   "reward_coins": 1000,
+   "reward_cosmetic_id": "badge_boss_destroyer",
+   "reward_xp": 2000,
+   "tier": "legendary",
+   "unlock_threshold": 25,
+   "unlock_type": "total_bosses_defeated"
+  },
+  {
+   "achievement_id": "level_5",
+   "description": "Reach Level 5",
+   "name": "Shop Unlocked",
+   "reward_coins": 200,
+   "reward_cosmetic_id": null,
+   "reward_xp": 0,
+   "tier": "common",
+   "unlock_threshold": 5,
+   "unlock_type": "current_level"
+  },
+  {
+   "achievement_id": "level_10",
+   "description": "Reach Level 10",
+   "name": "Rising Scholar",
+   "reward_coins": 400,
+   "reward_cosmetic_id": "badge_rising_scholar",
+   "reward_xp": 300,
+   "tier": "rare",
+   "unlock_threshold": 10,
+   "unlock_type": "current_level"
+  },
+  {
+   "achievement_id": "level_20",
+   "description": "Reach Level 20",
+   "name": "Knowledge Seeker",
+   "reward_coins": 800,
+   "reward_cosmetic_id": "badge_knowledge_seeker",
+   "reward_xp": 600,
+   "tier": "epic",
+   "unlock_threshold": 20,
+   "unlock_type": "current_level"
+  },
+  {
+   "achievement_id": "level_30",
+   "description": "Reach Level 30",
+   "name": "Grand Scholar",
+   "reward_coins": 1500,
+   "reward_cosmetic_id": "badge_grand_scholar",
+   "reward_xp": 1000,
+   "tier": "legendary",
+   "unlock_threshold": 30,
+   "unlock_type": "current_level"
+  },
+  {
+   "achievement_id": "accuracy_90",
+   "description": "Score 90%+ accuracy on a quiz",
+   "name": "Sharp Mind",
+   "reward_coins": 100,
+   "reward_cosmetic_id": null,
+   "reward_xp": 200,
+   "tier": "rare",
+   "unlock_threshold": 90,
+   "unlock_type": "best_quiz_accuracy"
+  },
+  {
+   "achievement_id": "nightmare_clear",
+   "description": "Defeat a boss on Nightmare difficulty",
+   "name": "Nightmare Survivor",
+   "reward_coins": 300,
+   "reward_cosmetic_id": "badge_nightmare_survivor",
+   "reward_xp": 500,
+   "tier": "epic",
+   "unlock_threshold": 1,
+   "unlock_type": "nightmare_bosses_defeated"
+  },
+  {
+   "achievement_id": "nightmare_5",
+   "description": "Defeat 5 bosses on Nightmare difficulty",
+   "name": "Nightmare Champion",
+   "reward_coins": 600,
+   "reward_cosmetic_id": "badge_nightmare_champion",
+   "reward_xp": 1200,
+   "tier": "legendary",
+   "unlock_threshold": 5,
+   "unlock_type": "nightmare_bosses_defeated"
+  }
+ ],
+ "achievements_guest": {
+  "achievements": [
+   {
+    "achievement_id": "first_quiz",
+    "description": "Complete your first quiz",
+    "name": "First Steps",
+    "reward_coins": 20,
+    "reward_cosmetic_id": null,
+    "reward_xp": 50,
+    "tier": "common",
+    "unlock_threshold": 1,
+    "unlock_type": "total_quizzes_completed"
+   },
+   {
+    "achievement_id": "quiz_10",
+    "description": "Complete 10 quizzes",
+    "name": "Quiz Apprentice",
+    "reward_coins": 100,
+    "reward_cosmetic_id": null,
+    "reward_xp": 200,
+    "tier": "common",
+    "unlock_threshold": 10,
+    "unlock_type": "total_quizzes_completed"
+   },
+   {
+    "achievement_id": "quiz_50",
+    "description": "Complete 50 quizzes",
+    "name": "Quiz Veteran",
+    "reward_coins": 250,
+    "reward_cosmetic_id": null,
+    "reward_xp": 500,
+    "tier": "rare",
+    "unlock_threshold": 50,
+    "unlock_type": "total_quizzes_completed"
+   },
+   {
+    "achievement_id": "quiz_100",
+    "description": "Complete 100 quizzes",
+    "name": "Quiz Master",
+    "reward_coins": 500,
+    "reward_cosmetic_id": "badge_quiz_master",
+    "reward_xp": 1000,
+    "tier": "epic",
+    "unlock_threshold": 100,
+    "unlock_type": "total_quizzes_completed"
+   },
+   {
+    "achievement_id": "streak_3",
+    "description": "Maintain a 3-day streak",
+    "name": "Getting Started",
+    "reward_coins": 50,
+    "reward_cosmetic_id": null,
+    "reward_xp": 100,
+    "tier": "common",
+    "unlock_threshold": 3,
+    "unlock_type": "streak_days"
+   },
+   {
+    "achievement_id": "streak_7",
+    "description": "Maintain a 7-day streak",
+    "name": "Week Warrior",
+    "reward_coins": 150,
+    "reward_cosmetic_id": "badge_week_warrior",
+    "reward_xp": 300,
+    "tier": "rare",
+    "unlock_threshold": 7,
+    "unlock_type": "streak_days"
+   },
+   {
+    "achievement_id": "streak_14",
+    "description": "Maintain a 14-day streak",
+    "name": "Fortnight Scholar",
+    "reward_coins": 300,
+    "reward_cosmetic_id": "badge_fortnight",
+    "reward_xp": 600,
+    "tier": "rare",
+    "unlock_threshold": 14,
+    "unlock_type": "streak_days"
+   },
+   {
+    "achievement_id": "streak_30",
+    "description": "Maintain a 30-day streak",
+    "name": "Monthly Legend",
+    "reward_coins": 750,
+    "reward_cosmetic_id": "badge_monthly_legend",
+    "reward_xp": 1500,
+    "tier": "legendary",
+    "unlock_threshold": 30,
+    "unlock_type": "streak_days"
+   },
+   {
+    "achievement_id": "first_boss",
+    "description": "Defeat your first boss",
+    "name": "Boss Hunter",
+    "reward_coins": 100,
+    "reward_cosmetic_id": null,
+    "reward_xp": 150,
+    "tier": "common",
+    "unlock_threshold": 1,
+    "unlock_type": "total_bosses_defeated"
+   },
+   {
+    "achievement_id": "boss_5",
+    "description": "Defeat 5 bosses",
+    "name": "Monster Slayer",
+    "reward_coins": 200,
+    "reward_cosmetic_id": null,
+    "reward_xp": 400,
+    "tier": "rare",
+    "unlock_threshold": 5,
+    "unlock_type": "total_bosses_defeated"
+   },
+   {
+    "achievement_id": "boss_10",
+    "description": "Defeat 10 bosses",
+    "name": "Dragon Bane",
+    "reward_coins": 400,
+    "reward_cosmetic_id": "badge_dragon_bane",
+    "reward_xp": 800,
+    "tier": "epic",
+    "unlock_threshold": 10,
+    "unlock_type": "total_bosses_defeated"
+   },
+   {
+    "achievement_id": "boss_25",
+    "description": "Defeat 25 bosses",
+    "name": "Boss Destroyer",
+    "reward_coins": 1000,
+    "reward_cosmetic_id": "badge_boss_destroyer",
+    "reward_xp": 2000,
+    "tier": "legendary",
+    "unlock_threshold": 25,
+    "unlock_type": "total_bosses_defeated"
+   },
+   {
+    "achievement_id": "level_5",
+    "description": "Reach Level 5",
+    "name": "Shop Unlocked",
+    "reward_coins": 200,
+    "reward_cosmetic_id": null,
+    "reward_xp": 0,
+    "tier": "common",
+    "unlock_threshold": 5,
+    "unlock_type": "current_level"
+   },
+   {
+    "achievement_id": "level_10",
+    "description": "Reach Level 10",
+    "name": "Rising Scholar",
+    "reward_coins": 400,
+    "reward_cosmetic_id": "badge_rising_scholar",
+    "reward_xp": 300,
+    "tier": "rare",
+    "unlock_threshold": 10,
+    "unlock_type": "current_level"
+   },
+   {
+    "achievement_id": "level_20",
+    "description": "Reach Level 20",
+    "name": "Knowledge Seeker",
+    "reward_coins": 800,
+    "reward_cosmetic_id": "badge_knowledge_seeker",
+    "reward_xp": 600,
+    "tier": "epic",
+    "unlock_threshold": 20,
+    "unlock_type": "current_level"
+   },
+   {
+    "achievement_id": "level_30",
+    "description": "Reach Level 30",
+    "name": "Grand Scholar",
+    "reward_coins": 1500,
+    "reward_cosmetic_id": "badge_grand_scholar",
+    "reward_xp": 1000,
+    "tier": "legendary",
+    "unlock_threshold": 30,
+    "unlock_type": "current_level"
+   },
+   {
+    "achievement_id": "accuracy_90",
+    "description": "Score 90%+ accuracy on a quiz",
+    "name": "Sharp Mind",
+    "reward_coins": 100,
+    "reward_cosmetic_id": null,
+    "reward_xp": 200,
+    "tier": "rare",
+    "unlock_threshold": 90,
+    "unlock_type": "best_quiz_accuracy"
+   },
+   {
+    "achievement_id": "nightmare_clear",
+    "description": "Defeat a boss on Nightmare difficulty",
+    "name": "Nightmare Survivor",
+    "reward_coins": 300,
+    "reward_cosmetic_id": "badge_nightmare_survivor",
+    "reward_xp": 500,
+    "tier": "epic",
+    "unlock_threshold": 1,
+    "unlock_type": "nightmare_bosses_defeated"
+   },
+   {
+    "achievement_id": "nightmare_5",
+    "description": "Defeat 5 bosses on Nightmare difficulty",
+    "name": "Nightmare Champion",
+    "reward_coins": 600,
+    "reward_cosmetic_id": "badge_nightmare_champion",
+    "reward_xp": 1200,
+    "tier": "legendary",
+    "unlock_threshold": 5,
+    "unlock_type": "nightmare_bosses_defeated"
+   }
+  ],
+  "guest_mode": true,
+  "progress": {},
+  "unlocked": {}
+ },
+ "achievements_user": {
+  "achievements": [
+   {
+    "achievement_id": "first_quiz",
+    "description": "Complete your first quiz",
+    "name": "First Steps",
+    "reward_coins": 20,
+    "reward_cosmetic_id": null,
+    "reward_xp": 50,
+    "tier": "common",
+    "unlock_threshold": 1,
+    "unlock_type": "total_quizzes_completed"
+   },
+   {
+    "achievement_id": "quiz_10",
+    "description": "Complete 10 quizzes",
+    "name": "Quiz Apprentice",
+    "reward_coins": 100,
+    "reward_cosmetic_id": null,
+    "reward_xp": 200,
+    "tier": "common",
+    "unlock_threshold": 10,
+    "unlock_type": "total_quizzes_completed"
+   },
+   {
+    "achievement_id": "quiz_50",
+    "description": "Complete 50 quizzes",
+    "name": "Quiz Veteran",
+    "reward_coins": 250,
+    "reward_cosmetic_id": null,
+    "reward_xp": 500,
+    "tier": "rare",
+    "unlock_threshold": 50,
+    "unlock_type": "total_quizzes_completed"
+   },
+   {
+    "achievement_id": "quiz_100",
+    "description": "Complete 100 quizzes",
+    "name": "Quiz Master",
+    "reward_coins": 500,
+    "reward_cosmetic_id": "badge_quiz_master",
+    "reward_xp": 1000,
+    "tier": "epic",
+    "unlock_threshold": 100,
+    "unlock_type": "total_quizzes_completed"
+   },
+   {
+    "achievement_id": "streak_3",
+    "description": "Maintain a 3-day streak",
+    "name": "Getting Started",
+    "reward_coins": 50,
+    "reward_cosmetic_id": null,
+    "reward_xp": 100,
+    "tier": "common",
+    "unlock_threshold": 3,
+    "unlock_type": "streak_days"
+   },
+   {
+    "achievement_id": "streak_7",
+    "description": "Maintain a 7-day streak",
+    "name": "Week Warrior",
+    "reward_coins": 150,
+    "reward_cosmetic_id": "badge_week_warrior",
+    "reward_xp": 300,
+    "tier": "rare",
+    "unlock_threshold": 7,
+    "unlock_type": "streak_days"
+   },
+   {
+    "achievement_id": "streak_14",
+    "description": "Maintain a 14-day streak",
+    "name": "Fortnight Scholar",
+    "reward_coins": 300,
+    "reward_cosmetic_id": "badge_fortnight",
+    "reward_xp": 600,
+    "tier": "rare",
+    "unlock_threshold": 14,
+    "unlock_type": "streak_days"
+   },
+   {
+    "achievement_id": "streak_30",
+    "description": "Maintain a 30-day streak",
+    "name": "Monthly Legend",
+    "reward_coins": 750,
+    "reward_cosmetic_id": "badge_monthly_legend",
+    "reward_xp": 1500,
+    "tier": "legendary",
+    "unlock_threshold": 30,
+    "unlock_type": "streak_days"
+   },
+   {
+    "achievement_id": "first_boss",
+    "description": "Defeat your first boss",
+    "name": "Boss Hunter",
+    "reward_coins": 100,
+    "reward_cosmetic_id": null,
+    "reward_xp": 150,
+    "tier": "common",
+    "unlock_threshold": 1,
+    "unlock_type": "total_bosses_defeated"
+   },
+   {
+    "achievement_id": "boss_5",
+    "description": "Defeat 5 bosses",
+    "name": "Monster Slayer",
+    "reward_coins": 200,
+    "reward_cosmetic_id": null,
+    "reward_xp": 400,
+    "tier": "rare",
+    "unlock_threshold": 5,
+    "unlock_type": "total_bosses_defeated"
+   },
+   {
+    "achievement_id": "boss_10",
+    "description": "Defeat 10 bosses",
+    "name": "Dragon Bane",
+    "reward_coins": 400,
+    "reward_cosmetic_id": "badge_dragon_bane",
+    "reward_xp": 800,
+    "tier": "epic",
+    "unlock_threshold": 10,
+    "unlock_type": "total_bosses_defeated"
+   },
+   {
+    "achievement_id": "boss_25",
+    "description": "Defeat 25 bosses",
+    "name": "Boss Destroyer",
+    "reward_coins": 1000,
+    "reward_cosmetic_id": "badge_boss_destroyer",
+    "reward_xp": 2000,
+    "tier": "legendary",
+    "unlock_threshold": 25,
+    "unlock_type": "total_bosses_defeated"
+   },
+   {
+    "achievement_id": "level_5",
+    "description": "Reach Level 5",
+    "name": "Shop Unlocked",
+    "reward_coins": 200,
+    "reward_cosmetic_id": null,
+    "reward_xp": 0,
+    "tier": "common",
+    "unlock_threshold": 5,
+    "unlock_type": "current_level"
+   },
+   {
+    "achievement_id": "level_10",
+    "description": "Reach Level 10",
+    "name": "Rising Scholar",
+    "reward_coins": 400,
+    "reward_cosmetic_id": "badge_rising_scholar",
+    "reward_xp": 300,
+    "tier": "rare",
+    "unlock_threshold": 10,
+    "unlock_type": "current_level"
+   },
+   {
+    "achievement_id": "level_20",
+    "description": "Reach Level 20",
+    "name": "Knowledge Seeker",
+    "reward_coins": 800,
+    "reward_cosmetic_id": "badge_knowledge_seeker",
+    "reward_xp": 600,
+    "tier": "epic",
+    "unlock_threshold": 20,
+    "unlock_type": "current_level"
+   },
+   {
+    "achievement_id": "level_30",
+    "description": "Reach Level 30",
+    "name": "Grand Scholar",
+    "reward_coins": 1500,
+    "reward_cosmetic_id": "badge_grand_scholar",
+    "reward_xp": 1000,
+    "tier": "legendary",
+    "unlock_threshold": 30,
+    "unlock_type": "current_level"
+   },
+   {
+    "achievement_id": "accuracy_90",
+    "description": "Score 90%+ accuracy on a quiz",
+    "name": "Sharp Mind",
+    "reward_coins": 100,
+    "reward_cosmetic_id": null,
+    "reward_xp": 200,
+    "tier": "rare",
+    "unlock_threshold": 90,
+    "unlock_type": "best_quiz_accuracy"
+   },
+   {
+    "achievement_id": "nightmare_clear",
+    "description": "Defeat a boss on Nightmare difficulty",
+    "name": "Nightmare Survivor",
+    "reward_coins": 300,
+    "reward_cosmetic_id": "badge_nightmare_survivor",
+    "reward_xp": 500,
+    "tier": "epic",
+    "unlock_threshold": 1,
+    "unlock_type": "nightmare_bosses_defeated"
+   },
+   {
+    "achievement_id": "nightmare_5",
+    "description": "Defeat 5 bosses on Nightmare difficulty",
+    "name": "Nightmare Champion",
+    "reward_coins": 600,
+    "reward_cosmetic_id": "badge_nightmare_champion",
+    "reward_xp": 1200,
+    "tier": "legendary",
+    "unlock_threshold": 5,
+    "unlock_type": "nightmare_bosses_defeated"
+   }
+  ],
+  "guest_mode": false,
+  "progress": {
+   "best_quiz_accuracy": 0,
+   "current_level": 1,
+   "nightmare_bosses_defeated": 0,
+   "streak_days": 0,
+   "total_bosses_defeated": 0,
+   "total_quizzes_completed": 0
+  },
+  "unlocked": {}
+ },
+ "base_rewards": {
+  "arena_round_complete": [
+   120,
+   35
+  ],
+  "boss_defeat": [
+   350,
+   120
+  ],
+  "chat_bundle_5": [
+   35,
+   10
+  ],
+  "expedition_complete": [
+   400,
+   140
+  ],
+  "flashcard_complete": [
+   55,
+   12
+  ],
+  "notes_generation": [
+   45,
+   8
+  ],
+  "quiz_complete": [
+   100,
+   25
+  ]
+ },
+ "calculated_rewards": {
+  "arena_round_complete|11|0.0": [
+   215,
+   48
+  ],
+  "arena_round_complete|11|0.5": [
+   430,
+   96
+  ],
+  "arena_round_complete|11|1.0": [
+   645,
+   144
+  ],
+  "arena_round_complete|1|0.0": [
+   134,
+   30
+  ],
+  "arena_round_complete|1|0.5": [
+   269,
+   60
+  ],
+  "arena_round_complete|1|1.0": [
+   403,
+   90
+  ],
+  "arena_round_complete|40|0.0": [
+   417,
+   93
+  ],
+  "arena_round_complete|40|0.5": [
+   834,
+   187
+  ],
+  "arena_round_complete|40|1.0": [
+   1251,
+   280
+  ],
+  "arena_round_complete|6|0.0": [
+   174,
+   39
+  ],
+  "arena_round_complete|6|0.5": [
+   349,
+   78
+  ],
+  "arena_round_complete|6|1.0": [
+   524,
+   117
+  ],
+  "boss_defeat|11|0.0": [
+   627,
+   165
+  ],
+  "boss_defeat|11|0.5": [
+   1255,
+   331
+  ],
+  "boss_defeat|11|1.0": [
+   1883,
+   496
+  ],
+  "boss_defeat|1|0.0": [
+   392,
+   103
+  ],
+  "boss_defeat|1|0.5": [
+   784,
+   206
+  ],
+  "boss_defeat|1|1.0": [
+   1177,
+   310
+  ],
+  "boss_defeat|40|0.0": [
+   1216,
+   320
+  ],
+  "boss_defeat|40|0.5": [
+   2433,
+   641
+  ],
+  "boss_defeat|40|1.0": [
+   3649,
+   962
+  ],
+  "boss_defeat|6|0.0": [
+   510,
+   134
+  ],
+  "boss_defeat|6|0.5": [
+   1020,
+   269
+  ],
+  "boss_defeat|6|1.0": [
+   1530,
+   403
+  ],
+  "chat_bundle_5|11|0.0": [
+   48,
+   13
+  ],
+  "chat_bundle_5|11|0.5": [
+   96,
+   27
+  ],
+  "chat_bundle_5|11|1.0": [
+   144,
+   41
+  ],
+  "chat_bundle_5|1|0.0": [
+   30,
+   8
+  ],
+  "chat_bundle_5|1|0.5": [
+   60,
+   17
+  ],
+  "chat_bundle_5|1|1.0": [
+   90,
+   25
+  ],
+  "chat_bundle_5|40|0.0": [
+   93,
+   26
+  ],
+  "chat_bundle_5|40|0.5": [
+   187,
+   53
+  ],
+  "chat_bundle_5|40|1.0": [
+   280,
+   80
+  ],
+  "chat_bundle_5|6|0.0": [
+   39,
+   11
+  ],
+  "chat_bundle_5|6|0.5": [
+   78,
+   22
+  ],
+  "chat_bundle_5|6|1.0": [
+   117,
+   33
+  ],
+  "expedition_complete|11|0.0": [
+   552,
+   193
+  ],
+  "expedition_complete|11|0.5": [
+   1104,
+   386
+  ],
+  "expedition_complete|11|1.0": [
+   1655,
+   579
+  ],
+  "expedition_complete|1|0.0": [
+   345,
+   120
+  ],
+  "expedition_complete|1|0.5": [
+   690,
+   241
+  ],
+  "expedition_complete|1|1.0": [
+   1035,
+   362
+  ],
+  "expedition_complete|40|0.0": [
+   1069,
+   374
+  ],
+  "expedition_complete|40|0.5": [
+   2139,
+   748
+  ],
+  "expedition_complete|40|1.0": [
+   3208,
+   1122
+  ],
+  "expedition_complete|6|0.0": [
+   448,
+   156
+  ],
+  "expedition_complete|6|0.5": [
+   896,
+   313
+  ],
+  "expedition_complete|6|1.0": [
+   1345,
+   470
+  ],
+  "flashcard_complete|11|0.0": [
+   75,
+   16
+  ],
+  "flashcard_complete|11|0.5": [
+   151,
+   33
+  ],
+  "flashcard_complete|11|1.0": [
+   227,
+   49
+  ],
+  "flashcard_complete|1|0.0": [
+   47,
+   10
+  ],
+  "flashcard_complete|1|0.5": [
+   94,
+   20
+  ],
+  "flashcard_complete|1|1.0": [
+   142,
+   31
+  ],
+  "flashcard_complete|40|0.0": [
+   147,
+   32
+  ],
+  "flashcard_complete|40|0.5": [
+   294,
+   64
+  ],
+  "flashcard_complete|40|1.0": [
+   441,
+   96
+  ],
+  "flashcard_complete|6|0.0": [
+   61,
+   13
+  ],
+  "flashcard_complete|6|0.5": [
+   123,
+   26
+  ],
+  "flashcard_complete|6|1.0": [
+   185,
+   40
+  ],
+  "notes_generation|11|0.0": [
+   62,
+   11
+  ],
+  "notes_generation|11|0.5": [
+   124,
+   22
+  ],
+  "notes_generation|11|1.0": [
+   186,
+   33
+  ],
+  "notes_generation|1|0.0": [
+   38,
+   6
+  ],
+  "notes_generation|1|0.5": [
+   77,
+   13
+  ],
+  "notes_generation|1|1.0": [
+   116,
+   20
+  ],
+  "notes_generation|40|0.0": [
+   120,
+   21
+  ],
+  "notes_generation|40|0.5": [
+   240,
+   42
+  ],
+  "notes_generation|40|1.0": [
+   360,
+   64
+  ],
+  "notes_generation|6|0.0": [
+   50,
+   8
+  ],
+  "notes_generation|6|0.5": [
+   100,
+   17
+  ],
+  "notes_generation|6|1.0": [
+   151,
+   26
+  ],
+  "quiz_complete|11|0.0": [
+   138,
+   34
+  ],
+  "quiz_complete|11|0.5": [
+   276,
+   69
+  ],
+  "quiz_complete|11|1.0": [
+   413,
+   103
+  ],
+  "quiz_complete|1|0.0": [
+   86,
+   21
+  ],
+  "quiz_complete|1|0.5": [
+   172,
+   43
+  ],
+  "quiz_complete|1|1.0": [
+   258,
+   64
+  ],
+  "quiz_complete|40|0.0": [
+   267,
+   66
+  ],
+  "quiz_complete|40|0.5": [
+   534,
+   133
+  ],
+  "quiz_complete|40|1.0": [
+   802,
+   200
+  ],
+  "quiz_complete|6|0.0": [
+   112,
+   28
+  ],
+  "quiz_complete|6|0.5": [
+   224,
+   56
+  ],
+  "quiz_complete|6|1.0": [
+   336,
+   84
+  ]
+ },
+ "daily_caps": {
+  "arena_round_complete": 15,
+  "boss_defeat": 5,
+  "chat_bundle_5": 10,
+  "expedition_complete": 3,
+  "flashcard_complete": 10,
+  "notes_generation": 10,
+  "quiz_complete": 30
+ },
+ "daily_quests": {
+  "1": [
+   {
+    "claimed": 0,
+    "completed": 0,
+    "current_count": 0,
+    "description": "Ask 10 questions in Chat",
+    "quest_date_utc": "<today>",
+    "quest_type": "ask_questions",
+    "reward_coins": 25,
+    "reward_xp": 50,
+    "target_count": 10
+   },
+   {
+    "claimed": 0,
+    "completed": 0,
+    "current_count": 0,
+    "description": "Complete 3 quizzes",
+    "quest_date_utc": "<today>",
+    "quest_type": "complete_quizzes",
+    "reward_coins": 30,
+    "reward_xp": 60,
+    "target_count": 3
+   },
+   {
+    "claimed": 0,
+    "completed": 0,
+    "current_count": 0,
+    "description": "Do any study activity today",
+    "quest_date_utc": "<today>",
+    "quest_type": "maintain_streak",
+    "reward_coins": 100,
+    "reward_xp": 50,
+    "target_count": 1
+   }
+  ],
+  "10": [
+   {
+    "claimed": 0,
+    "completed": 0,
+    "current_count": 0,
+    "description": "Complete 2 arena rounds",
+    "quest_date_utc": "<today>",
+    "quest_type": "arena_rounds",
+    "reward_coins": 60,
+    "reward_xp": 120,
+    "target_count": 2
+   },
+   {
+    "claimed": 0,
+    "completed": 0,
+    "current_count": 0,
+    "description": "Get 100% on any quiz",
+    "quest_date_utc": "<today>",
+    "quest_type": "perfect_quiz",
+    "reward_coins": 50,
+    "reward_xp": 100,
+    "target_count": 1
+   },
+   {
+    "claimed": 0,
+    "completed": 0,
+    "current_count": 0,
+    "description": "Score 90%+ on 3 quizzes",
+    "quest_date_utc": "<today>",
+    "quest_type": "quiz_master",
+    "reward_coins": 75,
+    "reward_xp": 150,
+    "target_count": 3
+   }
+  ],
+  "15": [
+   {
+    "claimed": 0,
+    "completed": 0,
+    "current_count": 0,
+    "description": "Complete 3 quizzes",
+    "quest_date_utc": "<today>",
+    "quest_type": "complete_quizzes",
+    "reward_coins": 30,
+    "reward_xp": 60,
+    "target_count": 3
+   },
+   {
+    "claimed": 0,
+    "completed": 0,
+    "current_count": 0,
+    "description": "Generate notes twice",
+    "quest_date_utc": "<today>",
+    "quest_type": "generate_notes",
+    "reward_coins": 35,
+    "reward_xp": 70,
+    "target_count": 2
+   },
+   {
+    "claimed": 0,
+    "completed": 0,
+    "current_count": 0,
+    "description": "Do any study activity today",
+    "quest_date_utc": "<today>",
+    "quest_type": "maintain_streak",
+    "reward_coins": 100,
+    "reward_xp": 50,
+    "target_count": 1
+   }
+  ],
+  "40": [
+   {
+    "claimed": 0,
+    "completed": 0,
+    "current_count": 0,
+    "description": "Ask 5 detailed questions (20+ words)",
+    "quest_date_utc": "<today>",
+    "quest_type": "ask_deep_questions",
+    "reward_coins": 45,
+    "reward_xp": 90,
+    "target_count": 5
+   },
+   {
+    "claimed": 0,
+    "completed": 0,
+    "current_count": 0,
+    "description": "Generate detailed notes 5 times",
+    "quest_date_utc": "<today>",
+    "quest_type": "notes_scholar",
+    "reward_coins": 85,
+    "reward_xp": 170,
+    "target_count": 5
+   },
+   {
+    "claimed": 0,
+    "completed": 0,
+    "current_count": 0,
+    "description": "Study 3 flashcard decks",
+    "quest_date_utc": "<today>",
+    "quest_type": "study_flashcards",
+    "reward_coins": 40,
+    "reward_xp": 120,
+    "target_count": 3
+   }
+  ],
+  "5": [
+   {
+    "claimed": 0,
+    "completed": 0,
+    "current_count": 0,
+    "description": "Complete 3 quizzes",
+    "quest_date_utc": "<today>",
+    "quest_type": "complete_quizzes",
+    "reward_coins": 30,
+    "reward_xp": 60,
+    "target_count": 3
+   },
+   {
+    "claimed": 0,
+    "completed": 0,
+    "current_count": 0,
+    "description": "Generate notes twice",
+    "quest_date_utc": "<today>",
+    "quest_type": "generate_notes",
+    "reward_coins": 35,
+    "reward_xp": 70,
+    "target_count": 2
+   },
+   {
+    "claimed": 0,
+    "completed": 0,
+    "current_count": 0,
+    "description": "Get 100% on any quiz",
+    "quest_date_utc": "<today>",
+    "quest_type": "perfect_quiz",
+    "reward_coins": 50,
+    "reward_xp": 100,
+    "target_count": 1
+   }
+  ]
+ },
+ "item_lookup": {
+  "armor_dragon_scale": {
+   "battle": {
+    "hp": 5
+   },
+   "bonus": {
+    "coin_pct": 0.15,
+    "xp_pct": 0.2
+   },
+   "category": "armor",
+   "consumable": false,
+   "description": "Scales harvested from a volcano dragon. Shoulder spikes glow faintly. +20% XP and +15% coins.",
+   "effect": null,
+   "id": "armor_dragon_scale",
+   "level_required": 22,
+   "name": "Ignis Wyrm Scale Mail",
+   "price": 4000,
+   "sprite": "🐉",
+   "tier": "armor_tier3",
+   "type": "armor"
+  },
+  "armor_gi_blue": {
+   "battle": {},
+   "bonus": {},
+   "category": "armor",
+   "consumable": false,
+   "description": "Bare-chested fighter with wide blue gi pants and a golden belt. Swift and precise. Purely cosmetic.",
+   "effect": null,
+   "id": "armor_gi_blue",
+   "level_required": 1,
+   "name": "Blue Fighter's Hakama",
+   "price": 0,
+   "sprite": "🔵",
+   "tier": "armor_fighting_gi",
+   "type": "armor"
+  },
+  "armor_gi_red": {
+   "battle": {},
+   "bonus": {},
+   "category": "armor",
+   "consumable": false,
+   "description": "Bare-chested warrior with wide red gi pants and a pink sash. Pure power. Purely cosmetic.",
+   "effect": null,
+   "id": "armor_gi_red",
+   "level_required": 1,
+   "name": "Red Fighter's Hakama",
+   "price": 0,
+   "sprite": "🔴",
+   "tier": "armor_fighting_gi",
+   "type": "armor"
+  },
+  "armor_gi_white": {
+   "battle": {},
+   "bonus": {},
+   "category": "armor",
+   "consumable": false,
+   "description": "Crisp white gi with crossed lapels and a black belt. A fighter's classic. Purely cosmetic.",
+   "effect": null,
+   "id": "armor_gi_white",
+   "level_required": 1,
+   "name": "White Karate Gi",
+   "price": 0,
+   "sprite": "🥋",
+   "tier": "armor_fighting_gi",
+   "type": "armor"
+  },
+  "armor_hoodie_gray": {
+   "battle": {},
+   "bonus": {},
+   "category": "armor",
+   "consumable": false,
+   "description": "Oversized grey hoodie with a hidden kangaroo pocket. Lowkey but iconic.",
+   "effect": null,
+   "id": "armor_hoodie_gray",
+   "level_required": 5,
+   "name": "Phantom Hoodie",
+   "price": 80,
+   "sprite": "🧥",
+   "tier": "armor_starter",
+   "type": "armor"
+  },
+  "armor_jacket_cool": {
+   "battle": {
+    "hp": 1
+   },
+   "bonus": {
+    "coin_pct": 0.05
+   },
+   "category": "armor",
+   "consumable": false,
+   "description": "Sleek black leather jacket with V-lapels and combat boots. +5% coins.",
+   "effect": null,
+   "id": "armor_jacket_cool",
+   "level_required": 6,
+   "name": "Midnight Rider Jacket",
+   "price": 300,
+   "sprite": "🧥",
+   "tier": "armor_tier1",
+   "type": "armor"
+  },
+  "armor_knight_gold": {
+   "battle": {
+    "hp": 4
+   },
+   "bonus": {
+    "coin_pct": 0.1,
+    "xp_pct": 0.15
+   },
+   "category": "armor",
+   "consumable": false,
+   "description": "Forged from solidified sunlight. Jeweled crest. +15% XP and +10% coins.",
+   "effect": null,
+   "id": "armor_knight_gold",
+   "level_required": 18,
+   "name": "Sol Emperor's Plate",
+   "price": 2500,
+   "sprite": "⚜️",
+   "tier": "armor_tier3",
+   "type": "armor"
+  },
+  "armor_knight_silver": {
+   "battle": {
+    "hp": 3
+   },
+   "bonus": {
+    "coin_pct": 0.1
+   },
+   "category": "armor",
+   "consumable": false,
+   "description": "Gleaming titanium plate with spiked pauldrons and sabatons. +10% coins.",
+   "effect": null,
+   "id": "armor_knight_silver",
+   "level_required": 10,
+   "name": "Titanfall Plate",
+   "price": 900,
+   "sprite": "🛡️",
+   "tier": "armor_tier2",
+   "type": "armor"
+  },
+  "armor_legends_mantle": {
+   "battle": {
+    "hp": 6
+   },
+   "bonus": {
+    "coin_pct": 0.2,
+    "xp_pct": 0.3
+   },
+   "category": "armor",
+   "consumable": false,
+   "description": "A robe that pulses with starlight. Worn only by those who shaped history. +30% XP and +20% coins.",
+   "effect": null,
+   "id": "armor_legends_mantle",
+   "level_required": 28,
+   "name": "Astral Conqueror's Mantle",
+   "price": 8000,
+   "sprite": "✨",
+   "tier": "armor_tier3",
+   "type": "armor"
+  },
+  "armor_robe_blue": {
+   "battle": {
+    "hp": 1
+   },
+   "bonus": {
+    "xp_pct": 0.05
+   },
+   "category": "armor",
+   "consumable": false,
+   "description": "Deep sapphire robes with gold-trimmed bell sleeves. +5% XP on all activities.",
+   "effect": null,
+   "id": "armor_robe_blue",
+   "level_required": 6,
+   "name": "Azure Scholar's Vestments",
+   "price": 250,
+   "sprite": "🥋",
+   "tier": "armor_tier1",
+   "type": "armor"
+  },
+  "armor_shirt_basic": {
+   "battle": {},
+   "bonus": {},
+   "category": "armor",
+   "consumable": false,
+   "description": "Clean white tee with a pocket detail. Classic drip, purely cosmetic.",
+   "effect": null,
+   "id": "armor_shirt_basic",
+   "level_required": 5,
+   "name": "Street Legend Tee",
+   "price": 50,
+   "sprite": "👕",
+   "tier": "armor_starter",
+   "type": "armor"
+  },
+  "armor_wizard_purple": {
+   "battle": {
+    "hp": 2
+   },
+   "bonus": {
+    "xp_pct": 0.1
+   },
+   "category": "armor",
+   "consumable": false,
+   "description": "Swirling purple robes etched with arcane runes. +10% XP on all activities.",
+   "effect": null,
+   "id": "armor_wizard_purple",
+   "level_required": 10,
+   "name": "Void Weaver's Garments",
+   "price": 800,
+   "sprite": "🧙",
+   "tier": "armor_tier2",
+   "type": "armor"
+  },
+  "fifty_fifty": {
+   "arena_only": true,
+   "battle": {},
+   "bonus": {},
+   "category": "potion",
+   "consumable": true,
+   "description": "Tear the veil between truth and deception — 2 wrong answers crumble to dust. Arena only.",
+   "effect": "fifty_fifty",
+   "id": "fifty_fifty",
+   "level_required": 5,
+   "name": "Veil of Duality",
+   "price": 60,
+   "sprite": "⚖️",
+   "tier": "potions",
+   "type": "potion"
+  },
+  "hat_baseball_red": {
+   "battle": {},
+   "bonus": {},
+   "category": "headgear",
+   "consumable": false,
+   "description": "Bold red snapback. Low-key flex. Purely cosmetic.",
+   "effect": null,
+   "id": "hat_baseball_red",
+   "level_required": 7,
+   "name": "Crimson Street Cap",
+   "price": 50,
+   "sprite": "🧢",
+   "tier": "headgear_starter",
+   "type": "headgear"
+  },
+  "hat_beanie_blue": {
+   "battle": {},
+   "bonus": {},
+   "category": "headgear",
+   "consumable": false,
+   "description": "Thick knitted winter beanie in deep ocean blue. Purely cosmetic.",
+   "effect": null,
+   "id": "hat_beanie_blue",
+   "level_required": 7,
+   "name": "Frostwave Beanie",
+   "price": 50,
+   "sprite": "🎓",
+   "tier": "headgear_starter",
+   "type": "headgear"
+  },
+  "hat_crown_bronze": {
+   "battle": {
+    "time_sec": 3
+   },
+   "bonus": {
+    "coin_pct": 0.05,
+    "xp_pct": 0.05
+   },
+   "category": "headgear",
+   "consumable": false,
+   "description": "Bronze circlet set with emerald and sapphire gems. +5% XP and +5% coins.",
+   "effect": null,
+   "id": "hat_crown_bronze",
+   "level_required": 10,
+   "name": "Verdant Crown of Learning",
+   "price": 500,
+   "sprite": "👑",
+   "tier": "headgear_tier2",
+   "type": "headgear"
+  },
+  "hat_crown_gold": {
+   "battle": {
+    "time_sec": 8
+   },
+   "bonus": {
+    "coin_pct": 0.1,
+    "xp_pct": 0.15
+   },
+   "category": "headgear",
+   "consumable": false,
+   "description": "Blazing gold crown radiating warm light. +15% XP and +10% coins.",
+   "effect": null,
+   "id": "hat_crown_gold",
+   "level_required": 18,
+   "name": "Solaris Crown",
+   "price": 2000,
+   "sprite": "👑",
+   "tier": "headgear_tier3",
+   "type": "headgear"
+  },
+  "hat_crown_silver": {
+   "battle": {
+    "time_sec": 5
+   },
+   "bonus": {
+    "coin_pct": 0.05,
+    "xp_pct": 0.1
+   },
+   "category": "headgear",
+   "consumable": false,
+   "description": "Frosted silver crown with icy-blue gems. +10% XP and +5% coins.",
+   "effect": null,
+   "id": "hat_crown_silver",
+   "level_required": 14,
+   "name": "Glacial Silver Crown",
+   "price": 1000,
+   "sprite": "👑",
+   "tier": "headgear_tier3",
+   "type": "headgear"
+  },
+  "hat_headband_blue": {
+   "battle": {},
+   "bonus": {},
+   "category": "headgear",
+   "consumable": false,
+   "description": "A deep blue headband — focused, calm, and ready for battle. Purely cosmetic.",
+   "effect": null,
+   "id": "hat_headband_blue",
+   "level_required": 1,
+   "name": "Blue Fighter's Headband",
+   "price": 0,
+   "sprite": "🔵",
+   "tier": "headgear_fighting",
+   "type": "headgear"
+  },
+  "hat_headband_red": {
+   "battle": {},
+   "bonus": {},
+   "category": "headgear",
+   "consumable": false,
+   "description": "A bold red cloth headband worn by champions. The mark of a true martial artist. Purely cosmetic.",
+   "effect": null,
+   "id": "hat_headband_red",
+   "level_required": 1,
+   "name": "Red Fighter's Headband",
+   "price": 0,
+   "sprite": "🔴",
+   "tier": "headgear_fighting",
+   "type": "headgear"
+  },
+  "hat_headband_white": {
+   "battle": {},
+   "bonus": {},
+   "category": "headgear",
+   "consumable": false,
+   "description": "A clean white training headband. Simple. Disciplined. Purely cosmetic.",
+   "effect": null,
+   "id": "hat_headband_white",
+   "level_required": 1,
+   "name": "White Headband",
+   "price": 0,
+   "sprite": "⬜",
+   "tier": "headgear_fighting",
+   "type": "headgear"
+  },
+  "hat_headphones": {
+   "battle": {
+    "time_sec": 3
+   },
+   "bonus": {
+    "arena_hints": 1
+   },
+   "category": "headgear",
+   "consumable": false,
+   "description": "Noise-cancelling over-ears with glowing cables. +1 free hint charge every Arena battle.",
+   "effect": null,
+   "id": "hat_headphones",
+   "level_required": 8,
+   "name": "Neural Link Headphones",
+   "price": 200,
+   "sprite": "🎧",
+   "tier": "headgear_tier1",
+   "type": "headgear"
+  },
+  "hat_ninja": {
+   "battle": {
+    "time_sec": 4
+   },
+   "bonus": {
+    "xp_pct": 0.1
+   },
+   "category": "headgear",
+   "consumable": false,
+   "description": "Midnight-black cloth mask, only eyes visible. Stealth study mode. +10% XP.",
+   "effect": null,
+   "id": "hat_ninja",
+   "level_required": 12,
+   "name": "Shadow Veil Headband",
+   "price": 700,
+   "sprite": "🥷",
+   "tier": "headgear_tier2",
+   "type": "headgear"
+  },
+  "hat_samurai": {
+   "battle": {
+    "time_sec": 6
+   },
+   "bonus": {
+    "arena_hints": 1,
+    "coin_pct": 0.1
+   },
+   "category": "headgear",
+   "consumable": false,
+   "description": "Lacquered kabuto with a golden hachimaki. +10% coins and +1 arena hint.",
+   "effect": null,
+   "id": "hat_samurai",
+   "level_required": 15,
+   "name": "Oni-Sealed War Helm",
+   "price": 1200,
+   "sprite": "⛩️",
+   "tier": "headgear_tier3",
+   "type": "headgear"
+  },
+  "hat_wizard": {
+   "battle": {
+    "time_sec": 3
+   },
+   "bonus": {
+    "xp_pct": 0.05
+   },
+   "category": "headgear",
+   "consumable": false,
+   "description": "Tall midnight hat with a golden constellation band. +5% XP on all activities.",
+   "effect": null,
+   "id": "hat_wizard",
+   "level_required": 9,
+   "name": "Archmage's Pointed Hat",
+   "price": 300,
+   "sprite": "🎩",
+   "tier": "headgear_tier1",
+   "type": "headgear"
+  },
+  "pet_cat_orange": {
+   "battle": {
+    "strike": 4
+   },
+   "bonus": {
+    "xp_pct": 0.05
+   },
+   "category": "pet",
+   "consumable": false,
+   "description": "A flame-furred tabby who naps on your notes. +5% XP.",
+   "effect": null,
+   "id": "pet_cat_orange",
+   "level_required": 20,
+   "name": "Pyra the Ember Cat",
+   "price": 300,
+   "sprite": "🐱",
+   "tier": "pet_starter",
+   "type": "pet"
+  },
+  "pet_dog_brown": {
+   "battle": {
+    "strike": 4
+   },
+   "bonus": {
+    "coin_pct": 0.05
+   },
+   "category": "pet",
+   "consumable": false,
+   "description": "Loyal storm-furred hound who carries your bag. +5% coins.",
+   "effect": null,
+   "id": "pet_dog_brown",
+   "level_required": 20,
+   "name": "Rex the Thunder Hound",
+   "price": 300,
+   "sprite": "🐶",
+   "tier": "pet_starter",
+   "type": "pet"
+  },
+  "pet_dragon_ancient": {
+   "battle": {
+    "strike": 20
+   },
+   "bonus": {
+    "coin_pct": 0.2,
+    "streak_freeze_days": 5,
+    "xp_pct": 0.25
+   },
+   "category": "pet",
+   "consumable": false,
+   "description": "An ancient obsidian dragon older than memory itself. MOUNT. +25% XP, +20% coins. Streak freeze every 5 days.",
+   "effect": null,
+   "id": "pet_dragon_ancient",
+   "level_required": 30,
+   "name": "Erebus the Elder Dragon",
+   "price": 6000,
+   "sprite": "🐉",
+   "tier": "pet_tier3",
+   "type": "pet"
+  },
+  "pet_dragon_baby": {
+   "battle": {
+    "strike": 12
+   },
+   "bonus": {
+    "coin_pct": 0.1,
+    "streak_freeze_days": 10,
+    "xp_pct": 0.1
+   },
+   "category": "pet",
+   "consumable": false,
+   "description": "A tiny dragon who breathes XP bubbles. MOUNT. +10% XP, +10% coins. Streak freeze every 10 days.",
+   "effect": null,
+   "id": "pet_dragon_baby",
+   "level_required": 24,
+   "name": "Ignis the Hatchling Dragon",
+   "price": 2000,
+   "sprite": "🐲",
+   "tier": "pet_tier2",
+   "type": "pet"
+  },
+  "pet_fox": {
+   "battle": {
+    "strike": 8
+   },
+   "bonus": {
+    "streak_freeze_days": 14,
+    "xp_pct": 0.1
+   },
+   "category": "pet",
+   "consumable": false,
+   "description": "A silver-tipped fox that phases through shadows. +10% XP, auto streak freeze every 14 days.",
+   "effect": null,
+   "id": "pet_fox",
+   "level_required": 22,
+   "name": "Zephyr the Void Fox",
+   "price": 900,
+   "sprite": "🦊",
+   "tier": "pet_tier2",
+   "type": "pet"
+  },
+  "pet_lion_golden": {
+   "battle": {
+    "strike": 14
+   },
+   "bonus": {
+    "coin_pct": 0.2,
+    "xp_pct": 0.1
+   },
+   "category": "pet",
+   "consumable": false,
+   "description": "Golden-maned lion whose roar echoes across the cosmos. MOUNT. +10% XP and +20% coins.",
+   "effect": null,
+   "id": "pet_lion_golden",
+   "level_required": 27,
+   "name": "Aurum the Solar Lion",
+   "price": 4000,
+   "sprite": "🦁",
+   "tier": "pet_tier3",
+   "type": "pet"
+  },
+  "pet_owl": {
+   "battle": {
+    "strike": 6
+   },
+   "bonus": {
+    "arena_hints": 1,
+    "xp_pct": 0.08
+   },
+   "category": "pet",
+   "consumable": false,
+   "description": "Golden-eyed scholar owl that whispers answers. +8% XP and +1 arena hint.",
+   "effect": null,
+   "id": "pet_owl",
+   "level_required": 21,
+   "name": "Athena the Celestial Owl",
+   "price": 500,
+   "sprite": "🦉",
+   "tier": "pet_starter",
+   "type": "pet"
+  },
+  "pet_panda": {
+   "battle": {
+    "strike": 6
+   },
+   "bonus": {
+    "coin_pct": 0.05,
+    "xp_pct": 0.08
+   },
+   "category": "pet",
+   "consumable": false,
+   "description": "A rare black-and-white panda crackling with static energy. +8% XP, +5% coins.",
+   "effect": null,
+   "id": "pet_panda",
+   "level_required": 21,
+   "name": "Kai the Storm Panda",
+   "price": 700,
+   "sprite": "🐼",
+   "tier": "pet_tier2",
+   "type": "pet"
+  },
+  "pet_phoenix": {
+   "battle": {
+    "strike": 14
+   },
+   "bonus": {
+    "coin_pct": 0.1,
+    "streak_freeze_days": 7,
+    "xp_pct": 0.15
+   },
+   "category": "pet",
+   "consumable": false,
+   "description": "A blazing firebird reborn from ash each dawn. MOUNT. +15% XP, +10% coins. Streak freeze every 7 days.",
+   "effect": null,
+   "id": "pet_phoenix",
+   "level_required": 25,
+   "name": "Solara the Reborn Phoenix",
+   "price": 3000,
+   "sprite": "🦅",
+   "tier": "pet_tier3",
+   "type": "pet"
+  },
+  "pet_unicorn": {
+   "battle": {
+    "strike": 10
+   },
+   "bonus": {
+    "coin_pct": 0.08,
+    "xp_pct": 0.12
+   },
+   "category": "pet",
+   "consumable": false,
+   "description": "A unicorn whose mane trails stardust. MOUNT. +12% XP and +8% coins.",
+   "effect": null,
+   "id": "pet_unicorn",
+   "level_required": 23,
+   "name": "Lumis the Starbound Unicorn",
+   "price": 1500,
+   "sprite": "🦄",
+   "tier": "pet_tier2",
+   "type": "pet"
+  },
+  "potion_coin_boost": {
+   "battle": {},
+   "bonus": {},
+   "category": "potion",
+   "consumable": true,
+   "description": "+50% coins earned for 1 hour. Everything you touch turns to gold.",
+   "effect": "coin_boost_1h",
+   "id": "potion_coin_boost",
+   "level_required": 7,
+   "name": "Midas Tonic",
+   "price": 150,
+   "sprite": "💰",
+   "tier": "potions",
+   "type": "potion"
+  },
+  "potion_health_small": {
+   "arena_only": true,
+   "battle": {},
+   "bonus": {},
+   "category": "potion",
+   "consumable": true,
+   "description": "Restore 1 heart mid-Arena battle. Use from the potion bar before you fall.",
+   "effect": "heal_1",
+   "id": "potion_health_small",
+   "level_required": 5,
+   "name": "Crimson Vial",
+   "price": 80,
+   "sprite": "🧪",
+   "tier": "potions",
+   "type": "potion"
+  },
+  "potion_quest_reset": {
+   "battle": {},
+   "bonus": {},
+   "category": "potion",
+   "consumable": true,
+   "description": "Reset your daily quests instantly. Bend time to your will.",
+   "effect": "reset_daily_quests",
+   "id": "potion_quest_reset",
+   "level_required": 15,
+   "name": "Chrono Vortex Flask",
+   "price": 600,
+   "sprite": "⏳",
+   "tier": "potions",
+   "type": "potion"
+  },
+  "potion_streak_shield": {
+   "battle": {},
+   "bonus": {},
+   "category": "potion",
+   "consumable": true,
+   "description": "Grants 1 streak freeze token. Activates automatically if you miss a day — no action needed.",
+   "effect": "streak_freeze",
+   "id": "potion_streak_shield",
+   "level_required": 9,
+   "name": "Temporal Shield Flask",
+   "price": 250,
+   "sprite": "🛡️",
+   "tier": "potions",
+   "type": "potion"
+  },
+  "potion_xp_boost": {
+   "battle": {},
+   "bonus": {},
+   "category": "potion",
+   "consumable": true,
+   "description": "+50% XP earned for 1 hour. The ancient taste of knowledge.",
+   "effect": "xp_boost_1h",
+   "id": "potion_xp_boost",
+   "level_required": 7,
+   "name": "Sage's Elixir",
+   "price": 150,
+   "sprite": "⚗️",
+   "tier": "potions",
+   "type": "potion"
+  },
+  "potion_xp_boost_2h": {
+   "battle": {},
+   "bonus": {},
+   "category": "potion",
+   "consumable": true,
+   "description": "+100% XP earned for 1 hour. Pure distilled brilliance.",
+   "effect": "xp_boost_2h",
+   "id": "potion_xp_boost_2h",
+   "level_required": 12,
+   "name": "Grand Arcane Elixir",
+   "price": 400,
+   "sprite": "🌟",
+   "tier": "potions",
+   "type": "potion"
+  },
+  "title_arena_champ": {
+   "battle": {},
+   "bonus": {
+    "coin_pct": 0.05,
+    "xp_pct": 0.05
+   },
+   "category": "title",
+   "consumable": false,
+   "description": "Undefeated in the arena. +5% XP and +5% coins.",
+   "effect": null,
+   "id": "title_arena_champ",
+   "level_required": 33,
+   "name": "⚔️ Arena Overlord",
+   "price": 2000,
+   "sprite": "⚔️",
+   "tier": "titles",
+   "type": "title"
+  },
+  "title_dragon_slayer": {
+   "battle": {},
+   "bonus": {
+    "coin_pct": 0.05,
+    "xp_pct": 0.1
+   },
+   "category": "title",
+   "consumable": false,
+   "description": "Slayer of ancient wyrms. Fear follows this name. +10% XP, +5% coins.",
+   "effect": null,
+   "id": "title_dragon_slayer",
+   "level_required": 38,
+   "name": "🐉 Dragonbane",
+   "price": 5000,
+   "sprite": "🐉",
+   "tier": "titles",
+   "type": "title"
+  },
+  "title_legend": {
+   "battle": {},
+   "bonus": {
+    "arena_hints": 2,
+    "coin_pct": 0.1,
+    "xp_pct": 0.12
+   },
+   "category": "title",
+   "consumable": false,
+   "description": "The ultimate achievement. Songs are written about you. +12% XP, +10% coins, +2 Arena hints.",
+   "effect": null,
+   "id": "title_legend",
+   "level_required": 40,
+   "name": "👑 Living Legend",
+   "price": 10000,
+   "sprite": "👑",
+   "tier": "titles",
+   "type": "title"
+  },
+  "title_quiz_master": {
+   "battle": {},
+   "bonus": {
+    "xp_pct": 0.03
+   },
+   "category": "title",
+   "consumable": false,
+   "description": "Master of every quiz format. +3% XP on all activities.",
+   "effect": null,
+   "id": "title_quiz_master",
+   "level_required": 30,
+   "name": "🎯 Quiz Sovereign",
+   "price": 1000,
+   "sprite": "🎯",
+   "tier": "titles",
+   "type": "title"
+  },
+  "title_scholar": {
+   "battle": {},
+   "bonus": {},
+   "category": "title",
+   "consumable": false,
+   "description": "Earned by those who pursue knowledge relentlessly. Purely cosmetic.",
+   "effect": null,
+   "id": "title_scholar",
+   "level_required": 30,
+   "name": "📚 The Scholar",
+   "price": 500,
+   "sprite": "📚",
+   "tier": "titles",
+   "type": "title"
+  },
+  "title_the_eternal": {
+   "battle": {},
+   "bonus": {
+    "coin_pct": 0.05,
+    "xp_pct": 0.08
+   },
+   "category": "title",
+   "consumable": false,
+   "description": "Has outlasted civilisations. Their name echoes forever. +8% XP and +5% coins.",
+   "effect": null,
+   "id": "title_the_eternal",
+   "level_required": 36,
+   "name": "♾️ The Undying",
+   "price": 4000,
+   "sprite": "♾️",
+   "tier": "titles",
+   "type": "title"
+  },
+  "weapon_bow": {
+   "battle": {
+    "damage_pct": 0.12
+   },
+   "bonus": {
+    "xp_pct": 0.05
+   },
+   "category": "weapon",
+   "consumable": false,
+   "description": "Elegant recurve bow carved from ancient ashwood. +5% XP.",
+   "effect": null,
+   "id": "weapon_bow",
+   "level_required": 11,
+   "name": "Ashwood Recurve Bow",
+   "price": 500,
+   "sprite": "🏹",
+   "tier": "weapon_tier1",
+   "type": "weapon"
+  },
+  "weapon_hammer": {
+   "battle": {
+    "damage_pct": 0.18
+   },
+   "bonus": {
+    "xp_pct": 0.08
+   },
+   "category": "weapon",
+   "consumable": false,
+   "description": "Rune-carved warhammer that crackles with energy. +8% XP.",
+   "effect": null,
+   "id": "weapon_hammer",
+   "level_required": 14,
+   "name": "Thundercrack War Hammer",
+   "price": 1000,
+   "sprite": "🔨",
+   "tier": "weapon_tier2",
+   "type": "weapon"
+  },
+  "weapon_pencil": {
+   "battle": {
+    "damage_pct": 0.05
+   },
+   "bonus": {},
+   "category": "weapon",
+   "consumable": false,
+   "description": "The pen is mightier. A classic HB pencil, always sharp.",
+   "effect": null,
+   "id": "weapon_pencil",
+   "level_required": 10,
+   "name": "Scholar's Pencil",
+   "price": 100,
+   "sprite": "✏️",
+   "tier": "weapon_starter",
+   "type": "weapon"
+  },
+  "weapon_ruler": {
+   "battle": {
+    "damage_pct": 0.05
+   },
+   "bonus": {},
+   "category": "weapon",
+   "consumable": false,
+   "description": "Steel-edged ruler. Measures angles AND opponent confidence.",
+   "effect": null,
+   "id": "weapon_ruler",
+   "level_required": 10,
+   "name": "Precision Ruler",
+   "price": 120,
+   "sprite": "📏",
+   "tier": "weapon_starter",
+   "type": "weapon"
+  },
+  "weapon_staff_crystal": {
+   "battle": {
+    "damage_pct": 0.2
+   },
+   "bonus": {
+    "xp_pct": 0.1
+   },
+   "category": "weapon",
+   "consumable": false,
+   "description": "A crystal-topped staff refracting arcane light. +10% XP.",
+   "effect": null,
+   "id": "weapon_staff_crystal",
+   "level_required": 14,
+   "name": "Aqua Prism Staff",
+   "price": 1100,
+   "sprite": "💎",
+   "tier": "weapon_tier2",
+   "type": "weapon"
+  },
+  "weapon_staff_legendary": {
+   "battle": {
+    "damage_pct": 0.3
+   },
+   "bonus": {
+    "xp_pct": 0.15
+   },
+   "category": "weapon",
+   "consumable": false,
+   "description": "A staff crowned with a swirling tome of forbidden power. +15% XP.",
+   "effect": null,
+   "id": "weapon_staff_legendary",
+   "level_required": 20,
+   "name": "Infernal Codex Staff",
+   "price": 3000,
+   "sprite": "🌟",
+   "tier": "weapon_tier3",
+   "type": "weapon"
+  },
+  "weapon_staff_wood": {
+   "battle": {
+    "damage_pct": 0.12
+   },
+   "bonus": {
+    "xp_pct": 0.05
+   },
+   "category": "weapon",
+   "consumable": false,
+   "description": "Gnarled forest staff with a glowing crystal tip. +5% XP.",
+   "effect": null,
+   "id": "weapon_staff_wood",
+   "level_required": 11,
+   "name": "Emberwood Quarterstaff",
+   "price": 450,
+   "sprite": "🪄",
+   "tier": "weapon_tier1",
+   "type": "weapon"
+  },
+  "weapon_sword_bronze": {
+   "battle": {
+    "damage_pct": 0.1
+   },
+   "bonus": {
+    "combo_xp_pct": 0.05
+   },
+   "category": "weapon",
+   "consumable": false,
+   "description": "Bronze dual swords with leather-wrapped hilts. ✦✦ Dual wield! +5% combo XP.",
+   "effect": null,
+   "id": "weapon_sword_bronze",
+   "level_required": 10,
+   "name": "Dawnsteel Twin Blades",
+   "price": 400,
+   "sprite": "⚔️",
+   "tier": "weapon_tier1",
+   "type": "weapon"
+  },
+  "weapon_sword_excalibur": {
+   "battle": {
+    "damage_pct": 0.28
+   },
+   "bonus": {
+    "combo_xp_pct": 0.15
+   },
+   "category": "weapon",
+   "consumable": false,
+   "description": "Gold-hilted legendary swords etched with celestial runes. ✦✦ Dual wield! +15% combo XP.",
+   "effect": null,
+   "id": "weapon_sword_excalibur",
+   "level_required": 18,
+   "name": "Excalibur Twin Blades",
+   "price": 2500,
+   "sprite": "✨",
+   "tier": "weapon_tier3",
+   "type": "weapon"
+  },
+  "weapon_sword_silver": {
+   "battle": {
+    "damage_pct": 0.16
+   },
+   "bonus": {
+    "combo_xp_pct": 0.1
+   },
+   "category": "weapon",
+   "consumable": false,
+   "description": "Silver dual blades that shimmer like moonlight. ✦✦ Dual wield! +10% combo XP.",
+   "effect": null,
+   "id": "weapon_sword_silver",
+   "level_required": 13,
+   "name": "Moonblade Twin Swords",
+   "price": 900,
+   "sprite": "⚔️",
+   "tier": "weapon_tier2",
+   "type": "weapon"
+  }
+ },
+ "items_flat": [
+  {
+   "battle": {},
+   "bonus": {},
+   "category": "armor",
+   "consumable": false,
+   "description": "Crisp white gi with crossed lapels and a black belt. A fighter's classic. Purely cosmetic.",
+   "effect": null,
+   "id": "armor_gi_white",
+   "level_required": 1,
+   "name": "White Karate Gi",
+   "price": 0,
+   "sprite": "🥋",
+   "tier": "armor_fighting_gi",
+   "type": "armor"
+  },
+  {
+   "battle": {},
+   "bonus": {},
+   "category": "armor",
+   "consumable": false,
+   "description": "Bare-chested warrior with wide red gi pants and a pink sash. Pure power. Purely cosmetic.",
+   "effect": null,
+   "id": "armor_gi_red",
+   "level_required": 1,
+   "name": "Red Fighter's Hakama",
+   "price": 0,
+   "sprite": "🔴",
+   "tier": "armor_fighting_gi",
+   "type": "armor"
+  },
+  {
+   "battle": {},
+   "bonus": {},
+   "category": "armor",
+   "consumable": false,
+   "description": "Bare-chested fighter with wide blue gi pants and a golden belt. Swift and precise. Purely cosmetic.",
+   "effect": null,
+   "id": "armor_gi_blue",
+   "level_required": 1,
+   "name": "Blue Fighter's Hakama",
+   "price": 0,
+   "sprite": "🔵",
+   "tier": "armor_fighting_gi",
+   "type": "armor"
+  },
+  {
+   "battle": {},
+   "bonus": {},
+   "category": "armor",
+   "consumable": false,
+   "description": "Clean white tee with a pocket detail. Classic drip, purely cosmetic.",
+   "effect": null,
+   "id": "armor_shirt_basic",
+   "level_required": 5,
+   "name": "Street Legend Tee",
+   "price": 50,
+   "sprite": "👕",
+   "tier": "armor_starter",
+   "type": "armor"
+  },
+  {
+   "battle": {},
+   "bonus": {},
+   "category": "armor",
+   "consumable": false,
+   "description": "Oversized grey hoodie with a hidden kangaroo pocket. Lowkey but iconic.",
+   "effect": null,
+   "id": "armor_hoodie_gray",
+   "level_required": 5,
+   "name": "Phantom Hoodie",
+   "price": 80,
+   "sprite": "🧥",
+   "tier": "armor_starter",
+   "type": "armor"
+  },
+  {
+   "battle": {
+    "hp": 1
+   },
+   "bonus": {
+    "xp_pct": 0.05
+   },
+   "category": "armor",
+   "consumable": false,
+   "description": "Deep sapphire robes with gold-trimmed bell sleeves. +5% XP on all activities.",
+   "effect": null,
+   "id": "armor_robe_blue",
+   "level_required": 6,
+   "name": "Azure Scholar's Vestments",
+   "price": 250,
+   "sprite": "🥋",
+   "tier": "armor_tier1",
+   "type": "armor"
+  },
+  {
+   "battle": {
+    "hp": 1
+   },
+   "bonus": {
+    "coin_pct": 0.05
+   },
+   "category": "armor",
+   "consumable": false,
+   "description": "Sleek black leather jacket with V-lapels and combat boots. +5% coins.",
+   "effect": null,
+   "id": "armor_jacket_cool",
+   "level_required": 6,
+   "name": "Midnight Rider Jacket",
+   "price": 300,
+   "sprite": "🧥",
+   "tier": "armor_tier1",
+   "type": "armor"
+  },
+  {
+   "battle": {
+    "hp": 2
+   },
+   "bonus": {
+    "xp_pct": 0.1
+   },
+   "category": "armor",
+   "consumable": false,
+   "description": "Swirling purple robes etched with arcane runes. +10% XP on all activities.",
+   "effect": null,
+   "id": "armor_wizard_purple",
+   "level_required": 10,
+   "name": "Void Weaver's Garments",
+   "price": 800,
+   "sprite": "🧙",
+   "tier": "armor_tier2",
+   "type": "armor"
+  },
+  {
+   "battle": {
+    "hp": 3
+   },
+   "bonus": {
+    "coin_pct": 0.1
+   },
+   "category": "armor",
+   "consumable": false,
+   "description": "Gleaming titanium plate with spiked pauldrons and sabatons. +10% coins.",
+   "effect": null,
+   "id": "armor_knight_silver",
+   "level_required": 10,
+   "name": "Titanfall Plate",
+   "price": 900,
+   "sprite": "🛡️",
+   "tier": "armor_tier2",
+   "type": "armor"
+  },
+  {
+   "battle": {
+    "hp": 4
+   },
+   "bonus": {
+    "coin_pct": 0.1,
+    "xp_pct": 0.15
+   },
+   "category": "armor",
+   "consumable": false,
+   "description": "Forged from solidified sunlight. Jeweled crest. +15% XP and +10% coins.",
+   "effect": null,
+   "id": "armor_knight_gold",
+   "level_required": 18,
+   "name": "Sol Emperor's Plate",
+   "price": 2500,
+   "sprite": "⚜️",
+   "tier": "armor_tier3",
+   "type": "armor"
+  },
+  {
+   "battle": {
+    "hp": 5
+   },
+   "bonus": {
+    "coin_pct": 0.15,
+    "xp_pct": 0.2
+   },
+   "category": "armor",
+   "consumable": false,
+   "description": "Scales harvested from a volcano dragon. Shoulder spikes glow faintly. +20% XP and +15% coins.",
+   "effect": null,
+   "id": "armor_dragon_scale",
+   "level_required": 22,
+   "name": "Ignis Wyrm Scale Mail",
+   "price": 4000,
+   "sprite": "🐉",
+   "tier": "armor_tier3",
+   "type": "armor"
+  },
+  {
+   "battle": {
+    "hp": 6
+   },
+   "bonus": {
+    "coin_pct": 0.2,
+    "xp_pct": 0.3
+   },
+   "category": "armor",
+   "consumable": false,
+   "description": "A robe that pulses with starlight. Worn only by those who shaped history. +30% XP and +20% coins.",
+   "effect": null,
+   "id": "armor_legends_mantle",
+   "level_required": 28,
+   "name": "Astral Conqueror's Mantle",
+   "price": 8000,
+   "sprite": "✨",
+   "tier": "armor_tier3",
+   "type": "armor"
+  },
+  {
+   "battle": {},
+   "bonus": {},
+   "category": "headgear",
+   "consumable": false,
+   "description": "A bold red cloth headband worn by champions. The mark of a true martial artist. Purely cosmetic.",
+   "effect": null,
+   "id": "hat_headband_red",
+   "level_required": 1,
+   "name": "Red Fighter's Headband",
+   "price": 0,
+   "sprite": "🔴",
+   "tier": "headgear_fighting",
+   "type": "headgear"
+  },
+  {
+   "battle": {},
+   "bonus": {},
+   "category": "headgear",
+   "consumable": false,
+   "description": "A deep blue headband — focused, calm, and ready for battle. Purely cosmetic.",
+   "effect": null,
+   "id": "hat_headband_blue",
+   "level_required": 1,
+   "name": "Blue Fighter's Headband",
+   "price": 0,
+   "sprite": "🔵",
+   "tier": "headgear_fighting",
+   "type": "headgear"
+  },
+  {
+   "battle": {},
+   "bonus": {},
+   "category": "headgear",
+   "consumable": false,
+   "description": "A clean white training headband. Simple. Disciplined. Purely cosmetic.",
+   "effect": null,
+   "id": "hat_headband_white",
+   "level_required": 1,
+   "name": "White Headband",
+   "price": 0,
+   "sprite": "⬜",
+   "tier": "headgear_fighting",
+   "type": "headgear"
+  },
+  {
+   "battle": {},
+   "bonus": {},
+   "category": "headgear",
+   "consumable": false,
+   "description": "Bold red snapback. Low-key flex. Purely cosmetic.",
+   "effect": null,
+   "id": "hat_baseball_red",
+   "level_required": 7,
+   "name": "Crimson Street Cap",
+   "price": 50,
+   "sprite": "🧢",
+   "tier": "headgear_starter",
+   "type": "headgear"
+  },
+  {
+   "battle": {},
+   "bonus": {},
+   "category": "headgear",
+   "consumable": false,
+   "description": "Thick knitted winter beanie in deep ocean blue. Purely cosmetic.",
+   "effect": null,
+   "id": "hat_beanie_blue",
+   "level_required": 7,
+   "name": "Frostwave Beanie",
+   "price": 50,
+   "sprite": "🎓",
+   "tier": "headgear_starter",
+   "type": "headgear"
+  },
+  {
+   "battle": {
+    "time_sec": 3
+   },
+   "bonus": {
+    "arena_hints": 1
+   },
+   "category": "headgear",
+   "consumable": false,
+   "description": "Noise-cancelling over-ears with glowing cables. +1 free hint charge every Arena battle.",
+   "effect": null,
+   "id": "hat_headphones",
+   "level_required": 8,
+   "name": "Neural Link Headphones",
+   "price": 200,
+   "sprite": "🎧",
+   "tier": "headgear_tier1",
+   "type": "headgear"
+  },
+  {
+   "battle": {
+    "time_sec": 3
+   },
+   "bonus": {
+    "xp_pct": 0.05
+   },
+   "category": "headgear",
+   "consumable": false,
+   "description": "Tall midnight hat with a golden constellation band. +5% XP on all activities.",
+   "effect": null,
+   "id": "hat_wizard",
+   "level_required": 9,
+   "name": "Archmage's Pointed Hat",
+   "price": 300,
+   "sprite": "🎩",
+   "tier": "headgear_tier1",
+   "type": "headgear"
+  },
+  {
+   "battle": {
+    "time_sec": 3
+   },
+   "bonus": {
+    "coin_pct": 0.05,
+    "xp_pct": 0.05
+   },
+   "category": "headgear",
+   "consumable": false,
+   "description": "Bronze circlet set with emerald and sapphire gems. +5% XP and +5% coins.",
+   "effect": null,
+   "id": "hat_crown_bronze",
+   "level_required": 10,
+   "name": "Verdant Crown of Learning",
+   "price": 500,
+   "sprite": "👑",
+   "tier": "headgear_tier2",
+   "type": "headgear"
+  },
+  {
+   "battle": {
+    "time_sec": 4
+   },
+   "bonus": {
+    "xp_pct": 0.1
+   },
+   "category": "headgear",
+   "consumable": false,
+   "description": "Midnight-black cloth mask, only eyes visible. Stealth study mode. +10% XP.",
+   "effect": null,
+   "id": "hat_ninja",
+   "level_required": 12,
+   "name": "Shadow Veil Headband",
+   "price": 700,
+   "sprite": "🥷",
+   "tier": "headgear_tier2",
+   "type": "headgear"
+  },
+  {
+   "battle": {
+    "time_sec": 5
+   },
+   "bonus": {
+    "coin_pct": 0.05,
+    "xp_pct": 0.1
+   },
+   "category": "headgear",
+   "consumable": false,
+   "description": "Frosted silver crown with icy-blue gems. +10% XP and +5% coins.",
+   "effect": null,
+   "id": "hat_crown_silver",
+   "level_required": 14,
+   "name": "Glacial Silver Crown",
+   "price": 1000,
+   "sprite": "👑",
+   "tier": "headgear_tier3",
+   "type": "headgear"
+  },
+  {
+   "battle": {
+    "time_sec": 6
+   },
+   "bonus": {
+    "arena_hints": 1,
+    "coin_pct": 0.1
+   },
+   "category": "headgear",
+   "consumable": false,
+   "description": "Lacquered kabuto with a golden hachimaki. +10% coins and +1 arena hint.",
+   "effect": null,
+   "id": "hat_samurai",
+   "level_required": 15,
+   "name": "Oni-Sealed War Helm",
+   "price": 1200,
+   "sprite": "⛩️",
+   "tier": "headgear_tier3",
+   "type": "headgear"
+  },
+  {
+   "battle": {
+    "time_sec": 8
+   },
+   "bonus": {
+    "coin_pct": 0.1,
+    "xp_pct": 0.15
+   },
+   "category": "headgear",
+   "consumable": false,
+   "description": "Blazing gold crown radiating warm light. +15% XP and +10% coins.",
+   "effect": null,
+   "id": "hat_crown_gold",
+   "level_required": 18,
+   "name": "Solaris Crown",
+   "price": 2000,
+   "sprite": "👑",
+   "tier": "headgear_tier3",
+   "type": "headgear"
+  },
+  {
+   "battle": {
+    "strike": 4
+   },
+   "bonus": {
+    "xp_pct": 0.05
+   },
+   "category": "pet",
+   "consumable": false,
+   "description": "A flame-furred tabby who naps on your notes. +5% XP.",
+   "effect": null,
+   "id": "pet_cat_orange",
+   "level_required": 20,
+   "name": "Pyra the Ember Cat",
+   "price": 300,
+   "sprite": "🐱",
+   "tier": "pet_starter",
+   "type": "pet"
+  },
+  {
+   "battle": {
+    "strike": 4
+   },
+   "bonus": {
+    "coin_pct": 0.05
+   },
+   "category": "pet",
+   "consumable": false,
+   "description": "Loyal storm-furred hound who carries your bag. +5% coins.",
+   "effect": null,
+   "id": "pet_dog_brown",
+   "level_required": 20,
+   "name": "Rex the Thunder Hound",
+   "price": 300,
+   "sprite": "🐶",
+   "tier": "pet_starter",
+   "type": "pet"
+  },
+  {
+   "battle": {
+    "strike": 6
+   },
+   "bonus": {
+    "arena_hints": 1,
+    "xp_pct": 0.08
+   },
+   "category": "pet",
+   "consumable": false,
+   "description": "Golden-eyed scholar owl that whispers answers. +8% XP and +1 arena hint.",
+   "effect": null,
+   "id": "pet_owl",
+   "level_required": 21,
+   "name": "Athena the Celestial Owl",
+   "price": 500,
+   "sprite": "🦉",
+   "tier": "pet_starter",
+   "type": "pet"
+  },
+  {
+   "battle": {
+    "strike": 6
+   },
+   "bonus": {
+    "coin_pct": 0.05,
+    "xp_pct": 0.08
+   },
+   "category": "pet",
+   "consumable": false,
+   "description": "A rare black-and-white panda crackling with static energy. +8% XP, +5% coins.",
+   "effect": null,
+   "id": "pet_panda",
+   "level_required": 21,
+   "name": "Kai the Storm Panda",
+   "price": 700,
+   "sprite": "🐼",
+   "tier": "pet_tier2",
+   "type": "pet"
+  },
+  {
+   "battle": {
+    "strike": 8
+   },
+   "bonus": {
+    "streak_freeze_days": 14,
+    "xp_pct": 0.1
+   },
+   "category": "pet",
+   "consumable": false,
+   "description": "A silver-tipped fox that phases through shadows. +10% XP, auto streak freeze every 14 days.",
+   "effect": null,
+   "id": "pet_fox",
+   "level_required": 22,
+   "name": "Zephyr the Void Fox",
+   "price": 900,
+   "sprite": "🦊",
+   "tier": "pet_tier2",
+   "type": "pet"
+  },
+  {
+   "battle": {
+    "strike": 10
+   },
+   "bonus": {
+    "coin_pct": 0.08,
+    "xp_pct": 0.12
+   },
+   "category": "pet",
+   "consumable": false,
+   "description": "A unicorn whose mane trails stardust. MOUNT. +12% XP and +8% coins.",
+   "effect": null,
+   "id": "pet_unicorn",
+   "level_required": 23,
+   "name": "Lumis the Starbound Unicorn",
+   "price": 1500,
+   "sprite": "🦄",
+   "tier": "pet_tier2",
+   "type": "pet"
+  },
+  {
+   "battle": {
+    "strike": 12
+   },
+   "bonus": {
+    "coin_pct": 0.1,
+    "streak_freeze_days": 10,
+    "xp_pct": 0.1
+   },
+   "category": "pet",
+   "consumable": false,
+   "description": "A tiny dragon who breathes XP bubbles. MOUNT. +10% XP, +10% coins. Streak freeze every 10 days.",
+   "effect": null,
+   "id": "pet_dragon_baby",
+   "level_required": 24,
+   "name": "Ignis the Hatchling Dragon",
+   "price": 2000,
+   "sprite": "🐲",
+   "tier": "pet_tier2",
+   "type": "pet"
+  },
+  {
+   "battle": {
+    "strike": 14
+   },
+   "bonus": {
+    "coin_pct": 0.1,
+    "streak_freeze_days": 7,
+    "xp_pct": 0.15
+   },
+   "category": "pet",
+   "consumable": false,
+   "description": "A blazing firebird reborn from ash each dawn. MOUNT. +15% XP, +10% coins. Streak freeze every 7 days.",
+   "effect": null,
+   "id": "pet_phoenix",
+   "level_required": 25,
+   "name": "Solara the Reborn Phoenix",
+   "price": 3000,
+   "sprite": "🦅",
+   "tier": "pet_tier3",
+   "type": "pet"
+  },
+  {
+   "battle": {
+    "strike": 14
+   },
+   "bonus": {
+    "coin_pct": 0.2,
+    "xp_pct": 0.1
+   },
+   "category": "pet",
+   "consumable": false,
+   "description": "Golden-maned lion whose roar echoes across the cosmos. MOUNT. +10% XP and +20% coins.",
+   "effect": null,
+   "id": "pet_lion_golden",
+   "level_required": 27,
+   "name": "Aurum the Solar Lion",
+   "price": 4000,
+   "sprite": "🦁",
+   "tier": "pet_tier3",
+   "type": "pet"
+  },
+  {
+   "battle": {
+    "strike": 20
+   },
+   "bonus": {
+    "coin_pct": 0.2,
+    "streak_freeze_days": 5,
+    "xp_pct": 0.25
+   },
+   "category": "pet",
+   "consumable": false,
+   "description": "An ancient obsidian dragon older than memory itself. MOUNT. +25% XP, +20% coins. Streak freeze every 5 days.",
+   "effect": null,
+   "id": "pet_dragon_ancient",
+   "level_required": 30,
+   "name": "Erebus the Elder Dragon",
+   "price": 6000,
+   "sprite": "🐉",
+   "tier": "pet_tier3",
+   "type": "pet"
+  },
+  {
+   "arena_only": true,
+   "battle": {},
+   "bonus": {},
+   "category": "potion",
+   "consumable": true,
+   "description": "Tear the veil between truth and deception — 2 wrong answers crumble to dust. Arena only.",
+   "effect": "fifty_fifty",
+   "id": "fifty_fifty",
+   "level_required": 5,
+   "name": "Veil of Duality",
+   "price": 60,
+   "sprite": "⚖️",
+   "tier": "potions",
+   "type": "potion"
+  },
+  {
+   "arena_only": true,
+   "battle": {},
+   "bonus": {},
+   "category": "potion",
+   "consumable": true,
+   "description": "Restore 1 heart mid-Arena battle. Use from the potion bar before you fall.",
+   "effect": "heal_1",
+   "id": "potion_health_small",
+   "level_required": 5,
+   "name": "Crimson Vial",
+   "price": 80,
+   "sprite": "🧪",
+   "tier": "potions",
+   "type": "potion"
+  },
+  {
+   "battle": {},
+   "bonus": {},
+   "category": "potion",
+   "consumable": true,
+   "description": "+50% XP earned for 1 hour. The ancient taste of knowledge.",
+   "effect": "xp_boost_1h",
+   "id": "potion_xp_boost",
+   "level_required": 7,
+   "name": "Sage's Elixir",
+   "price": 150,
+   "sprite": "⚗️",
+   "tier": "potions",
+   "type": "potion"
+  },
+  {
+   "battle": {},
+   "bonus": {},
+   "category": "potion",
+   "consumable": true,
+   "description": "+50% coins earned for 1 hour. Everything you touch turns to gold.",
+   "effect": "coin_boost_1h",
+   "id": "potion_coin_boost",
+   "level_required": 7,
+   "name": "Midas Tonic",
+   "price": 150,
+   "sprite": "💰",
+   "tier": "potions",
+   "type": "potion"
+  },
+  {
+   "battle": {},
+   "bonus": {},
+   "category": "potion",
+   "consumable": true,
+   "description": "Grants 1 streak freeze token. Activates automatically if you miss a day — no action needed.",
+   "effect": "streak_freeze",
+   "id": "potion_streak_shield",
+   "level_required": 9,
+   "name": "Temporal Shield Flask",
+   "price": 250,
+   "sprite": "🛡️",
+   "tier": "potions",
+   "type": "potion"
+  },
+  {
+   "battle": {},
+   "bonus": {},
+   "category": "potion",
+   "consumable": true,
+   "description": "+100% XP earned for 1 hour. Pure distilled brilliance.",
+   "effect": "xp_boost_2h",
+   "id": "potion_xp_boost_2h",
+   "level_required": 12,
+   "name": "Grand Arcane Elixir",
+   "price": 400,
+   "sprite": "🌟",
+   "tier": "potions",
+   "type": "potion"
+  },
+  {
+   "battle": {},
+   "bonus": {},
+   "category": "potion",
+   "consumable": true,
+   "description": "Reset your daily quests instantly. Bend time to your will.",
+   "effect": "reset_daily_quests",
+   "id": "potion_quest_reset",
+   "level_required": 15,
+   "name": "Chrono Vortex Flask",
+   "price": 600,
+   "sprite": "⏳",
+   "tier": "potions",
+   "type": "potion"
+  },
+  {
+   "battle": {},
+   "bonus": {},
+   "category": "title",
+   "consumable": false,
+   "description": "Earned by those who pursue knowledge relentlessly. Purely cosmetic.",
+   "effect": null,
+   "id": "title_scholar",
+   "level_required": 30,
+   "name": "📚 The Scholar",
+   "price": 500,
+   "sprite": "📚",
+   "tier": "titles",
+   "type": "title"
+  },
+  {
+   "battle": {},
+   "bonus": {
+    "xp_pct": 0.03
+   },
+   "category": "title",
+   "consumable": false,
+   "description": "Master of every quiz format. +3% XP on all activities.",
+   "effect": null,
+   "id": "title_quiz_master",
+   "level_required": 30,
+   "name": "🎯 Quiz Sovereign",
+   "price": 1000,
+   "sprite": "🎯",
+   "tier": "titles",
+   "type": "title"
+  },
+  {
+   "battle": {},
+   "bonus": {
+    "coin_pct": 0.05,
+    "xp_pct": 0.05
+   },
+   "category": "title",
+   "consumable": false,
+   "description": "Undefeated in the arena. +5% XP and +5% coins.",
+   "effect": null,
+   "id": "title_arena_champ",
+   "level_required": 33,
+   "name": "⚔️ Arena Overlord",
+   "price": 2000,
+   "sprite": "⚔️",
+   "tier": "titles",
+   "type": "title"
+  },
+  {
+   "battle": {},
+   "bonus": {
+    "coin_pct": 0.05,
+    "xp_pct": 0.08
+   },
+   "category": "title",
+   "consumable": false,
+   "description": "Has outlasted civilisations. Their name echoes forever. +8% XP and +5% coins.",
+   "effect": null,
+   "id": "title_the_eternal",
+   "level_required": 36,
+   "name": "♾️ The Undying",
+   "price": 4000,
+   "sprite": "♾️",
+   "tier": "titles",
+   "type": "title"
+  },
+  {
+   "battle": {},
+   "bonus": {
+    "coin_pct": 0.05,
+    "xp_pct": 0.1
+   },
+   "category": "title",
+   "consumable": false,
+   "description": "Slayer of ancient wyrms. Fear follows this name. +10% XP, +5% coins.",
+   "effect": null,
+   "id": "title_dragon_slayer",
+   "level_required": 38,
+   "name": "🐉 Dragonbane",
+   "price": 5000,
+   "sprite": "🐉",
+   "tier": "titles",
+   "type": "title"
+  },
+  {
+   "battle": {},
+   "bonus": {
+    "arena_hints": 2,
+    "coin_pct": 0.1,
+    "xp_pct": 0.12
+   },
+   "category": "title",
+   "consumable": false,
+   "description": "The ultimate achievement. Songs are written about you. +12% XP, +10% coins, +2 Arena hints.",
+   "effect": null,
+   "id": "title_legend",
+   "level_required": 40,
+   "name": "👑 Living Legend",
+   "price": 10000,
+   "sprite": "👑",
+   "tier": "titles",
+   "type": "title"
+  },
+  {
+   "battle": {
+    "damage_pct": 0.05
+   },
+   "bonus": {},
+   "category": "weapon",
+   "consumable": false,
+   "description": "The pen is mightier. A classic HB pencil, always sharp.",
+   "effect": null,
+   "id": "weapon_pencil",
+   "level_required": 10,
+   "name": "Scholar's Pencil",
+   "price": 100,
+   "sprite": "✏️",
+   "tier": "weapon_starter",
+   "type": "weapon"
+  },
+  {
+   "battle": {
+    "damage_pct": 0.05
+   },
+   "bonus": {},
+   "category": "weapon",
+   "consumable": false,
+   "description": "Steel-edged ruler. Measures angles AND opponent confidence.",
+   "effect": null,
+   "id": "weapon_ruler",
+   "level_required": 10,
+   "name": "Precision Ruler",
+   "price": 120,
+   "sprite": "📏",
+   "tier": "weapon_starter",
+   "type": "weapon"
+  },
+  {
+   "battle": {
+    "damage_pct": 0.1
+   },
+   "bonus": {
+    "combo_xp_pct": 0.05
+   },
+   "category": "weapon",
+   "consumable": false,
+   "description": "Bronze dual swords with leather-wrapped hilts. ✦✦ Dual wield! +5% combo XP.",
+   "effect": null,
+   "id": "weapon_sword_bronze",
+   "level_required": 10,
+   "name": "Dawnsteel Twin Blades",
+   "price": 400,
+   "sprite": "⚔️",
+   "tier": "weapon_tier1",
+   "type": "weapon"
+  },
+  {
+   "battle": {
+    "damage_pct": 0.12
+   },
+   "bonus": {
+    "xp_pct": 0.05
+   },
+   "category": "weapon",
+   "consumable": false,
+   "description": "Gnarled forest staff with a glowing crystal tip. +5% XP.",
+   "effect": null,
+   "id": "weapon_staff_wood",
+   "level_required": 11,
+   "name": "Emberwood Quarterstaff",
+   "price": 450,
+   "sprite": "🪄",
+   "tier": "weapon_tier1",
+   "type": "weapon"
+  },
+  {
+   "battle": {
+    "damage_pct": 0.12
+   },
+   "bonus": {
+    "xp_pct": 0.05
+   },
+   "category": "weapon",
+   "consumable": false,
+   "description": "Elegant recurve bow carved from ancient ashwood. +5% XP.",
+   "effect": null,
+   "id": "weapon_bow",
+   "level_required": 11,
+   "name": "Ashwood Recurve Bow",
+   "price": 500,
+   "sprite": "🏹",
+   "tier": "weapon_tier1",
+   "type": "weapon"
+  },
+  {
+   "battle": {
+    "damage_pct": 0.16
+   },
+   "bonus": {
+    "combo_xp_pct": 0.1
+   },
+   "category": "weapon",
+   "consumable": false,
+   "description": "Silver dual blades that shimmer like moonlight. ✦✦ Dual wield! +10% combo XP.",
+   "effect": null,
+   "id": "weapon_sword_silver",
+   "level_required": 13,
+   "name": "Moonblade Twin Swords",
+   "price": 900,
+   "sprite": "⚔️",
+   "tier": "weapon_tier2",
+   "type": "weapon"
+  },
+  {
+   "battle": {
+    "damage_pct": 0.18
+   },
+   "bonus": {
+    "xp_pct": 0.08
+   },
+   "category": "weapon",
+   "consumable": false,
+   "description": "Rune-carved warhammer that crackles with energy. +8% XP.",
+   "effect": null,
+   "id": "weapon_hammer",
+   "level_required": 14,
+   "name": "Thundercrack War Hammer",
+   "price": 1000,
+   "sprite": "🔨",
+   "tier": "weapon_tier2",
+   "type": "weapon"
+  },
+  {
+   "battle": {
+    "damage_pct": 0.2
+   },
+   "bonus": {
+    "xp_pct": 0.1
+   },
+   "category": "weapon",
+   "consumable": false,
+   "description": "A crystal-topped staff refracting arcane light. +10% XP.",
+   "effect": null,
+   "id": "weapon_staff_crystal",
+   "level_required": 14,
+   "name": "Aqua Prism Staff",
+   "price": 1100,
+   "sprite": "💎",
+   "tier": "weapon_tier2",
+   "type": "weapon"
+  },
+  {
+   "battle": {
+    "damage_pct": 0.28
+   },
+   "bonus": {
+    "combo_xp_pct": 0.15
+   },
+   "category": "weapon",
+   "consumable": false,
+   "description": "Gold-hilted legendary swords etched with celestial runes. ✦✦ Dual wield! +15% combo XP.",
+   "effect": null,
+   "id": "weapon_sword_excalibur",
+   "level_required": 18,
+   "name": "Excalibur Twin Blades",
+   "price": 2500,
+   "sprite": "✨",
+   "tier": "weapon_tier3",
+   "type": "weapon"
+  },
+  {
+   "battle": {
+    "damage_pct": 0.3
+   },
+   "bonus": {
+    "xp_pct": 0.15
+   },
+   "category": "weapon",
+   "consumable": false,
+   "description": "A staff crowned with a swirling tome of forbidden power. +15% XP.",
+   "effect": null,
+   "id": "weapon_staff_legendary",
+   "level_required": 20,
+   "name": "Infernal Codex Staff",
+   "price": 3000,
+   "sprite": "🌟",
+   "tier": "weapon_tier3",
+   "type": "weapon"
+  }
+ ],
+ "level_from_xp": {
+  "0": 1,
+  "100": 2,
+  "100000": 26,
+  "1000000": 64,
+  "1000000000": 200,
+  "1299": 4,
+  "1300": 5,
+  "20000": 13,
+  "349": 3,
+  "350": 3,
+  "5000": 8,
+  "99": 1
+ },
+ "quest_pool": {
+  "1": [
+   {
+    "description": "Ask 10 questions in Chat",
+    "min_level": 1,
+    "quest_type": "ask_questions",
+    "reward_coins": 25,
+    "reward_xp": 50,
+    "target": 10
+   },
+   {
+    "description": "Complete 3 quizzes",
+    "min_level": 1,
+    "quest_type": "complete_quizzes",
+    "reward_coins": 30,
+    "reward_xp": 60,
+    "target": 3
+   },
+   {
+    "description": "Do any study activity today",
+    "min_level": 1,
+    "quest_type": "maintain_streak",
+    "reward_coins": 100,
+    "reward_xp": 50,
+    "target": 1
+   }
+  ],
+  "10": [
+   {
+    "description": "Ask 10 questions in Chat",
+    "min_level": 1,
+    "quest_type": "ask_questions",
+    "reward_coins": 25,
+    "reward_xp": 50,
+    "target": 10
+   },
+   {
+    "description": "Complete 3 quizzes",
+    "min_level": 1,
+    "quest_type": "complete_quizzes",
+    "reward_coins": 30,
+    "reward_xp": 60,
+    "target": 3
+   },
+   {
+    "description": "Do any study activity today",
+    "min_level": 1,
+    "quest_type": "maintain_streak",
+    "reward_coins": 100,
+    "reward_xp": 50,
+    "target": 1
+   },
+   {
+    "description": "Generate notes twice",
+    "min_level": 5,
+    "quest_type": "generate_notes",
+    "reward_coins": 35,
+    "reward_xp": 70,
+    "target": 2
+   },
+   {
+    "description": "Get 100% on any quiz",
+    "min_level": 5,
+    "quest_type": "perfect_quiz",
+    "reward_coins": 50,
+    "reward_xp": 100,
+    "target": 1
+   },
+   {
+    "description": "Ask 5 detailed questions (20+ words)",
+    "min_level": 5,
+    "quest_type": "ask_deep_questions",
+    "reward_coins": 45,
+    "reward_xp": 90,
+    "target": 5
+   },
+   {
+    "description": "Complete 2 arena rounds",
+    "min_level": 10,
+    "quest_type": "arena_rounds",
+    "reward_coins": 60,
+    "reward_xp": 120,
+    "target": 2
+   },
+   {
+    "description": "Defeat 1 boss in Battle Arena",
+    "min_level": 10,
+    "quest_type": "defeat_boss",
+    "reward_coins": 90,
+    "reward_xp": 160,
+    "target": 1
+   },
+   {
+    "description": "Score 90%+ on 3 quizzes",
+    "min_level": 10,
+    "quest_type": "quiz_master",
+    "reward_coins": 75,
+    "reward_xp": 150,
+    "target": 3
+   }
+  ],
+  "15": [
+   {
+    "description": "Ask 10 questions in Chat",
+    "min_level": 1,
+    "quest_type": "ask_questions",
+    "reward_coins": 25,
+    "reward_xp": 50,
+    "target": 10
+   },
+   {
+    "description": "Complete 3 quizzes",
+    "min_level": 1,
+    "quest_type": "complete_quizzes",
+    "reward_coins": 30,
+    "reward_xp": 60,
+    "target": 3
+   },
+   {
+    "description": "Do any study activity today",
+    "min_level": 1,
+    "quest_type": "maintain_streak",
+    "reward_coins": 100,
+    "reward_xp": 50,
+    "target": 1
+   },
+   {
+    "description": "Generate notes twice",
+    "min_level": 5,
+    "quest_type": "generate_notes",
+    "reward_coins": 35,
+    "reward_xp": 70,
+    "target": 2
+   },
+   {
+    "description": "Get 100% on any quiz",
+    "min_level": 5,
+    "quest_type": "perfect_quiz",
+    "reward_coins": 50,
+    "reward_xp": 100,
+    "target": 1
+   },
+   {
+    "description": "Ask 5 detailed questions (20+ words)",
+    "min_level": 5,
+    "quest_type": "ask_deep_questions",
+    "reward_coins": 45,
+    "reward_xp": 90,
+    "target": 5
+   },
+   {
+    "description": "Complete 2 arena rounds",
+    "min_level": 10,
+    "quest_type": "arena_rounds",
+    "reward_coins": 60,
+    "reward_xp": 120,
+    "target": 2
+   },
+   {
+    "description": "Defeat 1 boss in Battle Arena",
+    "min_level": 10,
+    "quest_type": "defeat_boss",
+    "reward_coins": 90,
+    "reward_xp": 160,
+    "target": 1
+   },
+   {
+    "description": "Score 90%+ on 3 quizzes",
+    "min_level": 10,
+    "quest_type": "quiz_master",
+    "reward_coins": 75,
+    "reward_xp": 150,
+    "target": 3
+   },
+   {
+    "description": "Get 100% on 3 quizzes",
+    "min_level": 15,
+    "quest_type": "quiz_perfectionist",
+    "reward_coins": 110,
+    "reward_xp": 220,
+    "target": 3
+   },
+   {
+    "description": "Generate detailed notes 5 times",
+    "min_level": 15,
+    "quest_type": "notes_scholar",
+    "reward_coins": 85,
+    "reward_xp": 170,
+    "target": 5
+   },
+   {
+    "description": "Study 3 flashcard decks",
+    "min_level": 1,
+    "quest_type": "study_flashcards",
+    "reward_coins": 40,
+    "reward_xp": 120,
+    "target": 3
+   }
+  ],
+  "40": [
+   {
+    "description": "Ask 10 questions in Chat",
+    "min_level": 1,
+    "quest_type": "ask_questions",
+    "reward_coins": 25,
+    "reward_xp": 50,
+    "target": 10
+   },
+   {
+    "description": "Complete 3 quizzes",
+    "min_level": 1,
+    "quest_type": "complete_quizzes",
+    "reward_coins": 30,
+    "reward_xp": 60,
+    "target": 3
+   },
+   {
+    "description": "Do any study activity today",
+    "min_level": 1,
+    "quest_type": "maintain_streak",
+    "reward_coins": 100,
+    "reward_xp": 50,
+    "target": 1
+   },
+   {
+    "description": "Generate notes twice",
+    "min_level": 5,
+    "quest_type": "generate_notes",
+    "reward_coins": 35,
+    "reward_xp": 70,
+    "target": 2
+   },
+   {
+    "description": "Get 100% on any quiz",
+    "min_level": 5,
+    "quest_type": "perfect_quiz",
+    "reward_coins": 50,
+    "reward_xp": 100,
+    "target": 1
+   },
+   {
+    "description": "Ask 5 detailed questions (20+ words)",
+    "min_level": 5,
+    "quest_type": "ask_deep_questions",
+    "reward_coins": 45,
+    "reward_xp": 90,
+    "target": 5
+   },
+   {
+    "description": "Complete 2 arena rounds",
+    "min_level": 10,
+    "quest_type": "arena_rounds",
+    "reward_coins": 60,
+    "reward_xp": 120,
+    "target": 2
+   },
+   {
+    "description": "Defeat 1 boss in Battle Arena",
+    "min_level": 10,
+    "quest_type": "defeat_boss",
+    "reward_coins": 90,
+    "reward_xp": 160,
+    "target": 1
+   },
+   {
+    "description": "Score 90%+ on 3 quizzes",
+    "min_level": 10,
+    "quest_type": "quiz_master",
+    "reward_coins": 75,
+    "reward_xp": 150,
+    "target": 3
+   },
+   {
+    "description": "Get 100% on 3 quizzes",
+    "min_level": 15,
+    "quest_type": "quiz_perfectionist",
+    "reward_coins": 110,
+    "reward_xp": 220,
+    "target": 3
+   },
+   {
+    "description": "Generate detailed notes 5 times",
+    "min_level": 15,
+    "quest_type": "notes_scholar",
+    "reward_coins": 85,
+    "reward_xp": 170,
+    "target": 5
+   },
+   {
+    "description": "Study 3 flashcard decks",
+    "min_level": 1,
+    "quest_type": "study_flashcards",
+    "reward_coins": 40,
+    "reward_xp": 120,
+    "target": 3
+   }
+  ],
+  "5": [
+   {
+    "description": "Ask 10 questions in Chat",
+    "min_level": 1,
+    "quest_type": "ask_questions",
+    "reward_coins": 25,
+    "reward_xp": 50,
+    "target": 10
+   },
+   {
+    "description": "Complete 3 quizzes",
+    "min_level": 1,
+    "quest_type": "complete_quizzes",
+    "reward_coins": 30,
+    "reward_xp": 60,
+    "target": 3
+   },
+   {
+    "description": "Do any study activity today",
+    "min_level": 1,
+    "quest_type": "maintain_streak",
+    "reward_coins": 100,
+    "reward_xp": 50,
+    "target": 1
+   },
+   {
+    "description": "Generate notes twice",
+    "min_level": 5,
+    "quest_type": "generate_notes",
+    "reward_coins": 35,
+    "reward_xp": 70,
+    "target": 2
+   },
+   {
+    "description": "Get 100% on any quiz",
+    "min_level": 5,
+    "quest_type": "perfect_quiz",
+    "reward_coins": 50,
+    "reward_xp": 100,
+    "target": 1
+   },
+   {
+    "description": "Ask 5 detailed questions (20+ words)",
+    "min_level": 5,
+    "quest_type": "ask_deep_questions",
+    "reward_coins": 45,
+    "reward_xp": 90,
+    "target": 5
+   }
+  ]
+ },
+ "shop_level_1": {
+  "category_status": {
+   "armor": {
+    "description": "Outfits — expensive ones grant permanent XP & coin bonuses",
+    "icon": "🛡️",
+    "name": "Armor & Outfits",
+    "unlock_level": 1,
+    "unlocked": true
+   },
+   "headgear": {
+    "description": "Hats, crowns & headwear — some grant Arena hint charges or XP bonuses",
+    "icon": "🎩",
+    "name": "Headgear",
+    "unlock_level": 1,
+    "unlocked": true
+   },
+   "pet": {
+    "description": "Companions — grant passive XP/coin bonuses & auto streak freezes",
+    "icon": "🐾",
+    "name": "Pets",
+    "unlock_level": 20,
+    "unlocked": false
+   },
+   "potion": {
+    "description": "Consumables — Arena heals, XP boosts, streak shields & quest resets",
+    "icon": "🧪",
+    "name": "Potions",
+    "unlock_level": 5,
+    "unlocked": false
+   },
+   "title": {
+    "description": "Prestige titles — rare ones grant small stat bonuses",
+    "icon": "🏆",
+    "name": "Titles",
+    "unlock_level": 30,
+    "unlocked": false
+   },
+   "weapon": {
+    "description": "Weapons — mid-tier+ boost XP from answer combos",
+    "icon": "⚔️",
+    "name": "Weapons",
+    "unlock_level": 10,
+    "unlocked": false
+   }
+  },
+  "coins": 0,
+  "equipped": {},
+  "items": [
+   {
+    "arena_only": false,
+    "at_max": false,
+    "battle": {},
+    "bonus": {},
+    "buff_count": null,
+    "can_afford": true,
+    "category": "armor",
+    "consumable": false,
+    "description": "Crisp white gi with crossed lapels and a black belt. A fighter's classic. Purely cosmetic.",
+    "effect": null,
+    "equipped": false,
+    "id": "armor_gi_white",
+    "level_required": 1,
+    "locked": false,
+    "max_stack": null,
+    "name": "White Karate Gi",
+    "owned": true,
+    "price": 0,
+    "quantity": null,
+    "sprite": "🥋",
+    "tier": "armor_fighting_gi",
+    "total_available": null,
+    "type": "armor"
+   },
+   {
+    "arena_only": false,
+    "at_max": false,
+    "battle": {},
+    "bonus": {},
+    "buff_count": null,
+    "can_afford": true,
+    "category": "armor",
+    "consumable": false,
+    "description": "Bare-chested warrior with wide red gi pants and a pink sash. Pure power. Purely cosmetic.",
+    "effect": null,
+    "equipped": false,
+    "id": "armor_gi_red",
+    "level_required": 1,
+    "locked": false,
+    "max_stack": null,
+    "name": "Red Fighter's Hakama",
+    "owned": true,
+    "price": 0,
+    "quantity": null,
+    "sprite": "🔴",
+    "tier": "armor_fighting_gi",
+    "total_available": null,
+    "type": "armor"
+   },
+   {
+    "arena_only": false,
+    "at_max": false,
+    "battle": {},
+    "bonus": {},
+    "buff_count": null,
+    "can_afford": true,
+    "category": "armor",
+    "consumable": false,
+    "description": "Bare-chested fighter with wide blue gi pants and a golden belt. Swift and precise. Purely cosmetic.",
+    "effect": null,
+    "equipped": false,
+    "id": "armor_gi_blue",
+    "level_required": 1,
+    "locked": false,
+    "max_stack": null,
+    "name": "Blue Fighter's Hakama",
+    "owned": true,
+    "price": 0,
+    "quantity": null,
+    "sprite": "🔵",
+    "tier": "armor_fighting_gi",
+    "total_available": null,
+    "type": "armor"
+   },
+   {
+    "arena_only": false,
+    "at_max": false,
+    "battle": {},
+    "bonus": {},
+    "buff_count": null,
+    "can_afford": false,
+    "category": "armor",
+    "consumable": false,
+    "description": "Clean white tee with a pocket detail. Classic drip, purely cosmetic.",
+    "effect": null,
+    "equipped": false,
+    "id": "armor_shirt_basic",
+    "level_required": 5,
+    "locked": true,
+    "max_stack": null,
+    "name": "Street Legend Tee",
+    "owned": false,
+    "price": 50,
+    "quantity": null,
+    "sprite": "👕",
+    "tier": "armor_starter",
+    "total_available": null,
+    "type": "armor"
+   },
+   {
+    "arena_only": false,
+    "at_max": false,
+    "battle": {},
+    "bonus": {},
+    "buff_count": null,
+    "can_afford": false,
+    "category": "armor",
+    "consumable": false,
+    "description": "Oversized grey hoodie with a hidden kangaroo pocket. Lowkey but iconic.",
+    "effect": null,
+    "equipped": false,
+    "id": "armor_hoodie_gray",
+    "level_required": 5,
+    "locked": true,
+    "max_stack": null,
+    "name": "Phantom Hoodie",
+    "owned": false,
+    "price": 80,
+    "quantity": null,
+    "sprite": "🧥",
+    "tier": "armor_starter",
+    "total_available": null,
+    "type": "armor"
+   },
+   {
+    "arena_only": false,
+    "at_max": false,
+    "battle": {
+     "hp": 1
+    },
+    "bonus": {
+     "xp_pct": 0.05
+    },
+    "buff_count": null,
+    "can_afford": false,
+    "category": "armor",
+    "consumable": false,
+    "description": "Deep sapphire robes with gold-trimmed bell sleeves. +5% XP on all activities.",
+    "effect": null,
+    "equipped": false,
+    "id": "armor_robe_blue",
+    "level_required": 6,
+    "locked": true,
+    "max_stack": null,
+    "name": "Azure Scholar's Vestments",
+    "owned": false,
+    "price": 250,
+    "quantity": null,
+    "sprite": "🥋",
+    "tier": "armor_tier1",
+    "total_available": null,
+    "type": "armor"
+   },
+   {
+    "arena_only": false,
+    "at_max": false,
+    "battle": {
+     "hp": 1
+    },
+    "bonus": {
+     "coin_pct": 0.05
+    },
+    "buff_count": null,
+    "can_afford": false,
+    "category": "armor",
+    "consumable": false,
+    "description": "Sleek black leather jacket with V-lapels and combat boots. +5% coins.",
+    "effect": null,
+    "equipped": false,
+    "id": "armor_jacket_cool",
+    "level_required": 6,
+    "locked": true,
+    "max_stack": null,
+    "name": "Midnight Rider Jacket",
+    "owned": false,
+    "price": 300,
+    "quantity": null,
+    "sprite": "🧥",
+    "tier": "armor_tier1",
+    "total_available": null,
+    "type": "armor"
+   },
+   {
+    "arena_only": false,
+    "at_max": false,
+    "battle": {
+     "hp": 2
+    },
+    "bonus": {
+     "xp_pct": 0.1
+    },
+    "buff_count": null,
+    "can_afford": false,
+    "category": "armor",
+    "consumable": false,
+    "description": "Swirling purple robes etched with arcane runes. +10% XP on all activities.",
+    "effect": null,
+    "equipped": false,
+    "id": "armor_wizard_purple",
+    "level_required": 10,
+    "locked": true,
+    "max_stack": null,
+    "name": "Void Weaver's Garments",
+    "owned": false,
+    "price": 800,
+    "quantity": null,
+    "sprite": "🧙",
+    "tier": "armor_tier2",
+    "total_available": null,
+    "type": "armor"
+   },
+   {
+    "arena_only": false,
+    "at_max": false,
+    "battle": {
+     "hp": 3
+    },
+    "bonus": {
+     "coin_pct": 0.1
+    },
+    "buff_count": null,
+    "can_afford": false,
+    "category": "armor",
+    "consumable": false,
+    "description": "Gleaming titanium plate with spiked pauldrons and sabatons. +10% coins.",
+    "effect": null,
+    "equipped": false,
+    "id": "armor_knight_silver",
+    "level_required": 10,
+    "locked": true,
+    "max_stack": null,
+    "name": "Titanfall Plate",
+    "owned": false,
+    "price": 900,
+    "quantity": null,
+    "sprite": "🛡️",
+    "tier": "armor_tier2",
+    "total_available": null,
+    "type": "armor"
+   },
+   {
+    "arena_only": false,
+    "at_max": false,
+    "battle": {
+     "hp": 4
+    },
+    "bonus": {
+     "coin_pct": 0.1,
+     "xp_pct": 0.15
+    },
+    "buff_count": null,
+    "can_afford": false,
+    "category": "armor",
+    "consumable": false,
+    "description": "Forged from solidified sunlight. Jeweled crest. +15% XP and +10% coins.",
+    "effect": null,
+    "equipped": false,
+    "id": "armor_knight_gold",
+    "level_required": 18,
+    "locked": true,
+    "max_stack": null,
+    "name": "Sol Emperor's Plate",
+    "owned": false,
+    "price": 2500,
+    "quantity": null,
+    "sprite": "⚜️",
+    "tier": "armor_tier3",
+    "total_available": null,
+    "type": "armor"
+   },
+   {
+    "arena_only": false,
+    "at_max": false,
+    "battle": {
+     "hp": 5
+    },
+    "bonus": {
+     "coin_pct": 0.15,
+     "xp_pct": 0.2
+    },
+    "buff_count": null,
+    "can_afford": false,
+    "category": "armor",
+    "consumable": false,
+    "description": "Scales harvested from a volcano dragon. Shoulder spikes glow faintly. +20% XP and +15% coins.",
+    "effect": null,
+    "equipped": false,
+    "id": "armor_dragon_scale",
+    "level_required": 22,
+    "locked": true,
+    "max_stack": null,
+    "name": "Ignis Wyrm Scale Mail",
+    "owned": false,
+    "price": 4000,
+    "quantity": null,
+    "sprite": "🐉",
+    "tier": "armor_tier3",
+    "total_available": null,
+    "type": "armor"
+   },
+   {
+    "arena_only": false,
+    "at_max": false,
+    "battle": {
+     "hp": 6
+    },
+    "bonus": {
+     "coin_pct": 0.2,
+     "xp_pct": 0.3
+    },
+    "buff_count": null,
+    "can_afford": false,
+    "category": "armor",
+    "consumable": false,
+    "description": "A robe that pulses with starlight. Worn only by those who shaped history. +30% XP and +20% coins.",
+    "effect": null,
+    "equipped": false,
+    "id": "armor_legends_mantle",
+    "level_required": 28,
+    "locked": true,
+    "max_stack": null,
+    "name": "Astral Conqueror's Mantle",
+    "owned": false,
+    "price": 8000,
+    "quantity": null,
+    "sprite": "✨",
+    "tier": "armor_tier3",
+    "total_available": null,
+    "type": "armor"
+   },
+   {
+    "arena_only": false,
+    "at_max": false,
+    "battle": {},
+    "bonus": {},
+    "buff_count": null,
+    "can_afford": true,
+    "category": "headgear",
+    "consumable": false,
+    "description": "A bold red cloth headband worn by champions. The mark of a true martial artist. Purely cosmetic.",
+    "effect": null,
+    "equipped": false,
+    "id": "hat_headband_red",
+    "level_required": 1,
+    "locked": false,
+    "max_stack": null,
+    "name": "Red Fighter's Headband",
+    "owned": true,
+    "price": 0,
+    "quantity": null,
+    "sprite": "🔴",
+    "tier": "headgear_fighting",
+    "total_available": null,
+    "type": "headgear"
+   },
+   {
+    "arena_only": false,
+    "at_max": false,
+    "battle": {},
+    "bonus": {},
+    "buff_count": null,
+    "can_afford": true,
+    "category": "headgear",
+    "consumable": false,
+    "description": "A deep blue headband — focused, calm, and ready for battle. Purely cosmetic.",
+    "effect": null,
+    "equipped": false,
+    "id": "hat_headband_blue",
+    "level_required": 1,
+    "locked": false,
+    "max_stack": null,
+    "name": "Blue Fighter's Headband",
+    "owned": true,
+    "price": 0,
+    "quantity": null,
+    "sprite": "🔵",
+    "tier": "headgear_fighting",
+    "total_available": null,
+    "type": "headgear"
+   },
+   {
+    "arena_only": false,
+    "at_max": false,
+    "battle": {},
+    "bonus": {},
+    "buff_count": null,
+    "can_afford": true,
+    "category": "headgear",
+    "consumable": false,
+    "description": "A clean white training headband. Simple. Disciplined. Purely cosmetic.",
+    "effect": null,
+    "equipped": false,
+    "id": "hat_headband_white",
+    "level_required": 1,
+    "locked": false,
+    "max_stack": null,
+    "name": "White Headband",
+    "owned": true,
+    "price": 0,
+    "quantity": null,
+    "sprite": "⬜",
+    "tier": "headgear_fighting",
+    "total_available": null,
+    "type": "headgear"
+   },
+   {
+    "arena_only": false,
+    "at_max": false,
+    "battle": {},
+    "bonus": {},
+    "buff_count": null,
+    "can_afford": false,
+    "category": "headgear",
+    "consumable": false,
+    "description": "Bold red snapback. Low-key flex. Purely cosmetic.",
+    "effect": null,
+    "equipped": false,
+    "id": "hat_baseball_red",
+    "level_required": 7,
+    "locked": true,
+    "max_stack": null,
+    "name": "Crimson Street Cap",
+    "owned": false,
+    "price": 50,
+    "quantity": null,
+    "sprite": "🧢",
+    "tier": "headgear_starter",
+    "total_available": null,
+    "type": "headgear"
+   },
+   {
+    "arena_only": false,
+    "at_max": false,
+    "battle": {},
+    "bonus": {},
+    "buff_count": null,
+    "can_afford": false,
+    "category": "headgear",
+    "consumable": false,
+    "description": "Thick knitted winter beanie in deep ocean blue. Purely cosmetic.",
+    "effect": null,
+    "equipped": false,
+    "id": "hat_beanie_blue",
+    "level_required": 7,
+    "locked": true,
+    "max_stack": null,
+    "name": "Frostwave Beanie",
+    "owned": false,
+    "price": 50,
+    "quantity": null,
+    "sprite": "🎓",
+    "tier": "headgear_starter",
+    "total_available": null,
+    "type": "headgear"
+   },
+   {
+    "arena_only": false,
+    "at_max": false,
+    "battle": {
+     "time_sec": 3
+    },
+    "bonus": {
+     "arena_hints": 1
+    },
+    "buff_count": null,
+    "can_afford": false,
+    "category": "headgear",
+    "consumable": false,
+    "description": "Noise-cancelling over-ears with glowing cables. +1 free hint charge every Arena battle.",
+    "effect": null,
+    "equipped": false,
+    "id": "hat_headphones",
+    "level_required": 8,
+    "locked": true,
+    "max_stack": null,
+    "name": "Neural Link Headphones",
+    "owned": false,
+    "price": 200,
+    "quantity": null,
+    "sprite": "🎧",
+    "tier": "headgear_tier1",
+    "total_available": null,
+    "type": "headgear"
+   },
+   {
+    "arena_only": false,
+    "at_max": false,
+    "battle": {
+     "time_sec": 3
+    },
+    "bonus": {
+     "xp_pct": 0.05
+    },
+    "buff_count": null,
+    "can_afford": false,
+    "category": "headgear",
+    "consumable": false,
+    "description": "Tall midnight hat with a golden constellation band. +5% XP on all activities.",
+    "effect": null,
+    "equipped": false,
+    "id": "hat_wizard",
+    "level_required": 9,
+    "locked": true,
+    "max_stack": null,
+    "name": "Archmage's Pointed Hat",
+    "owned": false,
+    "price": 300,
+    "quantity": null,
+    "sprite": "🎩",
+    "tier": "headgear_tier1",
+    "total_available": null,
+    "type": "headgear"
+   },
+   {
+    "arena_only": false,
+    "at_max": false,
+    "battle": {
+     "time_sec": 3
+    },
+    "bonus": {
+     "coin_pct": 0.05,
+     "xp_pct": 0.05
+    },
+    "buff_count": null,
+    "can_afford": false,
+    "category": "headgear",
+    "consumable": false,
+    "description": "Bronze circlet set with emerald and sapphire gems. +5% XP and +5% coins.",
+    "effect": null,
+    "equipped": false,
+    "id": "hat_crown_bronze",
+    "level_required": 10,
+    "locked": true,
+    "max_stack": null,
+    "name": "Verdant Crown of Learning",
+    "owned": false,
+    "price": 500,
+    "quantity": null,
+    "sprite": "👑",
+    "tier": "headgear_tier2",
+    "total_available": null,
+    "type": "headgear"
+   },
+   {
+    "arena_only": false,
+    "at_max": false,
+    "battle": {
+     "time_sec": 4
+    },
+    "bonus": {
+     "xp_pct": 0.1
+    },
+    "buff_count": null,
+    "can_afford": false,
+    "category": "headgear",
+    "consumable": false,
+    "description": "Midnight-black cloth mask, only eyes visible. Stealth study mode. +10% XP.",
+    "effect": null,
+    "equipped": false,
+    "id": "hat_ninja",
+    "level_required": 12,
+    "locked": true,
+    "max_stack": null,
+    "name": "Shadow Veil Headband",
+    "owned": false,
+    "price": 700,
+    "quantity": null,
+    "sprite": "🥷",
+    "tier": "headgear_tier2",
+    "total_available": null,
+    "type": "headgear"
+   },
+   {
+    "arena_only": false,
+    "at_max": false,
+    "battle": {
+     "time_sec": 5
+    },
+    "bonus": {
+     "coin_pct": 0.05,
+     "xp_pct": 0.1
+    },
+    "buff_count": null,
+    "can_afford": false,
+    "category": "headgear",
+    "consumable": false,
+    "description": "Frosted silver crown with icy-blue gems. +10% XP and +5% coins.",
+    "effect": null,
+    "equipped": false,
+    "id": "hat_crown_silver",
+    "level_required": 14,
+    "locked": true,
+    "max_stack": null,
+    "name": "Glacial Silver Crown",
+    "owned": false,
+    "price": 1000,
+    "quantity": null,
+    "sprite": "👑",
+    "tier": "headgear_tier3",
+    "total_available": null,
+    "type": "headgear"
+   },
+   {
+    "arena_only": false,
+    "at_max": false,
+    "battle": {
+     "time_sec": 6
+    },
+    "bonus": {
+     "arena_hints": 1,
+     "coin_pct": 0.1
+    },
+    "buff_count": null,
+    "can_afford": false,
+    "category": "headgear",
+    "consumable": false,
+    "description": "Lacquered kabuto with a golden hachimaki. +10% coins and +1 arena hint.",
+    "effect": null,
+    "equipped": false,
+    "id": "hat_samurai",
+    "level_required": 15,
+    "locked": true,
+    "max_stack": null,
+    "name": "Oni-Sealed War Helm",
+    "owned": false,
+    "price": 1200,
+    "quantity": null,
+    "sprite": "⛩️",
+    "tier": "headgear_tier3",
+    "total_available": null,
+    "type": "headgear"
+   },
+   {
+    "arena_only": false,
+    "at_max": false,
+    "battle": {
+     "time_sec": 8
+    },
+    "bonus": {
+     "coin_pct": 0.1,
+     "xp_pct": 0.15
+    },
+    "buff_count": null,
+    "can_afford": false,
+    "category": "headgear",
+    "consumable": false,
+    "description": "Blazing gold crown radiating warm light. +15% XP and +10% coins.",
+    "effect": null,
+    "equipped": false,
+    "id": "hat_crown_gold",
+    "level_required": 18,
+    "locked": true,
+    "max_stack": null,
+    "name": "Solaris Crown",
+    "owned": false,
+    "price": 2000,
+    "quantity": null,
+    "sprite": "👑",
+    "tier": "headgear_tier3",
+    "total_available": null,
+    "type": "headgear"
+   },
+   {
+    "arena_only": false,
+    "at_max": false,
+    "battle": {
+     "strike": 4
+    },
+    "bonus": {
+     "xp_pct": 0.05
+    },
+    "buff_count": null,
+    "can_afford": false,
+    "category": "pet",
+    "consumable": false,
+    "description": "A flame-furred tabby who naps on your notes. +5% XP.",
+    "effect": null,
+    "equipped": false,
+    "id": "pet_cat_orange",
+    "level_required": 20,
+    "locked": true,
+    "max_stack": null,
+    "name": "Pyra the Ember Cat",
+    "owned": false,
+    "price": 300,
+    "quantity": null,
+    "sprite": "🐱",
+    "tier": "pet_starter",
+    "total_available": null,
+    "type": "pet"
+   },
+   {
+    "arena_only": false,
+    "at_max": false,
+    "battle": {
+     "strike": 4
+    },
+    "bonus": {
+     "coin_pct": 0.05
+    },
+    "buff_count": null,
+    "can_afford": false,
+    "category": "pet",
+    "consumable": false,
+    "description": "Loyal storm-furred hound who carries your bag. +5% coins.",
+    "effect": null,
+    "equipped": false,
+    "id": "pet_dog_brown",
+    "level_required": 20,
+    "locked": true,
+    "max_stack": null,
+    "name": "Rex the Thunder Hound",
+    "owned": false,
+    "price": 300,
+    "quantity": null,
+    "sprite": "🐶",
+    "tier": "pet_starter",
+    "total_available": null,
+    "type": "pet"
+   },
+   {
+    "arena_only": false,
+    "at_max": false,
+    "battle": {
+     "strike": 6
+    },
+    "bonus": {
+     "arena_hints": 1,
+     "xp_pct": 0.08
+    },
+    "buff_count": null,
+    "can_afford": false,
+    "category": "pet",
+    "consumable": false,
+    "description": "Golden-eyed scholar owl that whispers answers. +8% XP and +1 arena hint.",
+    "effect": null,
+    "equipped": false,
+    "id": "pet_owl",
+    "level_required": 21,
+    "locked": true,
+    "max_stack": null,
+    "name": "Athena the Celestial Owl",
+    "owned": false,
+    "price": 500,
+    "quantity": null,
+    "sprite": "🦉",
+    "tier": "pet_starter",
+    "total_available": null,
+    "type": "pet"
+   },
+   {
+    "arena_only": false,
+    "at_max": false,
+    "battle": {
+     "strike": 6
+    },
+    "bonus": {
+     "coin_pct": 0.05,
+     "xp_pct": 0.08
+    },
+    "buff_count": null,
+    "can_afford": false,
+    "category": "pet",
+    "consumable": false,
+    "description": "A rare black-and-white panda crackling with static energy. +8% XP, +5% coins.",
+    "effect": null,
+    "equipped": false,
+    "id": "pet_panda",
+    "level_required": 21,
+    "locked": true,
+    "max_stack": null,
+    "name": "Kai the Storm Panda",
+    "owned": false,
+    "price": 700,
+    "quantity": null,
+    "sprite": "🐼",
+    "tier": "pet_tier2",
+    "total_available": null,
+    "type": "pet"
+   },
+   {
+    "arena_only": false,
+    "at_max": false,
+    "battle": {
+     "strike": 8
+    },
+    "bonus": {
+     "streak_freeze_days": 14,
+     "xp_pct": 0.1
+    },
+    "buff_count": null,
+    "can_afford": false,
+    "category": "pet",
+    "consumable": false,
+    "description": "A silver-tipped fox that phases through shadows. +10% XP, auto streak freeze every 14 days.",
+    "effect": null,
+    "equipped": false,
+    "id": "pet_fox",
+    "level_required": 22,
+    "locked": true,
+    "max_stack": null,
+    "name": "Zephyr the Void Fox",
+    "owned": false,
+    "price": 900,
+    "quantity": null,
+    "sprite": "🦊",
+    "tier": "pet_tier2",
+    "total_available": null,
+    "type": "pet"
+   },
+   {
+    "arena_only": false,
+    "at_max": false,
+    "battle": {
+     "strike": 10
+    },
+    "bonus": {
+     "coin_pct": 0.08,
+     "xp_pct": 0.12
+    },
+    "buff_count": null,
+    "can_afford": false,
+    "category": "pet",
+    "consumable": false,
+    "description": "A unicorn whose mane trails stardust. MOUNT. +12% XP and +8% coins.",
+    "effect": null,
+    "equipped": false,
+    "id": "pet_unicorn",
+    "level_required": 23,
+    "locked": true,
+    "max_stack": null,
+    "name": "Lumis the Starbound Unicorn",
+    "owned": false,
+    "price": 1500,
+    "quantity": null,
+    "sprite": "🦄",
+    "tier": "pet_tier2",
+    "total_available": null,
+    "type": "pet"
+   },
+   {
+    "arena_only": false,
+    "at_max": false,
+    "battle": {
+     "strike": 12
+    },
+    "bonus": {
+     "coin_pct": 0.1,
+     "streak_freeze_days": 10,
+     "xp_pct": 0.1
+    },
+    "buff_count": null,
+    "can_afford": false,
+    "category": "pet",
+    "consumable": false,
+    "description": "A tiny dragon who breathes XP bubbles. MOUNT. +10% XP, +10% coins. Streak freeze every 10 days.",
+    "effect": null,
+    "equipped": false,
+    "id": "pet_dragon_baby",
+    "level_required": 24,
+    "locked": true,
+    "max_stack": null,
+    "name": "Ignis the Hatchling Dragon",
+    "owned": false,
+    "price": 2000,
+    "quantity": null,
+    "sprite": "🐲",
+    "tier": "pet_tier2",
+    "total_available": null,
+    "type": "pet"
+   },
+   {
+    "arena_only": false,
+    "at_max": false,
+    "battle": {
+     "strike": 14
+    },
+    "bonus": {
+     "coin_pct": 0.1,
+     "streak_freeze_days": 7,
+     "xp_pct": 0.15
+    },
+    "buff_count": null,
+    "can_afford": false,
+    "category": "pet",
+    "consumable": false,
+    "description": "A blazing firebird reborn from ash each dawn. MOUNT. +15% XP, +10% coins. Streak freeze every 7 days.",
+    "effect": null,
+    "equipped": false,
+    "id": "pet_phoenix",
+    "level_required": 25,
+    "locked": true,
+    "max_stack": null,
+    "name": "Solara the Reborn Phoenix",
+    "owned": false,
+    "price": 3000,
+    "quantity": null,
+    "sprite": "🦅",
+    "tier": "pet_tier3",
+    "total_available": null,
+    "type": "pet"
+   },
+   {
+    "arena_only": false,
+    "at_max": false,
+    "battle": {
+     "strike": 14
+    },
+    "bonus": {
+     "coin_pct": 0.2,
+     "xp_pct": 0.1
+    },
+    "buff_count": null,
+    "can_afford": false,
+    "category": "pet",
+    "consumable": false,
+    "description": "Golden-maned lion whose roar echoes across the cosmos. MOUNT. +10% XP and +20% coins.",
+    "effect": null,
+    "equipped": false,
+    "id": "pet_lion_golden",
+    "level_required": 27,
+    "locked": true,
+    "max_stack": null,
+    "name": "Aurum the Solar Lion",
+    "owned": false,
+    "price": 4000,
+    "quantity": null,
+    "sprite": "🦁",
+    "tier": "pet_tier3",
+    "total_available": null,
+    "type": "pet"
+   },
+   {
+    "arena_only": false,
+    "at_max": false,
+    "battle": {
+     "strike": 20
+    },
+    "bonus": {
+     "coin_pct": 0.2,
+     "streak_freeze_days": 5,
+     "xp_pct": 0.25
+    },
+    "buff_count": null,
+    "can_afford": false,
+    "category": "pet",
+    "consumable": false,
+    "description": "An ancient obsidian dragon older than memory itself. MOUNT. +25% XP, +20% coins. Streak freeze every 5 days.",
+    "effect": null,
+    "equipped": false,
+    "id": "pet_dragon_ancient",
+    "level_required": 30,
+    "locked": true,
+    "max_stack": null,
+    "name": "Erebus the Elder Dragon",
+    "owned": false,
+    "price": 6000,
+    "quantity": null,
+    "sprite": "🐉",
+    "tier": "pet_tier3",
+    "total_available": null,
+    "type": "pet"
+   },
+   {
+    "arena_only": true,
+    "at_max": false,
+    "battle": {},
+    "bonus": {},
+    "buff_count": 0,
+    "can_afford": false,
+    "category": "potion",
+    "consumable": true,
+    "description": "Tear the veil between truth and deception — 2 wrong answers crumble to dust. Arena only.",
+    "effect": "fifty_fifty",
+    "equipped": false,
+    "id": "fifty_fifty",
+    "level_required": 5,
+    "locked": true,
+    "max_stack": 2,
+    "name": "Veil of Duality",
+    "owned": false,
+    "price": 60,
+    "quantity": 0,
+    "sprite": "⚖️",
+    "tier": "potions",
+    "total_available": 0,
+    "type": "potion"
+   },
+   {
+    "arena_only": true,
+    "at_max": false,
+    "battle": {},
+    "bonus": {},
+    "buff_count": 0,
+    "can_afford": false,
+    "category": "potion",
+    "consumable": true,
+    "description": "Restore 1 heart mid-Arena battle. Use from the potion bar before you fall.",
+    "effect": "heal_1",
+    "equipped": false,
+    "id": "potion_health_small",
+    "level_required": 5,
+    "locked": true,
+    "max_stack": 3,
+    "name": "Crimson Vial",
+    "owned": false,
+    "price": 80,
+    "quantity": 0,
+    "sprite": "🧪",
+    "tier": "potions",
+    "total_available": 0,
+    "type": "potion"
+   },
+   {
+    "arena_only": false,
+    "at_max": false,
+    "battle": {},
+    "bonus": {},
+    "buff_count": 0,
+    "can_afford": false,
+    "category": "potion",
+    "consumable": true,
+    "description": "+50% XP earned for 1 hour. The ancient taste of knowledge.",
+    "effect": "xp_boost_1h",
+    "equipped": false,
+    "id": "potion_xp_boost",
+    "level_required": 7,
+    "locked": true,
+    "max_stack": null,
+    "name": "Sage's Elixir",
+    "owned": false,
+    "price": 150,
+    "quantity": 0,
+    "sprite": "⚗️",
+    "tier": "potions",
+    "total_available": 0,
+    "type": "potion"
+   },
+   {
+    "arena_only": false,
+    "at_max": false,
+    "battle": {},
+    "bonus": {},
+    "buff_count": 0,
+    "can_afford": false,
+    "category": "potion",
+    "consumable": true,
+    "description": "+50% coins earned for 1 hour. Everything you touch turns to gold.",
+    "effect": "coin_boost_1h",
+    "equipped": false,
+    "id": "potion_coin_boost",
+    "level_required": 7,
+    "locked": true,
+    "max_stack": null,
+    "name": "Midas Tonic",
+    "owned": false,
+    "price": 150,
+    "quantity": 0,
+    "sprite": "💰",
+    "tier": "potions",
+    "total_available": 0,
+    "type": "potion"
+   },
+   {
+    "arena_only": false,
+    "at_max": false,
+    "battle": {},
+    "bonus": {},
+    "buff_count": 0,
+    "can_afford": false,
+    "category": "potion",
+    "consumable": true,
+    "description": "Grants 1 streak freeze token. Activates automatically if you miss a day — no action needed.",
+    "effect": "streak_freeze",
+    "equipped": false,
+    "id": "potion_streak_shield",
+    "level_required": 9,
+    "locked": true,
+    "max_stack": null,
+    "name": "Temporal Shield Flask",
+    "owned": false,
+    "price": 250,
+    "quantity": 0,
+    "sprite": "🛡️",
+    "tier": "potions",
+    "total_available": 0,
+    "type": "potion"
+   },
+   {
+    "arena_only": false,
+    "at_max": false,
+    "battle": {},
+    "bonus": {},
+    "buff_count": 0,
+    "can_afford": false,
+    "category": "potion",
+    "consumable": true,
+    "description": "+100% XP earned for 1 hour. Pure distilled brilliance.",
+    "effect": "xp_boost_2h",
+    "equipped": false,
+    "id": "potion_xp_boost_2h",
+    "level_required": 12,
+    "locked": true,
+    "max_stack": null,
+    "name": "Grand Arcane Elixir",
+    "owned": false,
+    "price": 400,
+    "quantity": 0,
+    "sprite": "🌟",
+    "tier": "potions",
+    "total_available": 0,
+    "type": "potion"
+   },
+   {
+    "arena_only": false,
+    "at_max": false,
+    "battle": {},
+    "bonus": {},
+    "buff_count": 0,
+    "can_afford": false,
+    "category": "potion",
+    "consumable": true,
+    "description": "Reset your daily quests instantly. Bend time to your will.",
+    "effect": "reset_daily_quests",
+    "equipped": false,
+    "id": "potion_quest_reset",
+    "level_required": 15,
+    "locked": true,
+    "max_stack": null,
+    "name": "Chrono Vortex Flask",
+    "owned": false,
+    "price": 600,
+    "quantity": 0,
+    "sprite": "⏳",
+    "tier": "potions",
+    "total_available": 0,
+    "type": "potion"
+   },
+   {
+    "arena_only": false,
+    "at_max": false,
+    "battle": {},
+    "bonus": {},
+    "buff_count": null,
+    "can_afford": false,
+    "category": "title",
+    "consumable": false,
+    "description": "Earned by those who pursue knowledge relentlessly. Purely cosmetic.",
+    "effect": null,
+    "equipped": false,
+    "id": "title_scholar",
+    "level_required": 30,
+    "locked": true,
+    "max_stack": null,
+    "name": "📚 The Scholar",
+    "owned": false,
+    "price": 500,
+    "quantity": null,
+    "sprite": "📚",
+    "tier": "titles",
+    "total_available": null,
+    "type": "title"
+   },
+   {
+    "arena_only": false,
+    "at_max": false,
+    "battle": {},
+    "bonus": {
+     "xp_pct": 0.03
+    },
+    "buff_count": null,
+    "can_afford": false,
+    "category": "title",
+    "consumable": false,
+    "description": "Master of every quiz format. +3% XP on all activities.",
+    "effect": null,
+    "equipped": false,
+    "id": "title_quiz_master",
+    "level_required": 30,
+    "locked": true,
+    "max_stack": null,
+    "name": "🎯 Quiz Sovereign",
+    "owned": false,
+    "price": 1000,
+    "quantity": null,
+    "sprite": "🎯",
+    "tier": "titles",
+    "total_available": null,
+    "type": "title"
+   },
+   {
+    "arena_only": false,
+    "at_max": false,
+    "battle": {},
+    "bonus": {
+     "coin_pct": 0.05,
+     "xp_pct": 0.05
+    },
+    "buff_count": null,
+    "can_afford": false,
+    "category": "title",
+    "consumable": false,
+    "description": "Undefeated in the arena. +5% XP and +5% coins.",
+    "effect": null,
+    "equipped": false,
+    "id": "title_arena_champ",
+    "level_required": 33,
+    "locked": true,
+    "max_stack": null,
+    "name": "⚔️ Arena Overlord",
+    "owned": false,
+    "price": 2000,
+    "quantity": null,
+    "sprite": "⚔️",
+    "tier": "titles",
+    "total_available": null,
+    "type": "title"
+   },
+   {
+    "arena_only": false,
+    "at_max": false,
+    "battle": {},
+    "bonus": {
+     "coin_pct": 0.05,
+     "xp_pct": 0.08
+    },
+    "buff_count": null,
+    "can_afford": false,
+    "category": "title",
+    "consumable": false,
+    "description": "Has outlasted civilisations. Their name echoes forever. +8% XP and +5% coins.",
+    "effect": null,
+    "equipped": false,
+    "id": "title_the_eternal",
+    "level_required": 36,
+    "locked": true,
+    "max_stack": null,
+    "name": "♾️ The Undying",
+    "owned": false,
+    "price": 4000,
+    "quantity": null,
+    "sprite": "♾️",
+    "tier": "titles",
+    "total_available": null,
+    "type": "title"
+   },
+   {
+    "arena_only": false,
+    "at_max": false,
+    "battle": {},
+    "bonus": {
+     "coin_pct": 0.05,
+     "xp_pct": 0.1
+    },
+    "buff_count": null,
+    "can_afford": false,
+    "category": "title",
+    "consumable": false,
+    "description": "Slayer of ancient wyrms. Fear follows this name. +10% XP, +5% coins.",
+    "effect": null,
+    "equipped": false,
+    "id": "title_dragon_slayer",
+    "level_required": 38,
+    "locked": true,
+    "max_stack": null,
+    "name": "🐉 Dragonbane",
+    "owned": false,
+    "price": 5000,
+    "quantity": null,
+    "sprite": "🐉",
+    "tier": "titles",
+    "total_available": null,
+    "type": "title"
+   },
+   {
+    "arena_only": false,
+    "at_max": false,
+    "battle": {},
+    "bonus": {
+     "arena_hints": 2,
+     "coin_pct": 0.1,
+     "xp_pct": 0.12
+    },
+    "buff_count": null,
+    "can_afford": false,
+    "category": "title",
+    "consumable": false,
+    "description": "The ultimate achievement. Songs are written about you. +12% XP, +10% coins, +2 Arena hints.",
+    "effect": null,
+    "equipped": false,
+    "id": "title_legend",
+    "level_required": 40,
+    "locked": true,
+    "max_stack": null,
+    "name": "👑 Living Legend",
+    "owned": false,
+    "price": 10000,
+    "quantity": null,
+    "sprite": "👑",
+    "tier": "titles",
+    "total_available": null,
+    "type": "title"
+   },
+   {
+    "arena_only": false,
+    "at_max": false,
+    "battle": {
+     "damage_pct": 0.05
+    },
+    "bonus": {},
+    "buff_count": null,
+    "can_afford": false,
+    "category": "weapon",
+    "consumable": false,
+    "description": "The pen is mightier. A classic HB pencil, always sharp.",
+    "effect": null,
+    "equipped": false,
+    "id": "weapon_pencil",
+    "level_required": 10,
+    "locked": true,
+    "max_stack": null,
+    "name": "Scholar's Pencil",
+    "owned": false,
+    "price": 100,
+    "quantity": null,
+    "sprite": "✏️",
+    "tier": "weapon_starter",
+    "total_available": null,
+    "type": "weapon"
+   },
+   {
+    "arena_only": false,
+    "at_max": false,
+    "battle": {
+     "damage_pct": 0.05
+    },
+    "bonus": {},
+    "buff_count": null,
+    "can_afford": false,
+    "category": "weapon",
+    "consumable": false,
+    "description": "Steel-edged ruler. Measures angles AND opponent confidence.",
+    "effect": null,
+    "equipped": false,
+    "id": "weapon_ruler",
+    "level_required": 10,
+    "locked": true,
+    "max_stack": null,
+    "name": "Precision Ruler",
+    "owned": false,
+    "price": 120,
+    "quantity": null,
+    "sprite": "📏",
+    "tier": "weapon_starter",
+    "total_available": null,
+    "type": "weapon"
+   },
+   {
+    "arena_only": false,
+    "at_max": false,
+    "battle": {
+     "damage_pct": 0.1
+    },
+    "bonus": {
+     "combo_xp_pct": 0.05
+    },
+    "buff_count": null,
+    "can_afford": false,
+    "category": "weapon",
+    "consumable": false,
+    "description": "Bronze dual swords with leather-wrapped hilts. ✦✦ Dual wield! +5% combo XP.",
+    "effect": null,
+    "equipped": false,
+    "id": "weapon_sword_bronze",
+    "level_required": 10,
+    "locked": true,
+    "max_stack": null,
+    "name": "Dawnsteel Twin Blades",
+    "owned": false,
+    "price": 400,
+    "quantity": null,
+    "sprite": "⚔️",
+    "tier": "weapon_tier1",
+    "total_available": null,
+    "type": "weapon"
+   },
+   {
+    "arena_only": false,
+    "at_max": false,
+    "battle": {
+     "damage_pct": 0.12
+    },
+    "bonus": {
+     "xp_pct": 0.05
+    },
+    "buff_count": null,
+    "can_afford": false,
+    "category": "weapon",
+    "consumable": false,
+    "description": "Gnarled forest staff with a glowing crystal tip. +5% XP.",
+    "effect": null,
+    "equipped": false,
+    "id": "weapon_staff_wood",
+    "level_required": 11,
+    "locked": true,
+    "max_stack": null,
+    "name": "Emberwood Quarterstaff",
+    "owned": false,
+    "price": 450,
+    "quantity": null,
+    "sprite": "🪄",
+    "tier": "weapon_tier1",
+    "total_available": null,
+    "type": "weapon"
+   },
+   {
+    "arena_only": false,
+    "at_max": false,
+    "battle": {
+     "damage_pct": 0.12
+    },
+    "bonus": {
+     "xp_pct": 0.05
+    },
+    "buff_count": null,
+    "can_afford": false,
+    "category": "weapon",
+    "consumable": false,
+    "description": "Elegant recurve bow carved from ancient ashwood. +5% XP.",
+    "effect": null,
+    "equipped": false,
+    "id": "weapon_bow",
+    "level_required": 11,
+    "locked": true,
+    "max_stack": null,
+    "name": "Ashwood Recurve Bow",
+    "owned": false,
+    "price": 500,
+    "quantity": null,
+    "sprite": "🏹",
+    "tier": "weapon_tier1",
+    "total_available": null,
+    "type": "weapon"
+   },
+   {
+    "arena_only": false,
+    "at_max": false,
+    "battle": {
+     "damage_pct": 0.16
+    },
+    "bonus": {
+     "combo_xp_pct": 0.1
+    },
+    "buff_count": null,
+    "can_afford": false,
+    "category": "weapon",
+    "consumable": false,
+    "description": "Silver dual blades that shimmer like moonlight. ✦✦ Dual wield! +10% combo XP.",
+    "effect": null,
+    "equipped": false,
+    "id": "weapon_sword_silver",
+    "level_required": 13,
+    "locked": true,
+    "max_stack": null,
+    "name": "Moonblade Twin Swords",
+    "owned": false,
+    "price": 900,
+    "quantity": null,
+    "sprite": "⚔️",
+    "tier": "weapon_tier2",
+    "total_available": null,
+    "type": "weapon"
+   },
+   {
+    "arena_only": false,
+    "at_max": false,
+    "battle": {
+     "damage_pct": 0.18
+    },
+    "bonus": {
+     "xp_pct": 0.08
+    },
+    "buff_count": null,
+    "can_afford": false,
+    "category": "weapon",
+    "consumable": false,
+    "description": "Rune-carved warhammer that crackles with energy. +8% XP.",
+    "effect": null,
+    "equipped": false,
+    "id": "weapon_hammer",
+    "level_required": 14,
+    "locked": true,
+    "max_stack": null,
+    "name": "Thundercrack War Hammer",
+    "owned": false,
+    "price": 1000,
+    "quantity": null,
+    "sprite": "🔨",
+    "tier": "weapon_tier2",
+    "total_available": null,
+    "type": "weapon"
+   },
+   {
+    "arena_only": false,
+    "at_max": false,
+    "battle": {
+     "damage_pct": 0.2
+    },
+    "bonus": {
+     "xp_pct": 0.1
+    },
+    "buff_count": null,
+    "can_afford": false,
+    "category": "weapon",
+    "consumable": false,
+    "description": "A crystal-topped staff refracting arcane light. +10% XP.",
+    "effect": null,
+    "equipped": false,
+    "id": "weapon_staff_crystal",
+    "level_required": 14,
+    "locked": true,
+    "max_stack": null,
+    "name": "Aqua Prism Staff",
+    "owned": false,
+    "price": 1100,
+    "quantity": null,
+    "sprite": "💎",
+    "tier": "weapon_tier2",
+    "total_available": null,
+    "type": "weapon"
+   },
+   {
+    "arena_only": false,
+    "at_max": false,
+    "battle": {
+     "damage_pct": 0.28
+    },
+    "bonus": {
+     "combo_xp_pct": 0.15
+    },
+    "buff_count": null,
+    "can_afford": false,
+    "category": "weapon",
+    "consumable": false,
+    "description": "Gold-hilted legendary swords etched with celestial runes. ✦✦ Dual wield! +15% combo XP.",
+    "effect": null,
+    "equipped": false,
+    "id": "weapon_sword_excalibur",
+    "level_required": 18,
+    "locked": true,
+    "max_stack": null,
+    "name": "Excalibur Twin Blades",
+    "owned": false,
+    "price": 2500,
+    "quantity": null,
+    "sprite": "✨",
+    "tier": "weapon_tier3",
+    "total_available": null,
+    "type": "weapon"
+   },
+   {
+    "arena_only": false,
+    "at_max": false,
+    "battle": {
+     "damage_pct": 0.3
+    },
+    "bonus": {
+     "xp_pct": 0.15
+    },
+    "buff_count": null,
+    "can_afford": false,
+    "category": "weapon",
+    "consumable": false,
+    "description": "A staff crowned with a swirling tome of forbidden power. +15% XP.",
+    "effect": null,
+    "equipped": false,
+    "id": "weapon_staff_legendary",
+    "level_required": 20,
+    "locked": true,
+    "max_stack": null,
+    "name": "Infernal Codex Staff",
+    "owned": false,
+    "price": 3000,
+    "quantity": null,
+    "sprite": "🌟",
+    "tier": "weapon_tier3",
+    "total_available": null,
+    "type": "weapon"
+   }
+  ],
+  "level": 1,
+  "owned": [
+   "armor_gi_white",
+   "armor_gi_red",
+   "armor_gi_blue",
+   "hat_headband_red",
+   "hat_headband_blue",
+   "hat_headband_white"
+  ],
+  "shop_unlocked": false
+ },
+ "shop_level_40": {
+  "category_status": {
+   "armor": {
+    "description": "Outfits — expensive ones grant permanent XP & coin bonuses",
+    "icon": "🛡️",
+    "name": "Armor & Outfits",
+    "unlock_level": 1,
+    "unlocked": true
+   },
+   "headgear": {
+    "description": "Hats, crowns & headwear — some grant Arena hint charges or XP bonuses",
+    "icon": "🎩",
+    "name": "Headgear",
+    "unlock_level": 1,
+    "unlocked": true
+   },
+   "pet": {
+    "description": "Companions — grant passive XP/coin bonuses & auto streak freezes",
+    "icon": "🐾",
+    "name": "Pets",
+    "unlock_level": 20,
+    "unlocked": true
+   },
+   "potion": {
+    "description": "Consumables — Arena heals, XP boosts, streak shields & quest resets",
+    "icon": "🧪",
+    "name": "Potions",
+    "unlock_level": 5,
+    "unlocked": true
+   },
+   "title": {
+    "description": "Prestige titles — rare ones grant small stat bonuses",
+    "icon": "🏆",
+    "name": "Titles",
+    "unlock_level": 30,
+    "unlocked": true
+   },
+   "weapon": {
+    "description": "Weapons — mid-tier+ boost XP from answer combos",
+    "icon": "⚔️",
+    "name": "Weapons",
+    "unlock_level": 10,
+    "unlocked": true
+   }
+  },
+  "coins": 10000000,
+  "equipped": {},
+  "items": [
+   {
+    "arena_only": false,
+    "at_max": false,
+    "battle": {},
+    "bonus": {},
+    "buff_count": null,
+    "can_afford": true,
+    "category": "armor",
+    "consumable": false,
+    "description": "Crisp white gi with crossed lapels and a black belt. A fighter's classic. Purely cosmetic.",
+    "effect": null,
+    "equipped": false,
+    "id": "armor_gi_white",
+    "level_required": 1,
+    "locked": false,
+    "max_stack": null,
+    "name": "White Karate Gi",
+    "owned": true,
+    "price": 0,
+    "quantity": null,
+    "sprite": "🥋",
+    "tier": "armor_fighting_gi",
+    "total_available": null,
+    "type": "armor"
+   },
+   {
+    "arena_only": false,
+    "at_max": false,
+    "battle": {},
+    "bonus": {},
+    "buff_count": null,
+    "can_afford": true,
+    "category": "armor",
+    "consumable": false,
+    "description": "Bare-chested warrior with wide red gi pants and a pink sash. Pure power. Purely cosmetic.",
+    "effect": null,
+    "equipped": false,
+    "id": "armor_gi_red",
+    "level_required": 1,
+    "locked": false,
+    "max_stack": null,
+    "name": "Red Fighter's Hakama",
+    "owned": true,
+    "price": 0,
+    "quantity": null,
+    "sprite": "🔴",
+    "tier": "armor_fighting_gi",
+    "total_available": null,
+    "type": "armor"
+   },
+   {
+    "arena_only": false,
+    "at_max": false,
+    "battle": {},
+    "bonus": {},
+    "buff_count": null,
+    "can_afford": true,
+    "category": "armor",
+    "consumable": false,
+    "description": "Bare-chested fighter with wide blue gi pants and a golden belt. Swift and precise. Purely cosmetic.",
+    "effect": null,
+    "equipped": false,
+    "id": "armor_gi_blue",
+    "level_required": 1,
+    "locked": false,
+    "max_stack": null,
+    "name": "Blue Fighter's Hakama",
+    "owned": true,
+    "price": 0,
+    "quantity": null,
+    "sprite": "🔵",
+    "tier": "armor_fighting_gi",
+    "total_available": null,
+    "type": "armor"
+   },
+   {
+    "arena_only": false,
+    "at_max": false,
+    "battle": {},
+    "bonus": {},
+    "buff_count": null,
+    "can_afford": true,
+    "category": "armor",
+    "consumable": false,
+    "description": "Clean white tee with a pocket detail. Classic drip, purely cosmetic.",
+    "effect": null,
+    "equipped": false,
+    "id": "armor_shirt_basic",
+    "level_required": 5,
+    "locked": false,
+    "max_stack": null,
+    "name": "Street Legend Tee",
+    "owned": false,
+    "price": 50,
+    "quantity": null,
+    "sprite": "👕",
+    "tier": "armor_starter",
+    "total_available": null,
+    "type": "armor"
+   },
+   {
+    "arena_only": false,
+    "at_max": false,
+    "battle": {},
+    "bonus": {},
+    "buff_count": null,
+    "can_afford": true,
+    "category": "armor",
+    "consumable": false,
+    "description": "Oversized grey hoodie with a hidden kangaroo pocket. Lowkey but iconic.",
+    "effect": null,
+    "equipped": false,
+    "id": "armor_hoodie_gray",
+    "level_required": 5,
+    "locked": false,
+    "max_stack": null,
+    "name": "Phantom Hoodie",
+    "owned": false,
+    "price": 80,
+    "quantity": null,
+    "sprite": "🧥",
+    "tier": "armor_starter",
+    "total_available": null,
+    "type": "armor"
+   },
+   {
+    "arena_only": false,
+    "at_max": false,
+    "battle": {
+     "hp": 1
+    },
+    "bonus": {
+     "xp_pct": 0.05
+    },
+    "buff_count": null,
+    "can_afford": true,
+    "category": "armor",
+    "consumable": false,
+    "description": "Deep sapphire robes with gold-trimmed bell sleeves. +5% XP on all activities.",
+    "effect": null,
+    "equipped": false,
+    "id": "armor_robe_blue",
+    "level_required": 6,
+    "locked": false,
+    "max_stack": null,
+    "name": "Azure Scholar's Vestments",
+    "owned": false,
+    "price": 250,
+    "quantity": null,
+    "sprite": "🥋",
+    "tier": "armor_tier1",
+    "total_available": null,
+    "type": "armor"
+   },
+   {
+    "arena_only": false,
+    "at_max": false,
+    "battle": {
+     "hp": 1
+    },
+    "bonus": {
+     "coin_pct": 0.05
+    },
+    "buff_count": null,
+    "can_afford": true,
+    "category": "armor",
+    "consumable": false,
+    "description": "Sleek black leather jacket with V-lapels and combat boots. +5% coins.",
+    "effect": null,
+    "equipped": false,
+    "id": "armor_jacket_cool",
+    "level_required": 6,
+    "locked": false,
+    "max_stack": null,
+    "name": "Midnight Rider Jacket",
+    "owned": false,
+    "price": 300,
+    "quantity": null,
+    "sprite": "🧥",
+    "tier": "armor_tier1",
+    "total_available": null,
+    "type": "armor"
+   },
+   {
+    "arena_only": false,
+    "at_max": false,
+    "battle": {
+     "hp": 2
+    },
+    "bonus": {
+     "xp_pct": 0.1
+    },
+    "buff_count": null,
+    "can_afford": true,
+    "category": "armor",
+    "consumable": false,
+    "description": "Swirling purple robes etched with arcane runes. +10% XP on all activities.",
+    "effect": null,
+    "equipped": false,
+    "id": "armor_wizard_purple",
+    "level_required": 10,
+    "locked": false,
+    "max_stack": null,
+    "name": "Void Weaver's Garments",
+    "owned": false,
+    "price": 800,
+    "quantity": null,
+    "sprite": "🧙",
+    "tier": "armor_tier2",
+    "total_available": null,
+    "type": "armor"
+   },
+   {
+    "arena_only": false,
+    "at_max": false,
+    "battle": {
+     "hp": 3
+    },
+    "bonus": {
+     "coin_pct": 0.1
+    },
+    "buff_count": null,
+    "can_afford": true,
+    "category": "armor",
+    "consumable": false,
+    "description": "Gleaming titanium plate with spiked pauldrons and sabatons. +10% coins.",
+    "effect": null,
+    "equipped": false,
+    "id": "armor_knight_silver",
+    "level_required": 10,
+    "locked": false,
+    "max_stack": null,
+    "name": "Titanfall Plate",
+    "owned": false,
+    "price": 900,
+    "quantity": null,
+    "sprite": "🛡️",
+    "tier": "armor_tier2",
+    "total_available": null,
+    "type": "armor"
+   },
+   {
+    "arena_only": false,
+    "at_max": false,
+    "battle": {
+     "hp": 4
+    },
+    "bonus": {
+     "coin_pct": 0.1,
+     "xp_pct": 0.15
+    },
+    "buff_count": null,
+    "can_afford": true,
+    "category": "armor",
+    "consumable": false,
+    "description": "Forged from solidified sunlight. Jeweled crest. +15% XP and +10% coins.",
+    "effect": null,
+    "equipped": false,
+    "id": "armor_knight_gold",
+    "level_required": 18,
+    "locked": false,
+    "max_stack": null,
+    "name": "Sol Emperor's Plate",
+    "owned": false,
+    "price": 2500,
+    "quantity": null,
+    "sprite": "⚜️",
+    "tier": "armor_tier3",
+    "total_available": null,
+    "type": "armor"
+   },
+   {
+    "arena_only": false,
+    "at_max": false,
+    "battle": {
+     "hp": 5
+    },
+    "bonus": {
+     "coin_pct": 0.15,
+     "xp_pct": 0.2
+    },
+    "buff_count": null,
+    "can_afford": true,
+    "category": "armor",
+    "consumable": false,
+    "description": "Scales harvested from a volcano dragon. Shoulder spikes glow faintly. +20% XP and +15% coins.",
+    "effect": null,
+    "equipped": false,
+    "id": "armor_dragon_scale",
+    "level_required": 22,
+    "locked": false,
+    "max_stack": null,
+    "name": "Ignis Wyrm Scale Mail",
+    "owned": false,
+    "price": 4000,
+    "quantity": null,
+    "sprite": "🐉",
+    "tier": "armor_tier3",
+    "total_available": null,
+    "type": "armor"
+   },
+   {
+    "arena_only": false,
+    "at_max": false,
+    "battle": {
+     "hp": 6
+    },
+    "bonus": {
+     "coin_pct": 0.2,
+     "xp_pct": 0.3
+    },
+    "buff_count": null,
+    "can_afford": true,
+    "category": "armor",
+    "consumable": false,
+    "description": "A robe that pulses with starlight. Worn only by those who shaped history. +30% XP and +20% coins.",
+    "effect": null,
+    "equipped": false,
+    "id": "armor_legends_mantle",
+    "level_required": 28,
+    "locked": false,
+    "max_stack": null,
+    "name": "Astral Conqueror's Mantle",
+    "owned": false,
+    "price": 8000,
+    "quantity": null,
+    "sprite": "✨",
+    "tier": "armor_tier3",
+    "total_available": null,
+    "type": "armor"
+   },
+   {
+    "arena_only": false,
+    "at_max": false,
+    "battle": {},
+    "bonus": {},
+    "buff_count": null,
+    "can_afford": true,
+    "category": "headgear",
+    "consumable": false,
+    "description": "A bold red cloth headband worn by champions. The mark of a true martial artist. Purely cosmetic.",
+    "effect": null,
+    "equipped": false,
+    "id": "hat_headband_red",
+    "level_required": 1,
+    "locked": false,
+    "max_stack": null,
+    "name": "Red Fighter's Headband",
+    "owned": true,
+    "price": 0,
+    "quantity": null,
+    "sprite": "🔴",
+    "tier": "headgear_fighting",
+    "total_available": null,
+    "type": "headgear"
+   },
+   {
+    "arena_only": false,
+    "at_max": false,
+    "battle": {},
+    "bonus": {},
+    "buff_count": null,
+    "can_afford": true,
+    "category": "headgear",
+    "consumable": false,
+    "description": "A deep blue headband — focused, calm, and ready for battle. Purely cosmetic.",
+    "effect": null,
+    "equipped": false,
+    "id": "hat_headband_blue",
+    "level_required": 1,
+    "locked": false,
+    "max_stack": null,
+    "name": "Blue Fighter's Headband",
+    "owned": true,
+    "price": 0,
+    "quantity": null,
+    "sprite": "🔵",
+    "tier": "headgear_fighting",
+    "total_available": null,
+    "type": "headgear"
+   },
+   {
+    "arena_only": false,
+    "at_max": false,
+    "battle": {},
+    "bonus": {},
+    "buff_count": null,
+    "can_afford": true,
+    "category": "headgear",
+    "consumable": false,
+    "description": "A clean white training headband. Simple. Disciplined. Purely cosmetic.",
+    "effect": null,
+    "equipped": false,
+    "id": "hat_headband_white",
+    "level_required": 1,
+    "locked": false,
+    "max_stack": null,
+    "name": "White Headband",
+    "owned": true,
+    "price": 0,
+    "quantity": null,
+    "sprite": "⬜",
+    "tier": "headgear_fighting",
+    "total_available": null,
+    "type": "headgear"
+   },
+   {
+    "arena_only": false,
+    "at_max": false,
+    "battle": {},
+    "bonus": {},
+    "buff_count": null,
+    "can_afford": true,
+    "category": "headgear",
+    "consumable": false,
+    "description": "Bold red snapback. Low-key flex. Purely cosmetic.",
+    "effect": null,
+    "equipped": false,
+    "id": "hat_baseball_red",
+    "level_required": 7,
+    "locked": false,
+    "max_stack": null,
+    "name": "Crimson Street Cap",
+    "owned": false,
+    "price": 50,
+    "quantity": null,
+    "sprite": "🧢",
+    "tier": "headgear_starter",
+    "total_available": null,
+    "type": "headgear"
+   },
+   {
+    "arena_only": false,
+    "at_max": false,
+    "battle": {},
+    "bonus": {},
+    "buff_count": null,
+    "can_afford": true,
+    "category": "headgear",
+    "consumable": false,
+    "description": "Thick knitted winter beanie in deep ocean blue. Purely cosmetic.",
+    "effect": null,
+    "equipped": false,
+    "id": "hat_beanie_blue",
+    "level_required": 7,
+    "locked": false,
+    "max_stack": null,
+    "name": "Frostwave Beanie",
+    "owned": false,
+    "price": 50,
+    "quantity": null,
+    "sprite": "🎓",
+    "tier": "headgear_starter",
+    "total_available": null,
+    "type": "headgear"
+   },
+   {
+    "arena_only": false,
+    "at_max": false,
+    "battle": {
+     "time_sec": 3
+    },
+    "bonus": {
+     "arena_hints": 1
+    },
+    "buff_count": null,
+    "can_afford": true,
+    "category": "headgear",
+    "consumable": false,
+    "description": "Noise-cancelling over-ears with glowing cables. +1 free hint charge every Arena battle.",
+    "effect": null,
+    "equipped": false,
+    "id": "hat_headphones",
+    "level_required": 8,
+    "locked": false,
+    "max_stack": null,
+    "name": "Neural Link Headphones",
+    "owned": false,
+    "price": 200,
+    "quantity": null,
+    "sprite": "🎧",
+    "tier": "headgear_tier1",
+    "total_available": null,
+    "type": "headgear"
+   },
+   {
+    "arena_only": false,
+    "at_max": false,
+    "battle": {
+     "time_sec": 3
+    },
+    "bonus": {
+     "xp_pct": 0.05
+    },
+    "buff_count": null,
+    "can_afford": true,
+    "category": "headgear",
+    "consumable": false,
+    "description": "Tall midnight hat with a golden constellation band. +5% XP on all activities.",
+    "effect": null,
+    "equipped": false,
+    "id": "hat_wizard",
+    "level_required": 9,
+    "locked": false,
+    "max_stack": null,
+    "name": "Archmage's Pointed Hat",
+    "owned": false,
+    "price": 300,
+    "quantity": null,
+    "sprite": "🎩",
+    "tier": "headgear_tier1",
+    "total_available": null,
+    "type": "headgear"
+   },
+   {
+    "arena_only": false,
+    "at_max": false,
+    "battle": {
+     "time_sec": 3
+    },
+    "bonus": {
+     "coin_pct": 0.05,
+     "xp_pct": 0.05
+    },
+    "buff_count": null,
+    "can_afford": true,
+    "category": "headgear",
+    "consumable": false,
+    "description": "Bronze circlet set with emerald and sapphire gems. +5% XP and +5% coins.",
+    "effect": null,
+    "equipped": false,
+    "id": "hat_crown_bronze",
+    "level_required": 10,
+    "locked": false,
+    "max_stack": null,
+    "name": "Verdant Crown of Learning",
+    "owned": false,
+    "price": 500,
+    "quantity": null,
+    "sprite": "👑",
+    "tier": "headgear_tier2",
+    "total_available": null,
+    "type": "headgear"
+   },
+   {
+    "arena_only": false,
+    "at_max": false,
+    "battle": {
+     "time_sec": 4
+    },
+    "bonus": {
+     "xp_pct": 0.1
+    },
+    "buff_count": null,
+    "can_afford": true,
+    "category": "headgear",
+    "consumable": false,
+    "description": "Midnight-black cloth mask, only eyes visible. Stealth study mode. +10% XP.",
+    "effect": null,
+    "equipped": false,
+    "id": "hat_ninja",
+    "level_required": 12,
+    "locked": false,
+    "max_stack": null,
+    "name": "Shadow Veil Headband",
+    "owned": false,
+    "price": 700,
+    "quantity": null,
+    "sprite": "🥷",
+    "tier": "headgear_tier2",
+    "total_available": null,
+    "type": "headgear"
+   },
+   {
+    "arena_only": false,
+    "at_max": false,
+    "battle": {
+     "time_sec": 5
+    },
+    "bonus": {
+     "coin_pct": 0.05,
+     "xp_pct": 0.1
+    },
+    "buff_count": null,
+    "can_afford": true,
+    "category": "headgear",
+    "consumable": false,
+    "description": "Frosted silver crown with icy-blue gems. +10% XP and +5% coins.",
+    "effect": null,
+    "equipped": false,
+    "id": "hat_crown_silver",
+    "level_required": 14,
+    "locked": false,
+    "max_stack": null,
+    "name": "Glacial Silver Crown",
+    "owned": false,
+    "price": 1000,
+    "quantity": null,
+    "sprite": "👑",
+    "tier": "headgear_tier3",
+    "total_available": null,
+    "type": "headgear"
+   },
+   {
+    "arena_only": false,
+    "at_max": false,
+    "battle": {
+     "time_sec": 6
+    },
+    "bonus": {
+     "arena_hints": 1,
+     "coin_pct": 0.1
+    },
+    "buff_count": null,
+    "can_afford": true,
+    "category": "headgear",
+    "consumable": false,
+    "description": "Lacquered kabuto with a golden hachimaki. +10% coins and +1 arena hint.",
+    "effect": null,
+    "equipped": false,
+    "id": "hat_samurai",
+    "level_required": 15,
+    "locked": false,
+    "max_stack": null,
+    "name": "Oni-Sealed War Helm",
+    "owned": false,
+    "price": 1200,
+    "quantity": null,
+    "sprite": "⛩️",
+    "tier": "headgear_tier3",
+    "total_available": null,
+    "type": "headgear"
+   },
+   {
+    "arena_only": false,
+    "at_max": false,
+    "battle": {
+     "time_sec": 8
+    },
+    "bonus": {
+     "coin_pct": 0.1,
+     "xp_pct": 0.15
+    },
+    "buff_count": null,
+    "can_afford": true,
+    "category": "headgear",
+    "consumable": false,
+    "description": "Blazing gold crown radiating warm light. +15% XP and +10% coins.",
+    "effect": null,
+    "equipped": false,
+    "id": "hat_crown_gold",
+    "level_required": 18,
+    "locked": false,
+    "max_stack": null,
+    "name": "Solaris Crown",
+    "owned": false,
+    "price": 2000,
+    "quantity": null,
+    "sprite": "👑",
+    "tier": "headgear_tier3",
+    "total_available": null,
+    "type": "headgear"
+   },
+   {
+    "arena_only": false,
+    "at_max": false,
+    "battle": {
+     "strike": 4
+    },
+    "bonus": {
+     "xp_pct": 0.05
+    },
+    "buff_count": null,
+    "can_afford": true,
+    "category": "pet",
+    "consumable": false,
+    "description": "A flame-furred tabby who naps on your notes. +5% XP.",
+    "effect": null,
+    "equipped": false,
+    "id": "pet_cat_orange",
+    "level_required": 20,
+    "locked": false,
+    "max_stack": null,
+    "name": "Pyra the Ember Cat",
+    "owned": false,
+    "price": 300,
+    "quantity": null,
+    "sprite": "🐱",
+    "tier": "pet_starter",
+    "total_available": null,
+    "type": "pet"
+   },
+   {
+    "arena_only": false,
+    "at_max": false,
+    "battle": {
+     "strike": 4
+    },
+    "bonus": {
+     "coin_pct": 0.05
+    },
+    "buff_count": null,
+    "can_afford": true,
+    "category": "pet",
+    "consumable": false,
+    "description": "Loyal storm-furred hound who carries your bag. +5% coins.",
+    "effect": null,
+    "equipped": false,
+    "id": "pet_dog_brown",
+    "level_required": 20,
+    "locked": false,
+    "max_stack": null,
+    "name": "Rex the Thunder Hound",
+    "owned": false,
+    "price": 300,
+    "quantity": null,
+    "sprite": "🐶",
+    "tier": "pet_starter",
+    "total_available": null,
+    "type": "pet"
+   },
+   {
+    "arena_only": false,
+    "at_max": false,
+    "battle": {
+     "strike": 6
+    },
+    "bonus": {
+     "arena_hints": 1,
+     "xp_pct": 0.08
+    },
+    "buff_count": null,
+    "can_afford": true,
+    "category": "pet",
+    "consumable": false,
+    "description": "Golden-eyed scholar owl that whispers answers. +8% XP and +1 arena hint.",
+    "effect": null,
+    "equipped": false,
+    "id": "pet_owl",
+    "level_required": 21,
+    "locked": false,
+    "max_stack": null,
+    "name": "Athena the Celestial Owl",
+    "owned": false,
+    "price": 500,
+    "quantity": null,
+    "sprite": "🦉",
+    "tier": "pet_starter",
+    "total_available": null,
+    "type": "pet"
+   },
+   {
+    "arena_only": false,
+    "at_max": false,
+    "battle": {
+     "strike": 6
+    },
+    "bonus": {
+     "coin_pct": 0.05,
+     "xp_pct": 0.08
+    },
+    "buff_count": null,
+    "can_afford": true,
+    "category": "pet",
+    "consumable": false,
+    "description": "A rare black-and-white panda crackling with static energy. +8% XP, +5% coins.",
+    "effect": null,
+    "equipped": false,
+    "id": "pet_panda",
+    "level_required": 21,
+    "locked": false,
+    "max_stack": null,
+    "name": "Kai the Storm Panda",
+    "owned": false,
+    "price": 700,
+    "quantity": null,
+    "sprite": "🐼",
+    "tier": "pet_tier2",
+    "total_available": null,
+    "type": "pet"
+   },
+   {
+    "arena_only": false,
+    "at_max": false,
+    "battle": {
+     "strike": 8
+    },
+    "bonus": {
+     "streak_freeze_days": 14,
+     "xp_pct": 0.1
+    },
+    "buff_count": null,
+    "can_afford": true,
+    "category": "pet",
+    "consumable": false,
+    "description": "A silver-tipped fox that phases through shadows. +10% XP, auto streak freeze every 14 days.",
+    "effect": null,
+    "equipped": false,
+    "id": "pet_fox",
+    "level_required": 22,
+    "locked": false,
+    "max_stack": null,
+    "name": "Zephyr the Void Fox",
+    "owned": false,
+    "price": 900,
+    "quantity": null,
+    "sprite": "🦊",
+    "tier": "pet_tier2",
+    "total_available": null,
+    "type": "pet"
+   },
+   {
+    "arena_only": false,
+    "at_max": false,
+    "battle": {
+     "strike": 10
+    },
+    "bonus": {
+     "coin_pct": 0.08,
+     "xp_pct": 0.12
+    },
+    "buff_count": null,
+    "can_afford": true,
+    "category": "pet",
+    "consumable": false,
+    "description": "A unicorn whose mane trails stardust. MOUNT. +12% XP and +8% coins.",
+    "effect": null,
+    "equipped": false,
+    "id": "pet_unicorn",
+    "level_required": 23,
+    "locked": false,
+    "max_stack": null,
+    "name": "Lumis the Starbound Unicorn",
+    "owned": false,
+    "price": 1500,
+    "quantity": null,
+    "sprite": "🦄",
+    "tier": "pet_tier2",
+    "total_available": null,
+    "type": "pet"
+   },
+   {
+    "arena_only": false,
+    "at_max": false,
+    "battle": {
+     "strike": 12
+    },
+    "bonus": {
+     "coin_pct": 0.1,
+     "streak_freeze_days": 10,
+     "xp_pct": 0.1
+    },
+    "buff_count": null,
+    "can_afford": true,
+    "category": "pet",
+    "consumable": false,
+    "description": "A tiny dragon who breathes XP bubbles. MOUNT. +10% XP, +10% coins. Streak freeze every 10 days.",
+    "effect": null,
+    "equipped": false,
+    "id": "pet_dragon_baby",
+    "level_required": 24,
+    "locked": false,
+    "max_stack": null,
+    "name": "Ignis the Hatchling Dragon",
+    "owned": false,
+    "price": 2000,
+    "quantity": null,
+    "sprite": "🐲",
+    "tier": "pet_tier2",
+    "total_available": null,
+    "type": "pet"
+   },
+   {
+    "arena_only": false,
+    "at_max": false,
+    "battle": {
+     "strike": 14
+    },
+    "bonus": {
+     "coin_pct": 0.1,
+     "streak_freeze_days": 7,
+     "xp_pct": 0.15
+    },
+    "buff_count": null,
+    "can_afford": true,
+    "category": "pet",
+    "consumable": false,
+    "description": "A blazing firebird reborn from ash each dawn. MOUNT. +15% XP, +10% coins. Streak freeze every 7 days.",
+    "effect": null,
+    "equipped": false,
+    "id": "pet_phoenix",
+    "level_required": 25,
+    "locked": false,
+    "max_stack": null,
+    "name": "Solara the Reborn Phoenix",
+    "owned": false,
+    "price": 3000,
+    "quantity": null,
+    "sprite": "🦅",
+    "tier": "pet_tier3",
+    "total_available": null,
+    "type": "pet"
+   },
+   {
+    "arena_only": false,
+    "at_max": false,
+    "battle": {
+     "strike": 14
+    },
+    "bonus": {
+     "coin_pct": 0.2,
+     "xp_pct": 0.1
+    },
+    "buff_count": null,
+    "can_afford": true,
+    "category": "pet",
+    "consumable": false,
+    "description": "Golden-maned lion whose roar echoes across the cosmos. MOUNT. +10% XP and +20% coins.",
+    "effect": null,
+    "equipped": false,
+    "id": "pet_lion_golden",
+    "level_required": 27,
+    "locked": false,
+    "max_stack": null,
+    "name": "Aurum the Solar Lion",
+    "owned": false,
+    "price": 4000,
+    "quantity": null,
+    "sprite": "🦁",
+    "tier": "pet_tier3",
+    "total_available": null,
+    "type": "pet"
+   },
+   {
+    "arena_only": false,
+    "at_max": false,
+    "battle": {
+     "strike": 20
+    },
+    "bonus": {
+     "coin_pct": 0.2,
+     "streak_freeze_days": 5,
+     "xp_pct": 0.25
+    },
+    "buff_count": null,
+    "can_afford": true,
+    "category": "pet",
+    "consumable": false,
+    "description": "An ancient obsidian dragon older than memory itself. MOUNT. +25% XP, +20% coins. Streak freeze every 5 days.",
+    "effect": null,
+    "equipped": false,
+    "id": "pet_dragon_ancient",
+    "level_required": 30,
+    "locked": false,
+    "max_stack": null,
+    "name": "Erebus the Elder Dragon",
+    "owned": false,
+    "price": 6000,
+    "quantity": null,
+    "sprite": "🐉",
+    "tier": "pet_tier3",
+    "total_available": null,
+    "type": "pet"
+   },
+   {
+    "arena_only": true,
+    "at_max": false,
+    "battle": {},
+    "bonus": {},
+    "buff_count": 0,
+    "can_afford": true,
+    "category": "potion",
+    "consumable": true,
+    "description": "Tear the veil between truth and deception — 2 wrong answers crumble to dust. Arena only.",
+    "effect": "fifty_fifty",
+    "equipped": false,
+    "id": "fifty_fifty",
+    "level_required": 5,
+    "locked": false,
+    "max_stack": 2,
+    "name": "Veil of Duality",
+    "owned": false,
+    "price": 60,
+    "quantity": 0,
+    "sprite": "⚖️",
+    "tier": "potions",
+    "total_available": 0,
+    "type": "potion"
+   },
+   {
+    "arena_only": true,
+    "at_max": false,
+    "battle": {},
+    "bonus": {},
+    "buff_count": 0,
+    "can_afford": true,
+    "category": "potion",
+    "consumable": true,
+    "description": "Restore 1 heart mid-Arena battle. Use from the potion bar before you fall.",
+    "effect": "heal_1",
+    "equipped": false,
+    "id": "potion_health_small",
+    "level_required": 5,
+    "locked": false,
+    "max_stack": 3,
+    "name": "Crimson Vial",
+    "owned": false,
+    "price": 80,
+    "quantity": 0,
+    "sprite": "🧪",
+    "tier": "potions",
+    "total_available": 0,
+    "type": "potion"
+   },
+   {
+    "arena_only": false,
+    "at_max": false,
+    "battle": {},
+    "bonus": {},
+    "buff_count": 0,
+    "can_afford": true,
+    "category": "potion",
+    "consumable": true,
+    "description": "+50% XP earned for 1 hour. The ancient taste of knowledge.",
+    "effect": "xp_boost_1h",
+    "equipped": false,
+    "id": "potion_xp_boost",
+    "level_required": 7,
+    "locked": false,
+    "max_stack": null,
+    "name": "Sage's Elixir",
+    "owned": false,
+    "price": 150,
+    "quantity": 0,
+    "sprite": "⚗️",
+    "tier": "potions",
+    "total_available": 0,
+    "type": "potion"
+   },
+   {
+    "arena_only": false,
+    "at_max": false,
+    "battle": {},
+    "bonus": {},
+    "buff_count": 0,
+    "can_afford": true,
+    "category": "potion",
+    "consumable": true,
+    "description": "+50% coins earned for 1 hour. Everything you touch turns to gold.",
+    "effect": "coin_boost_1h",
+    "equipped": false,
+    "id": "potion_coin_boost",
+    "level_required": 7,
+    "locked": false,
+    "max_stack": null,
+    "name": "Midas Tonic",
+    "owned": false,
+    "price": 150,
+    "quantity": 0,
+    "sprite": "💰",
+    "tier": "potions",
+    "total_available": 0,
+    "type": "potion"
+   },
+   {
+    "arena_only": false,
+    "at_max": false,
+    "battle": {},
+    "bonus": {},
+    "buff_count": 0,
+    "can_afford": true,
+    "category": "potion",
+    "consumable": true,
+    "description": "Grants 1 streak freeze token. Activates automatically if you miss a day — no action needed.",
+    "effect": "streak_freeze",
+    "equipped": false,
+    "id": "potion_streak_shield",
+    "level_required": 9,
+    "locked": false,
+    "max_stack": null,
+    "name": "Temporal Shield Flask",
+    "owned": false,
+    "price": 250,
+    "quantity": 0,
+    "sprite": "🛡️",
+    "tier": "potions",
+    "total_available": 0,
+    "type": "potion"
+   },
+   {
+    "arena_only": false,
+    "at_max": false,
+    "battle": {},
+    "bonus": {},
+    "buff_count": 0,
+    "can_afford": true,
+    "category": "potion",
+    "consumable": true,
+    "description": "+100% XP earned for 1 hour. Pure distilled brilliance.",
+    "effect": "xp_boost_2h",
+    "equipped": false,
+    "id": "potion_xp_boost_2h",
+    "level_required": 12,
+    "locked": false,
+    "max_stack": null,
+    "name": "Grand Arcane Elixir",
+    "owned": false,
+    "price": 400,
+    "quantity": 0,
+    "sprite": "🌟",
+    "tier": "potions",
+    "total_available": 0,
+    "type": "potion"
+   },
+   {
+    "arena_only": false,
+    "at_max": false,
+    "battle": {},
+    "bonus": {},
+    "buff_count": 0,
+    "can_afford": true,
+    "category": "potion",
+    "consumable": true,
+    "description": "Reset your daily quests instantly. Bend time to your will.",
+    "effect": "reset_daily_quests",
+    "equipped": false,
+    "id": "potion_quest_reset",
+    "level_required": 15,
+    "locked": false,
+    "max_stack": null,
+    "name": "Chrono Vortex Flask",
+    "owned": false,
+    "price": 600,
+    "quantity": 0,
+    "sprite": "⏳",
+    "tier": "potions",
+    "total_available": 0,
+    "type": "potion"
+   },
+   {
+    "arena_only": false,
+    "at_max": false,
+    "battle": {},
+    "bonus": {},
+    "buff_count": null,
+    "can_afford": true,
+    "category": "title",
+    "consumable": false,
+    "description": "Earned by those who pursue knowledge relentlessly. Purely cosmetic.",
+    "effect": null,
+    "equipped": false,
+    "id": "title_scholar",
+    "level_required": 30,
+    "locked": false,
+    "max_stack": null,
+    "name": "📚 The Scholar",
+    "owned": false,
+    "price": 500,
+    "quantity": null,
+    "sprite": "📚",
+    "tier": "titles",
+    "total_available": null,
+    "type": "title"
+   },
+   {
+    "arena_only": false,
+    "at_max": false,
+    "battle": {},
+    "bonus": {
+     "xp_pct": 0.03
+    },
+    "buff_count": null,
+    "can_afford": true,
+    "category": "title",
+    "consumable": false,
+    "description": "Master of every quiz format. +3% XP on all activities.",
+    "effect": null,
+    "equipped": false,
+    "id": "title_quiz_master",
+    "level_required": 30,
+    "locked": false,
+    "max_stack": null,
+    "name": "🎯 Quiz Sovereign",
+    "owned": false,
+    "price": 1000,
+    "quantity": null,
+    "sprite": "🎯",
+    "tier": "titles",
+    "total_available": null,
+    "type": "title"
+   },
+   {
+    "arena_only": false,
+    "at_max": false,
+    "battle": {},
+    "bonus": {
+     "coin_pct": 0.05,
+     "xp_pct": 0.05
+    },
+    "buff_count": null,
+    "can_afford": true,
+    "category": "title",
+    "consumable": false,
+    "description": "Undefeated in the arena. +5% XP and +5% coins.",
+    "effect": null,
+    "equipped": false,
+    "id": "title_arena_champ",
+    "level_required": 33,
+    "locked": false,
+    "max_stack": null,
+    "name": "⚔️ Arena Overlord",
+    "owned": false,
+    "price": 2000,
+    "quantity": null,
+    "sprite": "⚔️",
+    "tier": "titles",
+    "total_available": null,
+    "type": "title"
+   },
+   {
+    "arena_only": false,
+    "at_max": false,
+    "battle": {},
+    "bonus": {
+     "coin_pct": 0.05,
+     "xp_pct": 0.08
+    },
+    "buff_count": null,
+    "can_afford": true,
+    "category": "title",
+    "consumable": false,
+    "description": "Has outlasted civilisations. Their name echoes forever. +8% XP and +5% coins.",
+    "effect": null,
+    "equipped": false,
+    "id": "title_the_eternal",
+    "level_required": 36,
+    "locked": false,
+    "max_stack": null,
+    "name": "♾️ The Undying",
+    "owned": false,
+    "price": 4000,
+    "quantity": null,
+    "sprite": "♾️",
+    "tier": "titles",
+    "total_available": null,
+    "type": "title"
+   },
+   {
+    "arena_only": false,
+    "at_max": false,
+    "battle": {},
+    "bonus": {
+     "coin_pct": 0.05,
+     "xp_pct": 0.1
+    },
+    "buff_count": null,
+    "can_afford": true,
+    "category": "title",
+    "consumable": false,
+    "description": "Slayer of ancient wyrms. Fear follows this name. +10% XP, +5% coins.",
+    "effect": null,
+    "equipped": false,
+    "id": "title_dragon_slayer",
+    "level_required": 38,
+    "locked": false,
+    "max_stack": null,
+    "name": "🐉 Dragonbane",
+    "owned": false,
+    "price": 5000,
+    "quantity": null,
+    "sprite": "🐉",
+    "tier": "titles",
+    "total_available": null,
+    "type": "title"
+   },
+   {
+    "arena_only": false,
+    "at_max": false,
+    "battle": {},
+    "bonus": {
+     "arena_hints": 2,
+     "coin_pct": 0.1,
+     "xp_pct": 0.12
+    },
+    "buff_count": null,
+    "can_afford": true,
+    "category": "title",
+    "consumable": false,
+    "description": "The ultimate achievement. Songs are written about you. +12% XP, +10% coins, +2 Arena hints.",
+    "effect": null,
+    "equipped": false,
+    "id": "title_legend",
+    "level_required": 40,
+    "locked": false,
+    "max_stack": null,
+    "name": "👑 Living Legend",
+    "owned": false,
+    "price": 10000,
+    "quantity": null,
+    "sprite": "👑",
+    "tier": "titles",
+    "total_available": null,
+    "type": "title"
+   },
+   {
+    "arena_only": false,
+    "at_max": false,
+    "battle": {
+     "damage_pct": 0.05
+    },
+    "bonus": {},
+    "buff_count": null,
+    "can_afford": true,
+    "category": "weapon",
+    "consumable": false,
+    "description": "The pen is mightier. A classic HB pencil, always sharp.",
+    "effect": null,
+    "equipped": false,
+    "id": "weapon_pencil",
+    "level_required": 10,
+    "locked": false,
+    "max_stack": null,
+    "name": "Scholar's Pencil",
+    "owned": false,
+    "price": 100,
+    "quantity": null,
+    "sprite": "✏️",
+    "tier": "weapon_starter",
+    "total_available": null,
+    "type": "weapon"
+   },
+   {
+    "arena_only": false,
+    "at_max": false,
+    "battle": {
+     "damage_pct": 0.05
+    },
+    "bonus": {},
+    "buff_count": null,
+    "can_afford": true,
+    "category": "weapon",
+    "consumable": false,
+    "description": "Steel-edged ruler. Measures angles AND opponent confidence.",
+    "effect": null,
+    "equipped": false,
+    "id": "weapon_ruler",
+    "level_required": 10,
+    "locked": false,
+    "max_stack": null,
+    "name": "Precision Ruler",
+    "owned": false,
+    "price": 120,
+    "quantity": null,
+    "sprite": "📏",
+    "tier": "weapon_starter",
+    "total_available": null,
+    "type": "weapon"
+   },
+   {
+    "arena_only": false,
+    "at_max": false,
+    "battle": {
+     "damage_pct": 0.1
+    },
+    "bonus": {
+     "combo_xp_pct": 0.05
+    },
+    "buff_count": null,
+    "can_afford": true,
+    "category": "weapon",
+    "consumable": false,
+    "description": "Bronze dual swords with leather-wrapped hilts. ✦✦ Dual wield! +5% combo XP.",
+    "effect": null,
+    "equipped": false,
+    "id": "weapon_sword_bronze",
+    "level_required": 10,
+    "locked": false,
+    "max_stack": null,
+    "name": "Dawnsteel Twin Blades",
+    "owned": false,
+    "price": 400,
+    "quantity": null,
+    "sprite": "⚔️",
+    "tier": "weapon_tier1",
+    "total_available": null,
+    "type": "weapon"
+   },
+   {
+    "arena_only": false,
+    "at_max": false,
+    "battle": {
+     "damage_pct": 0.12
+    },
+    "bonus": {
+     "xp_pct": 0.05
+    },
+    "buff_count": null,
+    "can_afford": true,
+    "category": "weapon",
+    "consumable": false,
+    "description": "Gnarled forest staff with a glowing crystal tip. +5% XP.",
+    "effect": null,
+    "equipped": false,
+    "id": "weapon_staff_wood",
+    "level_required": 11,
+    "locked": false,
+    "max_stack": null,
+    "name": "Emberwood Quarterstaff",
+    "owned": false,
+    "price": 450,
+    "quantity": null,
+    "sprite": "🪄",
+    "tier": "weapon_tier1",
+    "total_available": null,
+    "type": "weapon"
+   },
+   {
+    "arena_only": false,
+    "at_max": false,
+    "battle": {
+     "damage_pct": 0.12
+    },
+    "bonus": {
+     "xp_pct": 0.05
+    },
+    "buff_count": null,
+    "can_afford": true,
+    "category": "weapon",
+    "consumable": false,
+    "description": "Elegant recurve bow carved from ancient ashwood. +5% XP.",
+    "effect": null,
+    "equipped": false,
+    "id": "weapon_bow",
+    "level_required": 11,
+    "locked": false,
+    "max_stack": null,
+    "name": "Ashwood Recurve Bow",
+    "owned": false,
+    "price": 500,
+    "quantity": null,
+    "sprite": "🏹",
+    "tier": "weapon_tier1",
+    "total_available": null,
+    "type": "weapon"
+   },
+   {
+    "arena_only": false,
+    "at_max": false,
+    "battle": {
+     "damage_pct": 0.16
+    },
+    "bonus": {
+     "combo_xp_pct": 0.1
+    },
+    "buff_count": null,
+    "can_afford": true,
+    "category": "weapon",
+    "consumable": false,
+    "description": "Silver dual blades that shimmer like moonlight. ✦✦ Dual wield! +10% combo XP.",
+    "effect": null,
+    "equipped": false,
+    "id": "weapon_sword_silver",
+    "level_required": 13,
+    "locked": false,
+    "max_stack": null,
+    "name": "Moonblade Twin Swords",
+    "owned": false,
+    "price": 900,
+    "quantity": null,
+    "sprite": "⚔️",
+    "tier": "weapon_tier2",
+    "total_available": null,
+    "type": "weapon"
+   },
+   {
+    "arena_only": false,
+    "at_max": false,
+    "battle": {
+     "damage_pct": 0.18
+    },
+    "bonus": {
+     "xp_pct": 0.08
+    },
+    "buff_count": null,
+    "can_afford": true,
+    "category": "weapon",
+    "consumable": false,
+    "description": "Rune-carved warhammer that crackles with energy. +8% XP.",
+    "effect": null,
+    "equipped": false,
+    "id": "weapon_hammer",
+    "level_required": 14,
+    "locked": false,
+    "max_stack": null,
+    "name": "Thundercrack War Hammer",
+    "owned": false,
+    "price": 1000,
+    "quantity": null,
+    "sprite": "🔨",
+    "tier": "weapon_tier2",
+    "total_available": null,
+    "type": "weapon"
+   },
+   {
+    "arena_only": false,
+    "at_max": false,
+    "battle": {
+     "damage_pct": 0.2
+    },
+    "bonus": {
+     "xp_pct": 0.1
+    },
+    "buff_count": null,
+    "can_afford": true,
+    "category": "weapon",
+    "consumable": false,
+    "description": "A crystal-topped staff refracting arcane light. +10% XP.",
+    "effect": null,
+    "equipped": false,
+    "id": "weapon_staff_crystal",
+    "level_required": 14,
+    "locked": false,
+    "max_stack": null,
+    "name": "Aqua Prism Staff",
+    "owned": false,
+    "price": 1100,
+    "quantity": null,
+    "sprite": "💎",
+    "tier": "weapon_tier2",
+    "total_available": null,
+    "type": "weapon"
+   },
+   {
+    "arena_only": false,
+    "at_max": false,
+    "battle": {
+     "damage_pct": 0.28
+    },
+    "bonus": {
+     "combo_xp_pct": 0.15
+    },
+    "buff_count": null,
+    "can_afford": true,
+    "category": "weapon",
+    "consumable": false,
+    "description": "Gold-hilted legendary swords etched with celestial runes. ✦✦ Dual wield! +15% combo XP.",
+    "effect": null,
+    "equipped": false,
+    "id": "weapon_sword_excalibur",
+    "level_required": 18,
+    "locked": false,
+    "max_stack": null,
+    "name": "Excalibur Twin Blades",
+    "owned": false,
+    "price": 2500,
+    "quantity": null,
+    "sprite": "✨",
+    "tier": "weapon_tier3",
+    "total_available": null,
+    "type": "weapon"
+   },
+   {
+    "arena_only": false,
+    "at_max": false,
+    "battle": {
+     "damage_pct": 0.3
+    },
+    "bonus": {
+     "xp_pct": 0.15
+    },
+    "buff_count": null,
+    "can_afford": true,
+    "category": "weapon",
+    "consumable": false,
+    "description": "A staff crowned with a swirling tome of forbidden power. +15% XP.",
+    "effect": null,
+    "equipped": false,
+    "id": "weapon_staff_legendary",
+    "level_required": 20,
+    "locked": false,
+    "max_stack": null,
+    "name": "Infernal Codex Staff",
+    "owned": false,
+    "price": 3000,
+    "quantity": null,
+    "sprite": "🌟",
+    "tier": "weapon_tier3",
+    "total_available": null,
+    "type": "weapon"
+   }
+  ],
+  "level": 40,
+  "owned": [
+   "armor_gi_white",
+   "armor_gi_red",
+   "armor_gi_blue",
+   "hat_headband_red",
+   "hat_headband_blue",
+   "hat_headband_white"
+  ],
+  "shop_unlocked": true
+ },
+ "tier_multiplier": [
+  1.0,
+  1.0,
+  1.0,
+  1.0,
+  1.0,
+  1.3,
+  1.3,
+  1.3,
+  1.3,
+  1.3,
+  1.6,
+  1.6,
+  1.6,
+  1.6,
+  1.6,
+  1.9,
+  1.9,
+  1.9,
+  1.9,
+  1.9,
+  2.2,
+  2.2,
+  2.2,
+  2.2,
+  2.2,
+  2.5,
+  2.5,
+  2.5,
+  2.5,
+  2.5,
+  2.8,
+  2.8,
+  2.8,
+  2.8,
+  2.8,
+  3.1,
+  3.1,
+  3.1,
+  3.1,
+  3.1,
+  3.4,
+  3.4,
+  3.4,
+  3.4,
+  3.4,
+  3.6999999999999997,
+  3.6999999999999997,
+  3.6999999999999997,
+  3.6999999999999997,
+  3.6999999999999997,
+  4.0,
+  4.0,
+  4.0,
+  4.0,
+  4.0,
+  4.3,
+  4.3,
+  4.3,
+  4.3,
+  4.3
+ ],
+ "xp_to_next_level": [
+  100,
+  200,
+  400,
+  600,
+  850,
+  1100,
+  1400,
+  1700,
+  2000,
+  2350,
+  2750,
+  3100,
+  3500,
+  3950,
+  4350,
+  4800,
+  5250,
+  5750,
+  6200,
+  6700,
+  7200,
+  7750,
+  8250,
+  8800,
+  9400,
+  9950,
+  10500,
+  11100,
+  11700,
+  12300,
+  12950,
+  13600,
+  14200,
+  14850,
+  15550,
+  16200,
+  16900,
+  17550,
+  18250,
+  18950,
+  19700,
+  20400,
+  21150,
+  21900,
+  22650,
+  23400,
+  24150,
+  24950,
+  25700,
+  26500,
+  27300,
+  28100,
+  28950,
+  29750,
+  30600,
+  31450,
+  32300,
+  33150,
+  34000,
+  34850,
+  35750,
+  36600,
+  37500,
+  38400,
+  39300,
+  40200,
+  41150,
+  42050,
+  43000,
+  43900,
+  44850,
+  45800,
+  46800,
+  47750,
+  48700,
+  49700,
+  50700,
+  51650,
+  52650,
+  53650,
+  54700,
+  55700,
+  56700,
+  57750,
+  58750,
+  59800,
+  60850,
+  61900,
+  62950,
+  64050,
+  65100,
+  66200,
+  67250,
+  68350,
+  69450,
+  70550,
+  71650,
+  72750,
+  73900,
+  75000,
+  76150,
+  77250,
+  78400,
+  79550,
+  80700,
+  81850,
+  83000,
+  84200,
+  85350,
+  86550,
+  87700,
+  88900,
+  90100,
+  91300,
+  92500,
+  93700,
+  94900,
+  96150,
+  97350,
+  98600,
+  99800,
+  101050,
+  102300,
+  103550,
+  104800,
+  106100,
+  107350,
+  108600,
+  109900,
+  111150,
+  112450,
+  113750,
+  115050,
+  116350,
+  117650,
+  118950,
+  120250,
+  121600,
+  122900,
+  124250,
+  125550,
+  126900,
+  128250,
+  129600,
+  130950,
+  132300,
+  133650,
+  135050,
+  136400,
+  137800,
+  139150,
+  140550,
+  141950,
+  143350,
+  144750,
+  146150,
+  147550,
+  148950,
+  150350,
+  151800,
+  153200,
+  154650,
+  156100,
+  157500,
+  158950,
+  160400,
+  161850,
+  163300,
+  164800,
+  166250,
+  167700,
+  169200,
+  170650,
+  172150,
+  173650,
+  175100,
+  176600,
+  178100,
+  179600,
+  181100,
+  182650,
+  184150,
+  185650,
+  187200,
+  188700,
+  190250,
+  191800,
+  193350,
+  194850,
+  196400,
+  198000,
+  199550,
+  201100,
+  202650,
+  204250,
+  205800,
+  207400,
+  208950,
+  210550,
+  212150
+ ]
+}

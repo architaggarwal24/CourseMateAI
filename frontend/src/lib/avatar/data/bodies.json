@@ -1,0 +1,150 @@
+{
+  "heads": {
+    "male": { "w": 20, "x": 2, "y": 0,
+      "rows": [
+        "..AAAAAAAAAAA...",
+        ".AABAAAAAAABAA..",
+        "ACDEEEEEEEEEEEDA",
+        "ACDEEEEEEEEEEEDA",
+        "ACDEFFEEEEFFEDA.",
+        "ACDGHIHEJHIHGDA.",
+        "ACDEEEEEEEEEEEDA",
+        "ACDEEEEEEEEEEEDA",
+        ".CDEEEDCDEEEDCC.",
+        "..CEEEKKEEEDCC..",
+        "..CEEEKLKEEDCC..",
+        "..CEEEEEEEEDC...",
+        "...CEEEEEEEDC...",
+        "......EEEE......"
+      ],
+      "palette": {"A":"$hair.c","B":"$hair.h","C":"$skin.o","D":"$skin.d","E":"$skin.b","F":"#101020","G":"#F2F5FF","H":"$eye.iris","I":"$eye.pupil","J":"$skin.m","K":"$lip.color","L":"#FF9988"} },
+    "female": { "w": 20, "x": 2, "y": 0,
+      "rows": [
+        ".AAAAAAAAAAAAAA.",
+        ".AABAAAAAAABAAA.",
+        "ACDEEEEEEEEEEEDA",
+        "ACDEEEEEEEEEEEDA",
+        "ACDFFFEEEEFFFDA.",
+        "ACDGHHIEHIHHGDA.",
+        "ACDEEEEEEEEEEDA.",
+        ".CDEEEEDDDEEEDC.",
+        ".CDEEEJFFFJEEDC.",
+        ".CDEEEJKKKJEEDC.",
+        "AAADEEEEEEEEDAAA",
+        "AABLEEEEEEELEAAB",
+        "AAABEEEEEEEBAAA.",
+        ".AAABEEEEEEBAAA."
+      ],
+      "palette": {"A":"$hair.c","B":"$hair.h","C":"$skin.o","D":"$skin.d","E":"$skin.b","F":"#101020","G":"#F2F5FF","H":"$eye.iris","I":"$eye.pupil","J":"$lip.color","K":"$lip.light","L":"$skin.m"} },
+    "femaleSporty": { "w": 20, "x": 2, "y": 0,
+      "rows": [
+        ".AAAAAAAAAAAAAA.",
+        ".AABAAAAAAABAAA.",
+        "ACDEEEEEEEEEEEDA",
+        "ACDEEEEEEEEEEEDA",
+        "ACDFFFEEEEFFFDA.",
+        "ACDGHHIEHIHHGDA.",
+        "ACDEEEEEEEEEEDA.",
+        ".CDEEEEDDDEEEDC.",
+        ".CDEEEJFFFJEEDC.",
+        ".CDEEEJKKKJEEDC.",
+        "AAADEEEEEEEEDAAA",
+        "AABLEEEEEEELEAAB",
+        "AAALEEEEEELEAAA.",
+        "..ABEEEEEEEBA..."
+      ],
+      "palette": {"A":"$hair.c","B":"$hair.h","C":"$skin.o","D":"$skin.d","E":"$skin.b","F":"#101020","G":"#F2F5FF","H":"$eye.iris","I":"$eye.pupil","J":"$lip.color","K":"$lip.light","L":"$skin.m"} }
+  },
+  "arms": {
+    "default": {
+      "down": { "w": 3, "x": 0, "y": 0,
+      "rows": [
+        "ABA",
+        "ABA",
+        "ABA",
+        "ABA",
+        "ABA",
+        "ACA",
+        "ACA",
+        "CAC",
+        "CCC",
+        "CCC"
+      ],
+      "palette": {"A":"$skin.b","B":"$skin.m","C":"$skin.d"} },
+      "up": { "w": 3, "x": 0, "y": 0,
+      "rows": [
+        "AAA",
+        "AAA",
+        "ABA",
+        "BAB",
+        "BAB",
+        "BCB",
+        "BCB",
+        "BCB",
+        "BCB",
+        "BCB"
+      ],
+      "palette": {"A":"$skin.d","B":"$skin.b","C":"$skin.m"} }
+    },
+    "skinny": {
+      "down": { "w": 2, "x": 0, "y": 0,
+      "rows": [
+        "AB",
+        "AB",
+        "AB",
+        "AB",
+        "AB",
+        "AC",
+        "AC",
+        "CA",
+        "CC",
+        "CC"
+      ],
+      "palette": {"A":"$skin.b","B":"$skin.m","C":"$skin.d"} },
+      "up": { "w": 2, "x": 0, "y": 0,
+      "rows": [
+        "AA",
+        "AA",
+        "AB",
+        "BA",
+        "BA",
+        "BC",
+        "BC",
+        "BC",
+        "BC",
+        "BC"
+      ],
+      "palette": {"A":"$skin.d","B":"$skin.b","C":"$skin.m"} }
+    },
+    "muscular": {
+      "down": { "w": 4, "x": 0, "y": 0,
+      "rows": [
+        "AAAB",
+        "AAAB",
+        "AABB",
+        "AAAB",
+        "AABB",
+        "AABC",
+        "AABC",
+        "CAAC",
+        "CCCC",
+        "CCCC"
+      ],
+      "palette": {"A":"$skin.b","B":"$skin.m","C":"$skin.d"} },
+      "up": { "w": 4, "x": 0, "y": 0,
+      "rows": [
+        "AAAA",
+        "AAAA",
+        "ABBA",
+        "BBCA",
+        "BBCA",
+        "BBCC",
+        "BBBC",
+        "BBBC",
+        "BBBC",
+        "BBCC"
+      ],
+      "palette": {"A":"$skin.d","B":"$skin.b","C":"$skin.m"} }
+    }
+  }
+}
