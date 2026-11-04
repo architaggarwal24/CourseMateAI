@@ -214,6 +214,12 @@ def get_provider(provider_id: Optional[str]) -> Optional[ProviderSpec]:
     return None
 
 
+def find_spec(provider_id: Optional[str]) -> Optional[ProviderSpec]:
+    """Any provider, enabled for users or not (the server's own local model may be Ollama while users can't pick it)."""
+    pid = (provider_id or "").strip().lower()
+    return next((p for p in _ALL if p.id == pid), None)
+
+
 def provider_ids() -> Tuple[str, ...]:
     return tuple(p.id for p in list_providers())
 

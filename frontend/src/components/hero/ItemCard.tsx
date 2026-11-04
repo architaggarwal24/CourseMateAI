@@ -3,7 +3,8 @@
 import type { ReactNode } from "react";
 import { Lock } from "lucide-react";
 import { Badge } from "@/components/ui";
-import { GearChips, ItemPicture } from "@/components/avatar";
+import GearChips from "@/components/champion/GearChips";
+import ItemArt from "@/components/champion/ItemArt";
 import { RARITY_LABEL, rarityClass, rarityOf } from "@/lib/rarity";
 import { cn } from "@/lib/utils";
 import { usePointerVars } from "@/components/fx/usePointerVars";
@@ -32,7 +33,7 @@ export interface ItemCardProps {
  */
 export default function ItemCard({ item, equipped, previewed, locked, count, onPreview, meta, extra, children }: ItemCardProps) {
   const rarity = rarityOf(item);
-  const sprite = <ItemPicture itemId={item.id} size={88} />;
+  const sprite = <ItemArt itemId={item.id} size={88} rarity={rarity} />;
   const pointer = usePointerVars<HTMLLIElement>();
   return (
     <li ref={pointer} className={cn("hero-item fx-spotlight", rarityClass(rarity), equipped && "hero-item--equipped", previewed && "hero-item--preview", locked && "hero-item--locked")} data-rarity={rarity} data-item-id={item.id}>

@@ -29,6 +29,8 @@ class ShopStateResponse(ApiModel):
     shop_unlocked: bool
     level: int
     coins: int
+    #: The player's pixel champion (the avatar every screen draws); the equipped slots are its skins.
+    champion_id: Optional[str] = None
 
 
 class ShopActionResponse(ApiModel):

@@ -1,14 +1,17 @@
 // The app's three areas and where everything lives. Study = the document workspace, Hero = the game layer
 // (play theme), Account = profile, settings and history. One place for paths, so links and redirects agree.
 
-export const STUDY_TABS = ["chat", "quiz", "notes", "flashcards"] as const;
+/** "overview" is a course's page (shown only when the workspace is on a course). */
+export const STUDY_TABS = ["chat", "quiz", "notes", "flashcards", "map", "review", "exam", "overview"] as const;
 export type StudyTab = (typeof STUDY_TABS)[number];
 export const DEFAULT_STUDY_TAB: StudyTab = "chat";
 
 /** The Hero area is one page with tabs: /hero?tab=<tab>. */
-export const HERO_TABS = ["quests", "arena", "shop", "inventory", "avatar", "forge", "achievements"] as const;
+export const HERO_TABS = ["quests", "arena", "shop", "inventory", "champion", "achievements"] as const;
 export type HeroTab = (typeof HERO_TABS)[number];
 export const DEFAULT_HERO_TAB: HeroTab = "quests";
+/** Retired tabs and the tab that replaced them (the Avatar tab and the Hero Forge became the Champion tab). */
+export const LEGACY_HERO_TABS: Readonly<Record<string, HeroTab>> = { avatar: "champion", forge: "champion" };
 
 export const ROUTES = {
   login: "/login",
@@ -18,6 +21,12 @@ export const ROUTES = {
     `/study?tab=${tab}` +
     (documentId ? `&doc=${encodeURIComponent(documentId)}` : "") +
     (sessionId ? `&session=${encodeURIComponent(sessionId)}` : ""),
+  /** A tool opened on one concept (the concept map's actions): the quiz / flashcards topic is filled in. */
+  studyTopic: (tab: "quiz" | "flashcards", documentId: string, topic: string) =>
+    `/study?tab=${tab}&doc=${encodeURIComponent(documentId)}&topic=${encodeURIComponent(topic)}`,
+  /** The arena's Quick Battle on a document (or course) with the boss topic filled in. */
+  heroArenaTopic: (documentId: string, topic: string) =>
+    `/hero?tab=arena&doc=${encodeURIComponent(documentId)}&topic=${encodeURIComponent(topic)}`,
   hero: "/hero",
   /** /hero?tab=<tab> (the Hero area's tabs share one page and one header). */
   heroTab: (tab: HeroTab) => `/hero?tab=${tab}`,
@@ -25,12 +34,13 @@ export const ROUTES = {
   heroArena: "/hero?tab=arena",
   heroShop: "/hero?tab=shop",
   heroInventory: "/hero?tab=inventory",
-  heroAvatar: "/hero?tab=avatar",
-  heroForge: "/hero?tab=forge",
+  heroChampion: "/hero?tab=champion",
   heroAchievements: "/hero?tab=achievements",
   account: "/account",
   accountSettings: "/account/settings",
   accountHistory: "/account/history",
+  /** Account -> Plan & usage: the plan, its limits, what has been used, invite codes, the plans to compare. */
+  accountUsage: "/account/usage",
 } as const;
 
 export function isHeroTab(value: string | undefined | null): value is HeroTab {
@@ -46,8 +56,8 @@ export const LEGACY_REDIRECTS: ReadonlyArray<{ from: string; to: string }> = [
   { from: "/", to: ROUTES.study },
   { from: "/shop", to: ROUTES.heroShop },
   { from: "/inventory", to: ROUTES.heroInventory },
-  { from: "/avatar", to: ROUTES.heroAvatar },
-  { from: "/avatar/hero-forge", to: ROUTES.heroForge },
+  { from: "/avatar", to: ROUTES.heroChampion },
+  { from: "/avatar/hero-forge", to: ROUTES.heroChampion },
   { from: "/profile", to: ROUTES.account },
   { from: "/settings", to: ROUTES.accountSettings },
   { from: "/arena", to: ROUTES.heroArena },
@@ -55,8 +65,9 @@ export const LEGACY_REDIRECTS: ReadonlyArray<{ from: string; to: string }> = [
   { from: "/hero/arena", to: ROUTES.heroArena },
   { from: "/hero/shop", to: ROUTES.heroShop },
   { from: "/hero/inventory", to: ROUTES.heroInventory },
-  { from: "/hero/avatar", to: ROUTES.heroAvatar },
-  { from: "/hero/forge", to: ROUTES.heroForge },
+  { from: "/hero/avatar", to: ROUTES.heroChampion },
+  { from: "/hero/forge", to: ROUTES.heroChampion },
+  { from: "/hero/champion", to: ROUTES.heroChampion },
   { from: "/hero/achievements", to: ROUTES.heroAchievements },
 ];
 

@@ -24,7 +24,7 @@ class SessionRepository:
         self.db.execute("DELETE FROM sessions WHERE user_id = ? AND expires_at <= ?", (user_id, _stamp(now)))
         self.db.execute(
             "DELETE FROM sessions WHERE user_id = ? AND id NOT IN "
-            "(SELECT id FROM sessions WHERE user_id = ? ORDER BY created_at DESC, rowid DESC LIMIT ?)",
+            "(SELECT id FROM sessions WHERE user_id = ? ORDER BY created_at DESC, id DESC LIMIT ?)",
             (user_id, user_id, keep_newest))
 
     def get_user(self, session_id: str) -> Optional[Dict]:

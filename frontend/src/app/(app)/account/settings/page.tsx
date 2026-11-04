@@ -13,6 +13,8 @@ import { toast } from "@/components/ui/Toast";
 import { parseApiError, rawApi, type ApiKeyInfo } from "@/lib/api";
 import { loadMetadata, deleteSession } from "@/lib/sessions";
 import ProviderPicker from "@/components/ProviderPicker";
+import InstallApp from "@/components/pwa/InstallApp";
+import { fetchPlans, switchToServerAi } from "@/lib/account/plans";
 import { ROUTES } from "@/lib/routes";
 import {
   emptyLLMForm, formForProvider, llmPayload, useProviders, validateLLMForm,
@@ -41,7 +43,7 @@ function applyAppearance(prefs: { fontSize: string; reduceAnimations: boolean })
 
 // ── Section wrapper ───────────────────────────────────────────────────────────
 const slug = (t: string) => t.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
-const SECTIONS = ["Account", "AI Provider", "Appearance", "Data & Privacy", "Danger Zone"];
+const SECTIONS = ["Account", "AI Provider", "Appearance", "App", "Data & Privacy", "Danger Zone"];
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return <Card id={slug(title)} title={title} interactive className="settings-section">{children}</Card>;
 }
@@ -88,6 +90,7 @@ export default function SettingsPage() {
   const [showConfirm, setShowConfirm] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState("");
   const [deletingAccount, setDeletingAccount] = useState(false);
+  const [deletePassword, setDeletePassword] = useState("");
 
   // ── Appearance state ──────────────────────────────────────────────────────
   const [fontSize, setFontSize] = useState<"normal" | "large">("normal");
@@ -136,13 +139,16 @@ export default function SettingsPage() {
     if (form.username !== user?.username && usernameAvailable === false) { toast.error("Username is not available"); return; }
     if (form.newPassword && form.newPassword !== form.confirmPassword) { toast.error("Passwords do not match"); return; }
     if (form.newPassword && form.newPassword.length < 8) { toast.error("Password must be at least 8 characters"); return; }
+    // The email you log in with, like the password, needs your current password to change (a stolen session can't).
+    if (form.email !== user?.email && !form.currentPassword) { toast.error("Enter your current password to change your email"); return; }
 
     setSavingProfile(true);
     const body: any = {};
     if (form.fullName !== user?.full_name) body.full_name = form.fullName;
     if (form.username !== user?.username) body.username = form.username;
     if (form.email !== user?.email) body.email = form.email;
-    if (form.newPassword) { body.current_password = form.currentPassword; body.new_password = form.newPassword; }
+    if (form.newPassword) body.new_password = form.newPassword;
+    if (form.newPassword || body.email) body.current_password = form.currentPassword;
 
     try {
       const { error: err, response } = await rawApi.POST("/auth/update-profile", { body });
@@ -159,9 +165,10 @@ export default function SettingsPage() {
 
   const handleDeleteAccount = async () => {
     if (deleteConfirm !== "DELETE") { toast.error('Type DELETE to confirm'); return; }
+    if (!deletePassword) { toast.error("Enter your password to delete your account"); return; }
     setDeletingAccount(true);
     try {
-      const { error: err, response } = await rawApi.DELETE("/auth/delete-account");
+      const { error: err, response } = await rawApi.DELETE("/auth/delete-account", { body: { password: deletePassword } });
       if (response.ok) {
         toast.success("Account deleted");
         await logout();
@@ -231,7 +238,22 @@ export default function SettingsPage() {
     rawApi.GET("/auth/api-key")
       .then(({ data }) => { if (data) setApiKeyInfo(data); })
       .catch(() => {});
+    fetchPlans().then((p) => setManagedAi(p.managed_ai)).catch(() => {});
   }, []);
+
+  // The server has its own AI: an account can run on it (its plan's quotas) instead of a key of its own.
+  const [managedAi, setManagedAi] = useState(false);
+  const [switching, setSwitching] = useState(false);
+  async function handleUseServerAi() {
+    setSwitching(true);
+    try {
+      await switchToServerAi();
+      setApiKeyInfo({ has_key: false, provider: null });
+      setShowApiKeyInput(false);
+      toast.success("Now using CourseMate's AI");
+    } catch (e) { toast.apiError(e, { onRetry: handleUseServerAi }); }
+    setSwitching(false);
+  }
 
   const selectedSettingsProvider = providers.find(p => p.id === llm.provider);
 
@@ -319,7 +341,7 @@ export default function SettingsPage() {
             {/* Divider */}
             <div className="border-t border-line pt-4">
               <p className="text-xs font-medium text-fg-muted uppercase tracking-wide mb-4 flex items-center gap-2">
-                <Lock size={12} /> Change Password
+                <Lock size={12} /> Password (also needed to change your email)
               </p>
 
               <div className="space-y-4">
@@ -360,7 +382,16 @@ export default function SettingsPage() {
                 <Button onClick={() => (showApiKeyInput ? setShowApiKeyInput(false) : openProviderEditor())}>
                   Change
                 </Button>
+                {managedAi && (
+                  <Button variant="ghost" loading={switching} onClick={() => void handleUseServerAi()}>Use CourseMate&apos;s AI</Button>
+                )}
               </div>
+            ) : managedAi ? (
+              <Card surface="inset" pad="sm" className="flex items-center gap-2">
+                <CheckCircle2 size={16} className="text-ink-green shrink-0" />
+                <span className="text-sm text-fg">Using CourseMate&apos;s AI, included in your plan.</span>
+                <Button variant="link" className="ml-auto text-xs" onClick={openProviderEditor}>Use my own key</Button>
+              </Card>
             ) : (
               <Card tone="danger" pad="sm" className="flex items-center gap-2">
                 <span className="text-sm text-ink-red">⚠ No API key set — AI features are unavailable</span>
@@ -423,6 +454,10 @@ export default function SettingsPage() {
           </Button>
         </Section>
 
+        <Section title="App">
+          <InstallApp />
+        </Section>
+
         {/* ── DATA & PRIVACY ────────────────────────────────────────────────── */}
         <Section title="Data & Privacy">
           <div className="space-y-3">
@@ -473,8 +508,10 @@ export default function SettingsPage() {
             <Input label={<>Type <span className="font-mono text-ink-red">DELETE</span> to confirm</>}
               type="text" value={deleteConfirm} mono danger onInset
               onChange={e => setDeleteConfirm(e.target.value)} placeholder="DELETE" />
+            <Input label="Your password" type="password" value={deletePassword} danger onInset autoComplete="current-password"
+              onChange={e => setDeletePassword(e.target.value)} placeholder="••••••••" />
             <Button variant="danger" block onClick={handleDeleteAccount}
-              loading={deletingAccount} disabled={deleteConfirm !== "DELETE"}>
+              loading={deletingAccount} disabled={deleteConfirm !== "DELETE" || !deletePassword}>
               {deletingAccount ? "Deleting..." : <><Trash2 size={16} />Delete My Account</>}
             </Button>
           </Card>

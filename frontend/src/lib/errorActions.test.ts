@@ -6,6 +6,12 @@ const err = (status: number, code: string, message: string, action: string | nul
   parseApiError(status, { error: { code, message, action, details } }, undefined, retryAfterHeader);
 
 describe("describeError: the button each error code calls for", () => {
+  it("plan_limit and feature_locked (action plans) -> See plans", () => {
+    const info = describeError(err(429, "plan_limit", "You've used today's 25 AI calls.", "plans", { limit: "ai_calls_day" }));
+    expect(info.action).toMatchObject({ kind: "plans", label: "See plans", href: "/account/usage" });
+    expect(describeError(err(403, "feature_locked", "Exam mode comes with the Sage plan.", "plans")).action?.kind).toBe("plans");
+  });
+
   it("provider_key_rejected -> Open Settings (a link to Settings)", () => {
     const info = describeError(err(400, "provider_key_rejected", "Your API key was rejected.", "settings"));
     expect(info.action).toMatchObject({ kind: "settings", label: "Open Settings", href: "/account/settings" });

@@ -119,7 +119,7 @@ def test_a_failure_inside_a_transaction_rolls_back_event_and_totals(make_user):
 def test_deleting_the_account_removes_its_events(make_user):
     c, uid = make_user()
     _grant(uid, xp=10)
-    assert c.delete("/auth/delete-account").status_code == 200
+    assert c.request("DELETE", "/auth/delete-account", json={"password": "correct-horse-1"}).status_code == 200
     assert state.store.fetchall("SELECT 1 FROM reward_events WHERE user_id = ?", (str(uid),)) == []
 
 
@@ -130,6 +130,13 @@ def test_existing_balances_become_an_opening_event_when_the_migration_runs(tmp_p
     (older / "0005_quizzes.sql").unlink()                      # (a gap would be rejected)
     (older / "0006_arena_battles.sql").unlink()
     (older / "0007_arena_v2.sql").unlink()
+    (older / "0008_champion_avatar.sql").unlink()
+    (older / "0009_champion_progress.sql").unlink()
+    (older / "0010_study_power.sql").unlink()
+    (older / "0011_courses_and_maps.sql").unlink()
+    (older / "0012_plans_and_usage.sql").unlink()
+    (older / "0013_routing_costs_quiz_bank.sql").unlink()
+    (older / "0014_subscriptions.sql").unlink()
     db = tmp_path / "x.db"
     assert migrate(db, older) == [1, 2, 3]
     c = sqlite3.connect(db)
@@ -138,7 +145,7 @@ def test_existing_balances_become_an_opening_event_when_the_migration_runs(tmp_p
     c.execute("INSERT INTO user_progress (user_id, total_xp, coins, created_at, updated_at) VALUES (1, 700, 55, '2026-01-01', '2026-01-01')")
     c.execute("INSERT INTO user_progress (user_id, created_at, updated_at) VALUES (2, '2026-01-01', '2026-01-01')")
     c.commit(); c.close()
-    assert migrate(db) == [4, 5, 6, 7]
+    assert migrate(db) == [4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]
     c = sqlite3.connect(db)
     assert c.execute("SELECT user_id, kind, xp, coins FROM reward_events").fetchall() == [(1, "opening_balance", 700, 55)]
     assert [r[0] for r in c.execute("SELECT timezone FROM users")] == ["UTC", "UTC"]      # backfill

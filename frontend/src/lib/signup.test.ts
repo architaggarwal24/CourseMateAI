@@ -3,7 +3,7 @@ import type { ProviderSpec } from "@/lib/llmProviders";
 import { emptyAccountForm, routeSignupFailure, validateAccount, validateField, validateProviderStep } from "@/lib/signup";
 
 const form = (over: Partial<typeof emptyAccountForm> = {}) => ({
-  fullName: "Ada Lovelace", username: "ada_l", email: "ada@example.com", password: "correct-horse", confirmPassword: "correct-horse", ...over,
+  fullName: "Ada Lovelace", username: "ada_l", email: "ada@example.com", password: "correct-horse", confirmPassword: "correct-horse", inviteCode: "", ...over,
 });
 const spec = (over: Partial<ProviderSpec> = {}) =>
   ({ id: "gemini", label: "Google Gemini", needs_key: true, base_url_mode: "none", ...over }) as ProviderSpec;

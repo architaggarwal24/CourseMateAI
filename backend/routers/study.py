@@ -18,6 +18,7 @@ from core_brains.notes_brain import generate_notes
 from core_brains.query_rewriter import Rewrite, standalone_question
 from core_brains.quiz_brain import generate_quiz_async
 from errors import AppError, generation_failed, invalid_input
+from core_brains import usage_meter
 from deps import inject_user_llm_key, provider_error_for, raise_quota_if_needed, require_auth
 from schemas import ChatRequest, FlashcardRequest, NotesRequest, QuizAnswerRequest, QuizFinishRequest, QuizRequest
 from schemas.study import (ChatResponse, FlashcardReviewRequest, FlashcardReviewResponse, FlashcardsResponse,
@@ -27,8 +28,9 @@ from services.chat_stream import SSE_HEADERS, chat_event_stream, sse
 from services.generation_cache import cache_key
 from services.context_service import Retrieval, assess_relevance, describe, ensure_topic_covered, retrieve
 from services.session_service import require_valid_session_id
-from state import (documents, generation_cache, history_service, limiter, mastery_service, quest_service, quiz_service,
-                   reward_service, store)
+from services.quiz_bank import enabled as quiz_bank_enabled
+from state import (documents, generation_cache, quiz_bank, history_service, limiter, mastery_service, quest_service, quiz_service,
+                   review_service, reward_service, store)
 from utils.validators import validate_question, validate_top_k, validate_topic
 
 logger = logging.getLogger(__name__)
@@ -91,9 +93,13 @@ class _ChatPlan:
     @property
     def llm_context(self) -> str:
         if self.needs_clarification:
-            return (f"The following content was found:\n\n{self.found.context}\n\n"
+            return (f"The following content was found:\n\n{self.found.numbered_context()}\n\n"
                     "If relevant, explain it. Otherwise, ask the user to clarify.")
-        return self.found.context
+        return self.found.numbered_context()
+
+    @property
+    def citations(self) -> list:
+        return [] if self.blocked else list(self.found.citations)
 
 
 async def _plan_chat(req: ChatRequest, user: dict) -> _ChatPlan:
@@ -211,8 +217,10 @@ async def chat(req: ChatRequest, request: Request, user=Depends(inject_user_llm_
     reward_payload = await asyncio.to_thread(_record_chat_answer, user, req.session_id, plan, answer)
 
     if plan.needs_clarification:
-        return {"mode": "chat", "content": answer, "sources": plan.found.sources, "needs_clarification": True}
-    return {"mode": "chat", "content": answer, "sources": plan.found.sources, "rewards": reward_payload}
+        return {"mode": "chat", "content": answer, "sources": plan.found.sources, "citations": plan.citations,
+                "needs_clarification": True}
+    return {"mode": "chat", "content": answer, "sources": plan.found.sources, "citations": plan.citations,
+            "rewards": reward_payload}
 
 
 def _stream_error(exc: Exception) -> AppError:
@@ -226,7 +234,7 @@ def _stream_error(exc: Exception) -> AppError:
     responses={200: {
         "description": (
             "Server-Sent Events. `token` events ({\"text\"}) carry the answer as it is written; the final `sources` "
-            "event carries {mode, sources, blocked, needs_clarification, rewards}; a failure after the first token "
+            "event carries {mode, sources, citations, blocked, needs_clarification, rewards}; a failure after the first token "
             "arrives as an `error` event in the unified error shape. Failures before the first token are ordinary "
             "HTTP errors with the same body."),
         "content": {"text/event-stream": {"schema": {"type": "string"}}},
@@ -238,6 +246,7 @@ async def chat_stream(req: ChatRequest, request: Request, user=Depends(inject_us
 
     def final_payload(rewards: Optional[dict], blocked: bool = False) -> dict:
         return {"mode": "chat", "sources": [] if blocked else plan.found.sources, "blocked": blocked,
+                "citations": [] if blocked else plan.citations,
                 "needs_clarification": plan.needs_clarification, "rewards": rewards}
 
     if plan.blocked:
@@ -273,7 +282,7 @@ async def chat_stream(req: ChatRequest, request: Request, user=Depends(inject_us
         return final_payload(rewards)
 
     return StreamingResponse(
-        chat_event_stream(first, tokens, finish=finish, to_error=_stream_error),
+        chat_event_stream(first, usage_meter.carry(tokens, usage_meter.current()), finish=finish, to_error=_stream_error),
         media_type="text/event-stream", headers=SSE_HEADERS)
 
 
@@ -370,7 +379,12 @@ async def flashcard_review(req: FlashcardReviewRequest, request: Request, user=D
         raise invalid_input("Concept must be 1-200 characters.")
     doc = await asyncio.to_thread(documents.get_document, req.session_id, user["user_id"])     # ownership
     row = await asyncio.to_thread(mastery_service.record, user["user_id"], doc["file_hash"], concept, req.correct)
-    return {"ok": True, "concept": concept, "mastery": row}
+    item = None
+    if req.front and req.back:                                   # the card joins the review queue (first grade only)
+        item = await asyncio.to_thread(review_service.grade_first, user["user_id"], doc["file_hash"],
+                                       {"front": req.front, "back": req.back, "explanation": req.explanation,
+                                        "concept": concept}, req.correct)
+    return {"ok": True, "concept": concept, "mastery": row, "review_item": item}
 
 
 @router.get("/study/review-deck", response_model=ReviewDeckResponse, response_model_exclude_unset=True)
@@ -415,16 +429,27 @@ async def quiz(req: QuizRequest, request: Request, user=Depends(inject_user_llm_
         # Prevents hallucinated content when the topic has no presence in the uploaded PDF.
         found = await _find_topic(vector_store, topic, top_k, min_chars=50)
         context, sources = found.context, found.sources
+        # The document's quiz bank first: questions written for this PDF and topic before (by anyone with the
+        # same file) that this user hasn't had - no AI call. Otherwise a fresh batch, which joins the bank.
+        doc_hash = (await asyncio.to_thread(documents.get_document, req.session_id, user["user_id"]))["file_hash"]
+        banked = (await asyncio.to_thread(quiz_bank.take, user["user_id"], doc_hash, topic, req.question_type,
+                                          req.num_questions)) if quiz_bank_enabled() else None
+        if banked:
+            quiz_data = {"questions": banked}
+        else:
+            try:
+                quiz_data = await generate_quiz_async(context=context, num_questions=req.num_questions, question_type=req.question_type)
+            except Exception as e:
+                raise_quota_if_needed(e)
+                logger.exception("Quiz generation failed")
+                raise generation_failed("Quiz generation failed. Please try again.")
 
-        try:
-            quiz_data = await generate_quiz_async(context=context, num_questions=req.num_questions, question_type=req.question_type)
-        except Exception as e:
-            raise_quota_if_needed(e)
-            logger.exception("Quiz generation failed")
-            raise generation_failed("Quiz generation failed. Please try again.")
-
-        if not quiz_data or not quiz_data.get("questions"):
-            raise generation_failed("No questions could be generated. Please try again.")
+            if not quiz_data or not quiz_data.get("questions"):
+                raise generation_failed("No questions could be generated. Please try again.")
+            if quiz_bank_enabled():
+                ids = await asyncio.to_thread(quiz_bank.add, doc_hash, topic, req.question_type, quiz_data["questions"],
+                                              request_model_id())
+                await asyncio.to_thread(quiz_bank.mark_served, user["user_id"], ids)
         generation_cache.put(key, {"content": quiz_data, "sources": sources})
 
     await asyncio.to_thread(_record_quiz, user)

@@ -28,6 +28,7 @@ class FakeLLM:
         self.concept = None                # callable(phase, n, i) -> concept text
         self.boss_hp = 160
         self.weakness = "unrelated weakness"
+        self.species = None                # a bestiary creature id: its signature mechanic runs in the fight
         self.fail_acts = False
         self.empty = None                  # callable(phase, call_number) -> bool: a batch with no usable questions
         self.acts_out = [{"title": "Act One", "topic": "cell structure"},
@@ -36,7 +37,8 @@ class FakeLLM:
 
     async def boss(self, vector_store, topic, difficulty="hard"):
         self.persona_calls.append((topic, difficulty))
-        return {"name": f"Boss of {topic}", "title": "Keeper", "tagline": "t", "personality": "p",
+        extra = {"species": self.species} if self.species else {}
+        return {**extra, "name": f"Boss of {topic}", "title": "Keeper", "tagline": "t", "personality": "p",
                 "conceptual_core": "c", "max_hp": self.boss_hp, "rage_threshold": 0.4, "special_ability": "Doom",
                 "weakness": self.weakness, "attack_names": ["Slam"], "intro_taunt": "Hello",
                 "phase1_taunts": ["p1"], "phase2_taunts": ["p2"], "hit_taunts": ["ouch"], "miss_taunts": ["haha"],
@@ -58,7 +60,8 @@ class FakeLLM:
             qs.append({"id": f"q{n}_{i}", "question": f"P{phase} question {n}.{i} about {concept}?",
                        "options": [f"right-{n}-{i}", f"wrong-a-{n}-{i}", f"wrong-b-{n}-{i}", f"wrong-c-{n}-{i}"],
                        "correct_answer": f"right-{n}-{i}", "explanation": f"because {n}.{i}", "hint": "think",
-                       "concept": concept, "difficulty": self.tiers[i % len(self.tiers)]})
+                       "concept": concept, "difficulty": self.tiers[i % len(self.tiers)],
+                       **({"riddle": i % 3 == 0} if kwargs.get("riddles") else {})})
         return {"questions": qs}
 
     async def acts(self, vector_store, num_acts=3):
@@ -112,7 +115,13 @@ def intents(monkeypatch):
 
 
 @pytest.fixture()
-def hero(make_user, pdf_bytes, llm, intents):
+def hero(make_user, pdf_bytes, llm, intents, request, monkeypatch):
+    """A signed-in player with a document. No gear, and - unless the test module sets REAL_KITS = True - no
+    champion passives or ultimates either (the default champion's kit would change the plain arithmetic the
+    older rule tests check). The ultimate meter still charges."""
+    if not getattr(request.module, "REAL_KITS", False):
+        from core_brains import kits
+        monkeypatch.setattr(kits, "prepare", lambda t: None)
     c, uid = make_user()
     assert upload(c, SID, pdf_bytes).status_code == 202
     state.store.modify_avatar(str(uid), lambda equipped, owned: equipped.clear())      # no gear: plain arithmetic

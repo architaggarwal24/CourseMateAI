@@ -2,7 +2,7 @@
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-import { AREAS, HERO_TABS, LEGACY_REDIRECTS, ROUTES, STUDY_TAB_PATH_SOURCE, areaOf, isHeroTab, isStudyTab } from "./routes";
+import { AREAS, HERO_TABS, LEGACY_HERO_TABS, LEGACY_REDIRECTS, ROUTES, STUDY_TAB_PATH_SOURCE, areaOf, isHeroTab, isStudyTab } from "./routes";
 
 const appDir = fileURLToPath(new URL("../app", import.meta.url));
 
@@ -29,7 +29,7 @@ describe("routes", () => {
     expect(LEGACY_REDIRECTS.map(r => r.from).sort()).toEqual(
       [
         "/", "/arena", "/avatar", "/avatar/hero-forge", "/inventory", "/profile", "/settings", "/shop",
-        "/hero/arena", "/hero/shop", "/hero/inventory", "/hero/avatar", "/hero/forge", "/hero/achievements",
+        "/hero/arena", "/hero/shop", "/hero/inventory", "/hero/avatar", "/hero/forge", "/hero/champion", "/hero/achievements",
       ].sort(),
     );
     for (const { from, to } of LEGACY_REDIRECTS) expect(served, `${from} -> ${to}`).toContain(pathOf(to));
@@ -66,29 +66,32 @@ describe("routes", () => {
     expect(ROUTES.studyTab("notes", "a b")).toBe("/study?tab=notes&session=a%20b");
     expect(ROUTES.studyTab("chat", "s1", "d 1")).toBe("/study?tab=chat&doc=d%201&session=s1");
     expect(isStudyTab("flashcards")).toBe(true);
+    expect(isStudyTab("review")).toBe(true);
     expect(isStudyTab("arena")).toBe(false);
     expect(isStudyTab(undefined)).toBe(false);
   });
 
   it("the Hero area is one page: every tab is /hero?tab=, and every old Hero URL redirects into a tab", () => {
     expect(served.filter(p => p.startsWith("/hero"))).toEqual(["/hero"]);
-    expect([...HERO_TABS]).toEqual(["quests", "arena", "shop", "inventory", "avatar", "forge", "achievements"]);
+    expect([...HERO_TABS]).toEqual(["quests", "arena", "shop", "inventory", "champion", "achievements"]);
     for (const tab of HERO_TABS) expect(ROUTES.heroTab(tab)).toBe(`/hero?tab=${tab}`);
     expect(ROUTES.heroShop).toBe(ROUTES.heroTab("shop"));
     expect(isHeroTab("shop")).toBe(true);
     expect(isHeroTab("overview")).toBe(false);
     expect(isHeroTab(null)).toBe(false);
     const toTab = Object.fromEntries(LEGACY_REDIRECTS.map(r => [r.from, r.to]));
-    for (const tab of ["arena", "shop", "inventory", "avatar", "forge", "achievements"] as const) {
+    for (const tab of ["arena", "shop", "inventory", "champion", "achievements"] as const) {
       expect(toTab[`/hero/${tab}`], tab).toBe(`/hero?tab=${tab}`);
     }
     expect(toTab["/shop"]).toBe("/hero?tab=shop");
-    expect(toTab["/avatar/hero-forge"]).toBe("/hero?tab=forge");
+    // the Avatar tab and the Hero Forge are now the Champion tab, by path and by ?tab=
+    for (const old of ["/avatar", "/avatar/hero-forge", "/hero/avatar", "/hero/forge"]) expect(toTab[old], old).toBe("/hero?tab=champion");
+    expect(LEGACY_HERO_TABS).toEqual({ avatar: "champion", forge: "champion" });
   });
 
   it("the old /study/<tab> paths redirect to ?tab= and are no longer pages", () => {
     const config = readFileSync(fileURLToPath(new URL("../../next.config.ts", import.meta.url)), "utf8");
-    expect(STUDY_TAB_PATH_SOURCE).toBe("/study/:tab(chat|quiz|notes|flashcards)");
+    expect(STUDY_TAB_PATH_SOURCE).toBe("/study/:tab(chat|quiz|notes|flashcards|map|review|exam|overview)");
     expect(config).toContain("STUDY_TAB_PATH_SOURCE");
     expect(config).toContain('destination: "/study?tab=:tab"');
     expect(served.filter(p => p.startsWith("/study"))).toEqual(["/study"]);

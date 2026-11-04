@@ -189,6 +189,15 @@ scenario, a comparison, a common misconception) - repeating a concept is expecte
 """
 
 
+RIDDLE_BLOCK = """
+SPHINX MODE - this boss speaks in riddles. Write about a third of the questions (at least 2) as RIDDLES: the
+question describes the answer indirectly, in the voice of an ancient sphinx ("I am the place where...", "What am I?"),
+but it must still be answerable from the context and keep 4 ordinary options. Mark each riddle with "riddle": true
+(and every other question with "riddle": false). The riddle is the QUESTION's wording only - options, the correct
+answer, explanation, concept and difficulty follow the normal rules.
+"""
+
+
 EXPEDITION_ACTS_PROMPT = """
 You are planning an "Expedition" through a study document for a learning game: the student travels through the
 document in {num_acts} acts, each act a chapter or major section, fought in reading order.

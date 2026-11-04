@@ -99,10 +99,14 @@ export async function fetchReviewDeck(sessionId: string): Promise<ReviewCard[]> 
   return ((data as { cards?: ReviewCard[] } | undefined)?.cards) ?? [];
 }
 
-/** Tell the server how a flashcard went, so concept mastery (and the Nemesis boss) knows. Fire and forget. */
-export function reviewFlashcard(sessionId: string, concept: string, correct: boolean): void {
+/** Tell the server how a flashcard went, so concept mastery (and the Nemesis boss) knows. With the card itself it
+ *  also joins the spaced-repetition review queue (its first grade is its first review). Fire and forget. */
+export function reviewFlashcard(sessionId: string, concept: string, correct: boolean,
+                                card?: { front: string; back: string; explanation?: string | null }): void {
   if (!sessionId || !concept) return;
-  void api.POST("/study/flashcards/review", { body: { session_id: sessionId, concept, correct } }).catch(() => { /* mastery is a bonus */ });
+  const extra = card?.front && card?.back ? { front: card.front, back: card.back, explanation: card.explanation ?? null } : {};
+  void api.POST("/study/flashcards/review", { body: { session_id: sessionId, concept, correct, ...extra } })
+    .catch(() => { /* mastery is a bonus */ });
 }
 
 export async function generateFlashcards(topic: string, sessionId: string, numCards: number = 10) {

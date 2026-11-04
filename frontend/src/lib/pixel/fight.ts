@@ -12,13 +12,76 @@ import { toCanvas } from "./canvas";
 import { BOSS_ANIMS, BOSS_FPS, bossById, type BossAnim, type BossDef } from "./bosses";
 import { ANIM_FPS, ANIM_LOOP, heroAnims, type AnimName, type HeroDef } from "./heroes";
 import { sheetFor, sheetFrame, stageImageFor, type LoadedSheet } from "./sheets";
+import { PET_FPS, PET_FRAME, PET_OFFSET, petById, petFrame } from "./pets";
 import { bossFrame, heroFrame, type Frame } from "./sprites";
 import { GROUND_Y, STAGES, STAGE_H, STAGE_W, stageBackdrop, type ParticleKind } from "./stages";
 import type { PixelBuffer } from "./buffer";
 
 export type BeatKind =
   | "intro" | "hero-strike" | "hero-cast" | "boss-strike" | "boss-shield" | "boss-heal" | "boss-drain"
-  | "boss-ko" | "hero-ko" | "rage";
+  | "boss-ko" | "hero-ko" | "rage"
+  // Phase 3 Stage 2: creature mechanics and champion kits
+  | "mechanic" | "ultimate" | "riposte" | "dodge";
+
+/**
+ * What a creature's mechanic or a champion's kit did on a turn, one per server event type (backend
+ * core_brains/mechanics.py and kits.py `t.event(...)`). A dodge ("dodged", "shadowstep", "vanish") is its own beat.
+ */
+export type MechanicEffect =
+  | "regrowth" | "cauterized" | "grabbed" | "broke_free" | "riddle_solved" | "riddle_failed" | "illusion" | "illusion_seen"
+  | "chained" | "feather" | "devour" | "stunned" | "drum" | "drum_broken" | "shapeshift" | "venom" | "poisoned"
+  | "treasure" | "wisdom" | "plucked" | "squeeze" | "uncoil" | "uncoiled" | "refund" | "ultimate_hit" | "fortress";
+
+/** How an effect looks: who acts (and in which pose), the colour, the motion, an optional banner, how long it takes. */
+export type EffectMotion =
+  | "motes" | "to-boss" | "to-hero" | "ring" | "burst" | "orb-to-hero" | "orb-to-boss" | "chains" | "stars" | "coils" | "drum" | "flash";
+export interface EffectSpec {
+  on: "hero" | "boss"; anim?: "cast" | "attack" | "hit" | "guard" | "win"; color: string; motion: EffectMotion;
+  banner?: string; ms: number; shake?: number;
+}
+
+/** The look of every mechanic and kit effect. Pure data, so a test can check every server event has one. */
+export const MECHANIC_FX: Record<MechanicEffect, EffectSpec> = {
+  // Hydra: a head regrows (green motes rise on the boss) / a heavy blow cauterizes (embers burst)
+  regrowth: { on: "boss", anim: "cast", color: "#4ade80", motion: "motes", ms: 650 },
+  cauterized: { on: "boss", anim: "hit", color: "#fb923c", motion: "burst", ms: 450, shake: 2 },
+  // Kraken: a tentacle flies at the hero and pins them / the hero slips out
+  grabbed: { on: "boss", anim: "attack", color: "#0ea5e9", motion: "orb-to-hero", banner: "GRABBED", ms: 750, shake: 3 },
+  broke_free: { on: "hero", anim: "guard", color: "#7dd3fc", motion: "burst", ms: 450 },
+  // Sphinx: a golden ring of a solved riddle / it devours your certainty
+  riddle_solved: { on: "boss", anim: "hit", color: "#facc15", motion: "ring", ms: 500 },
+  riddle_failed: { on: "boss", anim: "cast", color: "#facc15", motion: "to-boss", ms: 650 },
+  // Kitsune: the fake option bursts in pink on the hero / the illusion shatters
+  illusion: { on: "hero", anim: "hit", color: "#f0abfc", motion: "to-boss", banner: "ILLUSION", ms: 700 },
+  illusion_seen: { on: "boss", color: "#f0abfc", motion: "burst", ms: 450 },
+  // Fenrir: chains snap shut round the wolf
+  chained: { on: "boss", anim: "hit", color: "#cbd5e1", motion: "chains", banner: "CHAINED", ms: 800, shake: 3 },
+  // Ammit: the heart is lighter than the feather (gold falls on the hero) / it devours a repeated mistake
+  feather: { on: "hero", anim: "cast", color: "#fde68a", motion: "motes", ms: 500 },
+  devour: { on: "boss", anim: "attack", color: "#a3e635", motion: "to-boss", ms: 700, shake: 2 },
+  // Minotaur: it crashes into the guard and staggers (stars)
+  stunned: { on: "boss", anim: "hit", color: "#fde047", motion: "stars", banner: "STUNNED", ms: 800, shake: 4 },
+  // Oni: the war drum booms / a heavy blow splits it
+  drum: { on: "boss", anim: "cast", color: "#ef4444", motion: "drum", ms: 650, shake: 4 },
+  drum_broken: { on: "boss", anim: "hit", color: "#fca5a5", motion: "burst", banner: "DRUM BROKEN", ms: 600, shake: 3 },
+  // Rakshasa: it changes form (a flash and a purple ring)
+  shapeshift: { on: "boss", anim: "cast", color: "#c084fc", motion: "flash", ms: 700 },
+  // Naga: venom bites / a treasure is stolen from the hoard
+  venom: { on: "hero", anim: "hit", color: "#84cc16", motion: "motes", ms: 500 },
+  poisoned: { on: "boss", anim: "attack", color: "#84cc16", motion: "orb-to-hero", ms: 650 },
+  treasure: { on: "hero", anim: "win", color: "#fbbf24", motion: "to-hero", ms: 700 },
+  // Simurgh: it gathers wisdom while you think / you pluck a feather
+  wisdom: { on: "boss", anim: "cast", color: "#93c5fd", motion: "motes", ms: 650 },
+  plucked: { on: "hero", color: "#fde68a", motion: "orb-to-hero", ms: 600 },
+  // Jormungandr: the coils squeeze the hero / they come off
+  squeeze: { on: "hero", anim: "hit", color: "#22c55e", motion: "coils", ms: 700, shake: 3 },
+  uncoil: { on: "hero", anim: "guard", color: "#86efac", motion: "burst", ms: 400 },
+  uncoiled: { on: "hero", anim: "win", color: "#86efac", motion: "ring", banner: "FREE", ms: 600 },
+  // Kits: Mira's Focus comes back / an ultimate's blow lands / Thorne's Last Chapter holds
+  refund: { on: "hero", color: "#67e8f9", motion: "motes", ms: 450 },
+  ultimate_hit: { on: "hero", anim: "cast", color: "#facc15", motion: "ring", ms: 400 },
+  fortress: { on: "hero", anim: "guard", color: "#93c5fd", motion: "ring", ms: 600 },
+};
 
 export interface Beat {
   kind: BeatKind;
@@ -29,35 +92,48 @@ export interface Beat {
   blocked?: boolean;
   /** hero-strike: the blow was absorbed by the boss's shield. */
   shielded?: boolean;
-  /** intro: the banner text. */
+  /** intro / ultimate: the banner text. */
   text?: string;
+  /** mechanic: what the creature's mechanic or the champion's kit did. */
+  effect?: MechanicEffect;
+  /** boss-strike / dodge: a charge (a long, fast rush) or a thrown projectile (a boulder) instead of a swing. */
+  charge?: boolean;
+  projectile?: boolean;
   /** The turn this beat belongs to - echoed back by onImpact. */
   key?: string | number;
 }
 
-export type IntentTint = "attack" | "heavy" | "shield" | "drain" | "heal" | null;
+export type IntentTint =
+  | "attack" | "heavy" | "shield" | "drain" | "heal"
+  | "grab" | "riddle" | "illusion" | "charge" | "aim" | "throw" | "hoard" | "stunned" | null;
 
 const HERO_X = 128;
 const BOSS_X = 352;
 const INTENT_COLOR: Record<Exclude<IntentTint, null>, string> = {
   attack: "#ef4444", heavy: "#f97316", shield: "#38bdf8", drain: "#a855f7", heal: "#4ade80",
+  grab: "#0ea5e9", riddle: "#facc15", illusion: "#f0abfc", charge: "#f97316", aim: "#fbbf24", throw: "#f97316",
+  hoard: "#34d399", stunned: "#e2e8f0",
 };
 
 interface Tween { from: number; to: number; start: number; dur: number }
 interface Actor {
   anim: string; start: number; hold: boolean;
   dx: Tween; flashUntil: number; hidden: boolean;
+  /** Drawn see-through until then (a dodge / Vanish). */
+  ghostUntil: number;
 }
 interface Particle { x: number; y: number; vx: number; vy: number; life: number; max: number; color: string; size: number; g: number; kind?: ParticleKind | "spark" | "mote" | "dust" }
 interface Fx { kind: "slash" | "ring" | "orb" | "banner-flash" | "bolt"; x: number; y: number; start: number; dur: number; color: string; size: number; tx?: number; ty?: number; flip?: boolean }
 
 export interface FightOptions {
   hero: HeroDef;
+  /** The pet idling behind the champion (a pet id from pets.ts), if one is worn. */
+  pet?: string | null;
   bossId: string;
   stageId?: string;
   reduced: boolean;
   onImpact?: (side: "hero" | "boss", key: string | number | undefined) => void;
-  onBanner?: (text: string, tone: "fight" | "ko" | "rage" | "lose") => void;
+  onBanner?: (text: string, tone: "fight" | "ko" | "rage" | "lose" | "mech" | "ult") => void;
 }
 
 const easeOut = (t: number) => 1 - (1 - t) * (1 - t);
@@ -72,6 +148,7 @@ export class FightScene {
   private now = 0;
   private last = 0;
   private hero: HeroDef;
+  private pet: string | null = null;
   private boss: BossDef;
   private stageId: string;
   private reduced: boolean;
@@ -106,13 +183,14 @@ export class FightScene {
     this.ctx = canvas.getContext("2d")!;
     this.ctx.imageSmoothingEnabled = false;
     this.hero = opts.hero;
+    this.pet = opts.pet ?? null;
     this.boss = bossById(opts.bossId);
     this.stageId = opts.stageId ?? this.boss.stage;
     this.reduced = opts.reduced;
     const t = performance.now();
     this.now = t;
-    this.h = { anim: "idle", start: t, hold: false, dx: { from: 0, to: 0, start: t, dur: 1 }, flashUntil: 0, hidden: false };
-    this.b = { anim: "idle", start: t, hold: false, dx: { from: 0, to: 0, start: t, dur: 1 }, flashUntil: 0, hidden: false };
+    this.h = { anim: "idle", start: t, hold: false, dx: { from: 0, to: 0, start: t, dur: 1 }, flashUntil: 0, hidden: false, ghostUntil: 0 };
+    this.b = { anim: "idle", start: t, hold: false, dx: { from: 0, to: 0, start: t, dur: 1 }, flashUntil: 0, hidden: false, ghostUntil: 0 };
     this.measureBoss();
     this.seedAmbient();
     this.loadHeroSheet(this.hero.id);
@@ -136,6 +214,8 @@ export class FightScene {
     this.hero = hero;
     if (changed) this.loadHeroSheet(hero.id);
   }
+
+  setPet(pet: string | null | undefined) { this.pet = pet ?? null; }
 
   /** A new turn: whatever the last one was still playing is cut short, both fighters back on their marks. */
   reset() {
@@ -215,6 +295,8 @@ export class FightScene {
         return 600;
       }
       case "boss-strike": {
+        if (beat.projectile) return this.bossThrow(() => this.heroHurt(beat));
+        if (beat.charge) return this.bossCharge(() => this.heroHurt(beat));
         this.setAnim(this.b, "attack"); this.move(this.b, -46, 260);
         const hit = this.impactAfterFrames(2, BOSS_FPS.attack) + 40;
         this.after(hit, () => this.heroHurt(beat));
@@ -261,6 +343,45 @@ export class FightScene {
         this.after(1000, () => this.setAnim(this.h, "win", true));
         return 1400;
       }
+      case "mechanic": return beat.effect && MECHANIC_FX[beat.effect] ? this.effect(MECHANIC_FX[beat.effect]) : 0;
+      case "ultimate": {
+        const accent = this.hero.accent;
+        const [x, y] = this.heroCenter();
+        this.setAnim(this.h, "cast");
+        this.flashSky = this.now;
+        this.fx.push({ kind: "ring", x, y, start: this.now, dur: 600, color: accent, size: 90 });
+        this.after(200, () => this.fx.push({ kind: "ring", x, y, start: this.now, dur: 500, color: "#facc15", size: 60 }));
+        if (!this.reduced) for (let i = 0; i < 30; i++) this.mote(x + (Math.random() - 0.5) * 40, GROUND_Y - Math.random() * 60, i % 3 ? accent : "#ffffff");
+        this.shake(3, 300);
+        this.opts.onBanner?.(beat.text ?? "ULTIMATE", "ult");
+        this.after(900, () => this.setAnim(this.h, "idle"));
+        return 1000;
+      }
+      case "riposte": {
+        // a quick counter from the guard: a short lunge, one light blow, back on the mark
+        this.setAnim(this.h, "attack"); this.move(this.h, 46, 140);
+        this.after(140, () => this.bossHurt({ kind: "hero-strike" }));
+        this.after(360, () => { this.move(this.h, 0, 200); this.setAnim(this.h, "idle"); });
+        return 520;
+      }
+      case "dodge": {
+        // the blow comes as usual and finds nothing: the hero hops back, see-through for a moment
+        const sidestep = () => {
+          this.opts.onImpact?.("hero", this.turn);
+          this.h.ghostUntil = this.now + 420;
+          this.setAnim(this.h, "dash");
+          this.h.dx = { from: 0, to: this.reduced ? 0 : -28, start: this.now, dur: this.reduced ? 1 : 140 };
+          this.after(220, () => { this.move(this.h, 0, 220); this.setAnim(this.h, "idle"); });
+          this.burst(HERO_X + 20, GROUND_Y - 40, "#e2e8f0", 8, 1);
+        };
+        if (beat.projectile) return this.bossThrow(sidestep);
+        if (beat.charge) return this.bossCharge(sidestep);
+        this.setAnim(this.b, "attack"); this.move(this.b, -46, 260);
+        const hit = this.impactAfterFrames(2, BOSS_FPS.attack) + 40;
+        this.after(hit, sidestep);
+        this.after(hit + 260, () => this.move(this.b, 0, 320));
+        return hit + 600;
+      }
       case "hero-ko": {
         this.setAnim(this.h, "ko", true);
         this.h.flashUntil = this.now + 120;
@@ -288,6 +409,73 @@ export class FightScene {
   }
 
   private bossCenter(): [number, number] { return [this.bossFront + 50, GROUND_Y - 80]; }
+  private heroCenter(): [number, number] { return [HERO_X + 10, GROUND_Y - 46]; }
+
+  /** A Minotaur-style charge: a long fast rush with dust behind, then the blow. */
+  private bossCharge(land: () => void): number {
+    this.setAnim(this.b, "attack");
+    const rush = Math.max(60, this.bossFront - HERO_X - 40);
+    this.move(this.b, -rush, 300);
+    if (!this.reduced) for (let i = 0; i < 14; i++) this.particles.push({ x: this.bossFront + 70 + Math.random() * 30, y: GROUND_Y - Math.random() * 6, vx: 1 + Math.random() * 2, vy: -0.4 - Math.random() * 0.6, life: 26, max: 26, color: "#a8a29e", size: 2, g: 0.04, kind: "dust" });
+    this.after(300, () => { land(); this.shake(5, 260); });
+    this.after(560, () => this.move(this.b, 0, 380));
+    this.after(940, () => this.setAnim(this.h, "idle"));
+    return 1000;
+  }
+
+  /** A Cyclops-style throw: the boss hurls a boulder in an arc at the hero. */
+  private bossThrow(land: () => void): number {
+    this.setAnim(this.b, "cast");
+    const [bx, by] = this.bossCenter();
+    const [hx, hy] = this.heroCenter();
+    const flight = 420;
+    this.after(180, () => this.fx.push({ kind: "orb", x: bx - 20, y: by - 30, tx: hx, ty: hy, start: this.now, dur: this.reduced ? 1 : flight, color: "#78716c", size: 9 }));
+    this.after(180 + flight, () => { land(); this.burst(hx, hy, "#a8a29e", 16, 2); });
+    this.after(180 + flight + 300, () => { this.setAnim(this.b, "idle"); this.setAnim(this.h, "idle"); });
+    return 180 + flight + 450;
+  }
+
+  /** A mechanic or kit effect, from its spec in MECHANIC_FX. */
+  private effect(spec: EffectSpec): number {
+    const actor = spec.on === "boss" ? this.b : this.h;
+    const [x, y] = spec.on === "boss" ? this.bossCenter() : this.heroCenter();
+    const [bx, by] = this.bossCenter();
+    const [hx, hy] = this.heroCenter();
+    if (spec.anim && !actor.hold) { this.setAnim(actor, spec.anim); this.after(spec.ms, () => { if (!actor.hold) this.setAnim(actor, "idle"); }); }
+    if (spec.on === "hero" && spec.anim === "hit") this.h.flashUntil = this.now + 90;
+    if (spec.on === "boss" && spec.anim === "hit") this.b.flashUntil = this.now + 90;
+    const stream = (fx: number, fy: number, tx: number, ty: number) => {
+      if (this.reduced) return;
+      for (let i = 0; i < 16; i++) {
+        const sx = fx + (Math.random() - 0.5) * 24, sy = fy + (Math.random() - 0.5) * 30;
+        this.particles.push({ x: sx, y: sy, vx: (tx - sx) / 40, vy: (ty - sy) / 40, life: 40, max: 40, color: spec.color, size: 2, g: 0, kind: "mote" });
+      }
+    };
+    const ring = (rx: number, ry: number, size: number, delay = 0, dur = 450) =>
+      this.after(delay, () => this.fx.push({ kind: "ring", x: rx, y: ry, start: this.now, dur, color: spec.color, size }));
+    switch (spec.motion) {
+      case "motes": if (!this.reduced) for (let i = 0; i < 20; i++) this.mote(x + (Math.random() - 0.5) * (spec.on === "boss" ? 80 : 30), y + 20 + Math.random() * 30, spec.color); break;
+      case "to-boss": stream(hx, hy, bx, by); break;
+      case "to-hero": stream(bx, by, hx, hy); break;
+      case "ring": ring(x, y, spec.on === "boss" ? 80 : 50); break;
+      case "burst": this.burst(x, y, spec.color, 20, 2); break;
+      case "orb-to-hero":
+      case "orb-to-boss": {
+        const [fx, fy, tx, ty] = spec.motion === "orb-to-hero" ? [bx - 20, by, hx, hy] : [hx + 20, hy, bx, by];
+        this.fx.push({ kind: "orb", x: fx, y: fy, tx, ty, start: this.now, dur: this.reduced ? 1 : 320, color: spec.color, size: 6 });
+        this.after(320, () => { this.burst(tx, ty, spec.color, 14, 2); if (spec.motion === "orb-to-hero" && spec.anim === "attack") { this.setAnim(this.h, "hit"); this.h.flashUntil = this.now + 90; } });
+        break;
+      }
+      case "chains": for (let i = 0; i < 3; i++) ring(bx, by - 10 + i * 24, 70 - i * 10, i * 120, 520); this.burst(bx, by, spec.color, 12, 2); break;
+      case "stars": for (let i = 0; i < 3; i++) ring(bx + (i - 1) * 16, by - 64, 14, i * 140, 600); if (!this.reduced) for (let i = 0; i < 10; i++) this.mote(bx + (Math.random() - 0.5) * 40, by - 60, spec.color); break;
+      case "coils": for (let i = 0; i < 3; i++) ring(hx, hy - 16 + i * 18, 38 - i * 6, i * 110, 480); break;
+      case "drum": ring(bx, by, 90, 0, 400); ring(bx, by, 120, 220, 400); break;
+      case "flash": this.b.flashUntil = this.now + 220; ring(bx, by, 110, 0, 600); if (!this.reduced) for (let i = 0; i < 18; i++) this.mote(bx + (Math.random() - 0.5) * 90, by + Math.random() * 60, spec.color); break;
+    }
+    if (spec.shake) this.shake(spec.shake, 220);
+    if (spec.banner) this.opts.onBanner?.(spec.banner, "mech");
+    return spec.ms;
+  }
 
   private bossHurt(beat: Beat, followUp = false) {
     const [x, y] = this.bossCenter();
@@ -488,11 +676,15 @@ export class FightScene {
     const hx = Math.round(HERO_X + tweenAt(this.h.dx, now));
     const bxOff = Math.round(tweenAt(this.b.dx, now));
     this.shadow(hx, 18);
+    const pf = this.pet ? petFrame(this.pet, this.reduced ? 0 : Math.floor((now / 1000) * PET_FPS)) : null;
+    const petX = HERO_X + PET_OFFSET[0];
+    if (pf && !petById(this.pet)?.flies) this.shadow(petX, 9);
     if (!this.b.hidden) this.shadow(this.bossFront + 55 + bxOff, 60);
 
     // boss
     if (!this.b.hidden) this.drawBoss(bxOff);
-    // hero
+    // the pet stays on its mark behind the champion; then the champion
+    if (pf) ctx.drawImage(toCanvas(pf), petX - PET_FRAME.anchor[0], GROUND_Y + PET_OFFSET[1] - PET_FRAME.anchor[1]);
     this.drawHero(hx);
 
     // fx
@@ -521,6 +713,13 @@ export class FightScene {
   }
 
   private drawHero(x: number) {
+    const ctx = this.ctx;
+    const ghost = this.now < this.h.ghostUntil;
+    if (ghost) ctx.globalAlpha = this.reduced ? 0.6 : 0.35;
+    try { this.drawHeroFrame(x); } finally { ctx.globalAlpha = 1; }
+  }
+
+  private drawHeroFrame(x: number) {
     const ctx = this.ctx;
     const { anim, i } = this.heroAnimIndex();
     if (this.heroSheet) {

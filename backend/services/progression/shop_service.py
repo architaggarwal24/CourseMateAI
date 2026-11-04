@@ -1,5 +1,6 @@
 import json
 from services.progression.catalog import flatten_catalog, CATEGORY_UNLOCK_LEVELS, CATEGORY_INFO
+from services.progression.champions import DEFAULT_CHAMPION, is_champion
 from services.progression.ownership import SLOT_BY_TYPE, can_equip_in_slot
 
 # Stack limits for arena consumables (kept in sync with buff_service.ARENA_MAX_STACKS)
@@ -38,7 +39,7 @@ class ShopService:
         # requiring a purchase flow.
         free_ids = [
             it["id"] for it in self._items
-            if int(it.get("price", 1)) == 0 and not it.get("consumable")
+            if int(it.get("price", 1)) == 0 and not it.get("consumable") and not it.get("mastery")
         ]
         new_grants = [fid for fid in free_ids if fid not in owned]
         if new_grants:
@@ -110,8 +111,10 @@ class ShopService:
                 **CATEGORY_INFO.get(cat, {}),
             }
 
+        champion = avatar.get("champion_id")
         return {
             "shop_unlocked": unlocked,
+            "champion_id": champion if is_champion(champion) else DEFAULT_CHAMPION,
             "level":  level,
             "coins":  coins,
             "owned":  owned,
@@ -140,6 +143,9 @@ class ShopService:
         it = self._item_map.get(item_id)
         if not it:
             return {"ok": False, "reason": "Item not found"}
+        if it.get("mastery"):
+            m = it["mastery"]
+            return {"ok": False, "reason": f"A mastery skin: reach {m['champion'].title()} Lv {m['level']} to unlock it."}
 
         if level < int(it["level_required"]):
             return {"ok": False, "reason": f"Locked until Level {it['level_required']}"}
@@ -225,14 +231,15 @@ class ShopService:
 
         result = {}
 
+        champion = self.store.get_avatar(user_id).get("champion_id") or "kaien"
+
         def _equip(equipped, owned):
-            if not can_equip_in_slot(item_id, slot, owned):
-                result["err"] = "You don't own this item"
+            if not can_equip_in_slot(item_id, slot, owned, champion):
+                m = it.get("mastery")
+                result["err"] = (f"Only {m['champion'].title()} can wear this" if m and item_id in owned
+                                 else "You don't own this item")
                 return
             equipped[slot] = item_id
-            # Keep outfit_id in sync so hero-forge page and AvatarDisplay both see the right armor
-            if slot == "armor":
-                equipped["outfit_id"] = item_id
             result["equipped"] = dict(equipped)
 
         self.store.modify_avatar(user_id, _equip)
@@ -252,9 +259,6 @@ class ShopService:
                 result["err"] = f"No item equipped in {slot} slot"
                 return
             result["item_id"] = equipped.pop(slot)
-            # Keep outfit_id in sync when unequipping armor
-            if slot == "armor":
-                equipped.pop("outfit_id", None)
             result["equipped"] = dict(equipped)
 
         self.store.modify_avatar(user_id, _unequip)

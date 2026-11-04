@@ -1,11 +1,11 @@
 """Shop and consumable items."""
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Request
 
 from errors import AppError
 from deps import require_auth
 from schemas import ShopEquipRequest, ShopPurchaseRequest, ShopUnequipRequest, UseItemRequest
 from schemas.shop import ShopActionResponse, ShopStateResponse, UseItemResponse
-from state import buff_service, shop_service, store
+from state import buff_service, shop_service, store, limiter
 
 router = APIRouter()
 
@@ -17,26 +17,30 @@ def get_shop(user=Depends(require_auth)):
 
 
 @router.post("/shop/purchase", response_model=ShopActionResponse, response_model_exclude_unset=True)
-def shop_purchase(req: ShopPurchaseRequest, user=Depends(require_auth)):
+@limiter.limit("60/minute")
+def shop_purchase(req: ShopPurchaseRequest, request: Request, user=Depends(require_auth)):
     user_id = str(user['user_id'])
     return shop_service.purchase(user_id, req.item_id)
 
 
 @router.post("/shop/equip", response_model=ShopActionResponse, response_model_exclude_unset=True)
-def shop_equip(req: ShopEquipRequest, user=Depends(require_auth)):
+@limiter.limit("120/minute")
+def shop_equip(req: ShopEquipRequest, request: Request, user=Depends(require_auth)):
     user_id = str(user['user_id'])
     return shop_service.equip(user_id, req.item_id)
 
 
 @router.post("/shop/unequip", response_model=ShopActionResponse, response_model_exclude_unset=True)
-def shop_unequip(req: ShopUnequipRequest, user=Depends(require_auth)):
+@limiter.limit("120/minute")
+def shop_unequip(req: ShopUnequipRequest, request: Request, user=Depends(require_auth)):
     """Unequip an item from a specific equipment slot"""
     user_id = str(user['user_id'])
     return shop_service.unequip(user_id, req.slot)
 
 
 @router.post("/items/use", response_model=UseItemResponse, response_model_exclude_unset=True)
-def use_item(req: UseItemRequest, user=Depends(require_auth)):
+@limiter.limit("60/minute")
+def use_item(req: UseItemRequest, request: Request, user=Depends(require_auth)):
     """Use a consumable item from inventory. Applies its effect immediately."""
     user_id = str(user['user_id'])
 

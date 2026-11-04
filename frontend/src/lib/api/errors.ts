@@ -2,7 +2,7 @@
 // Every non-2xx response from the backend has this body (see backend/errors.py):
 //   { "error": { "code": string, "message": string, "action": ApiErrorAction, "details": object | null } }
 // This file is the only place that knows that shape; everything else uses ApiError / apiErrorMessage.
-export type ApiErrorAction = "settings" | "relogin" | "retry" | "reupload" | null;
+export type ApiErrorAction = "settings" | "relogin" | "retry" | "reupload" | "plans" | null;
 
 export interface ApiErrorPayload {
   code: string;
@@ -11,7 +11,7 @@ export interface ApiErrorPayload {
   details: Record<string, any> | null;
 }
 
-const ACTIONS = ["settings", "relogin", "retry", "reupload"];
+const ACTIONS = ["settings", "relogin", "retry", "reupload", "plans"];
 
 export class ApiError extends Error {
   readonly status: number;

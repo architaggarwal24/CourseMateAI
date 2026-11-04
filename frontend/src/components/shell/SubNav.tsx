@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useId, type MouseEvent } from "react";
+import { useEffect, useId, useRef, type MouseEvent } from "react";
 import { motion } from "motion/react";
 import { cn } from "@/lib/utils";
 
@@ -15,6 +15,8 @@ export interface SubNavItem {
   mode?: "exact" | "prefix";
   /** When set, decides "current" itself (for tabs that differ by query string, not by path). */
   current?: boolean;
+  /** A count shown beside the label (e.g. cards due), with its meaning for screen readers. */
+  badge?: { count: number; label: string };
 }
 
 function isCurrent(pathname: string, item: SubNavItem) {
@@ -33,8 +35,17 @@ export default function SubNav({ label, items, className, onNavigate }: {
 }) {
   const pathname = usePathname();
   const barId = useId();
+  // On a narrow screen the strip scrolls sideways: keep the current tab in view (Review and Exam sit at the end).
+  const strip = useRef<HTMLElement>(null);
+  const currentHref = items.find((i) => isCurrent(pathname, i))?.href;
+  useEffect(() => {
+    const el = strip.current?.querySelector<HTMLElement>('[aria-current="page"]');
+    if (el && strip.current && strip.current.scrollWidth > strip.current.clientWidth) {
+      strip.current.scrollTo?.({ left: el.offsetLeft - (strip.current.clientWidth - el.offsetWidth) / 2 });
+    }
+  }, [currentHref]);
   return (
-    <nav aria-label={label} className={cn("ui-tabs__list shrink-0 px-4", className)}>
+    <nav ref={strip} aria-label={label} className={cn("ui-tabs__list shrink-0 px-4", className)}>
       {items.map(item => (
         <Link
           key={item.href}
@@ -44,6 +55,10 @@ export default function SubNav({ label, items, className, onNavigate }: {
           onClick={onNavigate ? (e) => onNavigate(item, e) : undefined}
         >
           {item.label}
+          {item.badge && item.badge.count > 0 && (
+            <span className="ui-tab__badge"><span aria-hidden="true">{item.badge.count > 99 ? "99+" : item.badge.count}</span>
+              <span className="sr-only">, {item.badge.label}</span></span>
+          )}
           {isCurrent(pathname, item) && <motion.span layoutId={`${barId}-bar`} className="ui-tab__bar" transition={{ type: "spring", stiffness: 520, damping: 40 }} aria-hidden="true" />}
         </Link>
       ))}

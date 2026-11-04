@@ -8,6 +8,7 @@ import SubNav from "./SubNav";
 
 const ITEMS = [
   { href: ROUTES.account, label: "Profile" },
+  { href: ROUTES.accountUsage, label: "Plan & usage" },
   { href: ROUTES.accountSettings, label: "Settings" },
   { href: ROUTES.accountHistory, label: "History" },
 ];
@@ -21,7 +22,7 @@ export default function AccountNav() {
         <span className="ws-doc__icon" aria-hidden="true"><UserCircle size={17} /></span>
         <div className="min-w-0">
           <span className="ws-doc__name">Account</span>
-          <span className="ws-doc__meta">Profile, settings and history</span>
+          <span className="ws-doc__meta">Profile, plan, settings and history</span>
         </div>
       </div>
       <div className="ws-top__tabs"><SubNav label="Account" items={ITEMS} className="!px-[3px]" /></div>

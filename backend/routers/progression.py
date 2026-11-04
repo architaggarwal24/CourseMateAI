@@ -7,7 +7,7 @@ from schemas import QuestClaimRequest, RewardAwardRequest
 from schemas.progression import AchievementsResponse, DailyQuestsResponse, HudResponse, ProfileResponse, QuestClaimResponse, RewardResponse
 from services.progression.progression import xp_progress
 from services.progression.reward_service import BASE_REWARDS
-from state import buff_service, quest_service, reward_service, shop_service, store
+from state import buff_service, quest_service, reward_service, shop_service, store, limiter
 
 router = APIRouter()
 
@@ -28,7 +28,8 @@ async def get_profile(request: Request):
 
 
 @router.post("/rewards/award", response_model=RewardResponse, response_model_exclude_unset=True)
-def award_rewards(req: RewardAwardRequest, user=Depends(require_auth)):
+@limiter.limit("60/minute")
+def award_rewards(req: RewardAwardRequest, request: Request, user=Depends(require_auth)):
     # The browser reports an action and its own accuracy - nothing the server can verify - so no reward is
     # claimable from here. Quizzes pay out through POST /quiz/finish, which grades the answers itself.
     if req.action_type not in BASE_REWARDS:
@@ -44,7 +45,8 @@ def get_daily_quests(user=Depends(require_auth)):
 
 
 @router.post("/daily-quests/claim", response_model=QuestClaimResponse, response_model_exclude_unset=True)
-def claim_daily_quest(req: QuestClaimRequest, user=Depends(require_auth)):
+@limiter.limit("30/minute")
+def claim_daily_quest(req: QuestClaimRequest, request: Request, user=Depends(require_auth)):
     user_id = str(user['user_id'])
     # Marks the quest claimed and writes its reward event in ONE transaction; a repeat can't pay again.
     return reward_service.claim_quest(user_id, req.quest_type)

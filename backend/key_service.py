@@ -146,8 +146,10 @@ def _explain_error(spec, model: str, base_url, exc: Exception, api_key: str) -> 
         return False, f"Timed out waiting for {spec.label}{f' ({host})' if host else ''}. Check the URL and try again."
     if "connect" in name or "connection" in low or "getaddrinfo" in low or "name or service" in low:
         return False, f"Couldn't connect to {spec.label}{f' at {host}' if host else ''}. Check the base URL and your network."
-    logger.warning(f"API key validation error ({spec.id}): {raw[:300]}")
-    return False, f"{spec.label} returned an error: {raw[:200]}"
+    from observability.monitoring import SECRET_RE      # a provider may echo the key back in its error text
+    clean = SECRET_RE.sub("[redacted]", raw)
+    logger.warning(f"API key validation error ({spec.id}): {clean[:300]}")
+    return False, f"{spec.label} returned an error: {clean[:200]}"
 
 
 def _validate_ollama(base_url: str, model: str) -> Tuple[bool, str]:

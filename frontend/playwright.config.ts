@@ -20,6 +20,8 @@ export default defineConfig({
   reporter: [["list"]],
   use: {
     baseURL,
+    // The service worker would fetch pages itself, out of reach of the per-test API mocks: off, except in pwa.spec.ts.
+    serviceWorkers: "block",
     launchOptions: process.env.PW_CHROMIUM_PATH ? { executablePath: process.env.PW_CHROMIUM_PATH } : {},
   },
   projects: [

@@ -27,7 +27,12 @@ for (const [file, name] of [["ChatView", "chat"], ["QuizView", "quiz"], ["NotesV
   }));
 }
 
+vi.doMock("@/components/course/CourseOverview", () => ({
+  default: (p: { course: { id: string; name: string } }) => <div data-testid="tab-overview">overview|{p.course.id}</div>,
+}));
+
 import StudyWorkspace from "@/components/shell/StudyWorkspace";
+import { useCourses } from "@/hooks/useCourses";
 import { stopDocumentPolling, useSessionStore } from "@/hooks/useSessions";
 import type { DocumentInfo } from "@/lib/api";
 
@@ -40,11 +45,17 @@ const json = (status: number, body: unknown) =>
 const gone = () => json(404, { error: { code: "document_not_found", message: "That document couldn't be found.", action: null, details: null } });
 
 /** The server: `docs` is what it holds (mutable, so a test can delete a document behind the page's back). */
-function server(docs: DocumentInfo[]) {
+function server(docs: DocumentInfo[], courses: any[] = []) {
   const uploads: FormData[] = [];
   const spy = vi.fn(async (req: Request) => {
     const { pathname } = new URL(req.url);
     if (pathname === "/api/v1/documents") return json(200, { documents: [...docs] });
+    if (pathname === "/api/v1/courses") return json(200, { courses });
+    const course = courses.find((c) => pathname === `/api/v1/documents/${c.id}`);
+    if (course) {
+      return json(200, doc("ready", { id: course.id, filename: course.name, file_hash: `course:${course.id}`, kind: "course",
+                                     documents: course.documents.map((d: { id: string }) => d.id) }));
+    }
     if (pathname === "/api/v1/upload") {
       const form = await req.formData();
       uploads.push(form);
@@ -65,6 +76,7 @@ const settle = () => act(async () => { await vi.advanceTimersByTimeAsync(0); });
 beforeEach(() => {
   vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout", "setInterval", "clearInterval"] });
   useSessionStore.getState().clearDocuments();
+  useCourses.getState().reset();
   nav.query = "";
   nav.replace.mockClear();
 });
@@ -184,7 +196,7 @@ describe("Study workspace: the tab lives in the URL", () => {
     server([doc("ready")]);
     await open("tab=chat&doc=d1&session=s9");
     const hrefs = screen.getAllByRole("link").map((a) => a.getAttribute("href"));
-    expect(hrefs).toEqual(["/study?tab=chat&doc=d1", "/study?tab=quiz&doc=d1", "/study?tab=notes&doc=d1", "/study?tab=flashcards&doc=d1"]);
+    expect(hrefs).toEqual(["/study?tab=chat&doc=d1", "/study?tab=quiz&doc=d1", "/study?tab=notes&doc=d1", "/study?tab=flashcards&doc=d1", "/study?tab=map&doc=d1", "/study?tab=review&doc=d1", "/study?tab=exam&doc=d1"]);
     expect(screen.getByRole("link", { name: "Chat" }).getAttribute("aria-current")).toBe("page");
     expect(screen.getByRole("link", { name: "Quiz" }).getAttribute("aria-current")).toBeNull();
     expect((await tabView("chat")).textContent).toBe("chat|d1|s9");   // history reopens the saved session
@@ -195,5 +207,48 @@ describe("Study workspace: the tab lives in the URL", () => {
     await open("tab=chat&session=b");
     expect(screen.getByRole("banner").textContent).toContain("other.pdf");
     expect(nav.replace).toHaveBeenCalledWith("/study?tab=chat&doc=b&session=b");
+  });
+});
+
+describe("Study workspace: a course is a subject too", () => {
+  const COURSE = { id: "c1", name: "Life sciences", description: null, ready: 2, created_at: "2026-11-01T00:00:00Z",
+    updated_at: "2026-11-01T00:00:00Z", documents: [{ id: "d1", filename: "lecture.pdf", status: "ready" }, { id: "d2", filename: "lab.pdf", status: "ready" }] };
+
+  it("opens on the course's overview, with every tool over the whole course", async () => {
+    server([doc("ready"), doc("ready", { id: "d2", filename: "lab.pdf" })], [COURSE]);
+    await open("tab=overview&doc=c1");
+    await settle();
+    const header = screen.getByRole("banner", { name: "Active document" });
+    expect(header.textContent).toContain("Life sciences");
+    expect(header.textContent).toContain("Course");
+    expect(header.textContent).toContain("2 PDFs");
+    expect(screen.queryByLabelText("Replace PDF")).toBeNull();                       // a course isn't replaced by a file
+    expect(screen.getByRole("button", { name: "Edit course" })).toBeTruthy();
+    expect((await tabView("overview")).textContent).toBe("overview|c1");
+    const hrefs = screen.getAllByRole("link").map((a) => a.getAttribute("href"));
+    expect(hrefs[0]).toBe("/study?tab=overview&doc=c1");
+    expect(hrefs).toContain("/study?tab=quiz&doc=c1");
+    expect(screen.queryByText(/no longer available/i)).toBeNull();
+  });
+
+  it("hands the course id to the tools, which see it through the documents API", async () => {
+    server([doc("ready")], [COURSE]);
+    await open("tab=quiz&doc=c1");
+    await settle();
+    expect((await tabView("quiz")).textContent).toBe("quiz|c1|");
+    expect(useSessionStore.getState().documents.c1?.kind).toBe("course");
+    // the course record is not listed as a document (the switcher, the default document)
+    expect(screen.getByRole("banner").textContent).toContain("Life sciences");
+  });
+
+  it("an unknown id is gone once the courses have loaded without it; documents have no overview tab", async () => {
+    server([doc("ready")], [COURSE]);
+    await open("tab=chat&doc=zz");
+    await settle();
+    expect(screen.getByText("This document is no longer available")).toBeTruthy();
+    cleanup();
+    await open("tab=overview&doc=d1");
+    expect(await tabView("chat")).toBeTruthy();                                       // falls back to chat
+    expect(screen.queryByRole("link", { name: "Overview" })).toBeNull();
   });
 });

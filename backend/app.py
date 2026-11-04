@@ -26,8 +26,10 @@ from fastapi.middleware.cors import CORSMiddleware  # noqa: E402
 from config import settings  # noqa: E402
 from errors import register_handlers  # noqa: E402
 from observability import RequestContextMiddleware, configure_logging, install_metrics_endpoint  # noqa: E402
-from routers import arena, auth, avatar, documents, health, progression, shop, study  # noqa: E402
+from routers import account, arena, auth, avatar, billing, concept_maps, courses, documents, exams, health, progression, review, shop, study  # noqa: E402
 from state import auth_service, documents as document_service, history_service, limiter  # noqa: E402
+from middleware.security_headers import SecurityHeadersMiddleware  # noqa: E402
+from observability.monitoring import init_monitoring  # noqa: E402
 
 # JSON log lines on stdout; the app's own secrets are blanked from anything written (see observability/logs.py).
 configure_logging(secrets=[settings.jwt_secret, settings.encryption_key, *(key for _, key in settings.fallback_llm_keys)])
@@ -90,6 +92,7 @@ async def lifespan(app):
             pass
 
 
+init_monitoring()       # Sentry, when SENTRY_DSN is set (observability/monitoring.py): errors with no secrets
 app = FastAPI(title="CourseMateAI", version="2.0.0", lifespan=lifespan)
 
 # ============================
@@ -111,6 +114,8 @@ app.add_middleware(
     allow_headers=["Content-Type", "Authorization"],
 )
 
+app.add_middleware(SecurityHeadersMiddleware)   # nosniff, no framing, strict CSP (middleware/security_headers.py)
+
 # Outermost: every response (CORS preflights and errors included) carries X-Request-ID, and every request gets one log line.
 app.add_middleware(RequestContextMiddleware)
 
@@ -118,7 +123,7 @@ app.add_middleware(RequestContextMiddleware)
 # ROUTERS
 # ============================
 API_PREFIX = "/api/v1"
-for _router in (auth, study, documents, arena, progression, shop, avatar, health):
+for _router in (auth, account, billing, study, review, exams, courses, concept_maps, documents, arena, progression, shop, avatar, health):
     app.include_router(_router.router, prefix=API_PREFIX)
 
 if settings.metrics_enabled:

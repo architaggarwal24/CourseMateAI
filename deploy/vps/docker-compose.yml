@@ -1,0 +1,100 @@
+# CourseMate in production on one VPS (docs/deploy-vps.md):
+#   caddy (HTTPS, :80/:443) -> frontend (Next.js) and backend (FastAPI) -> SQLite in a volume, or PostgreSQL.
+#
+#   cp .env.example .env          # then fill it in
+#   docker compose up -d --build                      # SQLite
+#   docker compose --profile postgres up -d --build   # + PostgreSQL (and set DATABASE_URL in .env)
+#   docker compose --profile backup up -d             # + a daily backup into ./backups
+name: coursemate
+
+services:
+  caddy:
+    image: caddy:2.8-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    environment:
+      DOMAIN: ${DOMAIN:?set DOMAIN in .env}
+      ACME_EMAIL: ${ACME_EMAIL:?set ACME_EMAIL in .env}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      frontend:
+        condition: service_healthy
+
+  backend:
+    build: ../../backend
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      DATABASE_URL: ${DATABASE_URL:-}
+      ALLOWED_ORIGIN: https://${DOMAIN}
+      COOKIE_SECURE: "true"
+    # One worker: in-memory state (login throttle, background map builds, caches) lives in the process.
+    command: ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000", "--proxy-headers",
+              "--forwarded-allow-ips", "*", "--timeout-keep-alive", "75"]
+    volumes:
+      - data:/app/data                       # SQLite database (when DATABASE_URL is empty)
+      - uploads:/app/uploads                 # kept PDFs and search indexes
+      - models:/app/.cache/huggingface       # the embedding model, downloaded once
+    expose:
+      - "8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+        required: false
+
+  frontend:
+    build:
+      context: ../../frontend
+      args:
+        BACKEND_URL: http://backend:8000
+        NEXT_PUBLIC_SENTRY_DSN: ${NEXT_PUBLIC_SENTRY_DSN:-}
+    restart: unless-stopped
+    expose:
+      - "3000"
+    depends_on:
+      backend:
+        condition: service_healthy
+
+  postgres:
+    profiles: ["postgres"]
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: coursemate
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change-me}
+      POSTGRES_DB: coursemate
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U coursemate -d coursemate"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  backup:
+    profiles: ["backup"]
+    image: postgres:16-alpine                # has pg_dump; sqlite3 is added below
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: ${DATABASE_URL:-}
+      KEEP_DAYS: ${BACKUP_KEEP_DAYS:-14}
+    volumes:
+      - data:/data:ro
+      - uploads:/uploads:ro
+      - ./backups:/backups
+      - ./backup.sh:/backup.sh:ro
+    entrypoint: ["/bin/sh", "-c", "apk add --no-cache sqlite >/dev/null && while true; do sh /backup.sh; sleep 86400; done"]
+
+volumes:
+  caddy_data:
+  caddy_config:
+  data:
+  uploads:
+  models:
+  pgdata:

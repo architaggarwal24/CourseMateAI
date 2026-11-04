@@ -9,11 +9,11 @@ from fastapi import APIRouter, Depends, Request
 
 from core_brains.boss_brain import VALID_DIFFICULTIES, extract_expedition_acts_async, generate_boss_persona_async
 from errors import AppError, generation_failed, invalid_input, session_expired
-from deps import inject_user_llm_key, raise_quota_if_needed, require_auth
+from deps import inject_user_llm_key, inject_user_llm_key_in_flight, raise_quota_if_needed, require_auth
 from schemas.arena import (
     BattleActiveResponse, BattleAnswerRequest, BattleAnswerResponse, BattleCreateRequest, BattleForfeitResponse,
     BattleItemRequest, BattleItemResponse, BattleQuestionResponse, BattleResponse, BattleSpellRequest,
-    BattleSpellResponse, LeaderboardResponse, RunChooseRequest, RunChooseResponse, RunCreateRequest,
+    BattleSpellResponse, BattleUltimateResponse, LeaderboardResponse, RunChooseRequest, RunChooseResponse, RunCreateRequest,
     RunLeaderboardResponse, RunResponse, RunTravelRequest, RunTravelResponse, WeakConceptsResponse,
 )
 from services.arena_service import GenerationUnavailable
@@ -155,7 +155,7 @@ async def arena_battle_get(battle_id: str, user=Depends(require_auth)):
             response_model_exclude_unset=True)
 @limiter.limit("120/minute")
 async def arena_battle_question(request: Request, battle_id: str, move: Optional[str] = None,
-                               user=Depends(inject_user_llm_key)):
+                               user=Depends(inject_user_llm_key_in_flight)):
     """The next question for `move` (strike - the default - | jab | heavy | guard): the move picks the question's
     tier and time limit; heavy's Focus is paid now (409 not_enough_focus when short). Options shuffled by the
     server, no correct answer, and a server-side deadline. Asking again (refresh, restart) returns the same
@@ -171,7 +171,7 @@ async def arena_battle_question(request: Request, battle_id: str, move: Optional
 @router.post("/arena/battles/{battle_id}/answer", response_model=BattleAnswerResponse, response_model_exclude_unset=True)
 @limiter.limit("120/minute")
 async def arena_battle_answer(request: Request, battle_id: str, req: BattleAnswerRequest,
-                              user=Depends(inject_user_llm_key)):
+                              user=Depends(inject_user_llm_key_in_flight)):
     """Grade an answer on the server and apply the damage. The first answer to a question is final."""
     user_id = str(user["user_id"])
     result = await asyncio.to_thread(battle_service.answer, user_id, battle_id, req.question_id, req.answer)
@@ -194,9 +194,19 @@ async def arena_battle_spell(request: Request, battle_id: str, req: BattleSpellR
     return await asyncio.to_thread(battle_service.cast_spell, str(user["user_id"]), battle_id, req.spell)
 
 
+@router.post("/arena/battles/{battle_id}/ultimate", response_model=BattleUltimateResponse,
+             response_model_exclude_unset=True)
+@limiter.limit("30/minute")
+async def arena_battle_ultimate(request: Request, battle_id: str, user=Depends(require_auth)):
+    """Cast your champion's ultimate (core_brains/kits.py). Needs a full meter (409 ultimate_not_ready) and only one
+    can be in play at a time (409 ultimate_active). Mira's Arcane Library acts on the open question, if any."""
+    return await asyncio.to_thread(battle_service.use_ultimate, str(user["user_id"]), battle_id)
+
+
 @router.post("/arena/battles/{battle_id}/forfeit", response_model=BattleForfeitResponse,
              response_model_exclude_unset=True)
-async def arena_battle_forfeit(battle_id: str, user=Depends(require_auth)):
+@limiter.limit("30/minute")
+async def arena_battle_forfeit(battle_id: str, request: Request, user=Depends(require_auth)):
     """Retreat: the battle is lost."""
     return await asyncio.to_thread(battle_service.forfeit, str(user["user_id"]), battle_id)
 
@@ -300,6 +310,7 @@ async def arena_run_choose(request: Request, run_id: str, req: RunChooseRequest,
 
 
 @router.post("/arena/runs/{run_id}/abandon", response_model=RunResponse, response_model_exclude_unset=True)
-async def arena_run_abandon(run_id: str, user=Depends(require_auth)):
+@limiter.limit("30/minute")
+async def arena_run_abandon(run_id: str, request: Request, user=Depends(require_auth)):
     """Give up the run (a fight in progress is lost). Pays the run's expedition_complete for the depth reached."""
     return await asyncio.to_thread(expedition_service.abandon, str(user["user_id"]), run_id)

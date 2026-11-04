@@ -1,0 +1,55 @@
+/* The daily review (components/review/ReviewView.tsx). Study theme: calm glass, tokens only. */
+.review-card {
+  position: relative; width: 100%; min-height: 300px; cursor: pointer; user-select: none;
+  display: flex; flex-direction: column; gap: var(--space-4);
+  padding: var(--space-6) var(--space-6) var(--space-5); border-radius: var(--radius-xl);
+  background: var(--gradient-card), var(--glass-bg-strong);
+  border: 1px solid var(--glass-border-strong);
+  box-shadow: var(--glass-highlight), var(--shadow-lg);
+  outline-offset: 4px;
+}
+.review-card[data-revealed] { border-color: color-mix(in srgb, var(--color-accent-text) 40%, transparent); box-shadow: var(--glass-highlight), var(--shadow-lg), 0 0 60px -24px var(--glow-accent); }
+.review-card__meta { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); font-size: 0.75rem; font-weight: 600; color: var(--color-muted); }
+.review-card__doc { margin-left: auto; max-width: 16rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 500; }
+.review-card__front { margin: var(--space-2) 0 0; font-size: 1.35rem; font-weight: 600; line-height: 1.5; letter-spacing: -0.015em; color: var(--color-text); }
+.review-card__hint { margin: auto 0 0; font-size: 0.8rem; color: var(--color-muted); }
+.review-card__back { margin-top: var(--space-2); padding-top: var(--space-4); border-top: 1px dashed var(--glass-border-strong); }
+.review-card__answer { margin: 0; font-size: 1.1rem; line-height: 1.6; color: var(--color-text); white-space: pre-line; }
+.review-card__why { margin: var(--space-3) 0 0; font-size: 0.9rem; line-height: 1.6; color: var(--color-text-secondary); }
+
+.review-stamp {
+  position: absolute; top: var(--space-5); padding: 0.2rem 0.6rem; border-radius: var(--radius-md);
+  border: 2px solid currentColor; font-size: 0.8rem; font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase; pointer-events: none;
+}
+.review-stamp--good { right: var(--space-5); color: var(--color-success-text); transform: rotate(8deg); }
+.review-stamp--again { left: var(--space-5); color: var(--color-danger-text); transform: rotate(-8deg); }
+
+.review-grades { margin-top: var(--space-6); width: 100%; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--space-2); }
+.review-grade.ui-btn { position: relative; flex-direction: column; gap: 2px; height: auto; min-height: 3.6rem; padding: var(--space-2) var(--space-2); }
+.review-grade__label { font-weight: 700; }
+.review-grade__when { font-size: 0.72rem; font-weight: 600; opacity: 0.8; font-variant-numeric: tabular-nums; }
+.review-grade__key { position: absolute; top: 6px; right: 6px; font-size: 0.6rem; opacity: 0.7; }
+
+.review-done { text-align: center; padding: var(--space-7) 0; }
+.review-done__icon {
+  display: inline-grid; place-items: center; width: 3.5rem; height: 3.5rem; border-radius: 999px;
+  color: var(--color-success-text); background: color-mix(in srgb, var(--color-success) 18%, transparent);
+  box-shadow: 0 0 30px -8px var(--glow-success);
+}
+.review-done h3 { margin: var(--space-4) 0 var(--space-1); font-size: 1.6rem; font-weight: 700; letter-spacing: -0.03em; color: var(--color-text); }
+.review-done p { margin: 0; color: var(--color-muted); }
+.review-done__stats { margin: var(--space-6) 0 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--space-3); text-align: left; }
+.review-done__stats dd { margin: 0; font-size: 1.5rem; font-weight: 700; color: var(--color-text); font-variant-numeric: tabular-nums; }
+.review-done__stats dt { margin-top: var(--space-1); font-size: 0.75rem; color: var(--color-muted); }
+.review-done__note { margin-top: var(--space-4) !important; font-size: 0.85rem; }
+
+@media (max-width: 640px) {
+  .review-card { padding: var(--space-6) var(--space-4) var(--space-5); min-height: 260px; }
+  .review-card__front { font-size: 1.15rem; }
+  .review-card__doc { margin-left: 0; }
+  .review-grades { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .review-done__stats { grid-template-columns: 1fr; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .review-card { transition: none; }
+}

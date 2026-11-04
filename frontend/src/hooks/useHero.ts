@@ -9,7 +9,7 @@ import { useHUDStore } from "@/hooks/useHUD";
  *   coins, level, XP, streak, quests, buffs -> useHUDStore (GET /hud)
  *   items, owned, equipped, previewed item  -> here        (GET /shop)
  *
- * The header, shop, inventory, avatar, forge and quests all read these two stores, and every change (buy, equip,
+ * The header, shop, inventory, champion tab and quests all read these stores (the champion itself: useChampion), and every change (buy, equip,
  * unequip, use, claim) goes through the actions below. An action patches the local state straight from what it
  * already knows (so the screen reacts at once), then quietly re-reads the server to confirm. A re-read that
  * started before the latest change is dropped (see useHUDStore._epoch and `shopEpoch` here), so an old answer can
@@ -28,16 +28,12 @@ export interface ShopState {
   [key: string]: any;
 }
 
-/** The "forge" tab tells the Hero area about unsaved edits so it can ask before leaving. */
-export interface ForgeGuard { dirty: boolean; save: () => Promise<boolean> }
-
 interface HeroState {
   shop: ShopState | null;
   /** True only until the first answer (later re-reads are silent: no spinner flash). */
   loading: boolean;
-  /** The item being tried on (shop / avatar): shown on every avatar preview in the area. */
+  /** The item being tried on (shop / Champion tab): shown on every champion preview in the area. */
   previewId: string | null;
-  forgeGuard: ForgeGuard | null;
   /** Ids of quests / items with a request in flight (to disable their buttons). */
   pending: Record<string, true>;
   _shopEpoch: number;
@@ -47,7 +43,6 @@ interface HeroState {
   reconcile: () => Promise<void>;
   setPreview: (id: string | null) => void;
   togglePreview: (id: string) => void;
-  setForgeGuard: (guard: ForgeGuard | null) => void;
 
   purchase: (item: ShopItem) => Promise<boolean>;
   equip: (item: ShopItem) => Promise<boolean>;
@@ -57,8 +52,6 @@ interface HeroState {
   toggleEquipTo: (item: ShopItem, wearing: boolean) => Promise<boolean>;
   useItem: (item: ShopItem) => Promise<boolean>;
   claim: (questType: string) => Promise<boolean>;
-  /** Forge saved a new look: the server's equipped slots changed under us. */
-  afterForgeSave: () => Promise<void>;
   reset: () => void;
 }
 
@@ -73,7 +66,7 @@ function setCoins(coins: number) {
 
 // ── Pure helpers (exported for the screens and the tests) ──────────────────────────────────────────────────────
 
-/** What the avatar looks like while `previewId` is tried on: the equipped set with that item in its slot. */
+/** What the champion wears while `previewId` is tried on: the equipped set with that item in its slot. */
 export function previewEquipped(shop: ShopState | null, previewId: string | null): Record<string, string> {
   const base = shop?.equipped ?? {};
   if (!previewId || !shop) return base;
@@ -183,7 +176,6 @@ export const useHeroStore = create<HeroState>((set, get) => {
     shop: null,
     loading: true,
     previewId: null,
-    forgeGuard: null,
     pending: {},
     _shopEpoch: 0,
 
@@ -205,7 +197,6 @@ export const useHeroStore = create<HeroState>((set, get) => {
 
     setPreview: (id) => set({ previewId: id }),
     togglePreview: (id) => set((s) => ({ previewId: s.previewId === id ? null : id })),
-    setForgeGuard: (guard) => set({ forgeGuard: guard }),
 
     purchase: async (item) => {
       const { guestMode, coins } = hud();
@@ -309,14 +300,9 @@ export const useHeroStore = create<HeroState>((set, get) => {
       });
     },
 
-    afterForgeSave: async () => {
-      changed();
-      await get().reconcile();
-    },
-
     reset: () => {
       reconciling = null; reconcileAgain = false;
-      set({ shop: null, loading: true, previewId: null, forgeGuard: null, pending: {} });
+      set({ shop: null, loading: true, previewId: null, pending: {} });
     },
   };
 });

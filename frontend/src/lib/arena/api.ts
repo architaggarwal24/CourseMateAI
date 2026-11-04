@@ -4,7 +4,7 @@ import { api } from "@/lib/api/client";
 import type {
   ActiveBattle, AnswerResponse, BattleGetResponse, ChooseResponse, CreateResponse, Difficulty, ForfeitResponse, ItemId,
   ItemResponse, LeaderboardResponse, Move, QuestionResponse, Run, RunBoardEntry, RunResponse, Spell, SpellResponse,
-  TravelResponse, WeakConceptsResponse,
+  TravelResponse, UltimateResponse, WeakConceptsResponse,
 } from "./types";
 
 // The generated schema types these bodies loosely, so the real shapes (types.ts) are asserted here, in one place.
@@ -24,6 +24,12 @@ export async function fetchBattle(battleId: string): Promise<BattleGetResponse> 
 export async function castSpell(battleId: string, spell: Spell): Promise<SpellResponse> {
   const { data } = await api.POST("/arena/battles/{battle_id}/spells", { params: { path: { battle_id: battleId } }, body: { spell } });
   return as<SpellResponse>(data);
+}
+
+/** Cast the champion's ultimate (needs a full meter; 409 ultimate_not_ready / ultimate_active otherwise). */
+export async function castUltimate(battleId: string): Promise<UltimateResponse> {
+  const { data } = await api.POST("/arena/battles/{battle_id}/ultimate", { params: { path: { battle_id: battleId } } });
+  return as<UltimateResponse>(data);
 }
 
 export async function fetchWeakConcepts(sessionId: string): Promise<WeakConceptsResponse> {

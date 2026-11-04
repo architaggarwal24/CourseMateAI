@@ -8,6 +8,9 @@ import HistoryPanel from "./HistoryPanel";
 import ChatMarkdown from "./chat/ChatMarkdown";
 import NotFoundCard from "./chat/NotFoundCard";
 import SourceChips from "./chat/SourceChips";
+import CitationList from "./chat/CitationList";
+import { citedFirst, type Citation } from "@/lib/study/citations";
+import dynamic from "next/dynamic";
 import { Button, ErrorState, Textarea } from "@/components/ui";
 import { askChat, isAbortError } from "@/lib/chatStream";
 import { useDocument } from "@/hooks/useSessions";
@@ -21,6 +24,8 @@ interface Message {
   content: string;
   /** Where the answer came from ("file.pdf · p.4"). */
   sources?: string[];
+  /** The passages it can cite as [n] (document + page + text): open the PDF beside the chat. */
+  citations?: Citation[];
   /** The document doesn't cover the question this answers: shown as the calm "couldn't find that" state. */
   notFound?: { question: string };
 }
@@ -51,6 +56,9 @@ const QUICK_PROMPTS = [
 const MAX_INPUT_PX = 160;
 
 /** `documentId` is the workspace's active document (what the questions are about); `chatId` is just this saved chat. */
+// pdf.js is heavy: the viewer (and pdf.js with it) loads only when a citation is first opened
+const PdfViewer = dynamic(() => import("./pdf/PdfViewer"), { ssr: false });
+
 export default function ChatView({ documentId, restoreSessionId }: { documentId?: string; restoreSessionId?: string }) {
   const [chatId, setChatId] = useState(() => restoreSessionId || crypto.randomUUID());
   const sessionId = documentId ?? chatId;
@@ -71,6 +79,17 @@ export default function ChatView({ documentId, restoreSessionId }: { documentId?
   const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
   const [followUps, setFollowUps] = useState<string[]>([]);
   const [showHistory, setShowHistory] = useState(false);
+  // the citation open in the PDF viewer beside the chat
+  const [openCitation, setOpenCitationState] = useState<Citation | null>(null);
+  const citeOpener = useRef<HTMLElement | null>(null);
+  const setOpenCitation = useCallback((c: Citation | null) => {
+    if (c) citeOpener.current = document.activeElement as HTMLElement | null;      // focus goes back there on close
+    setOpenCitationState(c);
+  }, []);
+  const closeCitation = useCallback(() => {
+    setOpenCitationState(null);
+    requestAnimationFrame(() => citeOpener.current?.focus?.({ preventScroll: true }));
+  }, []);
   /** The last question failed: shown under the conversation (not part of it, never saved) with the button its code calls for. */
   /** What a screen reader hears about the answer: one short line when it starts and when it is complete (not every token). */
   const [announcement, setAnnouncement] = useState("");
@@ -156,7 +175,7 @@ export default function ChatView({ documentId, restoreSessionId }: { documentId?
       const { main, followUps: parsed } = parseFollowUps(answer.content || "No response received");
       patchAnswer(() => answer.blocked
         ? { role: "assistant", content: answer.content, notFound: { question } }
-        : { role: "assistant", content: main, sources: answer.sources });
+        : { role: "assistant", content: main, sources: answer.sources, citations: answer.citations });
       if (parsed.length > 0 && !answer.blocked) setFollowUps(parsed);
       setAnnouncement(answer.blocked ? "The document doesn't cover that question." : "Answer complete.");
       refreshIfStale(5_000);
@@ -317,8 +336,13 @@ export default function ChatView({ documentId, restoreSessionId }: { documentId?
                     initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1] }}>
                     <span className="chat-ai__avatar" aria-hidden="true"><Sparkles size={15} /></span>
                     <div className="chat-ai__body">
-                      <ChatMarkdown>{shown}</ChatMarkdown>
-                      {!isStreaming && <SourceChips sources={msg.sources} />}
+                      <ChatMarkdown citations={isStreaming ? 0 : msg.citations?.length ?? 0}
+                                    onCite={msg.citations?.length ? (n) => setOpenCitation(msg.citations!.find((c) => c.n === n) ?? null) : undefined}>
+                        {shown}
+                      </ChatMarkdown>
+                      {!isStreaming && (msg.citations?.length
+                        ? <CitationList citations={citedFirst(shown, msg.citations)} onOpen={setOpenCitation} />
+                        : <SourceChips sources={msg.sources} />)}
                       {!isStreaming && (
                         <div className="chat-ai__actions">
                           <Button variant="ghost" size="sm" onClick={() => void copyToClipboard(msg.content, idx)}>
@@ -381,6 +405,8 @@ export default function ChatView({ documentId, restoreSessionId }: { documentId?
           <p className="mx-auto mt-2 w-full max-w-[72ch] text-center text-xs text-fg-muted"><kbd className="kbd">Enter</kbd> to send · <kbd className="kbd">Shift</kbd>+<kbd className="kbd">Enter</kbd> new line</p>
         </div>
       </div>
+
+      {openCitation && <PdfViewer citation={openCitation} onClose={closeCitation} />}
     </div>
   );
 }

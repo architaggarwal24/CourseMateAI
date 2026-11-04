@@ -10,8 +10,10 @@ export interface AccountForm {
   email: string;
   password: string;
   confirmPassword: string;
+  /** Needed while the server is invite-only (GET /plans: invite_only); otherwise optional, and it grants its plan. */
+  inviteCode: string;
 }
-export const emptyAccountForm: AccountForm = { fullName: "", username: "", email: "", password: "", confirmPassword: "" };
+export const emptyAccountForm: AccountForm = { fullName: "", username: "", email: "", password: "", confirmPassword: "", inviteCode: "" };
 
 export type AccountField = keyof AccountForm;
 export type AccountErrors = Partial<Record<AccountField, string>>;
@@ -48,6 +50,8 @@ export function validateField(field: AccountField, form: AccountForm): string | 
     }
     case "confirmPassword":
       return form.confirmPassword !== form.password ? "Passwords do not match" : null;
+    case "inviteCode":
+      return null;                                   // the server checks codes (and says whether one is needed)
   }
 }
 
@@ -70,7 +74,7 @@ export interface SignupFailure {
 
 /** The API's field names for the account step, and the form field each one is shown beside. */
 const ACCOUNT_API_FIELDS: Record<string, AccountField> = {
-  full_name: "fullName", username: "username", email: "email", password: "password",
+  full_name: "fullName", username: "username", email: "email", password: "password", invite_code: "inviteCode",
 };
 const PROVIDER_API_FIELDS = ["llm_provider", "llm_model", "llm_base_url", "api_key"] as const;
 
@@ -118,6 +122,10 @@ export function validateProviderStep(
   if (!form.model.trim()) errors.llm_model = "Enter a model name";
   return errors;
 }
+
+/** Step 2 when the server has its own AI: nothing to set up. */
+export const MANAGED_AI =
+  "CourseMate's own AI is included in your plan: nothing to set up. You can switch to your own provider key any time in Settings.";
 
 /** The one sentence on step 2: why a key is needed, and how it is kept. */
 export const WHY_A_KEY =

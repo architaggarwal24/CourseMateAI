@@ -472,7 +472,7 @@ def test_nvidia_signup_forces_the_official_base_url(api):
 
 @pytest.mark.parametrize("over,needle", [
     (dict(llm_provider="mistral"), "Unsupported provider"),
-    (dict(llm_provider=""), "Unsupported provider"),
+    (dict(llm_provider=""), "no built-in AI"),        # no provider and no server key (tests/test_plans.py has the other case)
     (dict(llm_provider="openai-compatible", llm_model="m"), "Base URL is required"),
     (dict(llm_provider="openai-compatible", llm_model="m", llm_base_url="http://insecure.example/v1"), "https"),
     (dict(llm_model="bad model name"), "Model name"),

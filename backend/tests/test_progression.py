@@ -55,27 +55,24 @@ def test_cannot_equip_unowned_paid_items_via_avatar_update(make_user, app_module
     assert state.reward_service.get_equipment_bonuses(str(uid))["xp_pct"] == 0
 
 
-def test_cannot_equip_unowned_paid_items_via_hero_forge(make_user, app_module):
+def test_cannot_equip_unowned_paid_items_via_champion_loadout(make_user, app_module):
     c, uid = make_user()
-    item = next(i for i in PAID_BONUS_ITEMS if i["type"] == "weapon") if any(i["type"] == "weapon" for i in PAID_BONUS_ITEMS) else PAID_BONUS_ITEMS[0]
-    body = {"outfit_id": "", "headgear": "", "weapon": "", "pet": ""}
-    key = {"armor": "outfit_id"}.get(item["type"], item["type"])
-    if item["type"] in ("title",):
-        pytest.skip("hero forge has no title slot")
-    body[key] = item["id"]
-    r = c.post("/avatar/hero-forge-save", json=body)
+    item = next((i for i in PAID_BONUS_ITEMS if i["type"] in ("armor", "headgear", "weapon", "pet")), None)
+    if item is None:
+        pytest.skip("no paid skin with a bonus")
+    r = c.put("/avatar/champion", json={"champion_id": "kaien", "loadout": {item["type"]: item["id"]}})
     assert r.status_code == 200
-    eq = r.json()["equipped"]
-    assert item["id"] not in eq.values()
+    assert r.json()["loadout"][item["type"]] != item["id"]
+    assert state.reward_service.get_equipment_bonuses(str(uid))["xp_pct"] == 0
 
 
 def test_owned_and_free_items_can_be_equipped(make_user, app_module):
     c, uid = make_user()
-    r = c.post("/avatar/hero-forge-save", json={"outfit_id": "armor_gi_white", "headgear": "hat_headband_red"})
-    eq = r.json()["equipped"]
-    assert eq["armor"] == "armor_gi_white" and eq["headgear"] == "hat_headband_red"
-    # starter tee (hero forge's default) is allowed
-    assert c.post("/avatar/hero-forge-save", json={"outfit_id": "armor_shirt_basic"}).json()["equipped"]["armor"] == "armor_shirt_basic"
+    r = c.put("/avatar/champion", json={"champion_id": "kaien", "loadout": {"armor": "armor_gi_white", "headgear": "hat_headband_red"}})
+    lo = r.json()["loadout"]
+    assert lo["armor"] == "armor_gi_white" and lo["headgear"] == "hat_headband_red"
+    # the starter tee is allowed without buying it
+    assert c.post("/avatar/update", json={"equipped": {"armor": "armor_shirt_basic"}}).json()["equipped"]["armor"] == "armor_shirt_basic"
     # a paid item becomes equippable once owned
     item = PAID_BONUS_ITEMS[0]
     state.store.modify_avatar(str(uid), lambda eq, ow: ow.append(item["id"]))

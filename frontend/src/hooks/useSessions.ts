@@ -116,7 +116,7 @@ export function useDocuments() {
   }, [owner, loadDocuments, clearDocuments]);
 
   const list = useMemo(
-    () => Object.values(documents).sort((a, b) => (a.last_used_at < b.last_used_at ? 1 : a.last_used_at > b.last_used_at ? -1 : 0)),
+    () => Object.values(documents).filter((d) => d.kind !== "course").sort((a, b) => (a.last_used_at < b.last_used_at ? 1 : a.last_used_at > b.last_used_at ? -1 : 0)),
     [documents],
   );
   return { documents, list, loaded };

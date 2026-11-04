@@ -5,6 +5,7 @@ const auth = vi.hoisted(() => ({ register: vi.fn() }));
 vi.mock("@/contexts/AuthContext", () => ({ useAuth: () => ({ register: auth.register }) }));
 
 import SignupFlow from "@/components/auth/SignupFlow";
+import { resetPlansCache } from "@/lib/account/plans";
 import type { ProviderSpec } from "@/lib/llmProviders";
 
 const GEMINI = {
@@ -17,14 +18,18 @@ const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json" } });
 
 let taken: string[] = [];
+let plans: { invite_only: boolean; managed_ai: boolean } | null = null;      // null: an older server without GET /plans
 const checked: string[] = [];
 beforeEach(() => {
   vi.useFakeTimers();
   taken = [];
   checked.length = 0;
   auth.register.mockReset();
+  plans = null;
+  resetPlansCache();
   vi.stubGlobal("fetch", vi.fn(async (req: Request) => {
     const url = new URL(req.url);
+    if (url.pathname === "/api/v1/plans" && plans) return json({ plans: [], payments_enabled: false, currency: "INR", ...plans });
     if (url.pathname === "/api/v1/providers") return json({ providers: [GEMINI] });
     if (url.pathname === "/api/v1/auth/check-username") {
       const name = url.searchParams.get("username")!;
@@ -159,7 +164,7 @@ describe("step 2: connecting the provider", () => {
     type("Google Gemini API key", " AIza-secret ");
     await click("Create Account");
     expect(auth.register).toHaveBeenCalledWith(
-      "ada@example.com", "correct-horse", "ada_l", "Ada Lovelace", "AIza-secret", "gemini", "gemini-3.8-flash", undefined,
+      "ada@example.com", "correct-horse", "ada_l", "Ada Lovelace", "AIza-secret", "gemini", "gemini-3.8-flash", undefined, undefined,
     );
     expect(done).toHaveBeenCalled();
   });
@@ -216,5 +221,56 @@ describe("an account problem the server finds goes back to step 1, beside its fi
     await settle(500);
     await click("Next");
     expect((screen.getByLabelText("Google Gemini API key") as HTMLInputElement).value).toBe("k");
+  });
+});
+
+describe("this server: invite codes and its own AI (GET /plans)", () => {
+  const fillAll = async () => { await fillAccount(); };
+
+  it("an invite-only server needs a code before step 2, and sends it", async () => {
+    plans = { invite_only: true, managed_ai: false };
+    auth.register.mockResolvedValue(true);
+    await open();
+    expect(screen.getByLabelText("Invite code")).toBeTruthy();
+    await fillAll();
+    await click("Next");
+    expect(onStep1()).toBe(true);
+    expect(screen.getByRole("alert").textContent).toBe("Enter your invite code");
+    type("Invite code", " BETA-SAGE ");
+    await click("Next");
+    expect(onStep2()).toBe(true);
+    type("Google Gemini API key", "AIza-secret");
+    await click("Create Account");
+    expect(auth.register.mock.calls[0][8]).toBe("BETA-SAGE");
+  });
+
+  it("a code the server refuses lands back beside the field", async () => {
+    plans = { invite_only: true, managed_ai: false };
+    auth.register.mockResolvedValue({ message: "That invite code has been used up.", field: "invite_code" });
+    await open();
+    await fillAll();
+    type("Invite code", "OLD-CODE");
+    await click("Next");
+    type("Google Gemini API key", "AIza-secret");
+    await click("Create Account");
+    expect(onStep1()).toBe(true);
+    expect(screen.getByRole("alert").textContent).toBe("That invite code has been used up.");
+  });
+
+  it("with the server's own AI, no key is needed (and your own key is still an option)", async () => {
+    plans = { invite_only: false, managed_ai: true };
+    auth.register.mockResolvedValue(true);
+    await open();
+    expect(screen.getByLabelText("Invite code (optional)")).toBeTruthy();
+    await fillAll();
+    await click("Next");
+    expect(screen.getByRole("radio", { name: /CourseMate's AI/ })).toHaveProperty("checked", true);
+    expect(screen.queryByLabelText("Google Gemini API key")).toBeNull();
+    await click("Create Account");
+    expect(auth.register).toHaveBeenCalledWith(
+      "ada@example.com", "correct-horse", "ada_l", "Ada Lovelace", "", "", undefined, undefined, undefined,
+    );
+    fireEvent.click(screen.getByRole("radio", { name: /My own provider key/ }));
+    expect(screen.getByLabelText("Google Gemini API key")).toBeTruthy();
   });
 });

@@ -9,6 +9,7 @@ from typing import Dict, Optional
 from fastapi import UploadFile
 
 from config import MAX_FILE_SIZE
+from services import entitlements
 from errors import AppError, session_expired
 from services.document_service import DocumentService
 from services.session_service import is_valid_session_id
@@ -54,7 +55,22 @@ async def handle_pdf_upload(
         # Reject before reading up to 50 MB: uploading into someone else's session would overwrite their document.
         documents.check_owner(session_id, user_id)
 
+    # The plan: how many documents and how big a PDF (a replacement of an existing id adds no document).
+    uid = int(user_id) if str(user_id).isdigit() else None
+    limits = entitlements.limits_for(uid) if uid is not None else None
+    if limits is not None and not (session_id and documents.repo.get(session_id)):
+        have = documents.repo.count_for_user(uid)
+        if have >= limits["documents"]:
+            raise entitlements.plan_limit(
+                uid, "documents", have, limits["documents"],
+                f"Your plan holds {limits['documents']} documents and you have {have}. Delete one, or upgrade for more.")
+
     file_content = await _read_limited(file)
+
+    if limits is not None and len(file_content) > limits["pdf_mb"] * 1024 * 1024:
+        raise entitlements.plan_limit(
+            uid, "pdf_mb", -(-len(file_content) // (1024 * 1024)), limits["pdf_mb"],
+            f"Your plan takes PDFs up to {limits['pdf_mb']} MB. Try a smaller file, or upgrade for bigger ones.")
 
     if len(file_content) == 0:
         raise AppError("invalid_file", "That file is empty.", status_code=400, action="reupload")

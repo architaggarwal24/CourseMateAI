@@ -2,21 +2,24 @@
 
 import { useEffect, useRef } from "react";
 import { motion } from "motion/react";
-import { Feather, Hammer, ShieldHalf, Sword } from "lucide-react";
+import { Feather, Hammer, Lock, ShieldHalf, Sword } from "lucide-react";
 import { MOVES, MOVE_INFO, type Battle, type Move } from "@/lib/arena/types";
 import { shortcutBlocked } from "@/lib/keys";
 import Intent from "./Intent";
+import MechanicHud from "./MechanicHud";
 
 const ICON: Record<Move, typeof Sword> = { strike: Sword, jab: Feather, heavy: Hammer, guard: ShieldHalf };
 
 /**
- * The turn's choice: what the boss is about to do, then four moves. Each move asks a question of a different
- * difficulty and does something different with a right answer. Keys Q W E R pick them.
+ * The turn's choice: what the boss is about to do (and its creature's rule), then four moves. Each move asks a
+ * question of a different difficulty and does something different with a right answer. Keys Q W E R pick them.
+ * A move the creature has locked (a Kraken's grab) is disabled and says why.
  */
 export default function MovePicker({ battle, onPick, disabled }: { battle: Battle; onPick: (m: Move) => void; disabled?: boolean }) {
   const focus = battle.focus ?? 0;
   const heavyCost = battle.heavy_cost ?? 2;
-  const can = (m: Move) => m !== "heavy" || focus >= heavyCost;
+  const locked = new Set(battle.mechanic?.locked_moves ?? []);
+  const can = (m: Move) => !locked.has(m) && (m !== "heavy" || focus >= heavyCost);
 
   // A new turn: focus moves to "Your move" (the panel that held focus before is gone), without scrolling the page.
   const heading = useRef<HTMLHeadingElement>(null);
@@ -41,6 +44,7 @@ export default function MovePicker({ battle, onPick, disabled }: { battle: Battl
       <div className="arena-moves__head">
         <h3 id="arena-moves-title" ref={heading} tabIndex={-1} className="arena-moves__title">Your move</h3>
         <Intent intent={battle.intent} />
+        <MechanicHud mechanic={battle.mechanic} />
       </div>
       <ul className="arena-moves__list">
         {MOVES.map((m, i) => {
@@ -50,15 +54,15 @@ export default function MovePicker({ battle, onPick, disabled }: { battle: Battl
           return (
             <motion.li key={m} initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }}
                        transition={{ delay: i * 0.05, type: "spring", stiffness: 380, damping: 28 }}>
-              <button type="button" className="arena-move fx-sheen" data-move={m} disabled={disabled || !ok}
+              <button type="button" className="arena-move fx-sheen" data-move={m} data-locked={locked.has(m) || undefined} disabled={disabled || !ok}
                       aria-keyshortcuts={info.key} onClick={() => onPick(m)}
                       aria-describedby={`arena-move-${m}`}>
-                <span className="arena-move__icon" aria-hidden="true"><Icon size={20} /></span>
+                <span className="arena-move__icon" aria-hidden="true">{locked.has(m) ? <Lock size={20} /> : <Icon size={20} />}</span>
                 <span className="arena-move__name">{info.label}</span>
                 <span className="arena-move__tier">{info.tier}</span>
                 <span id={`arena-move-${m}`} className="arena-move__blurb">
-                  {m === "heavy" ? `180% damage. Costs ${heavyCost} Focus.` : info.blurb}
-                  {m === "heavy" && !ok && <> (you have {focus})</>}
+                  {locked.has(m) ? `Locked: ${battle.boss.name} has it pinned.` : m === "heavy" ? `180% damage. Costs ${heavyCost} Focus.` : info.blurb}
+                  {m === "heavy" && !ok && !locked.has(m) && <> (you have {focus})</>}
                 </span>
                 <kbd className="kbd arena-move__key" aria-hidden="true">{info.key}</kbd>
               </button>

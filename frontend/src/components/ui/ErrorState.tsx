@@ -29,6 +29,7 @@ export function ErrorActions({ info, onRetry, onReupload, onDone, size = "sm" }:
   switch (action.kind) {
     case "settings":
     case "login":
+    case "plans":
       return <ButtonLink href={action.href!} size={size} onClick={onDone}>{action.label}</ButtonLink>;
     case "usage":
       return (

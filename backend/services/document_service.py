@@ -28,9 +28,11 @@ from typing import Dict, List, Optional, Tuple
 
 from database.documents import IN_FLIGHT, DocumentRepository, utc_ago
 from errors import (
-    document_failed, document_needs_reindex, document_not_found, document_not_ready,
+    AppError, document_failed, document_needs_reindex, document_not_found, document_not_ready,
     forbidden, session_expired,
 )
+from rag.multi_index import MultiIndex
+from services import entitlements
 from rag.loaders import chunk_documents, load_pdf
 from rag.vectorstore import VectorStore
 from services.session_service import is_valid_session_id
@@ -95,6 +97,29 @@ def public_view(row: Dict) -> Dict:
         "id", "filename", "file_hash", "status", "error", "chunks", "embedding_model", "created_at", "last_used_at")}
 
 
+COURSE_HASH_PREFIX = "course:"
+
+
+def course_hash(course_id: str) -> str:
+    """The 'content hash' a course stands under wherever a document's would (mastery, review cards, caches)."""
+    return f"{COURSE_HASH_PREFIX}{course_id}"
+
+
+def course_view(course: Dict, members: List[Dict]) -> Dict:
+    """A course seen through the documents API: what get_document() answers for a course id."""
+    ready = [m for m in members if m["status"] == "ready"]
+    status = "ready" if ready else ("queued" if any(m["status"] in IN_FLIGHT for m in members) else "failed")
+    return {"id": course["id"], "filename": course["name"], "file_hash": course_hash(course["id"]), "status": status,
+            "error": None if ready else "This course has no ready documents yet.", "chunks": sum(m["chunks"] or 0 for m in ready),
+            "embedding_model": None, "created_at": course["created_at"], "last_used_at": course["updated_at"],
+            "kind": "course", "documents": [m["id"] for m in members]}
+
+
+def _hex(file_hash: str) -> Optional[str]:
+    h = (file_hash or "").lower()
+    return h if h and all(c in "0123456789abcdef" for c in h) else None
+
+
 class DocumentService:
     def __init__(self, repo: DocumentRepository, cache: Dict, *, upload_dir: Path, embedding_model: str,
                  concurrency: int, max_per_user: int, max_documents: int, expiry_hours: float):
@@ -108,7 +133,7 @@ class DocumentService:
         self._lock = threading.RLock()           # serialises upload registration / eviction
         self._cache_lock = threading.Lock()      # the cache is touched by worker threads and request threads
         self._pool = _WorkerPool(concurrency, self._run_job)
-        for d in (self.upload_dir, self.sources_dir, self.indexes_dir):
+        for d in (self.upload_dir, self.sources_dir, self.indexes_dir, self.files_dir):
             d.mkdir(parents=True, exist_ok=True)
 
     # ── paths ────────────────────────────────────────────────────────────────
@@ -119,6 +144,33 @@ class DocumentService:
     @property
     def indexes_dir(self) -> Path:
         return self.upload_dir / "indexes"
+
+    @property
+    def files_dir(self) -> Path:
+        """The kept original PDFs, one per CONTENT (shared by every document with the same file hash)."""
+        return self.upload_dir / "files"
+
+    def pdf_path(self, file_hash: str) -> Optional[Path]:
+        h = _hex(file_hash)
+        return self.files_dir / f"{h}.pdf" if h else None
+
+    def has_pdf(self, file_hash: str) -> bool:
+        p = self.pdf_path(file_hash)
+        return bool(p and p.is_file())
+
+    def _keep_pdf(self, file_hash: str, content: Optional[bytes] = None, src: Optional[Path] = None) -> None:
+        """Keep the original next to the index (the side-by-side viewer reads it). Never fails an upload."""
+        p = self.pdf_path(file_hash)
+        if not p or p.is_file():
+            return
+        try:
+            self.files_dir.mkdir(parents=True, exist_ok=True)
+            if src is not None and src.is_file():
+                shutil.copyfile(src, p)
+            elif content is not None:
+                p.write_bytes(content)
+        except OSError:
+            logger.exception("Could not keep the PDF of %s", file_hash[:12])
 
     def _source_path(self, doc_id: str, file_hash: str) -> Path:
         return self.sources_dir / f"{doc_id}_{file_hash[:16]}.pdf"
@@ -139,6 +191,9 @@ class DocumentService:
         reused=True means no new work was started: the document was already there/being built, or an
         existing index of this user's with the same file hash is shared instead of being rebuilt."""
         user_id = int(user_id)
+        if session_id and self.repo.course(session_id):
+            raise AppError("invalid_input", "That id belongs to a course: upload the PDF on its own, then add it to the course.",
+                           status_code=400)
         with self._lock:
             existing = self.repo.get(session_id) if session_id else None
             if existing and existing["user_id"] != user_id:
@@ -150,12 +205,14 @@ class DocumentService:
                 if existing["status"] in IN_FLIGHT:
                     return public_view(existing), True
                 if existing["status"] == "ready" and self._index_usable(existing):
+                    self._keep_pdf(file_hash, content)                 # (an upload from before PDFs were kept)
                     self.repo.touch(doc_id)
                     return public_view(self.repo.get(doc_id)), True
 
             # Same file already indexed under another of this user's documents: share that index.
             for donor in self.repo.find_ready_by_hash(user_id, file_hash, self.embedding_model, exclude_id=doc_id):
                 if self._index_usable(donor):
+                    self._keep_pdf(file_hash, content)
                     self._make_room(user_id, doc_id, is_new=existing is None)
                     old_index = existing["index_path"] if existing else None
                     self._cache_drop(doc_id)
@@ -211,6 +268,7 @@ class DocumentService:
             if not self.repo.mark_ready(doc_id, file_hash, len(chunks), self.embedding_model, new_rel):
                 return                                         # replaced/deleted while indexing: finally discards it
             committed, new_rel = new_rel, None
+            self._keep_pdf(file_hash, src=src)
             self._cache_put(doc_id, vectorstore, row, len(chunks), committed)
             if old_rel and old_rel != committed:
                 self._drop_index_if_unreferenced(old_rel)
@@ -221,7 +279,7 @@ class DocumentService:
             logger.exception("Indexing failed for document %s", doc_id)    # details stay in the log
             self.repo.mark_failed(doc_id, file_hash, GENERIC_FAILURE)
         finally:
-            src.unlink(missing_ok=True)                         # the source is only needed while indexing
+            src.unlink(missing_ok=True)                         # (kept under files/ by content, once indexed)
             if new_rel:                                         # built but never committed
                 shutil.rmtree(self.upload_dir / new_rel, ignore_errors=True)
 
@@ -230,14 +288,43 @@ class DocumentService:
         return self._pool.wait_idle(timeout)
 
     # ── reading ──────────────────────────────────────────────────────────────
+    def _view(self, row: Dict) -> Dict:
+        return {**public_view(row), "pdf_available": self.has_pdf(row["file_hash"]), "pinned": self.repo.pinned(row["id"])}
+
     def get_document(self, doc_id: str, user_id: int) -> Dict:
+        """A document the user owns - or a course of theirs, seen as one document (see course_view)."""
         row = self.repo.get(doc_id)
+        if row is None:
+            course = self.repo.course(doc_id)
+            if course and course["user_id"] == int(user_id):
+                entitlements.require(user_id, "courses")
+                return course_view(course, self.repo.course_documents(doc_id))
         if not row or row["user_id"] != int(user_id):
             raise document_not_found()                          # don't reveal other users' ids
-        return public_view(row)
+        return self._view(row)
 
     def list_documents(self, user_id: int) -> List[Dict]:
-        return [public_view(r) for r in self.repo.list_for_user(int(user_id))]
+        return [self._view(r) for r in self.repo.list_for_user(int(user_id))]
+
+    def pdf_file(self, doc_id: str, user_id: int) -> Tuple[Path, Dict]:
+        """The kept original PDF of a document the user owns (404 pdf_unavailable for one uploaded before PDFs
+        were kept: uploading it again brings it back)."""
+        row = self.repo.get(doc_id)
+        if not row or row["user_id"] != int(user_id):
+            raise document_not_found()
+        p = self.pdf_path(row["file_hash"])
+        if not p or not p.is_file():
+            raise AppError("pdf_unavailable", "The original PDF isn't stored for this document. Upload it again to "
+                           "open its pages.", status_code=404, action="reupload")
+        return p, row
+
+    def delete_document(self, doc_id: str, user_id: int) -> None:
+        """Remove one of the user's documents (rows, index, files; it leaves its courses)."""
+        row = self.repo.get(doc_id)
+        if not row or row["user_id"] != int(user_id):
+            raise document_not_found()
+        with self._lock:
+            self._remove([row])
 
     def check_owner(self, doc_id: str, user_id: int) -> None:
         """403 if the document belongs to someone else. Unknown ids pass: callers report "no document"."""
@@ -263,9 +350,43 @@ class DocumentService:
             raise document_failed(row["error"])
         raise document_needs_reindex()
 
-    async def get_index(self, doc_id: str, user_id: int) -> VectorStore:
-        """The loaded index of a READY document the user owns (ownership + status checked, loaded from disk
-        on first use, last_used_at refreshed so expiry counts from last use, not from upload)."""
+    async def get_index(self, doc_id: str, user_id: int) -> MultiIndex:
+        """The searchable index of a READY document the user owns (ownership + status checked, loaded from disk
+        on first use, last_used_at refreshed so expiry counts from last use, not from upload) - or of a course of
+        theirs: every ready document of it, searched together. Hits are tagged with their document."""
+        row = await asyncio.to_thread(self.repo.get, doc_id)
+        if row is None:
+            course = await asyncio.to_thread(self.repo.course, doc_id)
+            if course is not None:
+                return await self._course_index(course, user_id)
+        store = await self._doc_store(doc_id, user_id)
+        return MultiIndex([(doc_id, row["filename"] if row else "", store)])
+
+    async def chunks(self, doc_id: str, user_id: int) -> List:
+        """Every chunk of one of the user's ready documents, in reading order (the concept map reads these)."""
+        store = await self._doc_store(doc_id, user_id)
+        return await asyncio.to_thread(store.chunks)
+
+    async def _course_index(self, course: Dict, user_id: int) -> MultiIndex:
+        if course["user_id"] != int(user_id):
+            raise forbidden("That course belongs to another account.")
+        entitlements.require(user_id, "courses")
+        members = await asyncio.to_thread(self.repo.course_documents, course["id"])
+        ready = [m for m in members if m["status"] == "ready" and m["embedding_model"] == self.embedding_model]
+        if not ready:
+            raise AppError("course_empty", "This course has no ready documents yet. Add a PDF to it, or wait for its "
+                           "documents to finish indexing.", status_code=409)
+        out = []
+        for m in ready:
+            try:
+                out.append((m["id"], m["filename"], await self._doc_store(m["id"], user_id)))
+            except AppError:
+                logger.warning("course %s: skipping document %s", course["id"], m["id"])
+        if not out:
+            raise document_failed("None of this course's documents could be loaded. Please upload them again.")
+        return MultiIndex(out)
+
+    async def _doc_store(self, doc_id: str, user_id: int) -> VectorStore:
         # SQLite reads/writes and the FAISS load all happen in worker threads: nothing here blocks the event loop.
         row = await asyncio.to_thread(self._checked, doc_id, user_id)
         entry = self.cache.get(doc_id)
@@ -348,6 +469,10 @@ class DocumentService:
 
     def _delete_files(self, row: Dict) -> None:
         doc_id = row["id"]
+        if self.repo.hash_refs(row["file_hash"]) == 0:             # the last document with this content
+            p = self.pdf_path(row["file_hash"])
+            if p:
+                p.unlink(missing_ok=True)
         if is_valid_session_id(doc_id):                          # never build a glob from an unvalidated id
             for p in self.sources_dir.glob(f"{doc_id}_*.pdf"):
                 p.unlink(missing_ok=True)

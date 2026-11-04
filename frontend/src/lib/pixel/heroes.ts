@@ -18,6 +18,8 @@ export interface HeroDef {
   /** The roster card's accent (CSS colour). */
   accent: string;
   look: HumanoidLook;
+  /** Set by skins.ts dressed(): which loadout this look wears (frame caches key on it). */
+  skinKey?: string;
 }
 
 const skinLight = ramp("#f2c39c"), skinTan = ramp("#d99a6c"), skinDeep = ramp("#9c6040");

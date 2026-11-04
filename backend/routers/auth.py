@@ -10,12 +10,14 @@ import providers
 from auth.cookies import clear_session_cookie, set_session_cookie
 from auth.auth_service import validate_email, validate_full_name, validate_password, validate_username
 from errors import AppError, invalid_input, provider_settings_invalid
-from deps import require_auth
+from deps import managed_ai_available, require_auth
 from key_service import encrypt_key, failure_field, validate_api_key
 from schemas import ApiKeyRequest, LoginRequest, RegisterRequest, UpdateProfileRequest
+from schemas.auth import DeleteAccountRequest
 from schemas.auth import ApiKeyInfoResponse, ApiKeyUpdateResponse, ProfileUpdateResponse, ProvidersResponse, RegisterResponse, UserResponse, UsernameCheckResponse
 from schemas.base import SuccessResponse
-from state import auth_middleware, auth_service, db, documents, limiter, store
+from services.invite_service import invalid_code as invite_invalid, invite_only, normalise as normalise_code
+from state import auth_middleware, auth_service, db, login_throttle, documents, invite_service, limiter, store
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -82,7 +84,8 @@ async def get_api_key_info(user=Depends(require_auth)):
 
 
 @router.put("/auth/api-key", response_model=ApiKeyUpdateResponse, response_model_exclude_unset=True)
-async def update_api_key(req: ApiKeyRequest, user=Depends(require_auth)):
+@limiter.limit("20/hour")                     # each one is checked with a real call to the provider
+async def update_api_key(req: ApiKeyRequest, request: Request, user=Depends(require_auth)):
     """Validate and replace the user's provider settings."""
     provider, key, model, base_url = await _prepare_llm_settings(
         req.llm_provider, req.api_key, req.llm_model, req.llm_base_url)
@@ -90,6 +93,16 @@ async def update_api_key(req: ApiKeyRequest, user=Depends(require_auth)):
     # users to the default model on every key update.
     db.save_api_key(user["user_id"], encrypt_key(key), provider, model, base_url)
     return {"success": True, "provider": provider}
+
+
+@router.delete("/auth/api-key", response_model=ApiKeyUpdateResponse, response_model_exclude_unset=True)
+@limiter.limit("20/hour")
+async def use_managed_ai(request: Request, user=Depends(require_auth)):
+    """Forget the user's own provider settings: their AI then runs on the server's (within their plan's quotas)."""
+    if not managed_ai_available():
+        raise provider_settings_invalid("This server has no built-in AI, so your own provider is needed.", "llm_provider")
+    db.save_api_key(user["user_id"], None, None, None, None)
+    return {"success": True, "provider": ""}
 
 
 @router.post("/auth/register", response_model=RegisterResponse, response_model_exclude_unset=True)
@@ -106,8 +119,18 @@ async def register(req: RegisterRequest, response: Response, request: Request):
             check(value)
         except ValueError as e:
             raise invalid_input(str(e), field=field)      # details.field: the form shows it beside that field
-    provider, key, model, base_url = await _prepare_llm_settings(
-        req.llm_provider, req.api_key, req.llm_model, req.llm_base_url)
+    code = normalise_code(req.invite_code or "")
+    if code:
+        invite_service.validate(code)                             # 400 invite_invalid (details.field) before anything
+    elif invite_only():
+        raise invite_invalid("An invite code is needed to sign up while CourseMate is in testing.")
+    # No provider chosen: the account uses the server's own AI (its plan's quotas apply) - when the server has one.
+    managed = not (req.llm_provider or "").strip()
+    if managed and not managed_ai_available():
+        raise provider_settings_invalid("Choose an AI provider: this server has no built-in AI.", "llm_provider")
+    if not managed:
+        provider, key, model, base_url = await _prepare_llm_settings(
+            req.llm_provider, req.api_key, req.llm_model, req.llm_base_url)
     try:
         user = auth_service.register_user(
             email=req.email, password=req.password,
@@ -115,8 +138,14 @@ async def register(req: RegisterRequest, response: Response, request: Request):
         )
     except ValueError as e:
         raise invalid_input(str(e), field=getattr(e, "field", None))
-    db.save_api_key(user["user_id"], encrypt_key(key), provider, model, base_url)
+    if not managed:
+        db.save_api_key(user["user_id"], encrypt_key(key), provider, model, base_url)
     store.ensure_user(str(user["user_id"]))
+    if code:
+        try:
+            invite_service.redeem(user["user_id"], code)
+        except AppError:                                          # used up in the meantime: the account still stands
+            logger.warning("invite code %s could not be redeemed at signup", code)
     token = auth_service.login(req.email, req.password, req.timezone)
     if token:
         set_session_cookie(response, request, token)
@@ -126,9 +155,15 @@ async def register(req: RegisterRequest, response: Response, request: Request):
 @router.post("/auth/login", response_model=SuccessResponse, response_model_exclude_unset=True)
 @limiter.limit("5/minute")
 async def login(req: LoginRequest, response: Response, request: Request):
+    wait = login_throttle.retry_after(req.email)
+    if wait:
+        raise AppError("rate_limited", "Too many wrong passwords for this account. Try again later.", status_code=429,
+                       action="retry", details={"retry_after_seconds": wait}, headers={"Retry-After": str(wait)})
     token = auth_service.login(req.email, req.password, req.timezone)
     if not token:
+        login_throttle.failed(req.email)
         raise AppError("invalid_credentials", "Incorrect email or password.", status_code=401)
+    login_throttle.succeeded(req.email)
     # Signing in again from a browser that still holds an older session replaces it instead of leaving it valid.
     auth_service.logout(await auth_middleware.session_token(request))
     set_session_cookie(response, request, token)
@@ -150,7 +185,8 @@ async def get_current_user(user=Depends(require_auth)):
 
 
 @router.get("/auth/check-username", response_model=UsernameCheckResponse, response_model_exclude_unset=True)
-async def check_username(username: str):
+@limiter.limit("60/minute")
+async def check_username(username: str, request: Request):
     username = (username or "").strip()
     if len(username) < 3:
         return {"available": False, "reason": "too_short"}
@@ -162,7 +198,15 @@ async def check_username(username: str):
     return {"available": existing is None, "username": username}
 
 
+def _password_ok(user_row: dict, password: Optional[str]) -> bool:
+    try:
+        return bool(password) and bcrypt.checkpw(password.encode("utf-8"), user_row["password_hash"].encode("utf-8"))
+    except ValueError:      # e.g. >72-byte input under bcrypt>=5
+        return False
+
+
 @router.post("/auth/update-profile", response_model=ProfileUpdateResponse, response_model_exclude_unset=True)
+@limiter.limit("10/minute")
 async def update_profile(req: UpdateProfileRequest, request: Request, user=Depends(require_auth)):
     user_id = user['user_id']
     current_user = db.get_user_by_id(user_id)
@@ -189,15 +233,16 @@ async def update_profile(req: UpdateProfileRequest, request: Request, user=Depen
             updates['email'] = new_email
     except ValueError as e:
         raise invalid_input(str(e))
-    if req.new_password:
+    # The login (email) and the password are the keys to the account: a stolen session alone can't change them.
+    if req.new_password or 'email' in updates:
         if not req.current_password:
-            raise AppError("current_password_required", "Enter your current password to set a new one.", status_code=400)
-        try:
-            pw_ok = bcrypt.checkpw(req.current_password.encode('utf-8'), current_user['password_hash'].encode('utf-8'))
-        except ValueError:      # e.g. >72-byte input under bcrypt>=5
-            pw_ok = False
-        if not pw_ok:
-            raise AppError("wrong_password", "Your current password is incorrect.", status_code=401)
+            what = "set a new password" if req.new_password else "change your email"
+            raise AppError("current_password_required", f"Enter your current password to {what}.", status_code=400,
+                           details={"field": "current_password"})
+        if not _password_ok(current_user, req.current_password):
+            raise AppError("wrong_password", "Your current password is incorrect.", status_code=401,
+                           details={"field": "current_password"})
+    if req.new_password:
         try:
             validate_password(req.new_password)
         except ValueError as e:
@@ -217,10 +262,14 @@ async def update_profile(req: UpdateProfileRequest, request: Request, user=Depen
 
 
 @router.delete("/auth/delete-account", response_model=SuccessResponse, response_model_exclude_unset=True)
-def delete_account(request: Request, response: Response, user=Depends(require_auth)):
+@limiter.limit("5/hour")
+def delete_account(req: DeleteAccountRequest, request: Request, response: Response, user=Depends(require_auth)):
     """Delete the account and ALL of its data: login row, chat/quiz history, progression,
-    leaderboard entries, and uploaded documents (in memory and on disk)."""
+    leaderboard entries, and uploaded documents (in memory and on disk). Needs the password."""
     user_id = user['user_id']
+    row = db.get_user_by_id(user_id)
+    if not row or not _password_ok(row, req.password):
+        raise AppError("wrong_password", "Your password is incorrect.", status_code=401, details={"field": "password"})
     try:
         # Documents first: once the user row is gone the cascade removes their rows, and with them the
         # list of index folders / cached indexes that still have to be cleaned up.

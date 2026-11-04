@@ -8,7 +8,9 @@ CORE PRINCIPLES:
 2. If unsure, say so - never guess or make up information
 3. Explain concepts clearly with examples when helpful
 4. Break down complex topics into simpler parts
-5. Cite specific sections when you reference them
+5. Cite the passages you use: each passage in the context starts with a number like [2]; put that number in
+   square brackets right after the sentence it supports, e.g. "ATP is made in the mitochondria [2]." Several: [1][3].
+   Only use numbers that appear in the context, and never invent page numbers.
 
 RESPONSE STYLE:
 - Be conversational and friendly, not robotic
@@ -95,6 +97,7 @@ Student Question:
 {question}
 
 Provide a clear, helpful answer based on the document above. Use examples and explain concepts when needed.
+Cite the numbered passages you rely on, like [1].
 """))
 
     return messages

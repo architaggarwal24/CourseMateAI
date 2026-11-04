@@ -24,9 +24,20 @@ def catalog_item(item_id: str) -> Optional[dict]:
     return _CATALOG.get(item_id)
 
 
-def is_free(item_id: str) -> bool:
+def is_mastery(item_id: str) -> bool:
     it = _CATALOG.get(item_id)
-    return bool(it) and int(it.get("price", 1) or 0) == 0
+    return bool(it and it.get("mastery"))
+
+
+def mastery_champion(item_id: str) -> Optional[str]:
+    it = _CATALOG.get(item_id)
+    return (it.get("mastery") or {}).get("champion") if it else None
+
+
+def is_free(item_id: str) -> bool:
+    """Free to everyone. A mastery skin costs nothing but is earned, not free."""
+    it = _CATALOG.get(item_id)
+    return bool(it) and int(it.get("price", 1) or 0) == 0 and not it.get("mastery")
 
 
 def can_use_item(item_id: str, owned: Iterable[str]) -> bool:
@@ -38,8 +49,11 @@ def can_use_item(item_id: str, owned: Iterable[str]) -> bool:
     return item_id in set(owned)
 
 
-def can_equip_in_slot(item_id: str, slot: str, owned: Iterable[str]) -> bool:
+def can_equip_in_slot(item_id: str, slot: str, owned: Iterable[str], champion: Optional[str] = None) -> bool:
+    """`champion`: the wearer. A mastery skin is only for the champion that earned it."""
     it = _CATALOG.get(item_id)
     if not it or SLOT_BY_TYPE.get(it.get("type")) != slot:
+        return False
+    if it.get("mastery") and (it["mastery"].get("champion") != (champion or "kaien")):
         return False
     return can_use_item(item_id, owned)

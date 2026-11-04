@@ -70,7 +70,38 @@
 .arena-intent[data-compact="true"] .arena-intent__name { font-size: 0.78rem; font-weight: 600; }
 .arena-intent__name b { color: var(--tone); font-size: 0.8rem; }
 .arena-intent__hint { color: var(--color-muted); font-size: 0.75rem; line-height: 1.4; }
+/* a creature's signature turn (grab, riddle, charge, boulder...) */
+.arena-intent[data-special="true"] { --tone: var(--color-reward); }
+.arena-intent[data-kind="charge"], .arena-intent[data-kind="throw"] { --tone: var(--color-danger-text); animation: arena-throb 1.4s ease-in-out infinite; }
+.arena-intent[data-kind="stunned"], .arena-intent[data-kind="aim"] { --tone: var(--color-warning-text); }
 @keyframes arena-throb { 0%, 100% { box-shadow: 0 0 14px -10px var(--tone); } 50% { box-shadow: 0 0 30px -6px var(--tone); } }
+
+/* ── Creature mechanic (HUD + move choice) ─────────────────────────────────────────────────────────────────── */
+.arena-mech {
+  display: grid; gap: var(--space-1); padding: var(--space-2) var(--space-3);
+  border: 1px dashed color-mix(in srgb, var(--color-reward) 45%, transparent); border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--color-reward) 7%, transparent);
+}
+.arena-mech[data-compact="true"] { padding: 0.15rem var(--space-2); border-style: solid; width: fit-content; display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); }
+.arena-mech__name { color: var(--color-reward); font-size: 0.72rem; letter-spacing: 0.04em; }
+.arena-mech__rule { color: var(--color-text-secondary); font-size: 0.78rem; line-height: 1.4; }
+.arena-mech__counters { display: flex; flex-wrap: wrap; gap: var(--space-2); margin: 0; padding: 0; list-style: none; }
+.arena-mech__counter { display: inline-flex; align-items: baseline; gap: 0.35rem; font-size: 0.75rem; color: var(--color-text); }
+.arena-mech__counter b { color: var(--color-reward); }
+.arena-mech__counter[data-locked="true"] { align-items: center; color: var(--color-danger-text); font-weight: 600; }
+.arena-mech__text { font-weight: 600; max-width: 14rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.arena-move[data-locked="true"] { border-style: dashed; }
+.arena-verdict__line--mech { color: var(--color-reward); }
+
+/* ── Ultimate meter ────────────────────────────────────────────────────────────────────────────────────────── */
+.arena-ult { display: inline-flex; align-items: center; gap: var(--space-2); }
+.arena-ult__bar {
+  position: relative; width: 6rem; height: 0.5rem; overflow: hidden;
+  border: 1px solid var(--color-border-strong); border-radius: 2px; background: var(--color-surface-sunken);
+}
+.arena-ult[data-compact="true"] .arena-ult__bar { width: 4.5rem; height: 0.4rem; }
+.arena-ult__bar > span { display: block; height: 100%; background: var(--color-reward); transition: width var(--motion-slow, 400ms) var(--ease-out-expo, ease-out); }
+.arena-ult[data-ready="true"] .arena-ult__bar { border-color: var(--color-reward); box-shadow: 0 0 14px -4px var(--glow-reward); animation: arena-throb 1.6s ease-in-out infinite; --tone: var(--color-reward); }
 
 /* ── Focus pips ──────────────────────────────────────────────────────────────────────────────────────────────── */
 .arena-focus { display: inline-flex; gap: 4px; }
@@ -255,6 +286,11 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .arena-stage[data-hit="true"], .arena-intent, .run-node__btn, .run-map__edge, .arena-bar__shield, .run-start__icon, .arena-core3d { animation: none !important; }
+  .arena-stage[data-hit="true"], .arena-intent, .arena-ult__bar, .run-node__btn, .run-map__edge, .arena-bar__shield, .run-start__icon, .arena-core3d { animation: none !important; }
   .arena-advance > span { animation: none; }
 }
+
+/* ── Result: champion progress ─────────────────────────────────────────────────────────────────────────────── */
+.arena-result__champion { display: grid; justify-items: center; gap: var(--space-2); }
+.arena-result__unlocks { display: grid; gap: var(--space-2); margin: 0; padding: 0; list-style: none; }
+.arena-result__unlock { display: inline-flex; align-items: center; gap: var(--space-2); font-size: 0.875rem; }

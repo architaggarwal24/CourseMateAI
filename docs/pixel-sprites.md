@@ -15,8 +15,28 @@ image files. Real sprite sheets you buy or commission can replace any of them, o
 | `stages.ts` | The 10 painted backdrops (480 x 270) and their ambient particles |
 | `fight.ts` | The fight scene: dashes, sparks, slashes, shields, KO dissolve, banners, shake |
 | `sprites.ts` | Rasterises each frame once and caches it |
+| `skins.ts` | Champion skins: the shop's cosmetics as outfit palettes, head pieces and weapon finishes; `dressed(hero, loadout)` |
+| `pets.ts` | The 10 pixel pets (beast, bird and dragon body plans) and their 4-frame idle |
+| `icons.ts` | Pixel item icons for shop and inventory cards (weapons show the player's own champion's weapon) |
 
-Every frame is drawn facing **right**; the scene mirrors the boss. Previews: `npm run dev`, then open `/dev/pixel`.
+Every frame is drawn facing **right**; the scene mirrors the boss. Previews: `npm run dev`, then open `/dev/pixel`,
+or render static contact sheets of every skin, pet and icon with `npx jiti scripts/pixel-preview.ts` (writes HTML
+into `pixel-previews/`).
+
+## Champion skins
+
+The champion is the player's avatar everywhere. Its skins are the shop's wearables (same ids, prices, bonuses and
+owners as before), drawn on whichever champion is picked:
+
+- **armor → outfit palette**: `main / second / trim / dark` (+ `metal` for plate, `glow` for an emissive trim). Each
+  champion maps the palette onto its own parts (`dressArmor` in `skins.ts`); plate gives everyone metal pauldrons.
+- **headgear → head piece**: `circlet` (metal or a cloth headband with tails), `hood` (plain, pointed, masked), `helm`
+  (crest or visor, optional horns), `crown`, `horns`, drawn by `drawHeadPiece` in `rig.ts`.
+- **weapon → finish**: new metal + accent for the champion's OWN weapon; rare / epic / legendary glow blue / violet / gold.
+- **pet → companion**: idles behind the champion in the arena, the HUD portrait, the Hero header and previews.
+
+A new wearable item in `backend/content/shop.json` needs a recipe here: `src/lib/pixel/skins.test.ts` fails until it
+has one. A sprite sheet listed for a champion (below) replaces its procedural frames, so skins do not show on it.
 
 ## Replacing art with sprite sheets
 

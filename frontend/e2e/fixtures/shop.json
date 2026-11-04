@@ -1,5 +1,6 @@
 {
  "shop_unlocked": false,
+ "champion_id": "kaien",
  "level": 1,
  "coins": 0,
  "owned": [
@@ -15,8 +16,8 @@
   {
    "id": "armor_gi_white",
    "type": "armor",
-   "name": "White Karate Gi",
-   "description": "Crisp white gi with crossed lapels and a black belt. A fighter's classic. Purely cosmetic.",
+   "name": "Dojo White",
+   "description": "Your champion's outfit in clean dojo white with a black sash. A fighter's classic. Purely cosmetic.",
    "price": 0,
    "sprite": "🥋",
    "level_required": 1,
@@ -39,8 +40,8 @@
   {
    "id": "armor_gi_red",
    "type": "armor",
-   "name": "Red Fighter's Hakama",
-   "description": "Bare-chested warrior with wide red gi pants and a pink sash. Pure power. Purely cosmetic.",
+   "name": "Crimson Hakama",
+   "description": "Your champion's outfit in deep crimson with a pink sash. Pure power. Purely cosmetic.",
    "price": 0,
    "sprite": "🔴",
    "level_required": 1,
@@ -63,8 +64,8 @@
   {
    "id": "armor_gi_blue",
    "type": "armor",
-   "name": "Blue Fighter's Hakama",
-   "description": "Bare-chested fighter with wide blue gi pants and a golden belt. Swift and precise. Purely cosmetic.",
+   "name": "Azure Hakama",
+   "description": "Your champion's outfit in azure blue with a golden sash. Swift and precise. Purely cosmetic.",
    "price": 0,
    "sprite": "🔵",
    "level_required": 1,
@@ -87,8 +88,8 @@
   {
    "id": "armor_shirt_basic",
    "type": "armor",
-   "name": "Street Legend Tee",
-   "description": "Clean white tee with a pocket detail. Classic drip, purely cosmetic.",
+   "name": "Street Grey",
+   "description": "Your champion's outfit in soft street grey with a sky-blue trim. Lowkey, purely cosmetic.",
    "price": 50,
    "sprite": "👕",
    "level_required": 5,
@@ -111,8 +112,8 @@
   {
    "id": "armor_hoodie_gray",
    "type": "armor",
-   "name": "Phantom Hoodie",
-   "description": "Oversized grey hoodie with a hidden kangaroo pocket. Lowkey but iconic.",
+   "name": "Phantom Ash",
+   "description": "Your champion's outfit in shadowy ash tones. Lowkey but iconic.",
    "price": 80,
    "sprite": "🧥",
    "level_required": 5,
@@ -135,8 +136,8 @@
   {
    "id": "armor_robe_blue",
    "type": "armor",
-   "name": "Azure Scholar's Vestments",
-   "description": "Deep sapphire robes with gold-trimmed bell sleeves. +5% XP on all activities.",
+   "name": "Azure Scholar",
+   "description": "Sapphire cloth with gold trim for your champion. +5% XP on all activities.",
    "price": 250,
    "sprite": "🥋",
    "level_required": 6,
@@ -161,8 +162,8 @@
   {
    "id": "armor_jacket_cool",
    "type": "armor",
-   "name": "Midnight Rider Jacket",
-   "description": "Sleek black leather jacket with V-lapels and combat boots. +5% coins.",
+   "name": "Midnight Rider",
+   "description": "Jet-black cloth with a blood-red trim for your champion. +5% coins.",
    "price": 300,
    "sprite": "🧥",
    "level_required": 6,
@@ -187,8 +188,8 @@
   {
    "id": "armor_wizard_purple",
    "type": "armor",
-   "name": "Void Weaver's Garments",
-   "description": "Swirling purple robes etched with arcane runes. +10% XP on all activities.",
+   "name": "Void Weaver",
+   "description": "Deep violet cloth with a cyan trim for your champion. +10% XP.",
    "price": 800,
    "sprite": "🧙",
    "level_required": 10,
@@ -213,8 +214,8 @@
   {
    "id": "armor_knight_silver",
    "type": "armor",
-   "name": "Titanfall Plate",
-   "description": "Gleaming titanium plate with spiked pauldrons and sabatons. +10% coins.",
+   "name": "Titanfall Steel",
+   "description": "Silver plate over slate cloth: every champion gets steel pauldrons. +10% coins.",
    "price": 900,
    "sprite": "🛡️",
    "level_required": 10,
@@ -239,8 +240,8 @@
   {
    "id": "armor_knight_gold",
    "type": "armor",
-   "name": "Sol Emperor's Plate",
-   "description": "Forged from solidified sunlight. Jeweled crest. +15% XP and +10% coins.",
+   "name": "Sol Emperor",
+   "description": "Golden plate over white and crimson for your champion. +15% XP, +10% coins.",
    "price": 2500,
    "sprite": "⚜️",
    "level_required": 18,
@@ -266,8 +267,8 @@
   {
    "id": "armor_dragon_scale",
    "type": "armor",
-   "name": "Ignis Wyrm Scale Mail",
-   "description": "Scales harvested from a volcano dragon. Shoulder spikes glow faintly. +20% XP and +15% coins.",
+   "name": "Ignis Wyrmscale",
+   "description": "Crimson wyrm-scale plate with a glowing ember trim. +20% XP, +15% coins.",
    "price": 4000,
    "sprite": "🐉",
    "level_required": 22,
@@ -293,8 +294,8 @@
   {
    "id": "armor_legends_mantle",
    "type": "armor",
-   "name": "Astral Conqueror's Mantle",
-   "description": "A robe that pulses with starlight. Worn only by those who shaped history. +30% XP and +20% coins.",
+   "name": "Astral Conqueror",
+   "description": "Starlit indigo with pale-gold plate and a glowing cyan trim. +30% XP, +20% coins.",
    "price": 8000,
    "sprite": "✨",
    "level_required": 28,
@@ -320,8 +321,8 @@
   {
    "id": "hat_headband_red",
    "type": "headgear",
-   "name": "Red Fighter's Headband",
-   "description": "A bold red cloth headband worn by champions. The mark of a true martial artist. Purely cosmetic.",
+   "name": "Red Headband",
+   "description": "A red cloth headband whose tails fly behind your champion. Purely cosmetic.",
    "price": 0,
    "sprite": "🔴",
    "level_required": 1,
@@ -344,8 +345,8 @@
   {
    "id": "hat_headband_blue",
    "type": "headgear",
-   "name": "Blue Fighter's Headband",
-   "description": "A deep blue headband — focused, calm, and ready for battle. Purely cosmetic.",
+   "name": "Blue Headband",
+   "description": "A blue cloth headband whose tails fly behind your champion. Purely cosmetic.",
    "price": 0,
    "sprite": "🔵",
    "level_required": 1,
@@ -369,7 +370,7 @@
    "id": "hat_headband_white",
    "type": "headgear",
    "name": "White Headband",
-   "description": "A clean white training headband. Simple. Disciplined. Purely cosmetic.",
+   "description": "A white cloth headband whose tails fly behind your champion. Purely cosmetic.",
    "price": 0,
    "sprite": "⬜",
    "level_required": 1,
@@ -392,8 +393,8 @@
   {
    "id": "hat_baseball_red",
    "type": "headgear",
-   "name": "Crimson Street Cap",
-   "description": "Bold red snapback. Low-key flex. Purely cosmetic.",
+   "name": "Crimson Hood",
+   "description": "A crimson hood drawn over your champion's head. Purely cosmetic.",
    "price": 50,
    "sprite": "🧢",
    "level_required": 7,
@@ -416,8 +417,8 @@
   {
    "id": "hat_beanie_blue",
    "type": "headgear",
-   "name": "Frostwave Beanie",
-   "description": "Thick knitted winter beanie in deep ocean blue. Purely cosmetic.",
+   "name": "Frostwave Hood",
+   "description": "A pointed ice-blue hood. Purely cosmetic.",
    "price": 50,
    "sprite": "🎓",
    "level_required": 7,
@@ -440,8 +441,8 @@
   {
    "id": "hat_headphones",
    "type": "headgear",
-   "name": "Neural Link Headphones",
-   "description": "Noise-cancelling over-ears with glowing cables. +1 free hint charge every Arena battle.",
+   "name": "Neural Link Helm",
+   "description": "A sleek steel helm with a glowing cyan visor. +1 Arena hint charge.",
    "price": 200,
    "sprite": "🎧",
    "level_required": 8,
@@ -466,8 +467,8 @@
   {
    "id": "hat_wizard",
    "type": "headgear",
-   "name": "Archmage's Pointed Hat",
-   "description": "Tall midnight hat with a golden constellation band. +5% XP on all activities.",
+   "name": "Archmage's Cowl",
+   "description": "A tall pointed violet cowl. +5% XP.",
    "price": 300,
    "sprite": "🎩",
    "level_required": 9,
@@ -492,8 +493,8 @@
   {
    "id": "hat_crown_bronze",
    "type": "headgear",
-   "name": "Verdant Crown of Learning",
-   "description": "Bronze circlet set with emerald and sapphire gems. +5% XP and +5% coins.",
+   "name": "Verdant Crown",
+   "description": "A bronze crown set with a glowing green gem. +5% XP, +5% coins.",
    "price": 500,
    "sprite": "👑",
    "level_required": 10,
@@ -519,8 +520,8 @@
   {
    "id": "hat_ninja",
    "type": "headgear",
-   "name": "Shadow Veil Headband",
-   "description": "Midnight-black cloth mask, only eyes visible. Stealth study mode. +10% XP.",
+   "name": "Shadow Veil",
+   "description": "A black hood with a veil over the face. +10% XP.",
    "price": 700,
    "sprite": "🥷",
    "level_required": 12,
@@ -545,8 +546,8 @@
   {
    "id": "hat_crown_silver",
    "type": "headgear",
-   "name": "Glacial Silver Crown",
-   "description": "Frosted silver crown with icy-blue gems. +10% XP and +5% coins.",
+   "name": "Glacial Crown",
+   "description": "A silver crown set with a glowing ice-blue gem. +10% XP, +5% coins.",
    "price": 1000,
    "sprite": "👑",
    "level_required": 14,
@@ -573,7 +574,7 @@
    "id": "hat_samurai",
    "type": "headgear",
    "name": "Oni-Sealed War Helm",
-   "description": "Lacquered kabuto with a golden hachimaki. +10% coins and +1 arena hint.",
+   "description": "A dark war helm with a crimson crest and pale oni horns. +10% coins, +1 Arena hint charge.",
    "price": 1200,
    "sprite": "⛩️",
    "level_required": 15,
@@ -600,7 +601,7 @@
    "id": "hat_crown_gold",
    "type": "headgear",
    "name": "Solaris Crown",
-   "description": "Blazing gold crown radiating warm light. +15% XP and +10% coins.",
+   "description": "A golden crown set with a glowing rose gem. +15% XP, +10% coins.",
    "price": 2000,
    "sprite": "👑",
    "level_required": 18,
@@ -1224,8 +1225,8 @@
   {
    "id": "weapon_pencil",
    "type": "weapon",
-   "name": "Scholar's Pencil",
-   "description": "The pen is mightier. A classic HB pencil, always sharp.",
+   "name": "Graphite Finish",
+   "description": "Re-forges your champion's weapon in graphite with a pencil-yellow grip.",
    "price": 100,
    "sprite": "✏️",
    "level_required": 10,
@@ -1248,8 +1249,8 @@
   {
    "id": "weapon_ruler",
    "type": "weapon",
-   "name": "Precision Ruler",
-   "description": "Steel-edged ruler. Measures angles AND opponent confidence.",
+   "name": "Ruled Steel",
+   "description": "Re-forges your champion's weapon in plain bright steel on an oak grip.",
    "price": 120,
    "sprite": "📏",
    "level_required": 10,
@@ -1272,8 +1273,8 @@
   {
    "id": "weapon_sword_bronze",
    "type": "weapon",
-   "name": "Dawnsteel Twin Blades",
-   "description": "Bronze dual swords with leather-wrapped hilts. ✦✦ Dual wield! +5% combo XP.",
+   "name": "Dawnsteel",
+   "description": "Re-forges your champion's weapon in warm bronze. Glows blue (rare). +5% combo XP.",
    "price": 400,
    "sprite": "⚔️",
    "level_required": 10,
@@ -1298,8 +1299,8 @@
   {
    "id": "weapon_staff_wood",
    "type": "weapon",
-   "name": "Emberwood Quarterstaff",
-   "description": "Gnarled forest staff with a glowing crystal tip. +5% XP.",
+   "name": "Emberwood",
+   "description": "Re-forges your champion's weapon in ember-orange on dark wood. Glows blue (rare). +5% XP.",
    "price": 450,
    "sprite": "🪄",
    "level_required": 11,
@@ -1324,8 +1325,8 @@
   {
    "id": "weapon_bow",
    "type": "weapon",
-   "name": "Ashwood Recurve Bow",
-   "description": "Elegant recurve bow carved from ancient ashwood. +5% XP.",
+   "name": "Ashwood",
+   "description": "Re-forges your champion's weapon in pale ash and grey wood. Glows blue (rare). +5% XP.",
    "price": 500,
    "sprite": "🏹",
    "level_required": 11,
@@ -1350,8 +1351,8 @@
   {
    "id": "weapon_sword_silver",
    "type": "weapon",
-   "name": "Moonblade Twin Swords",
-   "description": "Silver dual blades that shimmer like moonlight. ✦✦ Dual wield! +10% combo XP.",
+   "name": "Moonsteel",
+   "description": "Re-forges your champion's weapon in moon-pale steel on midnight blue. Glows blue (rare). +10% combo XP.",
    "price": 900,
    "sprite": "⚔️",
    "level_required": 13,
@@ -1376,8 +1377,8 @@
   {
    "id": "weapon_hammer",
    "type": "weapon",
-   "name": "Thundercrack War Hammer",
-   "description": "Rune-carved warhammer that crackles with energy. +8% XP.",
+   "name": "Thundercrack Iron",
+   "description": "Re-forges your champion's weapon in dark iron with lightning-gold. Glows violet (epic). +8% XP.",
    "price": 1000,
    "sprite": "🔨",
    "level_required": 14,
@@ -1402,8 +1403,8 @@
   {
    "id": "weapon_staff_crystal",
    "type": "weapon",
-   "name": "Aqua Prism Staff",
-   "description": "A crystal-topped staff refracting arcane light. +10% XP.",
+   "name": "Aqua Prism",
+   "description": "Re-forges your champion's weapon in aqua crystal. Glows violet (epic). +10% XP.",
    "price": 1100,
    "sprite": "💎",
    "level_required": 14,
@@ -1428,8 +1429,8 @@
   {
    "id": "weapon_sword_excalibur",
    "type": "weapon",
-   "name": "Excalibur Twin Blades",
-   "description": "Gold-hilted legendary swords etched with celestial runes. ✦✦ Dual wield! +15% combo XP.",
+   "name": "Excalibur Steel",
+   "description": "Re-forges your champion's weapon in white steel and gold. Glows violet (epic). +15% combo XP.",
    "price": 2500,
    "sprite": "✨",
    "level_required": 18,
@@ -1454,8 +1455,8 @@
   {
    "id": "weapon_staff_legendary",
    "type": "weapon",
-   "name": "Infernal Codex Staff",
-   "description": "A staff crowned with a swirling tome of forbidden power. +15% XP.",
+   "name": "Infernal Codex",
+   "description": "Re-forges your champion's weapon in hellfire orange. Glows gold (legendary). +15% XP.",
    "price": 3000,
    "sprite": "🌟",
    "level_required": 20,
@@ -1482,30 +1483,30 @@
   "headgear": {
    "unlocked": true,
    "unlock_level": 1,
-   "name": "Headgear",
+   "name": "Head Pieces",
    "icon": "🎩",
-   "description": "Hats, crowns & headwear — some grant Arena hint charges or XP bonuses"
+   "description": "Circlets, hoods, helms and crowns for your champion. Some grant Arena time, hints or XP."
   },
   "armor": {
    "unlocked": true,
    "unlock_level": 1,
-   "name": "Armor & Outfits",
+   "name": "Outfits",
    "icon": "🛡️",
-   "description": "Outfits — expensive ones grant permanent XP & coin bonuses"
+   "description": "Outfit colours for your champion. Expensive ones grant XP & coin bonuses and extra hearts."
   },
   "weapon": {
    "unlocked": false,
    "unlock_level": 10,
-   "name": "Weapons",
+   "name": "Weapon Finishes",
    "icon": "⚔️",
-   "description": "Weapons — mid-tier+ boost XP from answer combos"
+   "description": "New finishes and rarity glows for your champion's own weapon. They add Arena damage."
   },
   "pet": {
    "unlocked": false,
    "unlock_level": 20,
    "name": "Pets",
    "icon": "🐾",
-   "description": "Companions — grant passive XP/coin bonuses & auto streak freezes"
+   "description": "Pixel companions that idle beside your champion. They strike in the Arena and grant bonuses."
   },
   "potion": {
    "unlocked": false,

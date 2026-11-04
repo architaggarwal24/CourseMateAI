@@ -156,8 +156,10 @@ def test_snapshot_needs_a_key_and_captures_the_request_settings():
         lc.snapshot_request_llm()
     lc.set_request_key("sk-abc", "openai", "gpt-x", "https://llm.example/v1")
     try:
-        assert lc.snapshot_request_llm() == {
+        snap = lc.snapshot_request_llm()
+        assert {k: snap[k] for k in ("api_key", "provider", "model", "base_url")} == {
             "api_key": "sk-abc", "provider": "openai", "model": "gpt-x", "base_url": "https://llm.example/v1"}
+        assert [t.slot for t in snap["targets"]] == ["request"]                  # the user's own: no routing
     finally:
         lc.clear_request_key()
 

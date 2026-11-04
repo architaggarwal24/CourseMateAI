@@ -2,11 +2,15 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { BookOpen, Coins, Sparkles, Trophy } from "lucide-react";
+import { BookOpen, Coins, Crown, Sparkles, Trophy } from "lucide-react";
+import ItemArt from "@/components/champion/ItemArt";
+import { useChampion } from "@/hooks/useChampion";
+import { useHeroStore } from "@/hooks/useHero";
+import { heroById } from "@/lib/pixel/heroes";
 import { ROUTES } from "@/lib/routes";
 import { Badge, Button } from "@/components/ui";
 import PixelSprite from "./pixel/PixelSprite";
-import { useFighter } from "./pixel/useFighter";
+import { useFighter, useFighterPet } from "./pixel/useFighter";
 import { fetchLeaderboard } from "@/lib/arena/api";
 import type { Battle, BattleRewards, LeaderboardEntry } from "@/lib/arena/types";
 import { DIFFICULTY_LABEL } from "@/lib/arena/types";
@@ -33,6 +37,7 @@ export default function ResultPanel({ battle, rewards, retreated, bossName, onAg
 }) {
   const won = battle.status === "won";
   const fighter = useFighter();
+  const pet = useFighterPet();
   const result = battle.result ?? {};
   const { xp, coins } = totals(rewards);
   const [entries, setEntries] = useState<LeaderboardEntry[]>([]);
@@ -56,7 +61,7 @@ export default function ResultPanel({ battle, rewards, retreated, bossName, onAg
 
   return (
     <section className="arena-result" data-outcome={won ? "won" : "lost"} aria-labelledby="arena-result-title">
-      <div className="arena-result__figure"><PixelSprite hero={fighter} anim={won ? "win" : "hit"} label={won ? `${fighter.name} celebrates` : `${fighter.name}, beaten`} className="arena-result__sprite" /></div>
+      <div className="arena-result__figure"><PixelSprite hero={fighter} pet={pet} anim={won ? "win" : "hit"} label={won ? `${fighter.name} celebrates` : `${fighter.name}, beaten`} className="arena-result__sprite" /></div>
       <h2 id="arena-result-title" ref={heading} tabIndex={-1} className="arena-result__headline pixel-font">{headline}</h2>
       <p className="arena__text">{line} <span className="text-muted">({battle.topic}, {DIFFICULTY_LABEL[battle.difficulty]})</span></p>
       {won && result.grade && <span className="arena-result__grade pixel-font" role="img" aria-label={`Grade ${result.grade}`}>{result.grade}</span>}
@@ -75,6 +80,8 @@ export default function ResultPanel({ battle, rewards, retreated, bossName, onAg
           {coins > 0 && <Badge tone="reward"><Coins size={12} aria-hidden="true" />+{coins} coins</Badge>}
         </p>
       )}
+
+      <ChampionXpLine battle={battle} />
 
       {entries.length > 0 && (
         <ol className="arena-board w-full text-left">
@@ -106,6 +113,41 @@ export default function ResultPanel({ battle, rewards, retreated, bossName, onAg
       )}
 
       <Button variant="primary" onClick={onAgain}>{againLabel ?? "Battle again"}</Button>
+    </section>
+  );
+}
+
+/** What the champion earned: XP toward its next level, a level-up, and the mastery skins it unlocked. */
+function ChampionXpLine({ battle }: { battle: Battle }) {
+  const champ = battle.result?.champion;
+  const shop = useHeroStore((s) => s.shop);
+  useEffect(() => {
+    if (champ?.leveled_up) {
+      void useChampion.getState().load({ signedIn: true, force: true });       // the new level, on every screen
+      void useHeroStore.getState().reconcile();                                 // the unlocked skin, owned
+    }
+  }, [champ?.leveled_up]);
+  if (!champ) return null;
+  const name = heroById(champ.id).name;
+  const nextAt = champ.next_level_xp;
+  return (
+    <section className="arena-result__champion" aria-label={`${name}'s progress`}>
+      <p className="arena__text">
+        <Badge tone="accent"><Sparkles size={12} aria-hidden="true" />+{champ.xp_gained} {name} XP</Badge>{" "}
+        {champ.leveled_up
+          ? <Badge tone="reward"><Crown size={12} aria-hidden="true" />{name} reached Lv {champ.level}!</Badge>
+          : <span className="text-muted">{name} Lv {champ.level}{nextAt ? ` · ${champ.xp}/${nextAt} XP` : " · max level"}</span>}
+      </p>
+      {champ.unlocked.length > 0 && (
+        <ul className="arena-result__unlocks" aria-label="Mastery skins unlocked">
+          {champ.unlocked.map((id) => (
+            <li key={id} className="arena-result__unlock">
+              <ItemArt itemId={id} size={40} />
+              <span>New mastery skin: <b>{shop?.items.find((i) => i.id === id)?.name ?? id}</b></span>
+            </li>
+          ))}
+        </ul>
+      )}
     </section>
   );
 }

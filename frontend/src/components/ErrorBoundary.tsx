@@ -2,6 +2,7 @@
 
 import React from "react";
 import { Button } from "@/components/ui";
+import { reportError } from "@/lib/monitoring";
 
 interface Props {
   children: React.ReactNode;
@@ -25,6 +26,7 @@ export class ErrorBoundary extends React.Component<Props, State> {
 
   componentDidCatch(error: Error, info: React.ErrorInfo) {
     console.error("[ErrorBoundary] Caught error:", error, info);
+    reportError(error, { componentStack: info.componentStack ?? "" });
   }
 
   render() {

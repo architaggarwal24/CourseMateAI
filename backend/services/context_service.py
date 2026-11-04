@@ -28,10 +28,19 @@ class Retrieval:
     sources: List[str]                        # "file.pdf · p.4", de-duplicated, in relevance order
     best_similarity: Optional[float]          # cosine similarity of the closest chunk, 0..1 (None: nothing found)
     similarities: Tuple[float, ...] = field(default_factory=tuple)
+    # One per retrieved chunk, numbered from 1 in relevance order: {n, doc_id, doc_name, page (1-based or None),
+    # label, snippet, text}. Chat answers cite them as [n]; the viewer opens doc_id at page and highlights text.
+    citations: Tuple[dict, ...] = field(default_factory=tuple)
 
     @property
     def chunk_count(self) -> int:
         return len(self.similarities)
+
+    def numbered_context(self) -> str:
+        """The chunks for a prompt that asks for citations: each one led by its number and where it is from."""
+        if not self.citations:
+            return self.context
+        return "\n\n".join(f"[{c['n']}] ({c['label']})\n{c['text']}" for c in self.citations)
 
 
 EMPTY = Retrieval(context="", sources=[], best_similarity=None)
@@ -69,7 +78,24 @@ def retrieve(vector_store: Optional[VectorStore], query: str, top_k: int = 5,
         return EMPTY
     context, sources = build_context_and_sources([doc for doc, _ in hits])
     scores = tuple(score for _, score in hits)
-    return Retrieval(context=context, sources=sources, best_similarity=max(scores), similarities=scores)
+    return Retrieval(context=context, sources=sources, best_similarity=max(scores), similarities=scores,
+                     citations=tuple(citation(i + 1, doc) for i, (doc, _) in enumerate(hits)))
+
+
+SNIPPET_CHARS = 220
+QUOTE_CHARS = 1200
+
+
+def citation(n: int, doc) -> dict:
+    """Where a retrieved chunk comes from, for a numbered citation."""
+    meta = doc.metadata or {}
+    name = str(meta.get("doc_name") or meta.get("source") or "").replace("\\", "/").rsplit("/", 1)[-1]
+    page = meta.get("page")
+    page = page + 1 if isinstance(page, int) else None              # PyPDF pages are 0-based
+    text = " ".join((doc.page_content or "").split())
+    label = f"{name} · p.{page}" if name and page else (name or (f"p.{page}" if page else ""))
+    return {"n": n, "doc_id": meta.get("doc_id"), "doc_name": name or None, "page": page, "label": label,
+            "snippet": text[:SNIPPET_CHARS] + ("…" if len(text) > SNIPPET_CHARS else ""), "text": text[:QUOTE_CHARS]}
 
 
 def get_context_for_query(vector_store: VectorStore, query: str, top_k: int = 5) -> Tuple[str, list]:

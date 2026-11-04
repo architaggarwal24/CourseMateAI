@@ -103,6 +103,9 @@ class PrettyFormatter(JsonFormatter):
 
     Same redaction as the JSON lines - only the layout differs."""
     _COLORS = {"WARNING": "\033[33m", "ERROR": "\033[31m", "CRITICAL": "\033[31;1m"}
+    # Loggers whose last name part reads like a level. uvicorn logs its normal startup and shutdown on a logger
+    # called "uvicorn.error" (its general logger, not an error), which showed as "error  Application startup complete."
+    _NAMES = {"uvicorn.error": "server", "uvicorn": "server"}
 
     def format(self, record: logging.LogRecord) -> str:
         try:
@@ -123,7 +126,7 @@ class PrettyFormatter(JsonFormatter):
                 line += f"  ({data['error_code']})"
             return line
         level = record.levelname
-        name = record.name.split(".")[-1]
+        name = self._NAMES.get(record.name, record.name.split(".")[-1])
         extra = ""
         if data.get("event") == "llm_call_failed":
             extra = f"  [{data.get('provider')}/{data.get('model')}: {data.get('error_type')} after {float(data.get('duration_ms') or 0) / 1000:.0f}s]"

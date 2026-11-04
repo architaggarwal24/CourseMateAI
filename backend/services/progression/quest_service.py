@@ -92,6 +92,12 @@ class DailyQuestService:
             self._inc_quest(user_id, "notes_scholar", 1)
         elif action_type == "flashcard_complete":
             self._inc_quest(user_id, "study_flashcards", 1)
+        elif action_type == "review_card":
+            self._inc_quest(user_id, "review_cards", 1)
+        elif action_type == "review_complete":
+            self._inc_quest(user_id, "clear_reviews", 1)
+        elif action_type == "exam_complete":
+            self._inc_quest(user_id, "complete_exams", 1)
 
     def claim_quest(self, user_id: str, quest_type: str) -> dict:
         today_s = iso_date(self.store.user_today(user_id))

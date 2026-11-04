@@ -1,6 +1,8 @@
 /* Pixel arena: crisp nearest-neighbour sprites, the fight stage, roster and bestiary. */
 
 .pixel-canvas { image-rendering: pixelated; image-rendering: crisp-edges; display: block; }
+/* a sprite inside a control is part of its picture, never the click target (a tap must reach the button) */
+button .pixel-canvas, [role="radio"] .pixel-canvas { pointer-events: none; }
 
 .px-section-title { font-size: 0.8rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--color-reward); margin: 0 0 var(--space-3); }
 
@@ -27,6 +29,9 @@
   text-shadow: 4px 4px 0 rgba(0, 0, 0, 0.85), -2px -2px 0 rgba(0, 0, 0, 0.85), 0 0 24px rgba(245, 185, 66, 0.55);
 }
 .px-arena__banner[data-tone="rage"], .px-arena__banner[data-tone="lose"] { color: var(--color-danger-text); text-shadow: 4px 4px 0 rgba(0, 0, 0, 0.85), 0 0 24px rgba(239, 68, 68, 0.6); }
+/* a mechanic's call-out (GRABBED, CHAINED...) is smaller and sits high; an ultimate's name glows in the champion's gold */
+.px-arena__banner[data-tone="mech"] { font-size: clamp(1.1rem, 4vw, 2.2rem); place-items: start center; padding-top: 12%; color: var(--color-fg); }
+.px-arena__banner[data-tone="ult"] { font-size: clamp(1.4rem, 5.5vw, 3rem); text-shadow: 3px 3px 0 rgba(0, 0, 0, 0.85), 0 0 28px rgba(250, 204, 21, 0.75); }
 .px-arena__floaters { position: absolute; inset: 0; pointer-events: none; }
 .px-arena__floaters .arena-floater[data-side="hero"] { left: 22%; top: 38%; }
 .px-arena__floaters .arena-floater[data-side="boss"] { left: auto; right: 26%; top: 34%; }
@@ -92,6 +97,9 @@
   overflow: hidden;
 }
 .ff-hud__face { position: absolute; inset: 2px; width: calc(100% - 4px); height: calc(100% - 4px); object-fit: contain; object-position: 50% 100%; }
+/* the pet peeks in at the portrait's lower corner */
+.ff-hud__pet { position: absolute; right: 1px; bottom: 1px; width: 48%; height: 48%; display: grid; place-items: end; pointer-events: none; }
+.ff-hud__pet-sprite { max-width: 100%; max-height: 100%; object-fit: contain; object-position: 100% 100%; }
 .ff-hud__name { font-size: 0.8rem; color: var(--color-text); letter-spacing: 0.04em; }
 .ff-hud .arena-hud__name { font-size: 0.95rem; letter-spacing: 0.03em; }
 .ff-hud .arena-bar { height: 1rem; border-radius: 2px; border: 2px solid var(--color-reward); box-shadow: 2px 2px 0 rgba(0, 0, 0, 0.55); }
@@ -116,3 +124,8 @@
 
 /* keep the verdict's buttons clear of the phone's bottom navigation dock when scrolled into view */
 .arena-verdict__actions .ui-btn { scroll-margin-bottom: 7.5rem; }
+
+/* champion level on a roster card */
+.px-hero-card__level { display: inline-flex; align-items: center; gap: 0.35rem; font-size: 0.65rem; color: var(--color-reward); }
+.px-hero-card__xp { width: 2.75rem; height: 0.3rem; border-radius: 2px; background: var(--color-surface-sunken); overflow: hidden; border: 1px solid var(--color-border); }
+.px-hero-card__xp > span { display: block; height: 100%; background: var(--color-reward); }

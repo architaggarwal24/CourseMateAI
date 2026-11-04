@@ -1,15 +1,18 @@
 // Asking a question: the streaming endpoint (POST /chat/stream, Server-Sent Events) with incremental text, and the
 // plain endpoint (POST /chat) as the fallback when the stream cannot be used.
 //
-// Frames: `token` {text} ... then `sources` {sources, blocked, needs_clarification, rewards}; a failure after the first
+// Frames: `token` {text} ... then `sources` {sources, citations, blocked, needs_clarification, rewards}; a failure after the first
 // token is an `error` event in the unified error shape, a failure before it is an ordinary HTTP error.
 import { chatQuestion } from "./api";
 import { API_BASE_URL, throwForResponse } from "./api/client";
 import { ApiError } from "./api/errors";
+import type { Citation } from "./study/citations";
 
 export interface ChatAnswer {
   content: string;
   sources: string[];
+  /** The passages the answer can cite as [n]: document, page and text (opens the PDF viewer). */
+  citations: Citation[];
   /** The document doesn't contain what was asked ("I couldn't find that in your document"). */
   blocked: boolean;
   needsClarification: boolean;
@@ -120,6 +123,7 @@ export async function streamChat(opts: AskOptions): Promise<ChatAnswer> {
   return {
     content,
     sources: Array.isArray(final.sources) ? final.sources.map(String) : [],
+    citations: Array.isArray(final.citations) ? final.citations : [],
     blocked: !!final.blocked,
     needsClarification: !!final.needs_clarification,
     rewards: final.rewards ?? undefined,
@@ -141,6 +145,7 @@ export async function askChat(opts: AskOptions): Promise<ChatAnswer> {
     return {
       content: String(data?.content ?? ""),
       sources: Array.isArray(data?.sources) ? data.sources.map(String) : [],
+      citations: Array.isArray(data?.citations) ? data.citations : [],
       blocked: !!data?.blocked,
       needsClarification: !!data?.needs_clarification,
       rewards: data?.rewards ?? undefined,

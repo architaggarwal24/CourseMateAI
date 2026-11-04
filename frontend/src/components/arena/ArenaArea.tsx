@@ -1,7 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { useArenaBattle } from "@/hooks/useArenaBattle";
+import { useSessionStore } from "@/hooks/useSessions";
 import { fetchRun } from "@/lib/arena/api";
 import type { Run } from "@/lib/arena/types";
 import ArenaHub, { type ArenaMode } from "./ArenaHub";
@@ -19,8 +21,15 @@ import "./pixel/pixel.css";
  * Every fight is decided by the server (hooks/useArenaBattle); an expedition's map lives in RunScreen.
  */
 export default function ArenaArea() {
-  const arena = useArenaBattle();
-  const [mode, setMode] = useState<ArenaMode | null>(null);
+  // ?doc=&topic= (the concept map's "Summon its boss"): a Quick Battle on that document with the topic filled in.
+  const params = useSearchParams();
+  const docParam = params?.get("doc") || undefined;
+  const topicParam = params?.get("topic") || undefined;
+  const arena = useArenaBattle({ documentId: docParam });
+  const [mode, setMode] = useState<ArenaMode | null>(topicParam ? "quick" : null);
+  // A course from the map isn't in the document list: fetch its record so the uploader names it.
+  const refreshDocument = useSessionStore((s) => s.refreshDocument);
+  useEffect(() => { if (docParam) refreshDocument(docParam).catch(() => {}); }, [docParam, refreshDocument]);
   const [run, setRun] = useState<Run | null>(null);
   const runId = arena.battle?.run_id ?? null;
 
@@ -66,7 +75,8 @@ export default function ArenaArea() {
   if (mode === "quick" || mode === "nemesis") {
     return (
       <div className="arena">
-        <SummonPanel sessionId={arena.sessionId} starting={arena.phase === "starting"} onSummon={arena.summon} mode={mode} onBack={() => setMode(null)} />
+        <SummonPanel sessionId={arena.sessionId} starting={arena.phase === "starting"} onSummon={arena.summon} mode={mode} onBack={() => setMode(null)}
+          initialTopic={mode === "quick" ? topicParam : undefined} />
       </div>
     );
   }

@@ -2,11 +2,14 @@
 
 import { useState, useCallback, useEffect, useRef } from "react";
 import { motion, useMotionValue, useTransform } from "motion/react";
-import { ChevronLeft, ChevronRight, RotateCcw, Shuffle, CheckCircle2, XCircle, Sparkles, Minus, Plus, Layers } from "lucide-react";
+import { ChevronLeft, ChevronRight, RotateCcw, Shuffle, CheckCircle2, XCircle, Sparkles, Minus, Plus, Layers, Repeat } from "lucide-react";
 import HistoryPanel from "./HistoryPanel";
 import StudyToolbar from "./study/StudyToolbar";
-import { Badge, Button, Card, Input } from "@/components/ui";
-import { fetchReviewDeck, generateFlashcards, reviewFlashcard, type ReviewCard } from "@/lib/api";
+import { Badge, Button, ButtonLink, Card, Input } from "@/components/ui";
+import { ApiError, fetchReviewDeck, generateFlashcards, reviewFlashcard, type ReviewCard } from "@/lib/api";
+import { addToReview } from "@/lib/study/review";
+import { useReview } from "@/hooks/useReview";
+import { ROUTES } from "@/lib/routes";
 import { saveSessionData, loadSessionData } from "@/lib/sessions";
 import { useHUDStore } from "@/hooks/useHUD";
 import { toast } from "@/components/ui/Toast";
@@ -30,12 +33,16 @@ interface SavedFlashcardSession {
 }
 
 /** `documentId` is the workspace's active document (what the cards are about); `historyId` is just this saved deck. */
-export default function FlashcardView({ documentId, restoreSessionId }: { documentId?: string; restoreSessionId?: string }) {
+export default function FlashcardView({ documentId, restoreSessionId, initialTopic }: {
+  documentId?: string; restoreSessionId?: string;
+  /** A topic to start from (the concept map's "Quick quiz" / "Flashcards" on one concept). */
+  initialTopic?: string;
+}) {
   const [historyId] = useState(() => restoreSessionId || crypto.randomUUID());
   const sessionId = documentId ?? historyId;
   const [showHistory, setShowHistory] = useState(false);
   const refreshIfStale = useHUDStore((s) => s.refreshIfStale);
-  const [topic, setTopic] = useState("");
+  const [topic, setTopic] = useState(initialTopic ?? "");
   const [numCards, setNumCards] = useState(10);
   const [cards, setCards] = useState<Card[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -143,7 +150,7 @@ export default function FlashcardView({ documentId, restoreSessionId }: { docume
     if (!card || marking.current) return;
     marking.current = true;
     setResults((r) => ({ ...r, [card.id]: result }));
-    if (sessionId) reviewFlashcard(sessionId, card.topic || topic, result === "correct");
+    if (sessionId) reviewFlashcard(sessionId, card.topic || topic, result === "correct", { front: card.front, back: card.back });
     // Auto-advance
     const last = currentIndex >= cards.length - 1;
     advanceTimer.current = setTimeout(() => {
@@ -178,6 +185,26 @@ export default function FlashcardView({ documentId, restoreSessionId }: { docume
     setCards(wrong);
     setCurrentIndex(0); setFlipped(false); setResults({}); setDone(false);
   };
+
+  // "Add deck to review": every card of this deck joins the spaced-repetition queue (ones already there stay as they are).
+  const [adding, setAdding] = useState(false);
+  const [addedToReview, setAddedToReview] = useState(false);
+  const addDeckToReview = async () => {
+    if (!sessionId || !cards.length || adding) return;
+    setAdding(true);
+    try {
+      const r = await addToReview(sessionId, cards.map((c) => ({ front: c.front, back: c.back, concept: c.topic || topic })));
+      useReview.getState().setStats(r.stats);
+      setAddedToReview(true);
+      toast.success(r.added ? `${r.added} ${r.added === 1 ? "card" : "cards"} added to your review queue` : "These cards are already in your review queue");
+    } catch (e) {
+      if (e instanceof ApiError && e.code === "feature_locked") toast.info(e.message);
+      else toast.apiError(e);
+    } finally {
+      setAdding(false);
+    }
+  };
+  useEffect(() => { if (done) void useReview.getState().load(); }, [done]);       // graded cards joined the queue
 
   const correct = Object.values(results).filter((r) => r === "correct").length;
   const wrong = Object.values(results).filter((r) => r === "wrong").length;
@@ -291,6 +318,9 @@ export default function FlashcardView({ documentId, restoreSessionId }: { docume
           <div className="flex flex-col gap-3">
             {wrong > 0 && <Button variant="primary" block onClick={restartWrong}>Review {wrong} missed {wrong === 1 ? "card" : "cards"}</Button>}
             <Button variant={wrong > 0 ? "secondary" : "primary"} block onClick={restart}><RotateCcw size={16} aria-hidden="true" />Restart all</Button>
+            {addedToReview
+              ? <ButtonLink block href={ROUTES.studyTab("review", undefined, documentId)}><Repeat size={16} aria-hidden="true" />Open your review queue</ButtonLink>
+              : <Button block onClick={() => void addDeckToReview()} loading={adding}><Repeat size={16} aria-hidden="true" />Add deck to review</Button>}
             <Button block onClick={() => { setCards([]); setDone(false); }}>New topic</Button>
           </div>
         </div>
@@ -308,6 +338,8 @@ export default function FlashcardView({ documentId, restoreSessionId }: { docume
         <StudyToolbar title="Flashcards" subtitle={topic} onNew={() => setCards([])} newLabel="New topic">
           <Button size="sm" icon onClick={shuffle} aria-label="Shuffle" title="Shuffle"><Shuffle size={16} /></Button>
           <Button size="sm" icon onClick={restart} aria-label="Restart" title="Restart"><RotateCcw size={16} /></Button>
+          <Button size="sm" icon onClick={() => void addDeckToReview()} loading={adding} disabled={addedToReview}
+                  aria-label="Add deck to review" title={addedToReview ? "In your review queue" : "Add deck to review"}><Repeat size={16} /></Button>
         </StudyToolbar>
 
         <div role="progressbar" aria-label="Deck progress" aria-valuemin={1} aria-valuemax={cards.length} aria-valuenow={currentIndex + 1}

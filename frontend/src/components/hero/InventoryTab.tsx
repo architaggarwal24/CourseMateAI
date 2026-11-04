@@ -2,11 +2,13 @@
 
 import { useEffect, useState } from "react";
 import { Check, Package, ShoppingBag } from "lucide-react";
-import { HeroFigure, ItemPicture } from "@/components/avatar";
-import { lookFromEquipped } from "@/lib/avatar/look";
+import PixelSprite from "@/components/arena/pixel/PixelSprite";
+import ItemArt from "@/components/champion/ItemArt";
+import { useChampionLook } from "@/components/champion/useChampionLook";
 import { Button, ButtonLink, EmptyState, Tabs } from "@/components/ui";
 import { useHUDStore } from "@/hooks/useHUD";
 import { INVENTORY_TABS, ownedItems, useHeroStore, type ShopItem } from "@/hooks/useHero";
+import { rarityOf } from "@/lib/rarity";
 import { ROUTES } from "@/lib/routes";
 import { INVENTORY_TAB_ICON } from "./icons";
 import ItemCard from "./ItemCard";
@@ -76,6 +78,7 @@ export default function InventoryTab() {
   const loading = useHeroStore((s) => s.loading);
   const buffs = useHUDStore((s) => s.buffs);
   const [tab, setTab] = useState<string>(INVENTORY_TABS[0].id);
+  const look = useChampionLook();
 
   if (loading || !shop) return <p role="status" className="p-6 text-fg-muted">Loading inventory…</p>;
 
@@ -109,9 +112,9 @@ export default function InventoryTab() {
           </div>
         )}
 
-        <p className="hero-label">Your character</p>
+        <p className="hero-label">Your champion</p>
         <div className="hero-stage" data-testid="inventory-avatar">
-          <HeroFigure look={lookFromEquipped(shop.equipped)} size="min(100%, 13rem)" animate title="Your hero" />
+          <PixelSprite hero={look.hero} pet={look.petId} label={`${look.hero.name}, your champion, in your skins`} className="hero-stage__sprite" />
         </div>
 
         <p className="hero-label mt-5">Currently equipped</p>
@@ -121,7 +124,7 @@ export default function InventoryTab() {
             if (!item) return null;
             return (
               <li key={slot} className="flex items-center gap-2 p-2 rounded-md border border-line bg-canvas">
-                <ItemPicture itemId={item.id} size={32} />
+                <ItemArt itemId={item.id} size={32} rarity={rarityOf(item)} />
                 <span className="text-xs text-fg-2 truncate">{item.name}</span>
               </li>
             );
@@ -143,7 +146,7 @@ export default function InventoryTab() {
           onChange={setTab}
           tabs={INVENTORY_TABS.map((t) => ({
             id: t.id,
-            label: <span className="forge-tab">{(() => { const I = INVENTORY_TAB_ICON[t.id]; return I ? <I size={15} aria-hidden="true" /> : null; })()}{t.name} ({owned.filter(t.match).length})</span>,
+            label: <span className="hero-tablabel">{(() => { const I = INVENTORY_TAB_ICON[t.id]; return I ? <I size={15} aria-hidden="true" /> : null; })()}{t.name} ({owned.filter(t.match).length})</span>,
             content: panel(t.match),
           }))}
         />

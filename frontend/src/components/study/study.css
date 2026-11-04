@@ -29,7 +29,8 @@
   padding: var(--space-3) var(--space-4);
   border-bottom: 1px solid var(--glass-border);
 }
-.ws-top__tabs { order: 2; }
+/* the tabs scroll sideways on a narrow screen (their own scroll box, so the workspace never shifts) */
+.ws-top__tabs { order: 2; min-width: 0; max-width: 100%; overflow-x: auto; scrollbar-width: none; }
 .ws-top__end { order: 3; margin-left: auto; display: flex; align-items: center; gap: var(--space-2); }
 @media (max-width: 1023px) { .ws-top__tabs { order: 4; flex-basis: 100%; } }
 
@@ -321,3 +322,20 @@
   .study-intro h3 { font-size: 1.3rem; }
   .fc-face { padding: var(--space-6) var(--space-4); }
 }
+
+/* ── A feature the plan doesn't have yet (components/study/UpgradeCard.tsx) ───────────────────────────────────── */
+.upgrade-card {
+  display: flex; gap: var(--space-4); align-items: flex-start;
+  padding: var(--space-6); border-radius: var(--radius-xl);
+  background: var(--gradient-card), var(--glass-bg);
+  border: 1px solid var(--glass-border-strong); box-shadow: var(--glass-highlight), var(--shadow-sm);
+}
+.upgrade-card__icon {
+  display: grid; place-items: center; width: 2.75rem; height: 2.75rem; flex: none; border-radius: var(--radius-lg);
+  color: var(--color-accent-text); background: color-mix(in srgb, var(--color-accent) 16%, transparent);
+  border: 1px solid color-mix(in srgb, var(--color-accent-text) 30%, transparent);
+}
+.upgrade-card__title { margin: var(--space-2) 0 var(--space-1); font-size: 1.15rem; font-weight: 700; letter-spacing: -0.02em; color: var(--color-text); }
+.upgrade-card__desc { margin: 0; color: var(--color-text-secondary); line-height: 1.6; }
+.upgrade-card__note { margin: var(--space-3) 0 0; color: var(--color-muted); font-size: 0.85rem; }
+.upgrade-card__actions { margin-top: var(--space-4); display: flex; flex-wrap: wrap; gap: var(--space-2); }

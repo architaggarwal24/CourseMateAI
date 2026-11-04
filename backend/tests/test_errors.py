@@ -12,6 +12,8 @@ from test_api import fake_llm, upload  # noqa: F401  (fixture + helper shared wi
 
 SID1 = "11111111-1111-4111-8111-111111111111"
 STREAMING_ENDPOINTS = {"/api/v1/chat/stream"}
+FILE_ENDPOINTS = {"/api/v1/exams/{exam_id}/report.pdf": "application/pdf",
+                  "/api/v1/documents/{document_id}/file": "application/pdf"}      # a download, not a JSON body
 ACTIONS = {"settings", "relogin", "retry", "reupload", None}
 
 
@@ -197,6 +199,9 @@ def test_every_endpoint_declares_a_json_response_model(app_module):
             content = op["responses"][ok]["content"]
             if path in STREAMING_ENDPOINTS:                       # Server-Sent Events, not a JSON body
                 assert "text/event-stream" in content, path
+                continue
+            if path in FILE_ENDPOINTS:
+                assert FILE_ENDPOINTS[path] in content, path
                 continue
             schema = content["application/json"]["schema"]
             if not schema or schema == {}:

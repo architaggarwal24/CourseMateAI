@@ -7,16 +7,20 @@ import { Search } from "lucide-react";
 import { areaOf } from "@/lib/routes";
 import UserMenu from "@/components/UserMenu";
 import { usePointerVars } from "@/components/fx/usePointerVars";
+import { dueBadge, useReview } from "@/hooks/useReview";
 import { NAV_ITEMS } from "./nav-items";
+import ReviewBadge from "./ReviewBadge";
 import { openCommandPalette } from "./CommandPalette";
 
 /**
  * Desktop: a frosted rail down the left. Brand, a "Go to…" search (⌘K), the three areas (the active one rides a lit
- * sliding pill, the pointer casts a soft light over the rail), the signed-in user pinned at the bottom. Hidden below md.
+ * sliding pill, the pointer casts a soft light over the rail; Study carries the review queue's due count), the
+ * signed-in user pinned at the bottom. Hidden below md.
  */
 export default function NavSidebar() {
   const area = areaOf(usePathname());
   const pointer = usePointerVars<HTMLElement>();
+  const due = useReview((s) => dueBadge(s.stats));
   return (
     <aside className="side fx-spotlight" ref={pointer}>
       <div className="side__brand">
@@ -46,6 +50,7 @@ export default function NavSidebar() {
               <span>{label}</span>
               <span className="side__blurb">{blurb}</span>
             </span>
+            {id === "study" && <ReviewBadge due={due} />}
           </Link>
         ))}
       </nav>

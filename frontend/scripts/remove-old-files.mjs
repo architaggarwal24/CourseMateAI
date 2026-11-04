@@ -21,6 +21,18 @@ const OLD = [
   "src/lib/arena/boss.test.tsx",
   "src/lib/arena/data",
   "src/app/dev/bosses",
+  // Phase 3 / Stage 1: the pixel champion is the avatar everywhere; the vector avatar and the Hero Forge are retired
+  "src/components/avatar",                 // HeroFace, HeroFigure, HeroForge, ItemIcon, ItemPicture, GearChips, art/*
+  "src/lib/avatar",                        // look.ts, palettes, render.ts, sprites.ts, data/*
+  "src/components/AvatarDisplay.tsx",
+  "src/components/AvatarFace.tsx",
+  "src/components/PixelAvatar.tsx",
+  "src/components/PixelSprite.tsx",        // the old 16x16 item icon (the pixel sprite is components/arena/pixel/PixelSprite.tsx)
+  "src/components/avatarRendering.test.tsx",
+  "src/components/hero/AvatarTab.tsx",     // -> components/hero/ChampionTab.tsx
+  "src/components/hero/ForgeTab.tsx",
+  "src/hooks/useArenaHero.ts",             // -> hooks/useChampion.ts (saved on the account)
+  "src/app/dev/avatar",
 ];
 
 for (const rel of OLD) {

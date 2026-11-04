@@ -3,7 +3,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 import json
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 from typing import List, Dict
 
 # Modes that are deliberately excluded from the history log.
@@ -48,10 +48,8 @@ class HistoryService:
         Returns number of rows deleted.
         """
         deleted = 0
-        result = self.db.execute(
-            "DELETE FROM activity_log WHERE created_at < datetime('now', ?)",
-            (f"-{days_to_keep} days",)
-        )
+        cutoff = (datetime.now(timezone.utc) - timedelta(days=days_to_keep)).strftime("%Y-%m-%d %H:%M:%S")
+        result = self.db.execute("DELETE FROM activity_log WHERE created_at < ?", (cutoff,))
 
         users = self.db.query("SELECT DISTINCT user_id FROM activity_log", [])
         for row in users:

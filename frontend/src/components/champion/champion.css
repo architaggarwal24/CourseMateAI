@@ -1,0 +1,43 @@
+/* The pixel champion as the avatar: round portraits, pets beside them, item icons and the Champion tab. */
+
+.champ-avatar { position: relative; display: inline-flex; flex: none; align-items: flex-end; }
+.champ-avatar__face {
+  display: grid; place-items: center; overflow: hidden; flex: none;
+  width: var(--champ-size, 48px); height: var(--champ-size, 48px); border-radius: var(--radius-full, 9999px);
+  background:
+    radial-gradient(circle at 50% 35%, color-mix(in srgb, var(--hero-accent, var(--color-accent)) 28%, transparent), transparent 70%),
+    var(--color-surface-sunken);
+}
+.champ-avatar__sprite { width: 100%; height: 100%; }
+/* the pet sits at the frame's lower right, a little outside it */
+.champ-avatar__pet {
+  position: absolute; right: calc(var(--champ-size, 48px) * -0.38); bottom: calc(var(--champ-size, 48px) * -0.06);
+  width: calc(var(--champ-size, 48px) * 0.55); height: calc(var(--champ-size, 48px) * 0.55);
+  display: grid; place-items: end center; pointer-events: none;
+}
+.champ-avatar__pet-sprite { max-width: 100%; max-height: 100%; width: auto; height: 100%; object-fit: contain; }
+
+.item-art { flex: none; object-fit: contain; }
+
+/* ── the Champion tab ───────────────────────────────────────────────────── */
+.champ-stage { display: grid; justify-items: center; gap: var(--space-3); }
+.champ-stage__figure { width: min(100%, 17rem); height: auto; max-height: 15rem; object-fit: contain; }
+.champ-anims { display: inline-flex; gap: 2px; padding: 2px; border-radius: var(--radius-md); background: var(--color-surface-sunken); border: 1px solid var(--color-border-subtle); }
+.champ-anims__btn {
+  min-height: 2.75rem; min-width: 2.75rem; padding: 0 var(--space-3); border-radius: calc(var(--radius-md) - 2px);
+  font-size: 0.75rem; letter-spacing: 0.04em; text-transform: uppercase; color: var(--color-text-secondary); background: transparent;
+}
+.champ-anims__btn[aria-checked="true"] { color: var(--color-text); background: var(--color-elevated); box-shadow: inset 0 0 0 1px var(--hero-accent, var(--color-accent)); }
+.champ-anims__btn:focus-visible { outline: 2px solid var(--color-accent-text); outline-offset: 2px; }
+
+/* ── kit + mastery (Champion tab) ─────────────────────────────────────────── */
+.champ-kit { padding: var(--space-4); border: 1px solid var(--color-border-subtle); border-radius: var(--radius-lg); background: var(--color-surface-sunken); }
+.champ-kit__head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-2); }
+.champ-kit__level { display: inline-flex; align-items: center; gap: var(--space-2); color: var(--color-reward); font-size: 0.75rem; }
+.champ-kit__list { display: grid; gap: var(--space-3); margin: var(--space-3) 0 0; }
+.champ-kit__list dt { display: inline-flex; align-items: center; gap: 0.4rem; color: var(--color-text); font-weight: 650; font-size: 0.875rem; }
+.champ-kit__list dd { margin: 0.15rem 0 0; color: var(--color-text-secondary); font-size: 0.8125rem; line-height: 1.45; }
+.champ-mastery { display: grid; grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr)); gap: var(--space-2); margin: 0; padding: 0; list-style: none; }
+.champ-mastery__item { display: flex; align-items: center; gap: var(--space-2); padding: var(--space-2); border: 1px dashed var(--color-border); border-radius: var(--radius-md); }
+.champ-mastery__item:not([data-owned]) .item-art { opacity: 0.45; filter: grayscale(0.6); }
+.champ-mastery__item[data-owned] { border-style: solid; border-color: color-mix(in srgb, var(--color-reward) 50%, transparent); }

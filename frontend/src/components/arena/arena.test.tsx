@@ -26,7 +26,11 @@ const BANK: Q[] = [
   { question: "Where does glycolysis happen?", options: ["Cytoplasm", "Nucleus", "Matrix", "Membrane"], correct: "Cytoplasm", explanation: "In the cytoplasm." },
 ];
 
-function server(opts: { stock?: { heal: number; fifty_fifty: number }; active?: boolean; secondsLeft?: number; failQuestionOnce?: boolean; focus?: number } = {}) {
+function server(opts: {
+  stock?: { heal: number; fifty_fifty: number }; active?: boolean; secondsLeft?: number; failQuestionOnce?: boolean; focus?: number;
+  /** Stage 2: the champion's kit and the creature's mechanic on the battle, extra outcome fields, the champion's XP. */
+  kit?: any; mechanic?: any; outcome?: (correct: boolean) => any; champion?: any;
+} = {}) {
   const log = { calls: [] as string[], answers: [] as any[], items: [] as string[], forfeits: 0 };
   const stock = { heal: 1, fifty_fifty: 1, ...opts.stock };
   let battle: any = null;
@@ -42,6 +46,7 @@ function server(opts: { stock?: { heal: number; fifty_fifty: number }; active?: 
     answered: 0, correct: 0, heals_used: 0, fifty_used: 0,
     mode: "quick", run_id: null, focus: 0, focus_cap: 5, shield: 0, heavy_cost: 2, free_timewarp: false, relics: [],
     intent: { kind: "attack", name: "Concept Crush", value: 4, description: "Hits for 4 on a wrong answer." },
+    ...(opts.kit ? { kit: structuredClone(opts.kit) } : {}), ...(opts.mechanic ? { mechanic: structuredClone(opts.mechanic) } : {}),
   });
   const profile = { name: "Cell Warden", tagline: "Guardian of cells", intro_taunt: "You will not pass.", weakness: "Nucleus" };
   const publicQuestion = () => ({
@@ -54,6 +59,7 @@ function server(opts: { stock?: { heal: number; fifty_fifty: number }; active?: 
     battle.rewards = status === "won"
       ? { arena_round_complete: { ok: true, xp_gained: 20, coins_gained: 5 }, boss_defeat: { ok: true, xp_gained: 50, coins_gained: 25 } }
       : { arena_round_complete: null, boss_defeat: null };
+    if (opts.champion) battle.result.champion = opts.champion;
   };
   if (opts.active) { battle = fresh(); battle.focus = opts.focus ?? 0; }
 
@@ -98,6 +104,7 @@ function server(opts: { stock?: { heal: number; fifty_fifty: number }; active?: 
         answer: body.answer, correct_answer: q.correct, explanation: q.explanation, damage_dealt: dealt, hit_type: "normal", weakness: false,
         damage_taken: taken, attack_name: taken ? "Concept Crush" : undefined, taunt: correct ? "Lucky." : "Too easy.", phase_changed: false, combo: battle.combo,
         move: "strike", intent: battle.intent, next_intent: battle.status === "active" ? battle.intent : null,
+        ...(opts.outcome?.(correct) ?? {}),
       });
     }
     if (path === "/arena/battles/b1/items") {
@@ -117,6 +124,12 @@ function server(opts: { stock?: { heal: number; fifty_fifty: number }; active?: 
       battle.focus -= 1;
       if (spell === "insight") removed = BANK[seq].options.filter((o) => o !== BANK[seq].correct).slice(0, 2);
       return json(200, { ok: true, spell, cost: 1, battle, question: publicQuestion() });
+    }
+    if (path === "/arena/battles/b1/ultimate") {
+      log.items.push("ultimate");
+      if (!battle.kit?.ready) return json(409, { error: { code: "ultimate_not_ready", message: "Not charged yet.", action: null, details: null } });
+      battle.kit = { ...battle.kit, meter: 0, ready: false, active: true };
+      return json(200, { ok: true, ultimate: { name: battle.kit.ultimate.name, text: battle.kit.ultimate.text, hearts: 0, insight: false, timewarp: false }, battle, question: seq >= 0 && !answered ? publicQuestion() : null });
     }
     if (path === "/arena/battles/b1/forfeit") {
       log.forfeits += 1;
@@ -419,5 +432,100 @@ describe("Arena v2: tactics", () => {
     expect(screen.getByText("Coming soon")).toBeTruthy();
     expect(screen.getByRole("button", { name: /Expedition/ })).toBeTruthy();
     expect(await screen.findByText("0/3 missed")).toBeTruthy();
+  });
+});
+
+// ── Phase 3 Stage 2: creature mechanics, champion kits and champion XP ─────────────────────────────────────────────
+const KIT = {
+  champion: "kaien", meter: 100, max: 100, ready: true, active: false, effects: {},
+  passive: { name: "Riposte", text: "A right Guard hits back for half a Strike." },
+  ultimate: { name: "Blade Storm", text: "Your next two right answers hit twice." },
+};
+const KRAKEN = {
+  id: "kraken", name: "Tentacle Grab", summary: "A miss on a grab locks the move you used.",
+  counters: [{ label: "Grip", value: 1, max: 2, hint: "Turns the lock lasts" }], locked_moves: ["jab"],
+};
+
+describe("Arena: creature mechanics and champion kits", () => {
+  it("the mechanic is in the HUD with its counters, and a grabbed move is locked (its key does nothing)", async () => {
+    const { log } = server({ active: true, mechanic: KRAKEN });
+    render(<ArenaArea />);
+    const jab = await screen.findByRole("button", { name: /^Jab/ });
+    expect((jab as HTMLButtonElement).disabled).toBe(true);
+    expect(screen.getByText("Locked: Cell Warden has it pinned.")).toBeTruthy();
+    const hud = screen.getAllByRole("group", { name: "Creature mechanic: Tentacle Grab" });
+    expect(hud.length).toBeGreaterThan(0);
+    expect(screen.getByText("A miss on a grab locks the move you used.")).toBeTruthy();
+    expect(within(hud[0]).getByText("Grip")).toBeTruthy();
+    expect(within(hud[0]).getByText("1/2")).toBeTruthy();
+    press("w");
+    expect(log.calls.some((c) => c.includes("move=jab"))).toBe(false);
+    press("q");
+    await screen.findByText("Which organelle makes ATP?");
+  });
+
+  it("a full meter: the U key casts the ultimate through the server, and the meter empties", async () => {
+    const { log } = server({ active: true, kit: KIT });
+    render(<ArenaArea />);
+    await screen.findByRole("heading", { name: "Your move" });
+    const meters = screen.getAllByRole("progressbar", { name: "Ultimate: Blade Storm" });
+    expect(meters[0].getAttribute("aria-valuetext")).toBe("Blade Storm ready");
+    press("u");
+    await waitFor(() => expect(log.items).toEqual(["ultimate"]));
+    await waitFor(() => expect(toasts.success).toHaveBeenCalledWith("Blade Storm!"));
+    await waitFor(() => expect(screen.getAllByRole("progressbar", { name: "Ultimate: Blade Storm" })[0].getAttribute("aria-valuenow")).toBe("0"));
+    press("u");                                                     // active now: a second press sends nothing
+    expect(log.items).toEqual(["ultimate"]);
+  });
+
+  it("the ultimate button is offered only when charged", async () => {
+    const { log } = server({ active: true, kit: { ...KIT, meter: 40, ready: false } });
+    render(<ArenaArea />);
+    const btn = await screen.findByRole("button", { name: /Blade Storm/ });
+    expect((btn as HTMLButtonElement).disabled).toBe(true);
+    expect(btn.textContent).toContain("40%");
+    press("u");
+    expect(log.items).toEqual([]);
+  });
+
+  it("the verdict says what the mechanic and the kit did", async () => {
+    server({
+      active: true, kit: KIT, mechanic: KRAKEN,
+      outcome: (correct) => correct ? {
+        riposte: 3, dodged: true,
+        mechanic: { id: "kraken", events: [{ type: "break_free", text: "You break the Kraken's grip." }], boss_healed: 0, damage: 0, hearts: 1, focus: 0, shield: 0, illusion_picked: false, hud: KRAKEN },
+        kit: { events: [{ type: "storm", text: "Blade Storm hits twice!" }], refund: 0, hud: KIT },
+      } : {},
+    });
+    render(<ArenaArea />);
+    await strike();
+    await screen.findByText("Which organelle makes ATP?");
+    press("2");
+    await screen.findByText("Correct!");
+    expect(screen.getByText("Riposte! You hit back for 3.")).toBeTruthy();
+    expect(screen.getByText("You dodged the blow.")).toBeTruthy();
+    expect(screen.getByText("You break the Kraken's grip.")).toBeTruthy();
+    expect(screen.getByText("+1 heart.")).toBeTruthy();
+    expect(screen.getByText("Blade Storm hits twice!")).toBeTruthy();
+  });
+
+  it("the result shows the champion's XP and a level-up's mastery skin", async () => {
+    server({
+      active: true,
+      champion: { id: "kaien", xp_gained: 70, xp: 120, level: 2, leveled_up: true, next_level_xp: 250, unlocked: ["mastery_kaien_outfit"] },
+    });
+    render(<ArenaArea />);
+    await strike();
+    await screen.findByText("Which organelle makes ATP?");
+    press("2");
+    await screen.findByText("Correct!");
+    await carryOn(); await screen.findByText("Where is DNA stored?"); press("2");
+    await screen.findByText("Correct!");
+    fireEvent.click(screen.getByRole("button", { name: /See result/ }));
+    const panel = await screen.findByRole("region", { name: "Kaien's progress" });
+    expect(within(panel).getByText(/\+70 Kaien XP/)).toBeTruthy();
+    expect(within(panel).getByText(/Kaien reached Lv 2!/)).toBeTruthy();
+    expect(within(panel).getByRole("list", { name: "Mastery skins unlocked" })).toBeTruthy();
+    await waitFor(() => expect(game.reconcile).toHaveBeenCalled());
   });
 });

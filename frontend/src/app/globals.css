@@ -331,3 +331,10 @@ html.reduce-animations .loading-dot {
 .loading-dot:nth-child(1) { animation-delay: 0s; }
 .loading-dot:nth-child(2) { animation-delay: 0.2s; }
 .loading-dot:nth-child(3) { animation-delay: 0.4s; }
+
+/* The offline page of the installed app (app/offline/page.tsx) */
+.offline { min-height: 100dvh; display: grid; place-items: center; padding: var(--space-6); background: var(--color-surface); }
+.offline__card { max-width: 26rem; display: grid; justify-items: center; gap: var(--space-3); text-align: center; color: var(--color-text-secondary); }
+.offline__card h1 { margin: 0; font-size: 1.4rem; font-weight: 700; color: var(--color-text); }
+.offline__card p { margin: 0; line-height: 1.5; }
+.offline__icon { display: grid; place-items: center; width: 3.5rem; height: 3.5rem; border-radius: 16px; color: var(--color-accent-text); background: var(--glass-bg); border: 1px solid var(--glass-border); }

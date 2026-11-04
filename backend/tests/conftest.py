@@ -23,6 +23,21 @@ os.environ["JWT_SECRET"] = "test-jwt-secret-" + "x" * 32
 os.environ["ENCRYPTION_KEY"] = "uHw8Qy3m5y1m1N2s0Wc2n8cE0ZxqkC0m3dJX1xGk0aA="   # valid Fernet key (test only)
 os.environ.pop("ALLOW_INSECURE_DEV_KEY", None)
 
+# The same suite against PostgreSQL (docs/postgres.md): COURSEMATE_TEST_PG=postgresql://user@host/postgres (a server
+# where that user may create databases). A fresh database is made for this run; without it the suite uses SQLite.
+_PG_ADMIN = os.environ.get("COURSEMATE_TEST_PG", "").strip()
+if _PG_ADMIN:
+    import psycopg
+    _pg_name = f"coursemate_test_{os.getpid()}"
+    with psycopg.connect(_PG_ADMIN, autocommit=True) as _c:
+        _c.execute(f'DROP DATABASE IF EXISTS "{_pg_name}"')
+        _c.execute(f'CREATE DATABASE "{_pg_name}"')
+    from urllib.parse import urlsplit, urlunsplit
+    _u = urlsplit(_PG_ADMIN)
+    os.environ["DATABASE_URL"] = urlunsplit((_u.scheme, _u.netloc, "/" + _pg_name, _u.query, ""))
+else:
+    os.environ.pop("DATABASE_URL", None)
+
 # ── Fake embeddings so FAISS works offline ───────────────────────────────────
 # langchain_huggingface (and torch) may not be installed in CI; stub the import.
 if "langchain_huggingface" not in sys.modules:
@@ -115,6 +130,12 @@ def make_user(app_module, monkeypatch):
             "api_key": f"sk-test-{name}-aaaaaaaa", "llm_provider": "gemini",
         })
         assert r.status_code == 200, r.text
+        # Say WHICH side broke if a fresh login ever doesn't stick (seen once on Windows: register 200, next call 401):
+        # no cookie = the server didn't set it; a cookie that /auth/me rejects = the session row isn't visible.
+        assert c.cookies.get("session_token"), f"register set no session cookie: {r.headers.get('set-cookie')!r}"
+        if "secure" not in (r.headers.get("set-cookie") or "").lower().split("; "):    # (a Secure cookie isn't sent over http)
+            me = c.get("/auth/me")
+            assert me.status_code == 200, f"fresh session rejected right after register: {me.status_code} {me.text}"
         return c, r.json()["user_id"]
 
     try:
@@ -151,4 +172,5 @@ def _clean_state(app_module):
     for p in UPLOAD_DIR.glob("*"):
         shutil.rmtree(p, ignore_errors=True) if p.is_dir() else p.unlink(missing_ok=True)
     state.generation_cache.clear()
+    state.login_throttle.clear()
     yield

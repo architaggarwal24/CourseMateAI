@@ -6,7 +6,7 @@ Every non-2xx response is
 
 * code     machine-readable, stable ("session_expired", "provider_quota", ...)
 * message  one user-safe sentence the UI may show as-is (never internals, paths or keys)
-* action   what the UI should offer next: settings | relogin | retry | reupload | null
+* action   what the UI should offer next: settings | relogin | retry | reupload | plans | null
 * details  optional structured extras (per-field validation errors, usage_url, ...)
 * request_id  the id of the request (also the X-Request-ID response header) - quote it when reporting a problem
 
@@ -28,7 +28,7 @@ from observability.request_context import HEADER as REQUEST_ID_HEADER, current_r
 
 logger = logging.getLogger(__name__)
 
-Action = Optional[Literal["settings", "relogin", "retry", "reupload"]]
+Action = Optional[Literal["settings", "relogin", "retry", "reupload", "plans"]]
 
 RATE_LIMIT_RETRY_SECONDS = 60
 

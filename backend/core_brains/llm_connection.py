@@ -8,11 +8,12 @@ import threading
 import typing
 
 from collections import OrderedDict as _OrderedDict
-from contextlib import aclosing
+from contextlib import aclosing, contextmanager
 from contextvars import ContextVar
 from dotenv import load_dotenv
 
 import providers
+from core_brains import model_router, usage_meter
 from core_brains.json_utils import extract_json
 from core_brains.llm_schemas import wire_schema
 from observability import observe_llm_call
@@ -254,12 +255,14 @@ def _accepts_temperature(model: str) -> bool:
 
 def _build_llm(provider: str, api_key: str, model: str = None, base_url: str = None,
                temperature: float = 0.4, max_tokens: int = 2000, timeout: int = 60,
-               sdk_retries: int = 2):
+               sdk_retries: int = 2, trusted: bool = False):
     """
     Build the correct LangChain chat model for a provider.
     All provider imports are lazy — a missing package fails only when that provider is used.
     """
-    spec = providers.get_provider(provider)
+    # trusted = the server's own configuration (core_brains/model_router.py): its provider may be one users can't
+    # pick (Ollama off for users), and its base URL is the operator's choice, so it skips the SSRF checks.
+    spec = providers.get_provider(provider) or (providers.find_spec(provider) if trusted else None)
     if spec is None:
         raise ValueError(
             f"Unknown or disabled provider: '{provider}'. Supported: {', '.join(providers.provider_ids())}"
@@ -306,7 +309,12 @@ def _build_llm(provider: str, api_key: str, model: str = None, base_url: str = N
 
     if kind in ("openai_compat", "ollama"):
         from langchain_openai import ChatOpenAI
-        base = providers.resolve_base_url(spec, base_url)      # re-checks the SSRF rules
+        if trusted:
+            base = (base_url or spec.default_base_url or "").rstrip("/")
+            if kind == "ollama" and base.endswith("/v1"):
+                base = base[:-3]
+        else:
+            base = providers.resolve_base_url(spec, base_url)  # re-checks the SSRF rules
         if kind == "ollama":
             base = base.rstrip("/") + "/v1"                     # Ollama's OpenAI-compatible route
         return ChatOpenAI(
@@ -340,10 +348,11 @@ class LLMClient:
         api_key: str = None,
         provider: str = "gemini",
         base_url: str = None,
+        trusted: bool = False,
     ):
         self.max_retries = max_retries
         self._provider = provider
-        spec = providers.get_provider(provider)
+        spec = providers.get_provider(provider) or providers.find_spec(provider)
         self._model_name = model or (spec.default_model if spec else "") or ""   # for logs only
         self._structured_unsupported = False      # set once the server rejects native structured output
         self.llm = _build_llm(
@@ -354,6 +363,7 @@ class LLMClient:
             temperature=temperature,
             max_tokens=max_tokens,
             timeout=timeout,
+            trusted=trusted,
         )
 
     # -- shared error handling ------------------------------------------------
@@ -371,9 +381,13 @@ class LLMClient:
             return ProviderUnreachableError(provider=self._provider)
         return exc
 
+    @contextmanager
     def _observed(self, operation: str):
-        """Metrics + the single "LLM call failed" log line for one logical call (see observability.metrics)."""
-        return observe_llm_call(getattr(self, "_provider", ""), getattr(self, "_model_name", ""), operation)
+        """Metrics + the single "LLM call failed" log line for one logical call (see observability.metrics), and
+        one AI call on the user's usage when it succeeds (core_brains/usage_meter.py)."""
+        with observe_llm_call(getattr(self, "_provider", ""), getattr(self, "_model_name", ""), operation):
+            yield
+        usage_meter.add_call(getattr(self, "_provider", ""), getattr(self, "_model_name", ""))
 
     def generate(self, messages) -> str:
         with self._observed("generate"):
@@ -386,6 +400,7 @@ class LLMClient:
         for attempt in range(self.max_retries):
             try:
                 response = self.llm.invoke(messages)
+                usage_meter.add_tokens(messages, response, self._provider, getattr(self, "_model_name", ""))
                 text = _postprocess(response.content)
                 if not text:
                     raise EmptyModelResponse(
@@ -419,6 +434,7 @@ class LLMClient:
         for attempt in range(attempts):
             try:
                 response = await self.llm.ainvoke(messages)
+                usage_meter.add_tokens(messages, response, self._provider, getattr(self, "_model_name", ""))
                 text = _postprocess(response.content)
                 if not text:
                     raise EmptyModelResponse(
@@ -503,7 +519,9 @@ class LLMClient:
         wire = wire_schema(schema)
         if not self._structured_unsupported:
             try:
-                return self._read_structured(self._bind_structured(wire).invoke(messages), schema, context)
+                result = self._bind_structured(wire).invoke(messages)
+                usage_meter.add_tokens(messages, result, self._provider, getattr(self, "_model_name", ""))
+                return self._read_structured(result, schema, context)
             except StructuredOutputError:
                 raise
             except Exception as exc:
@@ -513,13 +531,16 @@ class LLMClient:
                                self._provider, type(exc).__name__)
                 self._structured_unsupported = True
         response = self.llm.invoke(self._fallback_messages(messages, wire))
+        usage_meter.add_tokens(messages, response, self._provider, getattr(self, "_model_name", ""))
         return self._read_text(_postprocess(response.content), schema, context)
 
     async def _structured_attempt_async(self, messages, schema, context):
         wire = wire_schema(schema)
         if not self._structured_unsupported:
             try:
-                return self._read_structured(await self._bind_structured(wire).ainvoke(messages), schema, context)
+                result = await self._bind_structured(wire).ainvoke(messages)
+                usage_meter.add_tokens(messages, result, self._provider, getattr(self, "_model_name", ""))
+                return self._read_structured(result, schema, context)
             except StructuredOutputError:
                 raise
             except Exception as exc:
@@ -529,6 +550,7 @@ class LLMClient:
                                self._provider, type(exc).__name__)
                 self._structured_unsupported = True
         response = await self.llm.ainvoke(self._fallback_messages(messages, wire))
+        usage_meter.add_tokens(messages, response, self._provider, getattr(self, "_model_name", ""))
         return self._read_text(_postprocess(response.content), schema, context)
 
     def generate_structured(self, messages, schema, *, context: dict = None, max_attempts: int = None):
@@ -613,6 +635,7 @@ class LLMClient:
         for attempt in range(self.max_retries):
             emitted = False
             think = _ThinkFilter()
+            said: list = []
             try:
                 # aclosing: if the consumer stops early (client disconnected) the provider's own stream is closed
                 # right away instead of waiting for garbage collection, which would keep the connection open.
@@ -621,11 +644,14 @@ class LLMClient:
                         piece = think.feed(_content_to_text(chunk.content))
                         if piece:
                             emitted = True
+                            said.append(piece)
                             yield piece
                 tail = think.flush()
                 if tail:
                     emitted = True
+                    said.append(tail)
                     yield tail
+                usage_meter.add_stream_tokens(messages, "".join(said), self._provider, getattr(self, "_model_name", ""))
                 if not emitted:
                     raise EmptyModelResponse(
                         "The model returned an empty answer (it may have used its whole token "
@@ -648,19 +674,72 @@ class LLMClient:
 
 def ask_llm(messages) -> str:
     """
-    Uses the per-request user settings (set via the inject_user_llm_key dependency).
+    Uses the per-request settings (set via the inject_user_llm_key dependency): the user's own model, or - on the
+    server's AI - the models the router picks for this job and plan, falling back from one to the next.
     Accepts a list of LangChain message objects (SystemMessage/HumanMessage/AIMessage).
     Raises ValueError if no key is configured.
     """
+    return _routed(lambda client: client.generate(messages))
+
+
+# ── Routing (core_brains/model_router.py) ─────────────────────────────────────
+_NO_KEY_MESSAGE = "No API key configured. Please go to Settings → AI Provider and save your key."
+
+
+def _server_keys():
+    from config import settings                 # lazy: keeps this module importable without the app config
+    return tuple(settings.fallback_llm_keys)
+
+
+def request_targets() -> list:
+    """Who answers the current call, best first. The user's own provider (one target) - or, for an account on the
+    server's AI, the router's plan for this job and the user's plan. Raises ValueError when there is nobody."""
+    m = usage_meter.current()
+    if m is not None and not m.byok and m.tier:
+        targets = model_router.plan(model_router.current_job(), m.tier, _server_keys())
+        if targets:
+            return targets
     key = _ctx_api_key.get()
-    if key and key.strip():
-        return ask_llm_with_key(
-            messages, api_key=key, provider=_ctx_provider.get(),
-            model=_ctx_model.get(), base_url=_ctx_base_url.get(),
-        )
-    raise ValueError(
-        "No API key configured. Please go to Settings → AI Provider and save your key."
-    )
+    if not (key and key.strip()):
+        raise ValueError(_NO_KEY_MESSAGE)
+    return [model_router.Target("request", _ctx_provider.get(), key, _ctx_model.get(), _ctx_base_url.get())]
+
+
+def _client_for(t) -> "LLMClient":
+    return get_or_create_client(t.api_key, t.provider, t.model, t.base_url, trusted=t.trusted)
+
+
+def _fell_back(t, nxt, exc) -> None:
+    usage_meter.add_fallback(t.provider, t.model or "")
+    logger.warning("model %s failed (%s); trying %s", t.label, type(exc).__name__, nxt.label)
+
+
+def _routed(call, targets=None):
+    targets = targets or request_targets()
+    for i, t in enumerate(targets):
+        try:
+            return call(_client_for(t))
+        except Exception as exc:
+            if i == len(targets) - 1:
+                raise
+            _fell_back(t, targets[i + 1], exc)
+
+
+async def _routed_async(call, targets=None):
+    """Try each target in turn: a target that fails (down, too slow for its timeout, quota, a bad answer) hands
+    the call to the next one; the last one's error is raised."""
+    targets = targets or request_targets()
+    for i, t in enumerate(targets):
+        try:
+            client = await _asyncio.to_thread(_client_for, t)     # building a client may do a DNS lookup
+            work = call(client)
+            return await (_asyncio.wait_for(work, t.timeout) if t.timeout else work)
+        except _asyncio.CancelledError:
+            raise
+        except Exception as exc:
+            if i == len(targets) - 1:
+                raise
+            _fell_back(t, targets[i + 1], exc)
 
 
 # Bounded LRU cache for LLMClient instances — max 64 entries.
@@ -682,15 +761,15 @@ def _client_cache_key(api_key: str, provider: str, model, base_url=None) -> tupl
     return (provider, digest, model, base_url or "")
 
 
-def get_or_create_client(api_key: str, provider: str, model, base_url: str = None) -> "LLMClient":
+def get_or_create_client(api_key: str, provider: str, model, base_url: str = None, trusted: bool = False) -> "LLMClient":
     """Return a cached LLMClient for (provider, sha256(key), model, base_url).
     Bounded to _MAX_CLIENT_CACHE entries – least-recently-used evicted first."""
-    cache_key = _client_cache_key(api_key, provider, model, base_url)
+    cache_key = _client_cache_key(api_key, provider, model, base_url) + (bool(trusted),)
     with _client_cache_lock:
         if cache_key in _client_cache:
             _client_cache.move_to_end(cache_key)
             return _client_cache[cache_key]
-    client = LLMClient(api_key=api_key, provider=provider, model=model, base_url=base_url)
+    client = LLMClient(api_key=api_key, provider=provider, model=model, base_url=base_url, trusted=trusted)
     with _client_cache_lock:
         _client_cache[cache_key] = client
         _client_cache.move_to_end(cache_key)
@@ -710,58 +789,73 @@ import asyncio as _asyncio
 
 
 async def ask_llm_async(messages) -> str:
-    """Non-blocking wrapper — runs ask_llm() in a thread pool executor."""
-    return await _asyncio.to_thread(ask_llm, messages)
+    """Non-blocking: the routed call with async retries."""
+    return await _routed_async(lambda client: client.generate_async(messages))
 
 
 def snapshot_request_llm() -> dict:
     """The current request's LLM settings as plain values. A streaming response outlives the request's
     dependencies, so the generator must carry these explicitly instead of reading the context variables later.
-    Raises ValueError if no key is configured (same as ask_llm)."""
-    key = _ctx_api_key.get()
-    if not (key and key.strip()):
-        raise ValueError("No API key configured. Please go to Settings → AI Provider and save your key.")
-    return {"api_key": key, "provider": _ctx_provider.get(), "model": _ctx_model.get(), "base_url": _ctx_base_url.get()}
+    `targets` is who answers (see request_targets). Raises ValueError if no key is configured (same as ask_llm)."""
+    targets = request_targets()
+    first = targets[0]
+    return {"api_key": first.api_key, "provider": first.provider, "model": first.model, "base_url": first.base_url,
+            "targets": targets}
 
 
 def generate_structured(messages, schema, *, context: dict = None):
     """Structured answer with the current request's LLM settings (see LLMClient.generate_structured)."""
-    s = snapshot_request_llm()
-    client = get_or_create_client(s["api_key"], s["provider"], s["model"], s["base_url"])
-    return client.generate_structured(messages, schema, context=context)
+    return _routed(lambda client: client.generate_structured(messages, schema, context=context))
 
 
 async def generate_structured_async(messages, schema, *, context: dict = None, max_attempts: int = None):
     """Async version: the event loop is never blocked (client creation may do a DNS lookup, so it runs in a thread).
     `max_attempts=1`: a single try (a caller with its own fallback should not sit through retries)."""
-    s = snapshot_request_llm()
-    client = await _asyncio.to_thread(get_or_create_client, s["api_key"], s["provider"], s["model"], s["base_url"])
-    return await client.generate_structured_async(messages, schema, context=context, max_attempts=max_attempts)
+    return await _routed_async(lambda client: client.generate_structured_async(
+        messages, schema, context=context, max_attempts=max_attempts))
 
 
 def request_model_id() -> str:
     """Which model the current request will use, e.g. "gemini:gemini-2.5-flash" (the provider's default model when
     the user picked none, and the server for self-hosted providers) - part of the generated-content cache key."""
-    provider, model, base_url = _ctx_provider.get(), _ctx_model.get(), _ctx_base_url.get()
-    spec = providers.get_provider(provider)
-    model = (model or (spec.default_model if spec else "") or "").strip()
-    return f"{provider}:{model}" + (f"@{base_url}" if base_url else "")
+    try:
+        t = request_targets()[0]
+    except ValueError:
+        t = model_router.Target("request", _ctx_provider.get(), "", _ctx_model.get(), _ctx_base_url.get())
+    spec = providers.get_provider(t.provider) or providers.find_spec(t.provider)
+    model = (t.model or (spec.default_model if spec else "") or "").strip()
+    return f"{t.provider}:{model}" + (f"@{t.base_url}" if t.base_url else "")
 
 
 async def ask_llm_quick_async(messages) -> str:
-    """One short call with the request's settings: a single attempt, no retry sleeps. For small helper calls
-    (e.g. rewriting a follow-up question) that have a fallback and must never slow the answer down."""
-    s = snapshot_request_llm()
-    client = await _asyncio.to_thread(get_or_create_client, s["api_key"], s["provider"], s["model"], s["base_url"])
-    return await client.generate_async(messages, max_attempts=1)
+    """One short call with the request's settings: a single attempt per model, no retry sleeps. For small helper
+    calls (e.g. rewriting a follow-up question) that have a fallback and must never slow the answer down - a
+    "small" job, so on the server's AI a cheap or local model answers it."""
+    with model_router.llm_job("small"):
+        return await _routed_async(lambda client: client.generate_async(messages, max_attempts=1))
 
 
-async def stream_llm_with_key(messages, api_key: str, provider: str = "gemini", model: str = None,
-                              base_url: str = None):
-    """Per-request streaming call: yields text pieces (see LLMClient.stream_async)."""
-    client = await _asyncio.to_thread(get_or_create_client, api_key, provider, model, base_url)
-    async for piece in client.stream_async(messages):
-        yield piece
+async def stream_llm_with_key(messages, api_key: str = "", provider: str = "gemini", model: str = None,
+                              base_url: str = None, targets: list = None):
+    """Per-request streaming call: yields text pieces (see LLMClient.stream_async). With `targets` (from
+    snapshot_request_llm) a model that fails BEFORE its first piece hands the answer to the next one; once text
+    has been sent it can't be taken back, so a later failure is raised."""
+    targets = targets or [model_router.Target("request", provider, api_key, model, base_url)]
+    for i, t in enumerate(targets):
+        started = False
+        try:
+            client = await _asyncio.to_thread(_client_for, t)
+            async with aclosing(client.stream_async(messages)) as pieces:
+                async for piece in pieces:
+                    started = True
+                    yield piece
+            return
+        except _asyncio.CancelledError:
+            raise
+        except Exception as exc:
+            if started or i == len(targets) - 1:
+                raise
+            _fell_back(t, targets[i + 1], exc)
 
 
 async def ask_llm_with_key_async(messages, api_key: str, provider: str = "gemini", model: str = None,

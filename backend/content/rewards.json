@@ -38,6 +38,16 @@
       "xp": 400,
       "coins": 140,
       "daily_cap": 3
+    },
+    "review_complete": {
+      "xp": 80,
+      "coins": 20,
+      "daily_cap": 1
+    },
+    "exam_complete": {
+      "xp": 150,
+      "coins": 40,
+      "daily_cap": 3
     }
   },
   "tier_multiplier": {

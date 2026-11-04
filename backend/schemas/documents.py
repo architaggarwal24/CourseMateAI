@@ -16,6 +16,10 @@ class DocumentOut(ApiModel):
     embedding_model: Optional[str] = None
     created_at: str
     last_used_at: str
+    pdf_available: Optional[bool] = None   # the original PDF is kept (the page viewer can open it)
+    pinned: Optional[bool] = None          # part of a course: never expires for being idle
+    kind: Optional[str] = None             # "course" when the id is a course's (it stands in for a document)
+    documents: Optional[list] = None       # a course's document ids
 
 
 class UploadResponse(ApiModel):

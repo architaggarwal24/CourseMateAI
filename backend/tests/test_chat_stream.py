@@ -184,7 +184,7 @@ def test_stream_endpoint_frames_tokens_then_sources(doc, streaming):
     call = seen[0]                                                              # what the model was given
     assert call["question"] == QUESTION and "Mitosis is cell division" in call["context"]
     assert call["history"] == [{"role": "user", "content": "earlier"}, {"role": "assistant", "content": "reply"}]
-    assert set(call["llm"]) == {"api_key", "provider", "model", "base_url"} and call["llm"]["api_key"]
+    assert set(call["llm"]) == {"api_key", "provider", "model", "base_url", "targets"} and call["llm"]["api_key"]
 
 
 def test_streamed_answers_are_recorded_exactly_like_plain_ones(doc, streaming, fake_llm):
@@ -224,7 +224,7 @@ def test_a_question_the_document_does_not_cover_is_blocked_without_calling_the_m
     frames = parse_sse(ask(c, question=UNRELATED).text)
     assert frames == [
         ("token", {"text": f'I cannot find "{UNRELATED}" in the uploaded PDF.'}),
-        ("sources", {"mode": "chat", "sources": [], "blocked": True, "needs_clarification": False, "rewards": None}),
+        ("sources", {"mode": "chat", "sources": [], "citations": [], "blocked": True, "needs_clarification": False, "rewards": None}),
     ]
     assert seen == [] and questions_asked(uid) == 0
 

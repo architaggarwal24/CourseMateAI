@@ -45,6 +45,13 @@ class VectorStore:
             embedding, k=k, fetch_k=fetch_k, lambda_mult=lambda_mult)
         return [(doc, max(0.0, min(1.0, 1.0 - float(distance) / 2.0))) for doc, distance in hits]
 
+    def chunks(self) -> List[Document]:
+        """Every chunk, in the order it was indexed (= reading order)."""
+        if not self.store:
+            return []
+        ids = self.store.index_to_docstore_id
+        return [self.store.docstore.search(ids[i]) for i in sorted(ids)]
+
     def save(self, path: str):
         """Persist the FAISS index to disk."""
         if not self.store:

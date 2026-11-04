@@ -159,62 +159,21 @@
         "title": "ApiKeyUpdateResponse",
         "type": "object"
       },
-      "AvatarConfigRequest": {
-        "description": "Save hero-forge customization: skin, hair, outfit, headgear, weapon, pet",
-        "properties": {
-          "body_type_id": {
-            "default": "",
-            "title": "Body Type Id",
-            "type": "string"
-          },
-          "eye_color_id": {
-            "default": "",
-            "title": "Eye Color Id",
-            "type": "string"
-          },
-          "hair_id": {
-            "default": "",
-            "title": "Hair Id",
-            "type": "string"
-          },
-          "headgear": {
-            "default": "",
-            "title": "Headgear",
-            "type": "string"
-          },
-          "lip_color_id": {
-            "default": "",
-            "title": "Lip Color Id",
-            "type": "string"
-          },
-          "outfit_id": {
-            "default": "",
-            "title": "Outfit Id",
-            "type": "string"
-          },
-          "pet": {
-            "default": "",
-            "title": "Pet",
-            "type": "string"
-          },
-          "skin_id": {
-            "default": "",
-            "title": "Skin Id",
-            "type": "string"
-          },
-          "weapon": {
-            "default": "",
-            "title": "Weapon",
-            "type": "string"
-          }
-        },
-        "title": "AvatarConfigRequest",
-        "type": "object"
-      },
       "AvatarResponse": {
         "additionalProperties": true,
         "properties": {
-          "body_type_id": {
+          "champion_chosen": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Champion Chosen"
+          },
+          "champion_id": {
             "anyOf": [
               {
                 "type": "string"
@@ -223,72 +182,17 @@
                 "type": "null"
               }
             ],
-            "title": "Body Type Id"
+            "title": "Champion Id"
           },
           "equipped": {
             "additionalProperties": true,
             "title": "Equipped",
             "type": "object"
           },
-          "eye_color_id": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Eye Color Id"
-          },
-          "hair_id": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Hair Id"
-          },
-          "lip_color_id": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Lip Color Id"
-          },
-          "outfit_id": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Outfit Id"
-          },
           "owned": {
             "items": {},
             "title": "Owned",
             "type": "array"
-          },
-          "skin_id": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Skin Id"
           }
         },
         "required": [
@@ -299,26 +203,12 @@
         "type": "object"
       },
       "AvatarUpdateRequest": {
+        "description": "Wear items by slot: {\"armor\": \"<item id>\", \"pet\": \"none\", ...}. Ownership is enforced by the server.",
         "properties": {
           "equipped": {
             "additionalProperties": true,
             "title": "Equipped",
             "type": "object"
-          },
-          "hair_id": {
-            "default": "",
-            "title": "Hair Id",
-            "type": "string"
-          },
-          "outfit_id": {
-            "default": "",
-            "title": "Outfit Id",
-            "type": "string"
-          },
-          "skin_id": {
-            "default": "",
-            "title": "Skin Id",
-            "type": "string"
           }
         },
         "title": "AvatarUpdateRequest",
@@ -650,6 +540,91 @@
         "title": "BattleSpellResponse",
         "type": "object"
       },
+      "BattleUltimateResponse": {
+        "additionalProperties": true,
+        "description": "The champion's ultimate was cast: what it does now (hearts healed, free spells) and the new state.",
+        "properties": {
+          "battle": {
+            "additionalProperties": true,
+            "title": "Battle",
+            "type": "object"
+          },
+          "ok": {
+            "title": "Ok",
+            "type": "boolean"
+          },
+          "question": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Question"
+          },
+          "ultimate": {
+            "additionalProperties": true,
+            "title": "Ultimate",
+            "type": "object"
+          }
+        },
+        "required": [
+          "ok",
+          "ultimate",
+          "battle"
+        ],
+        "title": "BattleUltimateResponse",
+        "type": "object"
+      },
+      "BillingStatus": {
+        "additionalProperties": true,
+        "properties": {
+          "enabled": {
+            "title": "Enabled",
+            "type": "boolean"
+          },
+          "key_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Key Id"
+          },
+          "provider": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Provider"
+          },
+          "subscription": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SubscriptionOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "enabled"
+        ],
+        "title": "BillingStatus",
+        "type": "object"
+      },
       "Body_upload_pdf_api_v1_upload_post": {
         "properties": {
           "file": {
@@ -666,6 +641,156 @@
           "file"
         ],
         "title": "Body_upload_pdf_api_v1_upload_post",
+        "type": "object"
+      },
+      "ChampionKit": {
+        "additionalProperties": true,
+        "properties": {
+          "passive": {
+            "$ref": "#/components/schemas/KitText"
+          },
+          "ultimate": {
+            "$ref": "#/components/schemas/KitText"
+          }
+        },
+        "required": [
+          "passive",
+          "ultimate"
+        ],
+        "title": "ChampionKit",
+        "type": "object"
+      },
+      "ChampionProgress": {
+        "additionalProperties": true,
+        "description": "A champion's XP from battles fought with it, its level (1-10) and the mastery skins its levels unlock.",
+        "properties": {
+          "battles": {
+            "title": "Battles",
+            "type": "integer"
+          },
+          "kit": {
+            "$ref": "#/components/schemas/ChampionKit"
+          },
+          "level": {
+            "title": "Level",
+            "type": "integer"
+          },
+          "level_xp": {
+            "title": "Level Xp",
+            "type": "integer"
+          },
+          "mastery": {
+            "items": {
+              "$ref": "#/components/schemas/MasteryUnlock"
+            },
+            "title": "Mastery",
+            "type": "array"
+          },
+          "next_level_xp": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Level Xp"
+          },
+          "wins": {
+            "title": "Wins",
+            "type": "integer"
+          },
+          "xp": {
+            "title": "Xp",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "xp",
+          "level",
+          "level_xp",
+          "battles",
+          "wins",
+          "mastery",
+          "kit"
+        ],
+        "title": "ChampionProgress",
+        "type": "object"
+      },
+      "ChampionRequest": {
+        "description": "Choose a champion; `loadout` (optional) wears skins in the same save: slot -> item id, or \"none\" to empty it.",
+        "properties": {
+          "champion_id": {
+            "maxLength": 32,
+            "minLength": 1,
+            "title": "Champion Id",
+            "type": "string"
+          },
+          "loadout": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Loadout"
+          }
+        },
+        "required": [
+          "champion_id"
+        ],
+        "title": "ChampionRequest",
+        "type": "object"
+      },
+      "ChampionResponse": {
+        "additionalProperties": true,
+        "properties": {
+          "champion_id": {
+            "title": "Champion Id",
+            "type": "string"
+          },
+          "champions": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Champions",
+            "type": "array"
+          },
+          "chosen": {
+            "title": "Chosen",
+            "type": "boolean"
+          },
+          "loadout": {
+            "$ref": "#/components/schemas/Loadout"
+          },
+          "progress": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/ChampionProgress"
+            },
+            "title": "Progress",
+            "type": "object"
+          }
+        },
+        "required": [
+          "champion_id",
+          "chosen",
+          "champions",
+          "loadout"
+        ],
+        "title": "ChampionResponse",
         "type": "object"
       },
       "ChatRequest": {
@@ -709,6 +834,14 @@
               }
             ],
             "title": "Blocked"
+          },
+          "citations": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/Citation"
+            },
+            "title": "Citations",
+            "type": "array"
           },
           "content": {
             "title": "Content",
@@ -755,6 +888,484 @@
         "title": "ChatResponse",
         "type": "object"
       },
+      "CheckoutRequest": {
+        "properties": {
+          "period": {
+            "default": "month",
+            "maxLength": 10,
+            "title": "Period",
+            "type": "string"
+          },
+          "tier": {
+            "maxLength": 20,
+            "title": "Tier",
+            "type": "string"
+          }
+        },
+        "required": [
+          "tier"
+        ],
+        "title": "CheckoutRequest",
+        "type": "object"
+      },
+      "CheckoutResponse": {
+        "additionalProperties": true,
+        "properties": {
+          "amount": {
+            "title": "Amount",
+            "type": "integer"
+          },
+          "currency": {
+            "title": "Currency",
+            "type": "string"
+          },
+          "key_id": {
+            "title": "Key Id",
+            "type": "string"
+          },
+          "period": {
+            "title": "Period",
+            "type": "string"
+          },
+          "prefill": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Prefill",
+            "type": "object"
+          },
+          "provider": {
+            "title": "Provider",
+            "type": "string"
+          },
+          "short_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Short Url"
+          },
+          "subscription_id": {
+            "title": "Subscription Id",
+            "type": "string"
+          },
+          "tier": {
+            "title": "Tier",
+            "type": "string"
+          },
+          "tier_name": {
+            "title": "Tier Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "provider",
+          "subscription_id",
+          "key_id",
+          "tier",
+          "tier_name",
+          "period",
+          "currency",
+          "amount",
+          "prefill"
+        ],
+        "title": "CheckoutResponse",
+        "type": "object"
+      },
+      "Citation": {
+        "additionalProperties": true,
+        "description": "A retrieved passage the answer can cite as [n]: which document, which page, and its text (to highlight).",
+        "properties": {
+          "doc_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Doc Id"
+          },
+          "doc_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Doc Name"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "n": {
+            "title": "N",
+            "type": "integer"
+          },
+          "page": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Page"
+          },
+          "snippet": {
+            "title": "Snippet",
+            "type": "string"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "n",
+          "label",
+          "snippet",
+          "text"
+        ],
+        "title": "Citation",
+        "type": "object"
+      },
+      "ConceptMapBuildRequest": {
+        "properties": {
+          "session_id": {
+            "title": "Session Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "session_id"
+        ],
+        "title": "ConceptMapBuildRequest",
+        "type": "object"
+      },
+      "ConceptMapResponse": {
+        "additionalProperties": true,
+        "properties": {
+          "built": {
+            "title": "Built",
+            "type": "integer"
+          },
+          "concepts": {
+            "items": {
+              "$ref": "#/components/schemas/MapNode"
+            },
+            "title": "Concepts",
+            "type": "array"
+          },
+          "documents": {
+            "items": {
+              "$ref": "#/components/schemas/MapDocument"
+            },
+            "title": "Documents",
+            "type": "array"
+          },
+          "relations": {
+            "items": {
+              "$ref": "#/components/schemas/MapEdge"
+            },
+            "title": "Relations",
+            "type": "array"
+          },
+          "scope": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Scope",
+            "type": "object"
+          },
+          "stage": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Stage"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "scope",
+          "status",
+          "built",
+          "total",
+          "documents",
+          "concepts",
+          "relations"
+        ],
+        "title": "ConceptMapResponse",
+        "type": "object"
+      },
+      "Course": {
+        "additionalProperties": true,
+        "properties": {
+          "created_at": {
+            "title": "Created At",
+            "type": "string"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "documents": {
+            "items": {
+              "$ref": "#/components/schemas/CourseDocument"
+            },
+            "title": "Documents",
+            "type": "array"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "ready": {
+            "title": "Ready",
+            "type": "integer"
+          },
+          "updated_at": {
+            "title": "Updated At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "created_at",
+          "updated_at",
+          "documents",
+          "ready"
+        ],
+        "title": "Course",
+        "type": "object"
+      },
+      "CourseCreateRequest": {
+        "properties": {
+          "description": {
+            "anyOf": [
+              {
+                "maxLength": 2000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "document_ids": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 20,
+            "title": "Document Ids",
+            "type": "array"
+          },
+          "name": {
+            "maxLength": 200,
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "title": "CourseCreateRequest",
+        "type": "object"
+      },
+      "CourseDocument": {
+        "additionalProperties": true,
+        "properties": {
+          "chunks": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Chunks"
+          },
+          "filename": {
+            "title": "Filename",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "pdf_available": {
+            "title": "Pdf Available",
+            "type": "boolean"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "filename",
+          "status",
+          "pdf_available"
+        ],
+        "title": "CourseDocument",
+        "type": "object"
+      },
+      "CourseListResponse": {
+        "additionalProperties": true,
+        "properties": {
+          "courses": {
+            "items": {
+              "$ref": "#/components/schemas/Course"
+            },
+            "title": "Courses",
+            "type": "array"
+          }
+        },
+        "required": [
+          "courses"
+        ],
+        "title": "CourseListResponse",
+        "type": "object"
+      },
+      "CourseProgress": {
+        "additionalProperties": true,
+        "properties": {
+          "answers": {
+            "additionalProperties": true,
+            "title": "Answers",
+            "type": "object"
+          },
+          "concepts": {
+            "additionalProperties": true,
+            "title": "Concepts",
+            "type": "object"
+          },
+          "course_id": {
+            "title": "Course Id",
+            "type": "string"
+          },
+          "documents": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Documents",
+            "type": "array"
+          },
+          "exams": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Exams",
+            "type": "array"
+          },
+          "mastery": {
+            "title": "Mastery",
+            "type": "number"
+          },
+          "review": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "title": "Review",
+            "type": "object"
+          }
+        },
+        "required": [
+          "course_id",
+          "mastery",
+          "concepts",
+          "answers",
+          "review",
+          "exams",
+          "documents"
+        ],
+        "title": "CourseProgress",
+        "type": "object"
+      },
+      "CourseUpdateRequest": {
+        "description": "Only the fields sent change. `document_ids` is the full list, in order (add, remove, reorder).",
+        "properties": {
+          "description": {
+            "anyOf": [
+              {
+                "maxLength": 2000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "document_ids": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "maxItems": 20,
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Document Ids"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          }
+        },
+        "title": "CourseUpdateRequest",
+        "type": "object"
+      },
       "DailyQuestsResponse": {
         "additionalProperties": true,
         "properties": {
@@ -768,6 +1379,21 @@
           "quests"
         ],
         "title": "DailyQuestsResponse",
+        "type": "object"
+      },
+      "DeleteAccountRequest": {
+        "properties": {
+          "password": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Password",
+            "type": "string"
+          }
+        },
+        "required": [
+          "password"
+        ],
+        "title": "DeleteAccountRequest",
         "type": "object"
       },
       "DocumentListResponse": {
@@ -806,6 +1432,18 @@
             "title": "Created At",
             "type": "string"
           },
+          "documents": {
+            "anyOf": [
+              {
+                "items": {},
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Documents"
+          },
           "embedding_model": {
             "anyOf": [
               {
@@ -840,9 +1478,42 @@
             "title": "Id",
             "type": "string"
           },
+          "kind": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Kind"
+          },
           "last_used_at": {
             "title": "Last Used At",
             "type": "string"
+          },
+          "pdf_available": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pdf Available"
+          },
+          "pinned": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pinned"
           },
           "status": {
             "enum": [
@@ -866,6 +1537,546 @@
           "last_used_at"
         ],
         "title": "DocumentOut",
+        "type": "object"
+      },
+      "EntitlementsResponse": {
+        "additionalProperties": true,
+        "properties": {
+          "features": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/FeatureEntitlement"
+            },
+            "title": "Features",
+            "type": "object"
+          },
+          "tier": {
+            "title": "Tier",
+            "type": "string"
+          },
+          "tier_name": {
+            "title": "Tier Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "tier",
+          "tier_name",
+          "features"
+        ],
+        "title": "EntitlementsResponse",
+        "type": "object"
+      },
+      "Exam": {
+        "additionalProperties": true,
+        "properties": {
+          "answered": {
+            "title": "Answered",
+            "type": "integer"
+          },
+          "deadline": {
+            "title": "Deadline",
+            "type": "string"
+          },
+          "difficulty": {
+            "title": "Difficulty",
+            "type": "string"
+          },
+          "doc_name": {
+            "title": "Doc Name",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "length": {
+            "title": "Length",
+            "type": "integer"
+          },
+          "questions": {
+            "items": {
+              "$ref": "#/components/schemas/ExamQuestion"
+            },
+            "title": "Questions",
+            "type": "array"
+          },
+          "result": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ExamResult"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "rewards": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rewards"
+          },
+          "seconds_left": {
+            "title": "Seconds Left",
+            "type": "integer"
+          },
+          "session_id": {
+            "title": "Session Id",
+            "type": "string"
+          },
+          "started_at": {
+            "title": "Started At",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "time_limit_s": {
+            "title": "Time Limit S",
+            "type": "integer"
+          },
+          "topics": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Topics",
+            "type": "array"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "status",
+          "session_id",
+          "doc_name",
+          "length",
+          "difficulty",
+          "topics",
+          "time_limit_s",
+          "started_at",
+          "deadline",
+          "seconds_left",
+          "answered",
+          "total",
+          "questions"
+        ],
+        "title": "Exam",
+        "type": "object"
+      },
+      "ExamActiveResponse": {
+        "additionalProperties": true,
+        "properties": {
+          "exam": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Exam"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "title": "ExamActiveResponse",
+        "type": "object"
+      },
+      "ExamAnswerRequest": {
+        "properties": {
+          "answer": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Answer"
+          },
+          "clear": {
+            "default": false,
+            "title": "Clear",
+            "type": "boolean"
+          },
+          "flagged": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Flagged"
+          },
+          "index": {
+            "minimum": 0.0,
+            "title": "Index",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "index"
+        ],
+        "title": "ExamAnswerRequest",
+        "type": "object"
+      },
+      "ExamAnswerResponse": {
+        "additionalProperties": true,
+        "properties": {
+          "answer": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Answer"
+          },
+          "answered": {
+            "title": "Answered",
+            "type": "integer"
+          },
+          "flagged": {
+            "title": "Flagged",
+            "type": "boolean"
+          },
+          "index": {
+            "title": "Index",
+            "type": "integer"
+          },
+          "ok": {
+            "title": "Ok",
+            "type": "boolean"
+          },
+          "seconds_left": {
+            "title": "Seconds Left",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "ok",
+          "index",
+          "flagged",
+          "answered",
+          "seconds_left"
+        ],
+        "title": "ExamAnswerResponse",
+        "type": "object"
+      },
+      "ExamCreateRequest": {
+        "properties": {
+          "difficulty": {
+            "default": "mixed",
+            "enum": [
+              "easy",
+              "medium",
+              "hard",
+              "mixed"
+            ],
+            "title": "Difficulty",
+            "type": "string"
+          },
+          "length": {
+            "default": 20,
+            "enum": [
+              10,
+              20,
+              30
+            ],
+            "title": "Length",
+            "type": "integer"
+          },
+          "session_id": {
+            "title": "Session Id",
+            "type": "string"
+          },
+          "topics": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 5,
+            "title": "Topics",
+            "type": "array"
+          }
+        },
+        "required": [
+          "session_id"
+        ],
+        "title": "ExamCreateRequest",
+        "type": "object"
+      },
+      "ExamHistoryResponse": {
+        "additionalProperties": true,
+        "properties": {
+          "exams": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Exams",
+            "type": "array"
+          }
+        },
+        "required": [
+          "exams"
+        ],
+        "title": "ExamHistoryResponse",
+        "type": "object"
+      },
+      "ExamOptionsResponse": {
+        "additionalProperties": true,
+        "properties": {
+          "difficulties": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Difficulties",
+            "type": "array"
+          },
+          "lengths": {
+            "items": {
+              "type": "integer"
+            },
+            "title": "Lengths",
+            "type": "array"
+          },
+          "max_topics": {
+            "title": "Max Topics",
+            "type": "integer"
+          },
+          "seconds_per_question": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "title": "Seconds Per Question",
+            "type": "object"
+          },
+          "suggested_topics": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Suggested Topics",
+            "type": "array"
+          }
+        },
+        "required": [
+          "lengths",
+          "difficulties",
+          "seconds_per_question",
+          "suggested_topics",
+          "max_topics"
+        ],
+        "title": "ExamOptionsResponse",
+        "type": "object"
+      },
+      "ExamQuestion": {
+        "additionalProperties": true,
+        "properties": {
+          "answer": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Answer"
+          },
+          "concept": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Concept"
+          },
+          "correct": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Correct"
+          },
+          "correct_answer": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Correct Answer"
+          },
+          "difficulty": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Difficulty"
+          },
+          "explanation": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Explanation"
+          },
+          "flagged": {
+            "default": false,
+            "title": "Flagged",
+            "type": "boolean"
+          },
+          "index": {
+            "title": "Index",
+            "type": "integer"
+          },
+          "options": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Options",
+            "type": "array"
+          },
+          "question": {
+            "title": "Question",
+            "type": "string"
+          }
+        },
+        "required": [
+          "index",
+          "question",
+          "options"
+        ],
+        "title": "ExamQuestion",
+        "type": "object"
+      },
+      "ExamResult": {
+        "additionalProperties": true,
+        "properties": {
+          "accuracy": {
+            "title": "Accuracy",
+            "type": "number"
+          },
+          "auto_submitted": {
+            "title": "Auto Submitted",
+            "type": "boolean"
+          },
+          "concepts": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Concepts",
+            "type": "array"
+          },
+          "difficulties": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Difficulties",
+            "type": "array"
+          },
+          "score": {
+            "title": "Score",
+            "type": "integer"
+          },
+          "submitted_at": {
+            "title": "Submitted At",
+            "type": "string"
+          },
+          "time_used_s": {
+            "title": "Time Used S",
+            "type": "integer"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          },
+          "unanswered": {
+            "title": "Unanswered",
+            "type": "integer"
+          },
+          "weak_concepts": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Weak Concepts",
+            "type": "array"
+          }
+        },
+        "required": [
+          "score",
+          "total",
+          "accuracy",
+          "time_used_s",
+          "submitted_at",
+          "auto_submitted",
+          "concepts",
+          "difficulties",
+          "unanswered",
+          "weak_concepts"
+        ],
+        "title": "ExamResult",
+        "type": "object"
+      },
+      "FeatureEntitlement": {
+        "additionalProperties": true,
+        "properties": {
+          "enabled": {
+            "title": "Enabled",
+            "type": "boolean"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "required_tier": {
+            "title": "Required Tier",
+            "type": "string"
+          },
+          "required_tier_name": {
+            "title": "Required Tier Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "enabled",
+          "name",
+          "required_tier",
+          "required_tier_name"
+        ],
+        "title": "FeatureEntitlement",
         "type": "object"
       },
       "FlashcardRequest": {
@@ -892,8 +2103,19 @@
         "type": "object"
       },
       "FlashcardReviewRequest": {
-        "description": "The user flipped a card and says whether they knew it: counts for that concept's mastery.",
+        "description": "The user flipped a card and says whether they knew it: counts for that concept's mastery. With the card's\n`front` and `back` it also joins the spaced-repetition review queue (that first grade is its first review).",
         "properties": {
+          "back": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Back"
+          },
           "concept": {
             "title": "Concept",
             "type": "string"
@@ -901,6 +2123,28 @@
           "correct": {
             "title": "Correct",
             "type": "boolean"
+          },
+          "explanation": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Explanation"
+          },
+          "front": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Front"
           },
           "session_id": {
             "title": "Session Id",
@@ -930,6 +2174,18 @@
           "ok": {
             "title": "Ok",
             "type": "boolean"
+          },
+          "review_item": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Review Item"
           }
         },
         "required": [
@@ -1002,26 +2258,6 @@
           "status"
         ],
         "title": "HealthResponse",
-        "type": "object"
-      },
-      "HeroForgeSaveResponse": {
-        "additionalProperties": true,
-        "properties": {
-          "equipped": {
-            "additionalProperties": true,
-            "title": "Equipped",
-            "type": "object"
-          },
-          "ok": {
-            "title": "Ok",
-            "type": "boolean"
-          }
-        },
-        "required": [
-          "ok",
-          "equipped"
-        ],
-        "title": "HeroForgeSaveResponse",
         "type": "object"
       },
       "HistoryResponse": {
@@ -1097,6 +2333,25 @@
         "title": "HudResponse",
         "type": "object"
       },
+      "KitText": {
+        "additionalProperties": true,
+        "properties": {
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "text"
+        ],
+        "title": "KitText",
+        "type": "object"
+      },
       "LeaderboardResponse": {
         "additionalProperties": true,
         "properties": {
@@ -1130,6 +2385,58 @@
         "title": "LeaderboardResponse",
         "type": "object"
       },
+      "Loadout": {
+        "additionalProperties": true,
+        "description": "The champion's skins: one shop item id per slot, or null when the slot is empty.",
+        "properties": {
+          "armor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Armor"
+          },
+          "headgear": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Headgear"
+          },
+          "pet": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pet"
+          },
+          "weapon": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Weapon"
+          }
+        },
+        "title": "Loadout",
+        "type": "object"
+      },
       "LoginRequest": {
         "properties": {
           "email": {
@@ -1157,6 +2464,161 @@
           "password"
         ],
         "title": "LoginRequest",
+        "type": "object"
+      },
+      "MapDocument": {
+        "additionalProperties": true,
+        "properties": {
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "stage": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Stage"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "status"
+        ],
+        "title": "MapDocument",
+        "type": "object"
+      },
+      "MapEdge": {
+        "additionalProperties": true,
+        "properties": {
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "source": {
+            "title": "Source",
+            "type": "string"
+          },
+          "target": {
+            "title": "Target",
+            "type": "string"
+          }
+        },
+        "required": [
+          "source",
+          "target",
+          "label"
+        ],
+        "title": "MapEdge",
+        "type": "object"
+      },
+      "MapNode": {
+        "additionalProperties": true,
+        "properties": {
+          "correct": {
+            "title": "Correct",
+            "type": "integer"
+          },
+          "docs": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Docs",
+            "type": "array"
+          },
+          "heat": {
+            "title": "Heat",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "importance": {
+            "title": "Importance",
+            "type": "integer"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "pages": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Pages",
+            "type": "array"
+          },
+          "seen": {
+            "title": "Seen",
+            "type": "integer"
+          },
+          "summary": {
+            "title": "Summary",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "summary",
+          "importance",
+          "pages",
+          "docs",
+          "heat",
+          "seen",
+          "correct"
+        ],
+        "title": "MapNode",
+        "type": "object"
+      },
+      "MasteryUnlock": {
+        "additionalProperties": true,
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "level": {
+            "title": "Level",
+            "type": "integer"
+          },
+          "slot": {
+            "title": "Slot",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "slot",
+          "level"
+        ],
+        "title": "MasteryUnlock",
         "type": "object"
       },
       "NotesRequest": {
@@ -1221,6 +2683,149 @@
           "sources"
         ],
         "title": "NotesResponse",
+        "type": "object"
+      },
+      "OkResponse": {
+        "additionalProperties": true,
+        "properties": {
+          "ok": {
+            "title": "Ok",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "ok"
+        ],
+        "title": "OkResponse",
+        "type": "object"
+      },
+      "OwnKeyUsage": {
+        "additionalProperties": true,
+        "properties": {
+          "active": {
+            "title": "Active",
+            "type": "boolean"
+          },
+          "calls_today": {
+            "title": "Calls Today",
+            "type": "integer"
+          },
+          "exempt": {
+            "title": "Exempt",
+            "type": "boolean"
+          },
+          "tokens_month": {
+            "title": "Tokens Month",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "active",
+          "exempt",
+          "calls_today",
+          "tokens_month"
+        ],
+        "title": "OwnKeyUsage",
+        "type": "object"
+      },
+      "PlanOut": {
+        "additionalProperties": true,
+        "properties": {
+          "currency": {
+            "title": "Currency",
+            "type": "string"
+          },
+          "features": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Features",
+            "type": "array"
+          },
+          "highlights": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Highlights",
+            "type": "array"
+          },
+          "limits": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "title": "Limits",
+            "type": "object"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "price_month": {
+            "title": "Price Month",
+            "type": "integer"
+          },
+          "price_year": {
+            "title": "Price Year",
+            "type": "integer"
+          },
+          "tagline": {
+            "title": "Tagline",
+            "type": "string"
+          },
+          "tier": {
+            "title": "Tier",
+            "type": "string"
+          }
+        },
+        "required": [
+          "tier",
+          "name",
+          "tagline",
+          "price_month",
+          "price_year",
+          "currency",
+          "limits",
+          "features",
+          "highlights"
+        ],
+        "title": "PlanOut",
+        "type": "object"
+      },
+      "PlansResponse": {
+        "additionalProperties": true,
+        "properties": {
+          "currency": {
+            "title": "Currency",
+            "type": "string"
+          },
+          "invite_only": {
+            "title": "Invite Only",
+            "type": "boolean"
+          },
+          "managed_ai": {
+            "title": "Managed Ai",
+            "type": "boolean"
+          },
+          "payments_enabled": {
+            "title": "Payments Enabled",
+            "type": "boolean"
+          },
+          "plans": {
+            "items": {
+              "$ref": "#/components/schemas/PlanOut"
+            },
+            "title": "Plans",
+            "type": "array"
+          }
+        },
+        "required": [
+          "plans",
+          "invite_only",
+          "managed_ai",
+          "payments_enabled",
+          "currency"
+        ],
+        "title": "PlansResponse",
         "type": "object"
       },
       "ProfileResponse": {
@@ -1729,6 +3334,21 @@
         "title": "ReadyResponse",
         "type": "object"
       },
+      "RedeemRequest": {
+        "properties": {
+          "code": {
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Code",
+            "type": "string"
+          }
+        },
+        "required": [
+          "code"
+        ],
+        "title": "RedeemRequest",
+        "type": "object"
+      },
       "RegisterRequest": {
         "properties": {
           "api_key": {
@@ -1754,6 +3374,17 @@
               }
             ],
             "title": "Guest Id"
+          },
+          "invite_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Invite Code"
           },
           "llm_base_url": {
             "anyOf": [
@@ -1842,6 +3473,102 @@
         "title": "RegisterResponse",
         "type": "object"
       },
+      "ReviewAddRequest": {
+        "properties": {
+          "cards": {
+            "items": {
+              "$ref": "#/components/schemas/ReviewCardIn"
+            },
+            "maxItems": 100,
+            "minItems": 1,
+            "title": "Cards",
+            "type": "array"
+          },
+          "session_id": {
+            "title": "Session Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "session_id",
+          "cards"
+        ],
+        "title": "ReviewAddRequest",
+        "type": "object"
+      },
+      "ReviewAddResponse": {
+        "additionalProperties": true,
+        "properties": {
+          "added": {
+            "title": "Added",
+            "type": "integer"
+          },
+          "existing": {
+            "title": "Existing",
+            "type": "integer"
+          },
+          "ok": {
+            "title": "Ok",
+            "type": "boolean"
+          },
+          "skipped": {
+            "title": "Skipped",
+            "type": "integer"
+          },
+          "stats": {
+            "$ref": "#/components/schemas/ReviewStats"
+          }
+        },
+        "required": [
+          "ok",
+          "added",
+          "existing",
+          "skipped",
+          "stats"
+        ],
+        "title": "ReviewAddResponse",
+        "type": "object"
+      },
+      "ReviewCardIn": {
+        "properties": {
+          "back": {
+            "title": "Back",
+            "type": "string"
+          },
+          "concept": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Concept"
+          },
+          "explanation": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Explanation"
+          },
+          "front": {
+            "title": "Front",
+            "type": "string"
+          }
+        },
+        "required": [
+          "front",
+          "back"
+        ],
+        "title": "ReviewCardIn",
+        "type": "object"
+      },
       "ReviewDeckResponse": {
         "additionalProperties": true,
         "description": "Flashcards built from the questions the user missed (arena + quiz) on this document - no AI call.",
@@ -1869,6 +3596,315 @@
           "total"
         ],
         "title": "ReviewDeckResponse",
+        "type": "object"
+      },
+      "ReviewDocument": {
+        "additionalProperties": true,
+        "properties": {
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "session_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Session Id"
+          }
+        },
+        "title": "ReviewDocument",
+        "type": "object"
+      },
+      "ReviewGradeRequest": {
+        "properties": {
+          "duration_ms": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Duration Ms"
+          },
+          "item_id": {
+            "title": "Item Id",
+            "type": "integer"
+          },
+          "rating": {
+            "description": "1 Again, 2 Hard, 3 Good, 4 Easy",
+            "maximum": 4.0,
+            "minimum": 1.0,
+            "title": "Rating",
+            "type": "integer"
+          },
+          "reps": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The card's reps as shown: a second grade of the same view is refused",
+            "title": "Reps"
+          }
+        },
+        "required": [
+          "item_id",
+          "rating"
+        ],
+        "title": "ReviewGradeRequest",
+        "type": "object"
+      },
+      "ReviewGradeResponse": {
+        "additionalProperties": true,
+        "properties": {
+          "item": {
+            "$ref": "#/components/schemas/ReviewItem"
+          },
+          "mastery": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mastery"
+          },
+          "ok": {
+            "title": "Ok",
+            "type": "boolean"
+          },
+          "rewards": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rewards"
+          },
+          "stats": {
+            "$ref": "#/components/schemas/ReviewStats"
+          }
+        },
+        "required": [
+          "ok",
+          "item",
+          "stats"
+        ],
+        "title": "ReviewGradeResponse",
+        "type": "object"
+      },
+      "ReviewItem": {
+        "additionalProperties": true,
+        "properties": {
+          "back": {
+            "title": "Back",
+            "type": "string"
+          },
+          "concept": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Concept"
+          },
+          "document": {
+            "$ref": "#/components/schemas/ReviewDocument"
+          },
+          "due": {
+            "title": "Due",
+            "type": "string"
+          },
+          "explanation": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Explanation"
+          },
+          "front": {
+            "title": "Front",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "intervals": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "type": "integer"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Intervals"
+          },
+          "lapses": {
+            "title": "Lapses",
+            "type": "integer"
+          },
+          "reps": {
+            "title": "Reps",
+            "type": "integer"
+          },
+          "source": {
+            "title": "Source",
+            "type": "string"
+          },
+          "state": {
+            "title": "State",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "front",
+          "back",
+          "source",
+          "state",
+          "due",
+          "reps",
+          "lapses",
+          "document"
+        ],
+        "title": "ReviewItem",
+        "type": "object"
+      },
+      "ReviewQueueResponse": {
+        "additionalProperties": true,
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ReviewItem"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "ok": {
+            "title": "Ok",
+            "type": "boolean"
+          },
+          "stats": {
+            "$ref": "#/components/schemas/ReviewStats"
+          }
+        },
+        "required": [
+          "ok",
+          "items",
+          "stats"
+        ],
+        "title": "ReviewQueueResponse",
+        "type": "object"
+      },
+      "ReviewStats": {
+        "additionalProperties": true,
+        "properties": {
+          "by_source": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "title": "By Source",
+            "type": "object"
+          },
+          "due": {
+            "title": "Due",
+            "type": "integer"
+          },
+          "learning": {
+            "title": "Learning",
+            "type": "integer"
+          },
+          "locked": {
+            "default": false,
+            "title": "Locked",
+            "type": "boolean"
+          },
+          "new": {
+            "title": "New",
+            "type": "integer"
+          },
+          "new_left_today": {
+            "title": "New Left Today",
+            "type": "integer"
+          },
+          "new_waiting": {
+            "title": "New Waiting",
+            "type": "integer"
+          },
+          "next_due_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Due At"
+          },
+          "review": {
+            "title": "Review",
+            "type": "integer"
+          },
+          "reviewed_today": {
+            "title": "Reviewed Today",
+            "type": "integer"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "due",
+          "learning",
+          "review",
+          "new",
+          "new_waiting",
+          "new_left_today",
+          "reviewed_today",
+          "total",
+          "by_source"
+        ],
+        "title": "ReviewStats",
         "type": "object"
       },
       "RewardAwardRequest": {
@@ -2200,6 +4236,17 @@
       "ShopStateResponse": {
         "additionalProperties": true,
         "properties": {
+          "champion_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Champion Id"
+          },
           "coins": {
             "title": "Coins",
             "type": "integer"
@@ -2232,6 +4279,86 @@
           "slot"
         ],
         "title": "ShopUnequipRequest",
+        "type": "object"
+      },
+      "StubCompleteRequest": {
+        "properties": {
+          "subscription_id": {
+            "maxLength": 64,
+            "title": "Subscription Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "subscription_id"
+        ],
+        "title": "StubCompleteRequest",
+        "type": "object"
+      },
+      "SubscriptionOut": {
+        "additionalProperties": true,
+        "properties": {
+          "cancel_at_period_end": {
+            "title": "Cancel At Period End",
+            "type": "boolean"
+          },
+          "current_end": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Current End"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "period": {
+            "title": "Period",
+            "type": "string"
+          },
+          "provider": {
+            "title": "Provider",
+            "type": "string"
+          },
+          "short_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Short Url"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "tier": {
+            "title": "Tier",
+            "type": "string"
+          },
+          "tier_name": {
+            "title": "Tier Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "provider",
+          "tier",
+          "tier_name",
+          "period",
+          "status",
+          "cancel_at_period_end"
+        ],
+        "title": "SubscriptionOut",
         "type": "object"
       },
       "SuccessResponse": {
@@ -2341,6 +4468,101 @@
           "document"
         ],
         "title": "UploadResponse",
+        "type": "object"
+      },
+      "UsageDay": {
+        "additionalProperties": true,
+        "properties": {
+          "ai_calls": {
+            "title": "Ai Calls",
+            "type": "integer"
+          },
+          "day": {
+            "title": "Day",
+            "type": "string"
+          },
+          "tokens": {
+            "title": "Tokens",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "day",
+          "ai_calls",
+          "tokens"
+        ],
+        "title": "UsageDay",
+        "type": "object"
+      },
+      "UsageResponse": {
+        "additionalProperties": true,
+        "properties": {
+          "expires_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expires At"
+          },
+          "history": {
+            "items": {
+              "$ref": "#/components/schemas/UsageDay"
+            },
+            "title": "History",
+            "type": "array"
+          },
+          "limits": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "title": "Limits",
+            "type": "object"
+          },
+          "own_key": {
+            "$ref": "#/components/schemas/OwnKeyUsage"
+          },
+          "resets": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Resets",
+            "type": "object"
+          },
+          "source": {
+            "title": "Source",
+            "type": "string"
+          },
+          "tier": {
+            "title": "Tier",
+            "type": "string"
+          },
+          "tier_name": {
+            "title": "Tier Name",
+            "type": "string"
+          },
+          "used": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "title": "Used",
+            "type": "object"
+          }
+        },
+        "required": [
+          "tier",
+          "tier_name",
+          "source",
+          "limits",
+          "used",
+          "own_key",
+          "resets",
+          "history"
+        ],
+        "title": "UsageResponse",
         "type": "object"
       },
       "UseItemRequest": {
@@ -2546,6 +4768,32 @@
         "title": "ValidationError",
         "type": "object"
       },
+      "VerifyRequest": {
+        "properties": {
+          "razorpay_payment_id": {
+            "maxLength": 64,
+            "title": "Razorpay Payment Id",
+            "type": "string"
+          },
+          "razorpay_signature": {
+            "maxLength": 256,
+            "title": "Razorpay Signature",
+            "type": "string"
+          },
+          "razorpay_subscription_id": {
+            "maxLength": 64,
+            "title": "Razorpay Subscription Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "razorpay_payment_id",
+          "razorpay_subscription_id",
+          "razorpay_signature"
+        ],
+        "title": "VerifyRequest",
+        "type": "object"
+      },
       "WeakConceptsResponse": {
         "additionalProperties": true,
         "description": "The concepts of a document the user keeps missing, weakest first.",
@@ -2579,6 +4827,42 @@
         ],
         "title": "WeakConceptsResponse",
         "type": "object"
+      },
+      "WebhookAck": {
+        "additionalProperties": true,
+        "properties": {
+          "duplicate": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Duplicate"
+          },
+          "ignored": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ignored"
+          },
+          "ok": {
+            "title": "Ok",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "ok"
+        ],
+        "title": "WebhookAck",
+        "type": "object"
       }
     }
   },
@@ -2588,6 +4872,62 @@
   },
   "openapi": "3.1.0",
   "paths": {
+    "/api/v1/account/redeem": {
+      "post": {
+        "operationId": "redeem_api_v1_account_redeem_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RedeemRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UsageResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Redeem"
+      }
+    },
+    "/api/v1/account/usage": {
+      "get": {
+        "operationId": "account_usage_api_v1_account_usage_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UsageResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Account Usage"
+      }
+    },
     "/api/v1/achievements": {
       "get": {
         "description": "Return all achievements with the user's unlock status and progress.",
@@ -2970,6 +5310,46 @@
           }
         },
         "summary": "Arena Battle Spell"
+      }
+    },
+    "/api/v1/arena/battles/{battle_id}/ultimate": {
+      "post": {
+        "description": "Cast your champion's ultimate (core_brains/kits.py). Needs a full meter (409 ultimate_not_ready) and only one\ncan be in play at a time (409 ultimate_active). Mira's Arcane Library acts on the open question, if any.",
+        "operationId": "arena_battle_ultimate_api_v1_arena_battles__battle_id__ultimate_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "battle_id",
+            "required": true,
+            "schema": {
+              "title": "Battle Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BattleUltimateResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Arena Battle Ultimate"
       }
     },
     "/api/v1/arena/leaderboard": {
@@ -3421,6 +5801,23 @@
       }
     },
     "/api/v1/auth/api-key": {
+      "delete": {
+        "description": "Forget the user's own provider settings: their AI then runs on the server's (within their plan's quotas).",
+        "operationId": "use_managed_ai_api_v1_auth_api_key_delete",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiKeyUpdateResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Use Managed Ai"
+      },
       "get": {
         "description": "Return the saved provider settings (never the actual key).",
         "operationId": "get_api_key_info_api_v1_auth_api_key_get",
@@ -3517,8 +5914,18 @@
     },
     "/api/v1/auth/delete-account": {
       "delete": {
-        "description": "Delete the account and ALL of its data: login row, chat/quiz history, progression,\nleaderboard entries, and uploaded documents (in memory and on disk).",
+        "description": "Delete the account and ALL of its data: login row, chat/quiz history, progression,\nleaderboard entries, and uploaded documents (in memory and on disk). Needs the password.",
         "operationId": "delete_account_api_v1_auth_delete_account_delete",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DeleteAccountRequest"
+              }
+            }
+          },
+          "required": true
+        },
         "responses": {
           "200": {
             "content": {
@@ -3529,6 +5936,16 @@
               }
             },
             "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
           }
         },
         "summary": "Delete Account"
@@ -3704,15 +6121,30 @@
         "summary": "Get Avatar"
       }
     },
-    "/api/v1/avatar/hero-forge-save": {
-      "post": {
-        "description": "Save hero-forge customization (skin, hair, outfit + equipment)",
-        "operationId": "hero_forge_save_api_v1_avatar_hero_forge_save_post",
+    "/api/v1/avatar/champion": {
+      "get": {
+        "operationId": "get_champion_api_v1_avatar_champion_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChampionResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get Champion"
+      },
+      "put": {
+        "operationId": "put_champion_api_v1_avatar_champion_put",
         "requestBody": {
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/AvatarConfigRequest"
+                "$ref": "#/components/schemas/ChampionRequest"
               }
             }
           },
@@ -3723,7 +6155,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HeroForgeSaveResponse"
+                  "$ref": "#/components/schemas/ChampionResponse"
                 }
               }
             },
@@ -3740,7 +6172,7 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Hero Forge Save"
+        "summary": "Put Champion"
       }
     },
     "/api/v1/avatar/update": {
@@ -3779,6 +6211,174 @@
           }
         },
         "summary": "Update Avatar"
+      }
+    },
+    "/api/v1/billing": {
+      "get": {
+        "operationId": "billing_status_api_v1_billing_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BillingStatus"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Billing Status"
+      }
+    },
+    "/api/v1/billing/cancel": {
+      "post": {
+        "operationId": "cancel_api_v1_billing_cancel_post",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SubscriptionOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Cancel"
+      }
+    },
+    "/api/v1/billing/checkout": {
+      "post": {
+        "operationId": "checkout_api_v1_billing_checkout_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CheckoutRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CheckoutResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Checkout"
+      }
+    },
+    "/api/v1/billing/stub/complete": {
+      "post": {
+        "operationId": "stub_complete_api_v1_billing_stub_complete_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StubCompleteRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SubscriptionOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Stub Complete"
+      }
+    },
+    "/api/v1/billing/verify": {
+      "post": {
+        "operationId": "verify_api_v1_billing_verify_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VerifyRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SubscriptionOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Verify"
+      }
+    },
+    "/api/v1/billing/webhook": {
+      "post": {
+        "operationId": "webhook_api_v1_billing_webhook_post",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WebhookAck"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Webhook"
       }
     },
     "/api/v1/chat": {
@@ -3841,7 +6441,7 @@
                 }
               }
             },
-            "description": "Server-Sent Events. `token` events ({\"text\"}) carry the answer as it is written; the final `sources` event carries {mode, sources, blocked, needs_clarification, rewards}; a failure after the first token arrives as an `error` event in the unified error shape. Failures before the first token are ordinary HTTP errors with the same body."
+            "description": "Server-Sent Events. `token` events ({\"text\"}) carry the answer as it is written; the final `sources` event carries {mode, sources, citations, blocked, needs_clarification, rewards}; a failure after the first token arrives as an `error` event in the unified error shape. Failures before the first token are ordinary HTTP errors with the same body."
           },
           "422": {
             "content": {
@@ -3855,6 +6455,301 @@
           }
         },
         "summary": "Chat Stream"
+      }
+    },
+    "/api/v1/concept-map": {
+      "get": {
+        "description": "The map as it is now (never starts any work): ready, building (with its progress line), or none yet.",
+        "operationId": "get_concept_map_api_v1_concept_map_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "session_id",
+            "required": true,
+            "schema": {
+              "title": "Session Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConceptMapResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Concept Map"
+      },
+      "post": {
+        "description": "Make the map of every document in the scope that has none yet: one AI call per document, run in the\nbackground (poll GET /concept-map). Documents already mapped are reused, at no cost.",
+        "operationId": "build_concept_map_api_v1_concept_map_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConceptMapBuildRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConceptMapResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Build Concept Map"
+      }
+    },
+    "/api/v1/courses": {
+      "get": {
+        "operationId": "list_courses_api_v1_courses_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CourseListResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "List Courses"
+      },
+      "post": {
+        "operationId": "create_course_api_v1_courses_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CourseCreateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Course"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create Course"
+      }
+    },
+    "/api/v1/courses/{course_id}": {
+      "delete": {
+        "description": "Delete the course. Its documents stay (they just stop being pinned by it).",
+        "operationId": "delete_course_api_v1_courses__course_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "course_id",
+            "required": true,
+            "schema": {
+              "title": "Course Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OkResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Delete Course"
+      },
+      "get": {
+        "operationId": "get_course_api_v1_courses__course_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "course_id",
+            "required": true,
+            "schema": {
+              "title": "Course Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Course"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Course"
+      },
+      "put": {
+        "description": "Rename, describe, or set the course's documents (the full list, in order).",
+        "operationId": "update_course_api_v1_courses__course_id__put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "course_id",
+            "required": true,
+            "schema": {
+              "title": "Course Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CourseUpdateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Course"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Update Course"
+      }
+    },
+    "/api/v1/courses/{course_id}/progress": {
+      "get": {
+        "operationId": "course_progress_api_v1_courses__course_id__progress_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "course_id",
+            "required": true,
+            "schema": {
+              "title": "Course Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CourseProgress"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Course Progress"
       }
     },
     "/api/v1/daily-quests": {
@@ -3933,6 +6828,44 @@
       }
     },
     "/api/v1/documents/{document_id}": {
+      "delete": {
+        "description": "Remove one of your documents (its index and PDF; it leaves its courses). Frees a place on your plan.",
+        "operationId": "delete_document_api_v1_documents__document_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "document_id",
+            "required": true,
+            "schema": {
+              "title": "Document Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Delete Document"
+      },
       "get": {
         "description": "Status of one document: queued | reading | indexing | ready | failed | needs_reindex.",
         "operationId": "get_document_status_api_v1_documents__document_id__get",
@@ -3970,6 +6903,361 @@
           }
         },
         "summary": "Get Document Status"
+      }
+    },
+    "/api/v1/documents/{document_id}/file": {
+      "get": {
+        "description": "The original PDF of one of the user's documents, for the side-by-side page viewer (cached privately by the\nbrowser; it never changes for a given document content). 404 pdf_unavailable: uploaded before PDFs were kept.",
+        "operationId": "get_document_file_api_v1_documents__document_id__file_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "document_id",
+            "required": true,
+            "schema": {
+              "title": "Document Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/pdf": {}
+            },
+            "description": "The original PDF"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Document File"
+      }
+    },
+    "/api/v1/entitlements": {
+      "get": {
+        "description": "The user's plan and, per feature, whether it is on and which plan has it.",
+        "operationId": "get_entitlements_api_v1_entitlements_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EntitlementsResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get Entitlements"
+      }
+    },
+    "/api/v1/exams": {
+      "get": {
+        "operationId": "exam_history_api_v1_exams_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExamHistoryResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Exam History"
+      },
+      "post": {
+        "description": "Write a new exam from the document and start its clock.",
+        "operationId": "create_exam_api_v1_exams_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ExamCreateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Exam"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create Exam"
+      }
+    },
+    "/api/v1/exams/active": {
+      "get": {
+        "description": "The exam in progress (to resume after a refresh), or null.",
+        "operationId": "active_exam_api_v1_exams_active_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExamActiveResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Active Exam"
+      }
+    },
+    "/api/v1/exams/options": {
+      "get": {
+        "description": "What an exam can be: lengths, difficulties, the clock per question, and topics to suggest (the concepts\nthis document's questions have covered so far, weakest first).",
+        "operationId": "exam_options_api_v1_exams_options_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "session_id",
+            "required": true,
+            "schema": {
+              "title": "Session Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExamOptionsResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Exam Options"
+      }
+    },
+    "/api/v1/exams/{exam_id}": {
+      "get": {
+        "operationId": "get_exam_api_v1_exams__exam_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "exam_id",
+            "required": true,
+            "schema": {
+              "title": "Exam Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Exam"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Exam"
+      }
+    },
+    "/api/v1/exams/{exam_id}/answers": {
+      "post": {
+        "description": "Save, change or clear an answer, or flag a question. No feedback until the exam is graded.",
+        "operationId": "answer_exam_api_v1_exams__exam_id__answers_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "exam_id",
+            "required": true,
+            "schema": {
+              "title": "Exam Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ExamAnswerRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExamAnswerResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Answer Exam"
+      }
+    },
+    "/api/v1/exams/{exam_id}/report.pdf": {
+      "get": {
+        "operationId": "exam_report_api_v1_exams__exam_id__report_pdf_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "exam_id",
+            "required": true,
+            "schema": {
+              "title": "Exam Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/pdf": {}
+            },
+            "description": "The PDF score report"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Exam Report"
+      }
+    },
+    "/api/v1/exams/{exam_id}/submit": {
+      "post": {
+        "description": "Grade the exam (once). Answering again returns the same result.",
+        "operationId": "submit_exam_api_v1_exams__exam_id__submit_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "exam_id",
+            "required": true,
+            "schema": {
+              "title": "Exam Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Exam"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Submit Exam"
       }
     },
     "/api/v1/flashcards": {
@@ -4212,6 +7500,24 @@
         "summary": "Notes"
       }
     },
+    "/api/v1/plans": {
+      "get": {
+        "operationId": "plans_api_v1_plans_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlansResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Plans"
+      }
+    },
     "/api/v1/profile": {
       "get": {
         "operationId": "get_profile_api_v1_profile_get",
@@ -4380,6 +7686,200 @@
           }
         },
         "summary": "Readiness Check"
+      }
+    },
+    "/api/v1/review/cards": {
+      "post": {
+        "description": "Add flashcards to the queue (\"Add deck to review\"). A card already there is left as it is.",
+        "operationId": "review_add_api_v1_review_cards_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReviewAddRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReviewAddResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Review Add"
+      }
+    },
+    "/api/v1/review/cards/{item_id}": {
+      "delete": {
+        "description": "Take a card out of the queue for good.",
+        "operationId": "review_remove_api_v1_review_cards__item_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "item_id",
+            "required": true,
+            "schema": {
+              "title": "Item Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OkResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Review Remove"
+      }
+    },
+    "/api/v1/review/grade": {
+      "post": {
+        "description": "Grade one card: 1 Again, 2 Hard, 3 Good, 4 Easy. FSRS sets when it comes back.",
+        "operationId": "review_grade_api_v1_review_grade_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReviewGradeRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReviewGradeResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Review Grade"
+      }
+    },
+    "/api/v1/review/queue": {
+      "get": {
+        "description": "The cards to review now, in order (learning, due reviews, then today's new cards). `session_id` narrows the\nqueue to one document.",
+        "operationId": "review_queue_api_v1_review_queue_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "session_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Session Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReviewQueueResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Review Queue"
+      }
+    },
+    "/api/v1/review/stats": {
+      "get": {
+        "description": "How many cards are due (the nav badge). Answered on every plan: `locked` says whether reviewing is on.",
+        "operationId": "review_stats_api_v1_review_stats_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReviewStats"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Review Stats"
       }
     },
     "/api/v1/rewards/award": {

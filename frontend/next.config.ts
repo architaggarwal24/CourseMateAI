@@ -35,6 +35,25 @@ const nextConfig: NextConfig = {
       { source: STUDY_UNKNOWN_TAB_SOURCE, destination: "/study", permanent: false },
     ];
   },
+  // Security headers on every page (the API sets its own, stricter ones). No script-src rules: Next's own inline
+  // scripts and Razorpay Checkout must run; framing and plugins are what this shuts. HSTS is the HTTPS front end's.
+  async headers() {
+    const common = [
+      { key: "X-Content-Type-Options", value: "nosniff" },
+      { key: "X-Frame-Options", value: "DENY" },
+      { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+      { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=(), payment=(self \"https://checkout.razorpay.com\" \"https://api.razorpay.com\")" },
+      { key: "Content-Security-Policy", value: "frame-ancestors 'none'; base-uri 'self'; object-src 'none'" },
+    ];
+    return [
+      { source: "/:path*", headers: common },
+      // The service worker is never cached, so a new version reaches everyone on their next visit.
+      { source: "/sw.js", headers: [
+        { key: "Cache-Control", value: "no-cache, no-store, must-revalidate" },
+        { key: "Content-Security-Policy", value: "default-src 'self'; script-src 'self'" },
+      ] },
+    ];
+  },
   async rewrites() {
     return [
       { source: "/api/:path*", destination: `${BACKEND_URL}/api/:path*` },

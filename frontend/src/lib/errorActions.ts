@@ -7,12 +7,13 @@
 //   session_expired          -> "Re-upload"                (the server no longer has the document)
 //   unauthenticated          -> "Log in"
 //   rate_limited             -> "Retry" after a countdown  (from Retry-After)
+//   plan_limit / feature_locked (action "plans") -> "See plans"   (Account -> Plan & usage)
 //
 // Any other code falls back to the `action` field the server sent (settings / relogin / retry / reupload).
 import { ApiError, type ApiErrorAction } from "@/lib/api/errors";
 import { ROUTES } from "@/lib/routes";
 
-export type ErrorActionKind = "settings" | "usage" | "retry" | "reupload" | "login";
+export type ErrorActionKind = "settings" | "usage" | "retry" | "reupload" | "login" | "plans";
 
 export interface ErrorAction {
   kind: ErrorActionKind;
@@ -40,9 +41,10 @@ const SETTINGS: ErrorAction = { kind: "settings", label: "Open Settings", href: 
 const LOGIN: ErrorAction = { kind: "login", label: "Log in", href: ROUTES.login };
 const RETRY: ErrorAction = { kind: "retry", label: "Retry" };
 const REUPLOAD: ErrorAction = { kind: "reupload", label: "Re-upload" };
+const PLANS: ErrorAction = { kind: "plans", label: "See plans", href: ROUTES.accountUsage };
 
 const BY_SERVER_ACTION: Record<Exclude<ApiErrorAction, null>, ErrorAction> = {
-  settings: SETTINGS, relogin: LOGIN, retry: RETRY, reupload: REUPLOAD,
+  settings: SETTINGS, relogin: LOGIN, retry: RETRY, reupload: REUPLOAD, plans: PLANS,
 };
 
 function usageAction(err: ApiError): ErrorAction {

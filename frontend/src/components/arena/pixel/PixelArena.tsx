@@ -14,8 +14,10 @@ export interface Floater { id: string; text: string; sub?: string; side: "boss" 
  * `beats` (with a changing `beatKey`) are what just happened; the scene plays them in order. Damage numbers for a
  * side appear when the blow on that side actually lands.
  */
-function PixelArena({ hero, bossId, stageId, rage, intent, shield, beats, beatKey, floaters, speech, label, introText = "FIGHT!" }: {
+function PixelArena({ hero, pet = null, bossId, stageId, rage, intent, shield, beats, beatKey, floaters, speech, label, introText = "FIGHT!" }: {
   hero: HeroDef;
+  /** The pet idling behind the champion. */
+  pet?: string | null;
   bossId: string;
   stageId?: string;
   rage: boolean;
@@ -42,7 +44,7 @@ function PixelArena({ hero, bossId, stageId, rage, intent, shield, beats, beatKe
   useEffect(() => {
     if (!canvas.current?.getContext?.("2d")) return;     // no canvas (tests): the words around it carry the fight
     const s = new FightScene(canvas.current, {
-      hero, bossId, stageId, reduced,
+      hero, pet, bossId, stageId, reduced,
       // only blows of the turn on screen reveal its numbers (a late blow of the last turn reveals nothing)
       onImpact: (side, key) => {
         if (key === undefined || key !== keyRef.current) return;
@@ -56,6 +58,7 @@ function PixelArena({ hero, bossId, stageId, rage, intent, shield, beats, beatKe
   }, [bossId, stageId, reduced]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => { scene.current?.setHero(hero); }, [hero]);
+  useEffect(() => { scene.current?.setPet(pet); }, [pet]);
   useEffect(() => { scene.current?.setRage(rage); }, [rage]);
   useEffect(() => { scene.current?.setIntent(intent); }, [intent]);
   useEffect(() => { scene.current?.setShield(shield); }, [shield]);

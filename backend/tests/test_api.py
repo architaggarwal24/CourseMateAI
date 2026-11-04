@@ -144,7 +144,7 @@ def test_deleted_account_token_stops_working(make_user, app_module):
     c, uid = make_user()
     token = c.cookies.get("session_token")
     assert c.get("/auth/me").status_code == 200
-    assert c.delete("/auth/delete-account").json()["success"]
+    assert c.request("DELETE", "/auth/delete-account", json={"password": "correct-horse-1"}).json()["success"]
     ghost = api_client(app_module.app, cookies={"session_token": token})
     assert ghost.get("/auth/me").status_code == 401
     assert ghost.get("/profile").json()["guest_mode"] is True          # not a resurrected user
@@ -158,7 +158,7 @@ def test_delete_account_removes_everything(make_user, app_module, pdf_bytes, fak
     c.post("/chat", json={"question": "What is mitosis?", "session_id": SID1})
     from config import UPLOAD_DIR
     assert any((UPLOAD_DIR / "indexes").glob("*"))
-    assert c.delete("/auth/delete-account").status_code == 200
+    assert c.request("DELETE", "/auth/delete-account", json={"password": "correct-horse-1"}).status_code == 200
 
     assert state.db.query("SELECT 1 FROM activity_log WHERE user_id = ?", [uid]) == []
     assert state.db.query("SELECT 1 FROM users WHERE id = ?", [uid]) == []
@@ -171,7 +171,7 @@ def test_delete_account_removes_everything(make_user, app_module, pdf_bytes, fak
 
 def test_email_change_is_normalised_so_login_still_works(make_user):
     c, _ = make_user("emailtest")
-    assert c.post("/auth/update-profile", json={"email": "New.Address@Example.COM"}).status_code == 200
+    assert c.post("/auth/update-profile", json={"email": "New.Address@Example.COM", "current_password": "correct-horse-1"}).status_code == 200
     assert c.get("/auth/me").json()["email"] == "new.address@example.com"       # fresh from DB, not stale JWT
     from fastapi.testclient import TestClient
     import main

@@ -1,0 +1,44 @@
+/* The side-by-side PDF viewer (components/pdf/PdfViewer.tsx). Study theme, tokens only. */
+.pdf-panel {
+  display: flex; flex-direction: column; min-height: 0; height: 100%;
+  background: var(--gradient-card), var(--glass-bg-strong);
+  border-left: 1px solid var(--glass-border-strong);
+}
+.pdf-panel__head { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--space-2); padding: var(--space-3) var(--space-4); border-bottom: 1px solid var(--glass-border); }
+.pdf-panel__title { margin: 0; font-size: 0.95rem; font-weight: 700; color: var(--color-text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pdf-panel__sub { margin: 2px 0 0; font-size: 0.75rem; color: var(--color-muted); }
+.pdf-panel__nav { display: flex; align-items: center; gap: var(--space-2); padding: var(--space-2) var(--space-4); border-bottom: 1px solid var(--glass-border); }
+.pdf-panel__page { font-size: 0.8rem; color: var(--color-text-secondary); font-variant-numeric: tabular-nums; }
+.pdf-panel__body { flex: 1; min-height: 0; overflow-y: auto; padding: var(--space-4); display: grid; gap: var(--space-4); align-content: start; }
+.pdf-panel__frame { width: 100%; }
+.pdf-panel__page-wrap { position: relative; width: fit-content; max-width: 100%; border-radius: var(--radius-md); overflow: hidden; box-shadow: var(--shadow-md); background: var(--color-on-accent); }
+.pdf-panel__page-wrap canvas { display: block; }
+.pdf-mark {
+  position: absolute; pointer-events: none; border-radius: 2px;
+  background: color-mix(in srgb, var(--color-reward) 38%, transparent);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--color-reward) 60%, transparent);
+  mix-blend-mode: multiply;
+}
+.pdf-panel__notice { display: flex; gap: var(--space-2); align-items: flex-start; padding: var(--space-3); border-radius: var(--radius-md); background: var(--glass-tint); border: 1px solid var(--glass-border); color: var(--color-text-secondary); font-size: 0.875rem; }
+.pdf-panel__notice p { margin: 0; }
+.pdf-panel__quote { margin: 0; }
+.pdf-panel__quote figcaption { font-size: 0.72rem; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; color: var(--color-muted); margin-bottom: var(--space-2); }
+.pdf-panel__quote blockquote { margin: 0; padding: var(--space-3) var(--space-4); border-left: 3px solid var(--color-reward); border-radius: var(--radius-sm); background: var(--glass-tint); color: var(--color-text-secondary); font-size: 0.875rem; line-height: 1.6; }
+
+/* chat: citation markers in the answer, and the list of sources under it */
+.cite-mark {
+  display: inline-grid; place-items: center; min-width: 1.35em; height: 1.35em; margin: 0 1px; padding: 0 0.3em;
+  vertical-align: 0.15em; border-radius: 6px; border: 1px solid color-mix(in srgb, var(--color-accent-text) 40%, transparent);
+  background: color-mix(in srgb, var(--color-accent) 14%, transparent); color: var(--color-accent-text);
+  font-size: 0.72em; font-weight: 700; line-height: 1; cursor: pointer; font-variant-numeric: tabular-nums;
+}
+.cite-mark:hover { background: color-mix(in srgb, var(--color-accent) 26%, transparent); }
+.cite-list { margin: var(--space-3) 0 0; padding: 0; list-style: none; display: flex; flex-wrap: wrap; gap: var(--space-1); }
+.cite-chip.ui-btn { gap: var(--space-1); font-weight: 500; }
+.cite-chip__n { font-weight: 700; color: var(--color-accent-text); font-variant-numeric: tabular-nums; }
+
+/* beside the conversation (ChatView); a full-screen sheet on phones */
+.pdf-panel[data-side] { width: min(46%, 560px); flex: none; }
+@media (max-width: 900px) {
+  .pdf-panel[data-side] { position: fixed; inset: 0; width: auto; z-index: 60; border-left: 0; }
+}

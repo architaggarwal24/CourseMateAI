@@ -99,6 +99,14 @@ class BattleSpellResponse(ApiModel):
     question: Optional[Dict[str, Any]] = None
 
 
+class BattleUltimateResponse(ApiModel):
+    """The champion's ultimate was cast: what it does now (hearts healed, free spells) and the new state."""
+    ok: bool
+    ultimate: Dict[str, Any]
+    battle: Dict[str, Any]
+    question: Optional[Dict[str, Any]] = None
+
+
 class WeakConceptsResponse(ApiModel):
     """The concepts of a document the user keeps missing, weakest first."""
     ok: bool

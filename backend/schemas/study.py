@@ -1,4 +1,4 @@
-from typing import Literal
+from typing import Literal, Optional
 
 from pydantic import BaseModel, Field
 
@@ -49,10 +49,14 @@ class FlashcardRequest(BaseModel):
 
 
 class FlashcardReviewRequest(BaseModel):
-    """The user flipped a card and says whether they knew it: counts for that concept's mastery."""
+    """The user flipped a card and says whether they knew it: counts for that concept's mastery. With the card's
+    `front` and `back` it also joins the spaced-repetition review queue (that first grade is its first review)."""
     session_id: str
     concept: str
     correct: bool
+    front: Optional[str] = None
+    back: Optional[str] = None
+    explanation: Optional[str] = None
 
 
 # ── responses ─────────────────────────────────────────────────────────────────
@@ -65,10 +69,22 @@ class HistoryResponse(ApiModel):
     history: List[Any]
 
 
+class Citation(ApiModel):
+    """A retrieved passage the answer can cite as [n]: which document, which page, and its text (to highlight)."""
+    n: int
+    doc_id: Optional[str] = None
+    doc_name: Optional[str] = None
+    page: Optional[int] = None               # 1-based
+    label: str
+    snippet: str
+    text: str
+
+
 class ChatResponse(ApiModel):
     mode: str
     content: str
     sources: List[Any]
+    citations: List[Citation] = []
     blocked: Optional[bool] = None
     needs_clarification: Optional[bool] = None
     rewards: Optional[Dict[str, Any]] = None
@@ -118,6 +134,7 @@ class FlashcardReviewResponse(ApiModel):
     ok: bool
     concept: str
     mastery: Dict[str, Any]          # {concept, seen, correct, wrong_streak}
+    review_item: Optional[Dict[str, Any]] = None     # the card in the review queue (when front/back were sent)
 
 
 class ReviewDeckResponse(ApiModel):

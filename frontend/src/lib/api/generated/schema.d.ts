@@ -4,6 +4,40 @@
  */
 
 export interface paths {
+    "/api/v1/account/redeem": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Redeem */
+        post: operations["redeem_api_v1_account_redeem_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/account/usage": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Account Usage */
+        get: operations["account_usage_api_v1_account_usage_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/achievements": {
         parameters: {
             query?: never;
@@ -181,6 +215,27 @@ export interface paths {
          *     Each works once per question.
          */
         post: operations["arena_battle_spell_api_v1_arena_battles__battle_id__spells_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/arena/battles/{battle_id}/ultimate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Arena Battle Ultimate
+         * @description Cast your champion's ultimate (core_brains/kits.py). Needs a full meter (409 ultimate_not_ready) and only one
+         *     can be in play at a time (409 ultimate_active). Mira's Arcane Library acts on the open question, if any.
+         */
+        post: operations["arena_battle_ultimate_api_v1_arena_battles__battle_id__ultimate_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -392,7 +447,11 @@ export interface paths {
          */
         put: operations["update_api_key_api_v1_auth_api_key_put"];
         post?: never;
-        delete?: never;
+        /**
+         * Use Managed Ai
+         * @description Forget the user's own provider settings: their AI then runs on the server's (within their plan's quotas).
+         */
+        delete: operations["use_managed_ai_api_v1_auth_api_key_delete"];
         options?: never;
         head?: never;
         patch?: never;
@@ -428,7 +487,7 @@ export interface paths {
         /**
          * Delete Account
          * @description Delete the account and ALL of its data: login row, chat/quiz history, progression,
-         *     leaderboard entries, and uploaded documents (in memory and on disk).
+         *     leaderboard entries, and uploaded documents (in memory and on disk). Needs the password.
          */
         delete: operations["delete_account_api_v1_auth_delete_account_delete"];
         options?: never;
@@ -545,20 +604,18 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/avatar/hero-forge-save": {
+    "/api/v1/avatar/champion": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        get?: never;
-        put?: never;
-        /**
-         * Hero Forge Save
-         * @description Save hero-forge customization (skin, hair, outfit + equipment)
-         */
-        post: operations["hero_forge_save_api_v1_avatar_hero_forge_save_post"];
+        /** Get Champion */
+        get: operations["get_champion_api_v1_avatar_champion_get"];
+        /** Put Champion */
+        put: operations["put_champion_api_v1_avatar_champion_put"];
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -576,6 +633,108 @@ export interface paths {
         put?: never;
         /** Update Avatar */
         post: operations["update_avatar_api_v1_avatar_update_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/billing": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Billing Status */
+        get: operations["billing_status_api_v1_billing_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/billing/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Cancel */
+        post: operations["cancel_api_v1_billing_cancel_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/billing/checkout": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Checkout */
+        post: operations["checkout_api_v1_billing_checkout_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/billing/stub/complete": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Stub Complete */
+        post: operations["stub_complete_api_v1_billing_stub_complete_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/billing/verify": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Verify */
+        post: operations["verify_api_v1_billing_verify_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/billing/webhook": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Webhook */
+        post: operations["webhook_api_v1_billing_webhook_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -610,6 +769,91 @@ export interface paths {
         put?: never;
         /** Chat Stream */
         post: operations["chat_stream_api_v1_chat_stream_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/concept-map": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Concept Map
+         * @description The map as it is now (never starts any work): ready, building (with its progress line), or none yet.
+         */
+        get: operations["get_concept_map_api_v1_concept_map_get"];
+        put?: never;
+        /**
+         * Build Concept Map
+         * @description Make the map of every document in the scope that has none yet: one AI call per document, run in the
+         *     background (poll GET /concept-map). Documents already mapped are reused, at no cost.
+         */
+        post: operations["build_concept_map_api_v1_concept_map_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/courses": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Courses */
+        get: operations["list_courses_api_v1_courses_get"];
+        put?: never;
+        /** Create Course */
+        post: operations["create_course_api_v1_courses_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/courses/{course_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Course */
+        get: operations["get_course_api_v1_courses__course_id__get"];
+        /**
+         * Update Course
+         * @description Rename, describe, or set the course's documents (the full list, in order).
+         */
+        put: operations["update_course_api_v1_courses__course_id__put"];
+        post?: never;
+        /**
+         * Delete Course
+         * @description Delete the course. Its documents stay (they just stop being pinned by it).
+         */
+        delete: operations["delete_course_api_v1_courses__course_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/courses/{course_id}/progress": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Course Progress */
+        get: operations["course_progress_api_v1_courses__course_id__progress_get"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -684,6 +928,187 @@ export interface paths {
         get: operations["get_document_status_api_v1_documents__document_id__get"];
         put?: never;
         post?: never;
+        /**
+         * Delete Document
+         * @description Remove one of your documents (its index and PDF; it leaves its courses). Frees a place on your plan.
+         */
+        delete: operations["delete_document_api_v1_documents__document_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/documents/{document_id}/file": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Document File
+         * @description The original PDF of one of the user's documents, for the side-by-side page viewer (cached privately by the
+         *     browser; it never changes for a given document content). 404 pdf_unavailable: uploaded before PDFs were kept.
+         */
+        get: operations["get_document_file_api_v1_documents__document_id__file_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/entitlements": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Entitlements
+         * @description The user's plan and, per feature, whether it is on and which plan has it.
+         */
+        get: operations["get_entitlements_api_v1_entitlements_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/exams": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Exam History */
+        get: operations["exam_history_api_v1_exams_get"];
+        put?: never;
+        /**
+         * Create Exam
+         * @description Write a new exam from the document and start its clock.
+         */
+        post: operations["create_exam_api_v1_exams_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/exams/active": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Active Exam
+         * @description The exam in progress (to resume after a refresh), or null.
+         */
+        get: operations["active_exam_api_v1_exams_active_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/exams/options": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Exam Options
+         * @description What an exam can be: lengths, difficulties, the clock per question, and topics to suggest (the concepts
+         *     this document's questions have covered so far, weakest first).
+         */
+        get: operations["exam_options_api_v1_exams_options_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/exams/{exam_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Exam */
+        get: operations["get_exam_api_v1_exams__exam_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/exams/{exam_id}/answers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Answer Exam
+         * @description Save, change or clear an answer, or flag a question. No feedback until the exam is graded.
+         */
+        post: operations["answer_exam_api_v1_exams__exam_id__answers_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/exams/{exam_id}/report.pdf": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Exam Report */
+        get: operations["exam_report_api_v1_exams__exam_id__report_pdf_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/exams/{exam_id}/submit": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Submit Exam
+         * @description Grade the exam (once). Answering again returns the same result.
+         */
+        post: operations["submit_exam_api_v1_exams__exam_id__submit_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -816,6 +1241,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/plans": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Plans */
+        get: operations["plans_api_v1_plans_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/profile": {
         parameters: {
             query?: never;
@@ -918,6 +1360,107 @@ export interface paths {
          *     503 until then (the first start downloads the model, which takes a few minutes).
          */
         get: operations["readiness_check_api_v1_ready_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/review/cards": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Review Add
+         * @description Add flashcards to the queue ("Add deck to review"). A card already there is left as it is.
+         */
+        post: operations["review_add_api_v1_review_cards_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/review/cards/{item_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Review Remove
+         * @description Take a card out of the queue for good.
+         */
+        delete: operations["review_remove_api_v1_review_cards__item_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/review/grade": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Review Grade
+         * @description Grade one card: 1 Again, 2 Hard, 3 Good, 4 Easy. FSRS sets when it comes back.
+         */
+        post: operations["review_grade_api_v1_review_grade_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/review/queue": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Review Queue
+         * @description The cards to review now, in order (learning, due reviews, then today's new cards). `session_id` narrows the
+         *     queue to one document.
+         */
+        get: operations["review_queue_api_v1_review_queue_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/review/stats": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Review Stats
+         * @description How many cards are due (the nav badge). Answered on every plan: `locked` says whether reviewing is on.
+         */
+        get: operations["review_stats_api_v1_review_stats_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1137,101 +1680,30 @@ export interface components {
         } & {
             [key: string]: unknown;
         };
-        /**
-         * AvatarConfigRequest
-         * @description Save hero-forge customization: skin, hair, outfit, headgear, weapon, pet
-         */
-        AvatarConfigRequest: {
-            /**
-             * Body Type Id
-             * @default
-             */
-            body_type_id?: string;
-            /**
-             * Eye Color Id
-             * @default
-             */
-            eye_color_id?: string;
-            /**
-             * Hair Id
-             * @default
-             */
-            hair_id?: string;
-            /**
-             * Headgear
-             * @default
-             */
-            headgear?: string;
-            /**
-             * Lip Color Id
-             * @default
-             */
-            lip_color_id?: string;
-            /**
-             * Outfit Id
-             * @default
-             */
-            outfit_id?: string;
-            /**
-             * Pet
-             * @default
-             */
-            pet?: string;
-            /**
-             * Skin Id
-             * @default
-             */
-            skin_id?: string;
-            /**
-             * Weapon
-             * @default
-             */
-            weapon?: string;
-        };
         /** AvatarResponse */
         AvatarResponse: {
-            /** Body Type Id */
-            body_type_id?: string | null;
+            /** Champion Chosen */
+            champion_chosen?: boolean | null;
+            /** Champion Id */
+            champion_id?: string | null;
             /** Equipped */
             equipped: {
                 [key: string]: unknown;
             };
-            /** Eye Color Id */
-            eye_color_id?: string | null;
-            /** Hair Id */
-            hair_id?: string | null;
-            /** Lip Color Id */
-            lip_color_id?: string | null;
-            /** Outfit Id */
-            outfit_id?: string | null;
             /** Owned */
             owned: unknown[];
-            /** Skin Id */
-            skin_id?: string | null;
         } & {
             [key: string]: unknown;
         };
-        /** AvatarUpdateRequest */
+        /**
+         * AvatarUpdateRequest
+         * @description Wear items by slot: {"armor": "<item id>", "pet": "none", ...}. Ownership is enforced by the server.
+         */
         AvatarUpdateRequest: {
             /** Equipped */
             equipped?: {
                 [key: string]: unknown;
             };
-            /**
-             * Hair Id
-             * @default
-             */
-            hair_id?: string;
-            /**
-             * Outfit Id
-             * @default
-             */
-            outfit_id?: string;
-            /**
-             * Skin Id
-             * @default
-             */
-            skin_id?: string;
         };
         /** AvatarUpdateResponse */
         AvatarUpdateResponse: {
@@ -1397,12 +1869,104 @@ export interface components {
         } & {
             [key: string]: unknown;
         };
+        /**
+         * BattleUltimateResponse
+         * @description The champion's ultimate was cast: what it does now (hearts healed, free spells) and the new state.
+         */
+        BattleUltimateResponse: {
+            /** Battle */
+            battle: {
+                [key: string]: unknown;
+            };
+            /** Ok */
+            ok: boolean;
+            /** Question */
+            question?: {
+                [key: string]: unknown;
+            } | null;
+            /** Ultimate */
+            ultimate: {
+                [key: string]: unknown;
+            };
+        } & {
+            [key: string]: unknown;
+        };
+        /** BillingStatus */
+        BillingStatus: {
+            /** Enabled */
+            enabled: boolean;
+            /** Key Id */
+            key_id?: string | null;
+            /** Provider */
+            provider?: string | null;
+            subscription?: components["schemas"]["SubscriptionOut"] | null;
+        } & {
+            [key: string]: unknown;
+        };
         /** Body_upload_pdf_api_v1_upload_post */
         Body_upload_pdf_api_v1_upload_post: {
             /** File */
             file: string;
             /** Session Id */
             session_id?: string;
+        };
+        /** ChampionKit */
+        ChampionKit: {
+            passive: components["schemas"]["KitText"];
+            ultimate: components["schemas"]["KitText"];
+        } & {
+            [key: string]: unknown;
+        };
+        /**
+         * ChampionProgress
+         * @description A champion's XP from battles fought with it, its level (1-10) and the mastery skins its levels unlock.
+         */
+        ChampionProgress: {
+            /** Battles */
+            battles: number;
+            kit: components["schemas"]["ChampionKit"];
+            /** Level */
+            level: number;
+            /** Level Xp */
+            level_xp: number;
+            /** Mastery */
+            mastery: components["schemas"]["MasteryUnlock"][];
+            /** Next Level Xp */
+            next_level_xp?: number | null;
+            /** Wins */
+            wins: number;
+            /** Xp */
+            xp: number;
+        } & {
+            [key: string]: unknown;
+        };
+        /**
+         * ChampionRequest
+         * @description Choose a champion; `loadout` (optional) wears skins in the same save: slot -> item id, or "none" to empty it.
+         */
+        ChampionRequest: {
+            /** Champion Id */
+            champion_id: string;
+            /** Loadout */
+            loadout?: {
+                [key: string]: string | null;
+            } | null;
+        };
+        /** ChampionResponse */
+        ChampionResponse: {
+            /** Champion Id */
+            champion_id: string;
+            /** Champions */
+            champions: string[];
+            /** Chosen */
+            chosen: boolean;
+            loadout: components["schemas"]["Loadout"];
+            /** Progress */
+            progress?: {
+                [key: string]: components["schemas"]["ChampionProgress"];
+            };
+        } & {
+            [key: string]: unknown;
         };
         /** ChatRequest */
         ChatRequest: {
@@ -1422,6 +1986,11 @@ export interface components {
         ChatResponse: {
             /** Blocked */
             blocked?: boolean | null;
+            /**
+             * Citations
+             * @default []
+             */
+            citations?: components["schemas"]["Citation"][];
             /** Content */
             content: string;
             /** Mode */
@@ -1437,12 +2006,195 @@ export interface components {
         } & {
             [key: string]: unknown;
         };
+        /** CheckoutRequest */
+        CheckoutRequest: {
+            /**
+             * Period
+             * @default month
+             */
+            period?: string;
+            /** Tier */
+            tier: string;
+        };
+        /** CheckoutResponse */
+        CheckoutResponse: {
+            /** Amount */
+            amount: number;
+            /** Currency */
+            currency: string;
+            /** Key Id */
+            key_id: string;
+            /** Period */
+            period: string;
+            /** Prefill */
+            prefill: {
+                [key: string]: string;
+            };
+            /** Provider */
+            provider: string;
+            /** Short Url */
+            short_url?: string | null;
+            /** Subscription Id */
+            subscription_id: string;
+            /** Tier */
+            tier: string;
+            /** Tier Name */
+            tier_name: string;
+        } & {
+            [key: string]: unknown;
+        };
+        /**
+         * Citation
+         * @description A retrieved passage the answer can cite as [n]: which document, which page, and its text (to highlight).
+         */
+        Citation: {
+            /** Doc Id */
+            doc_id?: string | null;
+            /** Doc Name */
+            doc_name?: string | null;
+            /** Label */
+            label: string;
+            /** N */
+            n: number;
+            /** Page */
+            page?: number | null;
+            /** Snippet */
+            snippet: string;
+            /** Text */
+            text: string;
+        } & {
+            [key: string]: unknown;
+        };
+        /** ConceptMapBuildRequest */
+        ConceptMapBuildRequest: {
+            /** Session Id */
+            session_id: string;
+        };
+        /** ConceptMapResponse */
+        ConceptMapResponse: {
+            /** Built */
+            built: number;
+            /** Concepts */
+            concepts: components["schemas"]["MapNode"][];
+            /** Documents */
+            documents: components["schemas"]["MapDocument"][];
+            /** Relations */
+            relations: components["schemas"]["MapEdge"][];
+            /** Scope */
+            scope: {
+                [key: string]: string;
+            };
+            /** Stage */
+            stage?: string | null;
+            /** Status */
+            status: string;
+            /** Total */
+            total: number;
+        } & {
+            [key: string]: unknown;
+        };
+        /** Course */
+        Course: {
+            /** Created At */
+            created_at: string;
+            /** Description */
+            description?: string | null;
+            /** Documents */
+            documents: components["schemas"]["CourseDocument"][];
+            /** Id */
+            id: string;
+            /** Name */
+            name: string;
+            /** Ready */
+            ready: number;
+            /** Updated At */
+            updated_at: string;
+        } & {
+            [key: string]: unknown;
+        };
+        /** CourseCreateRequest */
+        CourseCreateRequest: {
+            /** Description */
+            description?: string | null;
+            /** Document Ids */
+            document_ids?: string[];
+            /** Name */
+            name: string;
+        };
+        /** CourseDocument */
+        CourseDocument: {
+            /** Chunks */
+            chunks?: number | null;
+            /** Filename */
+            filename: string;
+            /** Id */
+            id: string;
+            /** Pdf Available */
+            pdf_available: boolean;
+            /** Status */
+            status: string;
+        } & {
+            [key: string]: unknown;
+        };
+        /** CourseListResponse */
+        CourseListResponse: {
+            /** Courses */
+            courses: components["schemas"]["Course"][];
+        } & {
+            [key: string]: unknown;
+        };
+        /** CourseProgress */
+        CourseProgress: {
+            /** Answers */
+            answers: {
+                [key: string]: unknown;
+            };
+            /** Concepts */
+            concepts: {
+                [key: string]: unknown;
+            };
+            /** Course Id */
+            course_id: string;
+            /** Documents */
+            documents: {
+                [key: string]: unknown;
+            }[];
+            /** Exams */
+            exams: {
+                [key: string]: unknown;
+            }[];
+            /** Mastery */
+            mastery: number;
+            /** Review */
+            review: {
+                [key: string]: number;
+            };
+        } & {
+            [key: string]: unknown;
+        };
+        /**
+         * CourseUpdateRequest
+         * @description Only the fields sent change. `document_ids` is the full list, in order (add, remove, reorder).
+         */
+        CourseUpdateRequest: {
+            /** Description */
+            description?: string | null;
+            /** Document Ids */
+            document_ids?: string[] | null;
+            /** Name */
+            name?: string | null;
+        };
         /** DailyQuestsResponse */
         DailyQuestsResponse: {
             /** Quests */
             quests: unknown[];
         } & {
             [key: string]: unknown;
+        };
+        /** DeleteAccountRequest */
+        DeleteAccountRequest: {
+            /** Password */
+            password: string;
         };
         /** DocumentListResponse */
         DocumentListResponse: {
@@ -1460,6 +2212,8 @@ export interface components {
             chunks?: number | null;
             /** Created At */
             created_at: string;
+            /** Documents */
+            documents?: unknown[] | null;
             /** Embedding Model */
             embedding_model?: string | null;
             /** Error */
@@ -1470,13 +2224,222 @@ export interface components {
             filename: string;
             /** Id */
             id: string;
+            /** Kind */
+            kind?: string | null;
             /** Last Used At */
             last_used_at: string;
+            /** Pdf Available */
+            pdf_available?: boolean | null;
+            /** Pinned */
+            pinned?: boolean | null;
             /**
              * Status
              * @enum {string}
              */
             status: "queued" | "reading" | "indexing" | "ready" | "failed" | "needs_reindex";
+        } & {
+            [key: string]: unknown;
+        };
+        /** EntitlementsResponse */
+        EntitlementsResponse: {
+            /** Features */
+            features: {
+                [key: string]: components["schemas"]["FeatureEntitlement"];
+            };
+            /** Tier */
+            tier: string;
+            /** Tier Name */
+            tier_name: string;
+        } & {
+            [key: string]: unknown;
+        };
+        /** Exam */
+        Exam: {
+            /** Answered */
+            answered: number;
+            /** Deadline */
+            deadline: string;
+            /** Difficulty */
+            difficulty: string;
+            /** Doc Name */
+            doc_name: string;
+            /** Id */
+            id: string;
+            /** Length */
+            length: number;
+            /** Questions */
+            questions: components["schemas"]["ExamQuestion"][];
+            result?: components["schemas"]["ExamResult"] | null;
+            /** Rewards */
+            rewards?: {
+                [key: string]: unknown;
+            } | null;
+            /** Seconds Left */
+            seconds_left: number;
+            /** Session Id */
+            session_id: string;
+            /** Started At */
+            started_at: string;
+            /** Status */
+            status: string;
+            /** Time Limit S */
+            time_limit_s: number;
+            /** Topics */
+            topics: string[];
+            /** Total */
+            total: number;
+        } & {
+            [key: string]: unknown;
+        };
+        /** ExamActiveResponse */
+        ExamActiveResponse: {
+            exam?: components["schemas"]["Exam"] | null;
+        } & {
+            [key: string]: unknown;
+        };
+        /** ExamAnswerRequest */
+        ExamAnswerRequest: {
+            /** Answer */
+            answer?: string | null;
+            /**
+             * Clear
+             * @default false
+             */
+            clear?: boolean;
+            /** Flagged */
+            flagged?: boolean | null;
+            /** Index */
+            index: number;
+        };
+        /** ExamAnswerResponse */
+        ExamAnswerResponse: {
+            /** Answer */
+            answer?: string | null;
+            /** Answered */
+            answered: number;
+            /** Flagged */
+            flagged: boolean;
+            /** Index */
+            index: number;
+            /** Ok */
+            ok: boolean;
+            /** Seconds Left */
+            seconds_left: number;
+        } & {
+            [key: string]: unknown;
+        };
+        /** ExamCreateRequest */
+        ExamCreateRequest: {
+            /**
+             * Difficulty
+             * @default mixed
+             * @enum {string}
+             */
+            difficulty?: "easy" | "medium" | "hard" | "mixed";
+            /**
+             * Length
+             * @default 20
+             * @enum {integer}
+             */
+            length?: 10 | 20 | 30;
+            /** Session Id */
+            session_id: string;
+            /** Topics */
+            topics?: string[];
+        };
+        /** ExamHistoryResponse */
+        ExamHistoryResponse: {
+            /** Exams */
+            exams: {
+                [key: string]: unknown;
+            }[];
+        } & {
+            [key: string]: unknown;
+        };
+        /** ExamOptionsResponse */
+        ExamOptionsResponse: {
+            /** Difficulties */
+            difficulties: string[];
+            /** Lengths */
+            lengths: number[];
+            /** Max Topics */
+            max_topics: number;
+            /** Seconds Per Question */
+            seconds_per_question: {
+                [key: string]: number;
+            };
+            /** Suggested Topics */
+            suggested_topics: string[];
+        } & {
+            [key: string]: unknown;
+        };
+        /** ExamQuestion */
+        ExamQuestion: {
+            /** Answer */
+            answer?: string | null;
+            /** Concept */
+            concept?: string | null;
+            /** Correct */
+            correct?: boolean | null;
+            /** Correct Answer */
+            correct_answer?: string | null;
+            /** Difficulty */
+            difficulty?: string | null;
+            /** Explanation */
+            explanation?: string | null;
+            /**
+             * Flagged
+             * @default false
+             */
+            flagged?: boolean;
+            /** Index */
+            index: number;
+            /** Options */
+            options: string[];
+            /** Question */
+            question: string;
+        } & {
+            [key: string]: unknown;
+        };
+        /** ExamResult */
+        ExamResult: {
+            /** Accuracy */
+            accuracy: number;
+            /** Auto Submitted */
+            auto_submitted: boolean;
+            /** Concepts */
+            concepts: {
+                [key: string]: unknown;
+            }[];
+            /** Difficulties */
+            difficulties: {
+                [key: string]: unknown;
+            }[];
+            /** Score */
+            score: number;
+            /** Submitted At */
+            submitted_at: string;
+            /** Time Used S */
+            time_used_s: number;
+            /** Total */
+            total: number;
+            /** Unanswered */
+            unanswered: number;
+            /** Weak Concepts */
+            weak_concepts: string[];
+        } & {
+            [key: string]: unknown;
+        };
+        /** FeatureEntitlement */
+        FeatureEntitlement: {
+            /** Enabled */
+            enabled: boolean;
+            /** Name */
+            name: string;
+            /** Required Tier */
+            required_tier: string;
+            /** Required Tier Name */
+            required_tier_name: string;
         } & {
             [key: string]: unknown;
         };
@@ -1494,13 +2457,20 @@ export interface components {
         };
         /**
          * FlashcardReviewRequest
-         * @description The user flipped a card and says whether they knew it: counts for that concept's mastery.
+         * @description The user flipped a card and says whether they knew it: counts for that concept's mastery. With the card's
+         *     `front` and `back` it also joins the spaced-repetition review queue (that first grade is its first review).
          */
         FlashcardReviewRequest: {
+            /** Back */
+            back?: string | null;
             /** Concept */
             concept: string;
             /** Correct */
             correct: boolean;
+            /** Explanation */
+            explanation?: string | null;
+            /** Front */
+            front?: string | null;
             /** Session Id */
             session_id: string;
         };
@@ -1514,6 +2484,10 @@ export interface components {
             };
             /** Ok */
             ok: boolean;
+            /** Review Item */
+            review_item?: {
+                [key: string]: unknown;
+            } | null;
         } & {
             [key: string]: unknown;
         };
@@ -1541,17 +2515,6 @@ export interface components {
         HealthResponse: {
             /** Status */
             status: string;
-        } & {
-            [key: string]: unknown;
-        };
-        /** HeroForgeSaveResponse */
-        HeroForgeSaveResponse: {
-            /** Equipped */
-            equipped: {
-                [key: string]: unknown;
-            };
-            /** Ok */
-            ok: boolean;
         } & {
             [key: string]: unknown;
         };
@@ -1587,6 +2550,15 @@ export interface components {
         } & {
             [key: string]: unknown;
         };
+        /** KitText */
+        KitText: {
+            /** Name */
+            name: string;
+            /** Text */
+            text: string;
+        } & {
+            [key: string]: unknown;
+        };
         /** LeaderboardResponse */
         LeaderboardResponse: {
             /** Date */
@@ -1602,6 +2574,22 @@ export interface components {
         } & {
             [key: string]: unknown;
         };
+        /**
+         * Loadout
+         * @description The champion's skins: one shop item id per slot, or null when the slot is empty.
+         */
+        Loadout: {
+            /** Armor */
+            armor?: string | null;
+            /** Headgear */
+            headgear?: string | null;
+            /** Pet */
+            pet?: string | null;
+            /** Weapon */
+            weapon?: string | null;
+        } & {
+            [key: string]: unknown;
+        };
         /** LoginRequest */
         LoginRequest: {
             /** Email */
@@ -1610,6 +2598,68 @@ export interface components {
             password: string;
             /** Timezone */
             timezone?: string | null;
+        };
+        /** MapDocument */
+        MapDocument: {
+            /** Error */
+            error?: string | null;
+            /** Id */
+            id: string;
+            /** Name */
+            name: string;
+            /** Stage */
+            stage?: string | null;
+            /** Status */
+            status: string;
+        } & {
+            [key: string]: unknown;
+        };
+        /** MapEdge */
+        MapEdge: {
+            /** Label */
+            label: string;
+            /** Source */
+            source: string;
+            /** Target */
+            target: string;
+        } & {
+            [key: string]: unknown;
+        };
+        /** MapNode */
+        MapNode: {
+            /** Correct */
+            correct: number;
+            /** Docs */
+            docs: string[];
+            /** Heat */
+            heat: string;
+            /** Id */
+            id: string;
+            /** Importance */
+            importance: number;
+            /** Name */
+            name: string;
+            /** Pages */
+            pages: {
+                [key: string]: unknown;
+            }[];
+            /** Seen */
+            seen: number;
+            /** Summary */
+            summary: string;
+        } & {
+            [key: string]: unknown;
+        };
+        /** MasteryUnlock */
+        MasteryUnlock: {
+            /** Id */
+            id: string;
+            /** Level */
+            level: number;
+            /** Slot */
+            slot: string;
+        } & {
+            [key: string]: unknown;
         };
         /** NotesRequest */
         NotesRequest: {
@@ -1637,6 +2687,66 @@ export interface components {
             } | null;
             /** Sources */
             sources: unknown[];
+        } & {
+            [key: string]: unknown;
+        };
+        /** OkResponse */
+        OkResponse: {
+            /** Ok */
+            ok: boolean;
+        } & {
+            [key: string]: unknown;
+        };
+        /** OwnKeyUsage */
+        OwnKeyUsage: {
+            /** Active */
+            active: boolean;
+            /** Calls Today */
+            calls_today: number;
+            /** Exempt */
+            exempt: boolean;
+            /** Tokens Month */
+            tokens_month: number;
+        } & {
+            [key: string]: unknown;
+        };
+        /** PlanOut */
+        PlanOut: {
+            /** Currency */
+            currency: string;
+            /** Features */
+            features: string[];
+            /** Highlights */
+            highlights: string[];
+            /** Limits */
+            limits: {
+                [key: string]: number;
+            };
+            /** Name */
+            name: string;
+            /** Price Month */
+            price_month: number;
+            /** Price Year */
+            price_year: number;
+            /** Tagline */
+            tagline: string;
+            /** Tier */
+            tier: string;
+        } & {
+            [key: string]: unknown;
+        };
+        /** PlansResponse */
+        PlansResponse: {
+            /** Currency */
+            currency: string;
+            /** Invite Only */
+            invite_only: boolean;
+            /** Managed Ai */
+            managed_ai: boolean;
+            /** Payments Enabled */
+            payments_enabled: boolean;
+            /** Plans */
+            plans: components["schemas"]["PlanOut"][];
         } & {
             [key: string]: unknown;
         };
@@ -1839,6 +2949,11 @@ export interface components {
         } & {
             [key: string]: unknown;
         };
+        /** RedeemRequest */
+        RedeemRequest: {
+            /** Code */
+            code: string;
+        };
         /** RegisterRequest */
         RegisterRequest: {
             /**
@@ -1852,6 +2967,8 @@ export interface components {
             full_name: string;
             /** Guest Id */
             guest_id?: string | null;
+            /** Invite Code */
+            invite_code?: string | null;
             /** Llm Base Url */
             llm_base_url?: string | null;
             /** Llm Model */
@@ -1879,6 +2996,38 @@ export interface components {
         } & {
             [key: string]: unknown;
         };
+        /** ReviewAddRequest */
+        ReviewAddRequest: {
+            /** Cards */
+            cards: components["schemas"]["ReviewCardIn"][];
+            /** Session Id */
+            session_id: string;
+        };
+        /** ReviewAddResponse */
+        ReviewAddResponse: {
+            /** Added */
+            added: number;
+            /** Existing */
+            existing: number;
+            /** Ok */
+            ok: boolean;
+            /** Skipped */
+            skipped: number;
+            stats: components["schemas"]["ReviewStats"];
+        } & {
+            [key: string]: unknown;
+        };
+        /** ReviewCardIn */
+        ReviewCardIn: {
+            /** Back */
+            back: string;
+            /** Concept */
+            concept?: string | null;
+            /** Explanation */
+            explanation?: string | null;
+            /** Front */
+            front: string;
+        };
         /**
          * ReviewDeckResponse
          * @description Flashcards built from the questions the user missed (arena + quiz) on this document - no AI call.
@@ -1890,6 +3039,121 @@ export interface components {
             }[];
             /** Ok */
             ok: boolean;
+            /** Total */
+            total: number;
+        } & {
+            [key: string]: unknown;
+        };
+        /** ReviewDocument */
+        ReviewDocument: {
+            /** Name */
+            name?: string | null;
+            /** Session Id */
+            session_id?: string | null;
+        } & {
+            [key: string]: unknown;
+        };
+        /** ReviewGradeRequest */
+        ReviewGradeRequest: {
+            /** Duration Ms */
+            duration_ms?: number | null;
+            /** Item Id */
+            item_id: number;
+            /**
+             * Rating
+             * @description 1 Again, 2 Hard, 3 Good, 4 Easy
+             */
+            rating: number;
+            /**
+             * Reps
+             * @description The card's reps as shown: a second grade of the same view is refused
+             */
+            reps?: number | null;
+        };
+        /** ReviewGradeResponse */
+        ReviewGradeResponse: {
+            item: components["schemas"]["ReviewItem"];
+            /** Mastery */
+            mastery?: {
+                [key: string]: unknown;
+            } | null;
+            /** Ok */
+            ok: boolean;
+            /** Rewards */
+            rewards?: {
+                [key: string]: unknown;
+            } | null;
+            stats: components["schemas"]["ReviewStats"];
+        } & {
+            [key: string]: unknown;
+        };
+        /** ReviewItem */
+        ReviewItem: {
+            /** Back */
+            back: string;
+            /** Concept */
+            concept?: string | null;
+            document: components["schemas"]["ReviewDocument"];
+            /** Due */
+            due: string;
+            /** Explanation */
+            explanation?: string | null;
+            /** Front */
+            front: string;
+            /** Id */
+            id: number;
+            /** Intervals */
+            intervals?: {
+                [key: string]: number;
+            } | null;
+            /** Lapses */
+            lapses: number;
+            /** Reps */
+            reps: number;
+            /** Source */
+            source: string;
+            /** State */
+            state: string;
+        } & {
+            [key: string]: unknown;
+        };
+        /** ReviewQueueResponse */
+        ReviewQueueResponse: {
+            /** Items */
+            items: components["schemas"]["ReviewItem"][];
+            /** Ok */
+            ok: boolean;
+            stats: components["schemas"]["ReviewStats"];
+        } & {
+            [key: string]: unknown;
+        };
+        /** ReviewStats */
+        ReviewStats: {
+            /** By Source */
+            by_source: {
+                [key: string]: number;
+            };
+            /** Due */
+            due: number;
+            /** Learning */
+            learning: number;
+            /**
+             * Locked
+             * @default false
+             */
+            locked?: boolean;
+            /** New */
+            new: number;
+            /** New Left Today */
+            new_left_today: number;
+            /** New Waiting */
+            new_waiting: number;
+            /** Next Due At */
+            next_due_at?: string | null;
+            /** Review */
+            review: number;
+            /** Reviewed Today */
+            reviewed_today: number;
             /** Total */
             total: number;
         } & {
@@ -2054,6 +3318,8 @@ export interface components {
         };
         /** ShopStateResponse */
         ShopStateResponse: {
+            /** Champion Id */
+            champion_id?: string | null;
             /** Coins */
             coins: number;
             /** Level */
@@ -2067,6 +3333,34 @@ export interface components {
         ShopUnequipRequest: {
             /** Slot */
             slot: string;
+        };
+        /** StubCompleteRequest */
+        StubCompleteRequest: {
+            /** Subscription Id */
+            subscription_id: string;
+        };
+        /** SubscriptionOut */
+        SubscriptionOut: {
+            /** Cancel At Period End */
+            cancel_at_period_end: boolean;
+            /** Current End */
+            current_end?: string | null;
+            /** Id */
+            id: string;
+            /** Period */
+            period: string;
+            /** Provider */
+            provider: string;
+            /** Short Url */
+            short_url?: string | null;
+            /** Status */
+            status: string;
+            /** Tier */
+            tier: string;
+            /** Tier Name */
+            tier_name: string;
+        } & {
+            [key: string]: unknown;
         };
         /** SuccessResponse */
         SuccessResponse: {
@@ -2102,6 +3396,45 @@ export interface components {
             reused: boolean;
             /** Session Id */
             session_id: string;
+        } & {
+            [key: string]: unknown;
+        };
+        /** UsageDay */
+        UsageDay: {
+            /** Ai Calls */
+            ai_calls: number;
+            /** Day */
+            day: string;
+            /** Tokens */
+            tokens: number;
+        } & {
+            [key: string]: unknown;
+        };
+        /** UsageResponse */
+        UsageResponse: {
+            /** Expires At */
+            expires_at?: string | null;
+            /** History */
+            history: components["schemas"]["UsageDay"][];
+            /** Limits */
+            limits: {
+                [key: string]: number;
+            };
+            own_key: components["schemas"]["OwnKeyUsage"];
+            /** Resets */
+            resets: {
+                [key: string]: string;
+            };
+            /** Source */
+            source: string;
+            /** Tier */
+            tier: string;
+            /** Tier Name */
+            tier_name: string;
+            /** Used */
+            used: {
+                [key: string]: number;
+            };
         } & {
             [key: string]: unknown;
         };
@@ -2170,6 +3503,15 @@ export interface components {
             /** Error Type */
             type: string;
         };
+        /** VerifyRequest */
+        VerifyRequest: {
+            /** Razorpay Payment Id */
+            razorpay_payment_id: string;
+            /** Razorpay Signature */
+            razorpay_signature: string;
+            /** Razorpay Subscription Id */
+            razorpay_subscription_id: string;
+        };
         /**
          * WeakConceptsResponse
          * @description The concepts of a document the user keeps missing, weakest first.
@@ -2188,6 +3530,17 @@ export interface components {
         } & {
             [key: string]: unknown;
         };
+        /** WebhookAck */
+        WebhookAck: {
+            /** Duplicate */
+            duplicate?: boolean | null;
+            /** Ignored */
+            ignored?: boolean | null;
+            /** Ok */
+            ok: boolean;
+        } & {
+            [key: string]: unknown;
+        };
     };
     responses: never;
     parameters: never;
@@ -2197,6 +3550,59 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    redeem_api_v1_account_redeem_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RedeemRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UsageResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    account_usage_api_v1_account_usage_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UsageResponse"];
+                };
+            };
+        };
+    };
     get_achievements_api_v1_achievements_get: {
         parameters: {
             query?: never;
@@ -2468,6 +3874,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["BattleSpellResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    arena_battle_ultimate_api_v1_arena_battles__battle_id__ultimate_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                battle_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BattleUltimateResponse"];
                 };
             };
             /** @description Validation Error */
@@ -2829,6 +4266,26 @@ export interface operations {
             };
         };
     };
+    use_managed_ai_api_v1_auth_api_key_delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiKeyUpdateResponse"];
+                };
+            };
+        };
+    };
     check_username_api_v1_auth_check_username_get: {
         parameters: {
             query: {
@@ -2867,7 +4324,11 @@ export interface operations {
             path?: never;
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DeleteAccountRequest"];
+            };
+        };
         responses: {
             /** @description Successful Response */
             200: {
@@ -2876,6 +4337,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SuccessResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
@@ -3039,7 +4509,27 @@ export interface operations {
             };
         };
     };
-    hero_forge_save_api_v1_avatar_hero_forge_save_post: {
+    get_champion_api_v1_avatar_champion_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChampionResponse"];
+                };
+            };
+        };
+    };
+    put_champion_api_v1_avatar_champion_put: {
         parameters: {
             query?: never;
             header?: never;
@@ -3048,7 +4538,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["AvatarConfigRequest"];
+                "application/json": components["schemas"]["ChampionRequest"];
             };
         };
         responses: {
@@ -3058,7 +4548,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HeroForgeSaveResponse"];
+                    "application/json": components["schemas"]["ChampionResponse"];
                 };
             };
             /** @description Validation Error */
@@ -3101,6 +4591,165 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    billing_status_api_v1_billing_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BillingStatus"];
+                };
+            };
+        };
+    };
+    cancel_api_v1_billing_cancel_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SubscriptionOut"];
+                };
+            };
+        };
+    };
+    checkout_api_v1_billing_checkout_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CheckoutRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CheckoutResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    stub_complete_api_v1_billing_stub_complete_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["StubCompleteRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SubscriptionOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    verify_api_v1_billing_verify_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["VerifyRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SubscriptionOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    webhook_api_v1_billing_webhook_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WebhookAck"];
                 };
             };
         };
@@ -3151,13 +4800,258 @@ export interface operations {
             };
         };
         responses: {
-            /** @description Server-Sent Events. `token` events ({"text"}) carry the answer as it is written; the final `sources` event carries {mode, sources, blocked, needs_clarification, rewards}; a failure after the first token arrives as an `error` event in the unified error shape. Failures before the first token are ordinary HTTP errors with the same body. */
+            /** @description Server-Sent Events. `token` events ({"text"}) carry the answer as it is written; the final `sources` event carries {mode, sources, citations, blocked, needs_clarification, rewards}; a failure after the first token arrives as an `error` event in the unified error shape. Failures before the first token are ordinary HTTP errors with the same body. */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
                     "text/event-stream": string;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_concept_map_api_v1_concept_map_get: {
+        parameters: {
+            query: {
+                session_id: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConceptMapResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    build_concept_map_api_v1_concept_map_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ConceptMapBuildRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConceptMapResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_courses_api_v1_courses_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CourseListResponse"];
+                };
+            };
+        };
+    };
+    create_course_api_v1_courses_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CourseCreateRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Course"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_course_api_v1_courses__course_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                course_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Course"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_course_api_v1_courses__course_id__put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                course_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CourseUpdateRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Course"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_course_api_v1_courses__course_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                course_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OkResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    course_progress_api_v1_courses__course_id__progress_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                course_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CourseProgress"];
                 };
             };
             /** @description Validation Error */
@@ -3262,6 +5156,331 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["DocumentOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_document_api_v1_documents__document_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                document_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SuccessResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_document_file_api_v1_documents__document_id__file_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                document_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The original PDF */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/pdf": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_entitlements_api_v1_entitlements_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EntitlementsResponse"];
+                };
+            };
+        };
+    };
+    exam_history_api_v1_exams_get: {
+        parameters: {
+            query?: {
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExamHistoryResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_exam_api_v1_exams_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ExamCreateRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Exam"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    active_exam_api_v1_exams_active_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExamActiveResponse"];
+                };
+            };
+        };
+    };
+    exam_options_api_v1_exams_options_get: {
+        parameters: {
+            query: {
+                session_id: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExamOptionsResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_exam_api_v1_exams__exam_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                exam_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Exam"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    answer_exam_api_v1_exams__exam_id__answers_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                exam_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ExamAnswerRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExamAnswerResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    exam_report_api_v1_exams__exam_id__report_pdf_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                exam_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The PDF score report */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/pdf": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    submit_exam_api_v1_exams__exam_id__submit_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                exam_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Exam"];
                 };
             };
             /** @description Validation Error */
@@ -3477,6 +5696,26 @@ export interface operations {
             };
         };
     };
+    plans_api_v1_plans_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlansResponse"];
+                };
+            };
+        };
+    };
     get_profile_api_v1_profile_get: {
         parameters: {
             query?: never;
@@ -3632,6 +5871,155 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ReadyResponse"];
+                };
+            };
+        };
+    };
+    review_add_api_v1_review_cards_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReviewAddRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReviewAddResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    review_remove_api_v1_review_cards__item_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                item_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OkResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    review_grade_api_v1_review_grade_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReviewGradeRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReviewGradeResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    review_queue_api_v1_review_queue_get: {
+        parameters: {
+            query?: {
+                limit?: number;
+                session_id?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReviewQueueResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    review_stats_api_v1_review_stats_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReviewStats"];
                 };
             };
         };

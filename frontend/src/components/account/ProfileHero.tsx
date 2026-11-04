@@ -1,14 +1,15 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { Coins, Flame, Sparkles, Trophy } from "lucide-react";
-import { HeroFace } from "@/components/avatar";
+import ChampionAvatar from "@/components/champion/ChampionAvatar";
 import { AnimatedNumber, TiltCard } from "@/components/fx";
+import { useChampion } from "@/hooks/useChampion";
 import { useHUDStore } from "@/hooks/useHUD";
-import { lookFromEquipped } from "@/lib/avatar/look";
-import { rawApi } from "@/lib/api";
+import { useHeroStore } from "@/hooks/useHero";
+import { heroById } from "@/lib/pixel/heroes";
 
-/** The top of the profile: the hero's face in a lit ring, who they are, and four live stats that count up. */
+/** The top of the profile: the pixel champion in a lit ring (with its pet), who they are, and four live stats that count up. */
 export default function ProfileHero({ name, handle }: { name: string; handle?: string }) {
   const level = useHUDStore((s) => s.level);
   const xp = useHUDStore((s) => s.xp);
@@ -16,14 +17,11 @@ export default function ProfileHero({ name, handle }: { name: string; handle?: s
   const streak = useHUDStore((s) => s.streakDays);
   const xpInto = useHUDStore((s) => s.xpInto);
   const xpToNext = useHUDStore((s) => s.xpToNext);
-  const [equipped, setEquipped] = useState<Record<string, string> | null>(null);
+  const champion = useChampion((s) => heroById(s.championId));
 
   useEffect(() => {
-    let alive = true;
-    rawApi.GET("/shop").then(({ data, response }) => {
-      if (alive && response.ok) setEquipped((data as { equipped?: Record<string, string> } | undefined)?.equipped ?? {});
-    }).catch(() => { /* optional */ });
-    return () => { alive = false; };
+    void useChampion.getState().load({ signedIn: true });
+    if (!useHeroStore.getState().shop) void useHeroStore.getState().loadShop();   // the skins it wears
   }, []);
 
   const pct = xpToNext > 0 ? Math.min(100, (xpInto / xpToNext) * 100) : 0;
@@ -37,8 +35,8 @@ export default function ProfileHero({ name, handle }: { name: string; handle?: s
   return (
     <section className="profile-hero" aria-label="Your progress">
       <div className="profile-hero__id">
-        <span className="profile-hero__ring" aria-hidden="true">
-          {equipped ? <HeroFace look={lookFromEquipped(equipped)} diameter={84} /> : <span className="profile-hero__initial">{name[0]?.toUpperCase()}</span>}
+        <span className="profile-hero__ring">
+          <ChampionAvatar size={84} withPet label={`Your champion, ${champion.name}, ${champion.title}`} />
         </span>
         <div className="min-w-0">
           <h2 className="profile-hero__name">{name}</h2>

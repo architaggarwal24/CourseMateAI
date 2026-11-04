@@ -2,10 +2,11 @@
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
-import { FileText, FileUp, Upload } from "lucide-react";
+import { BookMarked, FileText, FileUp, Pencil, Upload } from "lucide-react";
 import { Badge, Button, toast, type BadgeTone } from "@/components/ui";
 import type { DocumentUpload } from "@/hooks/useDocumentUpload";
 import type { DocumentInfo, DocumentStatus } from "@/lib/api";
+import type { Course } from "@/lib/study/courses";
 import { describeDocument, isInFlight, STAGES, stageIndex, stageLabel } from "@/lib/documents";
 
 /** What the badge says (three words at most) and how it looks. "expired" is the server no longer having the document. */
@@ -34,6 +35,11 @@ interface Props {
   upload: DocumentUpload;
   /** The tool tabs, shown in the middle of the bar. */
   tabs?: ReactNode;
+  /** The workspace is on a course (several PDFs): shown instead of a document, with Edit instead of Replace. */
+  course?: Course | null;
+  onEditCourse?: () => void;
+  /** Wraps the name in the document / course switcher (LibraryMenu). */
+  switcher?: (name: ReactNode) => ReactNode;
 }
 
 /**
@@ -41,7 +47,7 @@ interface Props {
  * count, status badge) with Replace, or the way to upload one. Everything shown comes from the server's record,
  * so it survives reloads and backend restarts.
  */
-export default function DocumentHeader({ doc, gone, loaded, upload, tabs }: Props) {
+export default function DocumentHeader({ doc, gone, loaded, upload, tabs, course, onEditCourse, switcher }: Props) {
   const { inputRef, uploading, upload: uploadFile, pick, signedIn } = upload;
   const [isPageDragging, setIsPageDragging] = useState(false);
 
@@ -92,10 +98,11 @@ export default function DocumentHeader({ doc, gone, loaded, upload, tabs }: Prop
   }, [signedIn, uploadFile]);
 
   const busy = uploading || !signedIn || !loaded;
+  const named = (name: ReactNode) => (switcher ? switcher(name) : name);
   const badge = badgeFor(doc ? doc.status : "expired");
   const inFlight = !!doc && isInFlight(doc.status);
   const step = doc ? stageIndex(doc.status) : -1;
-  const problem = doc && (doc.status === "failed" || doc.status === "needs_reindex") ? describeDocument(doc) : null;
+  const problem = !course && doc && (doc.status === "failed" || doc.status === "needs_reindex") ? describeDocument(doc) : null;
 
   return (
     <header aria-label="Active document" className="ws-top">
@@ -118,11 +125,22 @@ export default function DocumentHeader({ doc, gone, loaded, upload, tabs }: Prop
       />
 
       <div className="ws-doc">
-        <span className="ws-doc__icon" aria-hidden="true"><FileText size={17} /></span>
+        <span className="ws-doc__icon" aria-hidden="true">{course ? <BookMarked size={17} /> : <FileText size={17} />}</span>
         <div className="min-w-0">
-          {doc ? (
+          {course ? (
             <>
-              <span className="ws-doc__name" title={doc.filename}>{doc.filename}</span>
+              {named(<span className="ws-doc__name" title={course.name}>{course.name}</span>)}
+              <span className="ws-doc__meta">
+                <Badge tone="accent">Course</Badge>
+                <span className="whitespace-nowrap">
+                  {course.documents.length} {course.documents.length === 1 ? "PDF" : "PDFs"}
+                  {course.ready < course.documents.length ? ` · ${course.ready} ready` : ""}
+                </span>
+              </span>
+            </>
+          ) : doc ? (
+            <>
+              {named(<span className="ws-doc__name" title={doc.filename}>{doc.filename}</span>)}
               <span className="ws-doc__meta">
                 <Badge tone={badge.tone} aria-label={`Status: ${stageLabel(doc.status)}`}>{badge.label}</Badge>
                 {doc.status === "ready" && doc.chunks != null && (
@@ -148,7 +166,9 @@ export default function DocumentHeader({ doc, gone, loaded, upload, tabs }: Prop
             </>
           ) : (
             <>
-              <span className="ws-doc__name">{!signedIn ? "Log in to upload a PDF" : !loaded ? "Checking your documents…" : "No document yet"}</span>
+              {loaded && signedIn
+                ? named(<span className="ws-doc__name">No document yet</span>)
+                : <span className="ws-doc__name">{!signedIn ? "Log in to upload a PDF" : "Checking your documents…"}</span>}
               <span className="ws-doc__meta">Drop a PDF anywhere on the page</span>
             </>
           )}
@@ -159,7 +179,9 @@ export default function DocumentHeader({ doc, gone, loaded, upload, tabs }: Prop
 
       {!gone && (
         <div className="ws-top__end">
-          {doc ? (
+          {course ? (
+            <Button size="sm" onClick={onEditCourse}><Pencil size={14} aria-hidden="true" />Edit course</Button>
+          ) : doc ? (
             <Button size="sm" onClick={pick} disabled={busy} loading={uploading} aria-label="Replace PDF" title="Replace PDF">
               {!uploading && <Upload size={14} aria-hidden="true" />}
               {problem ? (doc.status === "failed" ? "Try again" : "Re-upload") : "Replace"}

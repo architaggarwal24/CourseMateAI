@@ -1,6 +1,6 @@
 from typing import Optional
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class LoginRequest(BaseModel):
@@ -20,6 +20,7 @@ class RegisterRequest(BaseModel):
     llm_model: Optional[str] = None
     llm_base_url: Optional[str] = None   # OpenAI-compatible endpoints / Ollama
     timezone: Optional[str] = None       # IANA name, sent silently by the browser; an unknown name is ignored
+    invite_code: Optional[str] = None    # needed when the server is INVITE_ONLY; grants the code's plan either way
 
 
 class UpdateProfileRequest(BaseModel):
@@ -117,3 +118,7 @@ class UsernameCheckResponse(ApiModel):
 class ProfileUpdateResponse(ApiModel):
     success: bool
     message: str
+
+
+class DeleteAccountRequest(BaseModel):
+    password: str = Field(min_length=1, max_length=200)    # deleting everything needs more than a session

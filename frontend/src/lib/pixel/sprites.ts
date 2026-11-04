@@ -23,7 +23,7 @@ const OUTLINE = hex("#0b0a12");
 const cache = new Map<string, Frame>();
 
 /** Two looks of one hero (gear tints) are different frames: the key carries the look's signature colours. */
-export const lookKey = (hero: HeroDef) => `${hero.id}:${hero.look.weaponGlow?.ramp[2] ?? ""}:${hero.look.top.ramp[2]}`;
+export const lookKey = (hero: HeroDef) => hero.skinKey ?? `${hero.id}:${hero.look.weaponGlow?.ramp[2] ?? ""}:${hero.look.top.ramp[2]}`;
 
 export function heroFrame(hero: HeroDef, anim: AnimName, index: number, cacheKey = lookKey(hero)): Frame {
   const poses = heroAnims(hero.style)[anim];

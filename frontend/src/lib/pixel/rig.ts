@@ -128,6 +128,24 @@ export interface HumanoidLook {
   weaponMat?: Material; weaponAccent?: Material; weaponGlow?: Material;
   /** Extra layers drawn last (auras, horns...). */
   extra?: (b: PixelBuffer, k: Skeleton, pose: Pose, look: HumanoidLook) => void;
+  /** A worn head piece (champion skins: circlet, helm, hood, crown, horns). */
+  headgear?: HeadPiece;
+}
+
+/** A pixel head piece drawn over a hero's head. Sized from the head radius, so it fits every champion. */
+export interface HeadPiece {
+  kind: "circlet" | "helm" | "hood" | "crown" | "horns";
+  mat: Material;
+  /** Gem, visor, crest or headband tails. */
+  trim?: Material;
+  /** circlet: a cloth headband with tails flying behind (instead of a metal band). */
+  cloth?: boolean;
+  /** hood: a tall pointed tip. */
+  point?: boolean;
+  /** hood: a veil over the mouth and nose. */
+  mask?: boolean;
+  /** helm: a pair of horns on it. */
+  horns?: Material;
 }
 
 /** Draw a whole humanoid into `b`, standing on `foot`. */
@@ -231,6 +249,13 @@ function drawArm(b: PixelBuffer, k: Skeleton, look: HumanoidLook, side: "front" 
   else if (look.sleeves === "long") b.capsule(...lerpPt(el, ha, 0.82), ...lerpPt(el, ha, 0.9), B.foreR * s * 1.15, B.foreR * s * 1.15, f(sleeveMat(look)));
   const gauntlet = look.weapon === "gauntlets" && look.weaponMat;
   b.ellipse(ha[0], ha[1], B.handR * s * (gauntlet ? 1.35 : 1), B.handR * s * (gauntlet ? 1.25 : 0.95), f(gauntlet ? look.weaponMat! : look.gloves ?? look.skin));
+  if (gauntlet && look.weaponGlow) {
+    // knuckle studs light up in the glow colour
+    const kd = side === "front" ? k.foreDir : k.bForeDir;
+    const kn = add(ha, kd, B.handR * s * 0.75);
+    b.set(Math.round(kn[0]), Math.round(kn[1]), look.weaponGlow.ramp[3]);
+    b.set(Math.round(kn[0] + kd[1]), Math.round(kn[1] - kd[0]), look.weaponGlow.ramp[2]);
+  }
 }
 
 function drawLeg(b: PixelBuffer, k: Skeleton, look: HumanoidLook, side: "front" | "back", f: (m: Material) => Material) {
@@ -300,13 +325,19 @@ function drawCape(b: PixelBuffer, k: Skeleton, m: Material, sway: number, look: 
 }
 
 // ── hero heads ────────────────────────────────────────────────────────────────
-function drawHeroHead(b: PixelBuffer, k: Skeleton, pose: Pose, look: HumanoidLook) {
+/** A hero's head (hair, face, head piece) on a skeleton's neck and head centre. Exported for item icons. */
+export function drawHeroHead(b: PixelBuffer, k: Skeleton, pose: Pose, look: HumanoidLook) {
   const s = k.s, r = look.build.headR * s;
   const [cx, cy] = k.headC;
   const hair = look.hair;
   const tilt = rad((pose.head ?? 0) * 0.5);
+  const piece = look.headgear;
+  // a hood piece on a champion who already wears a hood (Mira) recolours that hood instead of doubling it
+  const ownHood = hair?.style === "hood";
+  const hairMat = ownHood && piece?.kind === "hood" ? piece.mat : hair?.mat;
   // hair behind the head (long styles)
-  if (hair) hairBack(b, k, pose, hair.style, hair.mat, r);
+  if (hair && hairMat) hairBack(b, k, pose, hair.style, hairMat, r);
+  if (piece?.kind === "hood" && !ownHood) b.ellipse(cx - r * 0.15, cy + r * 0.05, r * 1.25, r * 1.3, farSide(piece.mat));
   // neck
   b.capsule(k.neck[0], k.neck[1] + 1.5 * s, cx - 0.5 * s, cy + r * 0.4, 2 * s, 1.9 * s, look.skin);
   // skull + jaw (the face points forward: jaw pushed to +x)
@@ -331,7 +362,101 @@ function drawHeroHead(b: PixelBuffer, k: Skeleton, pose: Pose, look: HumanoidLoo
   const mx = Math.round(cx + r * 0.55), my = Math.round(cy + r * 0.66);
   if (pose.shout) { b.set(mx, my, lash); b.set(mx - 1, my, lash); b.set(mx, my + 1, lash); }
   else b.set(mx, my, look.skin.ramp[1]);
-  if (hair) hairFront(b, k, pose, hair.style, hair.mat, r);
+  const covered = !ownHood && (piece?.kind === "hood" || piece?.kind === "helm");
+  if (hair && hairMat && !covered) hairFront(b, k, pose, hair.style, hairMat, r);
+  if (piece) drawHeadPiece(b, k.headC, r, s, pose.sway ?? 0, piece, ownHood);
+}
+
+/**
+ * A head piece around a head of radius `r` centred on `c` (the face looks toward +x). `onHood`: the wearer's own
+ * hood is the outline of the head (Mira), so bands and crowns sit on the hood, a little bigger and higher.
+ */
+export function drawHeadPiece(b: PixelBuffer, c: Pt, r: number, s: number, sway: number, p: HeadPiece, onHood = false) {
+  const [cx, cy] = c;
+  const R = onHood ? r * 1.22 : r;
+  const oy = onHood ? -r * 0.18 : 0;
+  switch (p.kind) {
+    case "circlet": {
+      const back: Pt = [cx - R * 0.86, cy - R * 0.36 + oy], front: Pt = [cx + R * 0.8, cy - R * 0.52 + oy];
+      if (p.cloth) {
+        // two short tails knotted at the back, fluttering back and down
+        for (const [base, len] of [[-58, 3], [-38, 2]] as const) {
+          let q: Pt = [back[0] - 0.5 * s, back[1] + 0.4 * s];
+          for (let i = 0; i < len; i++) {
+            const n = add(q, dirOf(base + Math.sin(i * 1.7 + sway * 3) * 14 - sway * 10), 2.4 * s);
+            b.capsule(q[0], q[1], n[0], n[1], (1.15 - i * 0.2) * s, (0.95 - i * 0.2) * s, p.trim ?? p.mat);
+            q = n;
+          }
+        }
+        b.capsule(...back, ...front, 1.25 * s, 1.1 * s, p.mat, { smooth: true });
+        b.ellipse(back[0] + 0.4 * s, back[1] + 0.1 * s, 1.4 * s, 1.3 * s, p.trim ?? p.mat);
+      } else {
+        b.capsule(...back, ...front, 0.95 * s, 0.85 * s, p.mat, { smooth: true });
+        if (p.trim) b.ellipse(front[0] - 0.8 * s, front[1] - 0.2 * s, 1.35 * s, 1.35 * s, p.trim);
+      }
+      break;
+    }
+    case "crown": {
+      const y = cy - R * 0.78 + oy;
+      const x0 = cx - R * 0.78, x1 = cx + R * 0.72;
+      const pts = 4;
+      for (let i = 0; i < pts; i++) {
+        const x = x0 + ((x1 - x0) * (i + 0.5)) / pts, h = (i === 2 ? 4.4 : 3.4) * s;
+        b.poly([[x - 1.7 * s, y + 0.6 * s], [x, y - h], [x + 1.7 * s, y + 0.6 * s]], p.mat);
+      }
+      b.capsule(x0, y + 0.8 * s, x1, y + 0.3 * s, 1.35 * s, 1.25 * s, p.mat, { smooth: true });
+      if (p.trim) {
+        b.ellipse(x0 + (x1 - x0) * 0.62, y + 0.5 * s, 1.1 * s, 1.1 * s, p.trim);
+        b.set(Math.round(x0 + (x1 - x0) * 0.62), Math.round(y - 3.8 * s), p.trim.ramp[3]);
+      }
+      break;
+    }
+    case "helm": {
+      // a dome over the skull with a brim over the brow and a neck guard behind
+      b.poly([
+        [cx - R * 1.12, cy + R * 0.55], [cx - R * 1.12, cy - R * 0.45], [cx - R * 0.55, cy - R * 1.08], [cx + R * 0.25, cy - R * 1.15],
+        [cx + R * 0.85, cy - R * 0.8], [cx + R * 1.12, cy - R * 0.25], [cx + R * 0.55, cy - R * 0.22], [cx - R * 0.15, cy - R * 0.1],
+        [cx - R * 0.45, cy + R * 0.25], [cx - R * 0.6, cy + R * 0.6],
+      ], p.mat);
+      b.capsule(cx - R * 0.2, cy - R * 0.2, cx + R * 1.12, cy - R * 0.3, 0.9 * s, 0.9 * s, p.mat, { smooth: true, bias: 0.15 });
+      if (p.trim) {
+        // a crest along the top (or a glowing visor line)
+        b.capsule(cx - R * 0.75, cy - R * 0.95, cx + R * 0.45, cy - R * 1.15, 1.2 * s, 0.9 * s, p.trim);
+      }
+      if (p.horns) drawHorns(b, cx, cy, R, s, p.horns);
+      break;
+    }
+    case "horns":
+      drawHorns(b, cx, cy, R, s, p.mat);
+      break;
+    case "hood": {
+      if (!onHood) {
+        b.poly([[cx - r * 1.25, cy + r * 0.9], [cx - r * 1.2, cy - r * 0.6], [cx - r * 0.2, cy - r * 1.35], [cx + r * 0.85, cy - r * 0.95], [cx + r * 1.05, cy - r * 0.2], [cx + r * 0.55, cy - r * 0.55], [cx + r * 0.05, cy - r * 0.5], [cx - r * 0.35, cy + r * 0.3], [cx - r * 0.5, cy + r * 1.05]], p.mat);
+      }
+      if (p.point) {
+        const base: Pt = [cx - R * 0.55, cy - R * 1.05];
+        b.poly([[base[0] - 2.6 * s, base[1] + 2 * s], [base[0] - 6 * s - sway * 1.5 * s, base[1] - 4.5 * s], [base[0] + 3 * s, base[1] + 0.2 * s]], p.mat);
+      }
+      if (p.mask) {
+        b.poly([[cx + r * 0.05, cy + r * 0.35], [cx + r * 1.0, cy + r * 0.25], [cx + r * 0.75, cy + r * 0.95], [cx + r * 0.05, cy + r * 1.05], [cx - r * 0.3, cy + r * 0.7]], p.trim ?? farSide(p.mat));
+      }
+      break;
+    }
+  }
+}
+
+function drawHorns(b: PixelBuffer, cx: number, cy: number, R: number, s: number, m: Material) {
+  // the far horn first (darker), then the near one: each a curved, tapering chain
+  const horn = (start: Pt, dirs: number[], mat: Material) => {
+    let p = start, w = 1.9 * s;
+    for (const d of dirs) {
+      const q = add(p, dirOf(d), 2.6 * s);
+      b.capsule(p[0], p[1], q[0], q[1], w, w * 0.72, mat);
+      p = q; w *= 0.72;
+    }
+  };
+  horn([cx - R * 0.55, cy - R * 0.8], [200, 215, 235, 255], farSide(m));
+  horn([cx + R * 0.25, cy - R * 0.92], [165, 155, 140, 120], m);
 }
 
 function hairBack(b: PixelBuffer, k: Skeleton, pose: Pose, style: string, m: Material, r: number) {
@@ -420,6 +545,7 @@ function drawWeapon(b: PixelBuffer, k: Skeleton, look: HumanoidLook, pose: Pose,
       b.capsule(...hiltEnd, ...guard, 1.1 * s, 1.1 * s, accent!);
       b.ellipse(guard[0], guard[1], 1.9 * s, 1.9 * s, look.weaponAccent ?? metal);
       bladeLine(b, guard, tip, add(tip, dirOf(ang + 90), 1.2 * s), metal, s, 1.15);
+      if (glow) b.line(...add(guard, d, 2 * s), ...add(tip, d, -2 * s), glow.ramp[3]);
       break;
     }
     case "greatsword": {
@@ -457,6 +583,7 @@ function drawWeapon(b: PixelBuffer, k: Skeleton, look: HumanoidLook, pose: Pose,
       b.capsule(...add(hand, d, -2.5 * s), ...guard, 1 * s, 1 * s, accent!);
       b.capsule(...add(guard, dirOf(ang + 90), 2 * s), ...add(guard, dirOf(ang - 90), 2 * s), 0.8 * s, 0.8 * s, accent!);
       bladeLine(b, guard, tip, add(tip, dirOf(ang + 90), 0.6 * s), metal, s, 1.0);
+      if (glow) b.line(...add(guard, d, 1.5 * s), ...add(tip, d, -1.5 * s), glow.ramp[3]);
       break;
     }
     case "axe": {
@@ -494,6 +621,31 @@ function drawWeapon(b: PixelBuffer, k: Skeleton, look: HumanoidLook, pose: Pose,
     case "gauntlets":
     case "none":
       break;
+  }
+}
+
+/**
+ * A weapon on its own (item icons): held by an invisible hand at `hand`, pointing `deg` (rig angle: 0 = down,
+ * 180 = up, 135 = up and forward). Gauntlets are drawn as a pair of armoured fists.
+ */
+export function drawWeaponAt(b: PixelBuffer, look: HumanoidLook, hand: Pt, deg: number, s = 1) {
+  if (look.weapon === "gauntlets") {
+    const m = look.weaponMat;
+    if (!m) return;
+    for (const [dx, dy, far] of [[-4, 2, true], [4, -2, false]] as const) {
+      const c: Pt = [hand[0] + dx * s, hand[1] + dy * s];
+      b.capsule(c[0] - 2.5 * s, c[1] + 4 * s, c[0], c[1], 3 * s, 3.4 * s, far ? farSide(m) : m);
+      b.ellipse(c[0] + 0.5 * s, c[1] - 1 * s, 4.2 * s, 3.8 * s, far ? farSide(m) : m);
+      if (look.weaponGlow) for (let i = -1; i <= 1; i++) b.set(Math.round(c[0] + 3 * s), Math.round(c[1] - 1 * s + i * 1.6 * s), look.weaponGlow.ramp[3]);
+    }
+    return;
+  }
+  const fd = dirOf(deg);
+  const k = { fHand: hand, bHand: add(hand, [-3 * s, 2 * s]), foreDir: fd, bForeDir: dirOf(deg + 30), s } as unknown as Skeleton;
+  drawWeapon(b, k, look, {}, "front");
+  if (look.weapon === "daggers") {
+    const k2 = { ...k, fHand: add(hand, [-6 * s, 4 * s]), foreDir: dirOf(deg - 25) } as Skeleton;
+    drawWeapon(b, k2, look, {}, "front");
   }
 }
 

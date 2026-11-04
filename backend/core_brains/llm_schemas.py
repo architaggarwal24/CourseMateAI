@@ -411,3 +411,92 @@ _TOPIC_KEY = re.compile(r"\W+")
 def question_key(text: str) -> str:
     """Normalised question text, used to drop duplicates produced by parallel batches."""
     return _TOPIC_KEY.sub(" ", text.lower()).strip()
+
+
+# ── concept map (Phase 3 Stage 3B) ───────────────────────────────────────────
+MAX_MAP_CONCEPTS = 24
+MAX_MAP_RELATIONS = 40
+
+
+class MapConcept(BaseModel):
+    """One concept of a document: a short name, one sentence about it, how central it is, where it is first explained."""
+    name: str
+    summary: str = ""
+    importance: int = 2
+    page: Optional[int] = None
+
+    @field_validator("name", "summary", mode="before")
+    @classmethod
+    def _as_text(cls, v):
+        return _text(v)
+
+    @field_validator("importance", mode="before")
+    @classmethod
+    def _importance(cls, v):
+        try:
+            return max(1, min(3, int(v)))
+        except (TypeError, ValueError):
+            return 2
+
+    @field_validator("page", mode="before")
+    @classmethod
+    def _page(cls, v):
+        try:
+            p = int(str(v).lstrip("pP. "))
+            return p if p >= 1 else None
+        except (TypeError, ValueError):
+            return None
+
+    @model_validator(mode="after")
+    def _usable(self):
+        if not self.name or len(self.name) > 80:
+            _reject("a concept needs a short name")
+        self.summary = self.summary[:240]
+        return self
+
+
+class MapRelation(BaseModel):
+    """A link between two concepts: `source` relates to `target` as `label` says (a few words, e.g. "produces")."""
+    source: str
+    target: str
+    label: str = ""
+
+    @field_validator("source", "target", "label", mode="before")
+    @classmethod
+    def _as_text(cls, v):
+        return _text(v)
+
+
+class ConceptMapDraft(BaseModel):
+    """The concepts of a document and how they relate."""
+    concepts: List[MapConcept]
+    relations: List[MapRelation] = []
+
+    @field_validator("concepts", mode="before")
+    @classmethod
+    def _keep_concepts(cls, v, info):
+        return _drop_invalid(MapConcept, v, info.context, "map concept")
+
+    @field_validator("relations", mode="before")
+    @classmethod
+    def _keep_relations(cls, v, info):
+        return _drop_invalid(MapRelation, v, info.context, "map relation")
+
+    @model_validator(mode="after")
+    def _clean(self):
+        seen, concepts = {}, []
+        for c in self.concepts:
+            key = question_key(c.name)
+            if key and key not in seen and len(concepts) < MAX_MAP_CONCEPTS:
+                seen[key] = c.name
+                concepts.append(c)
+        if len(concepts) < 2:
+            _reject("a concept map needs at least two concepts")
+        rels, pairs = [], set()
+        for r in self.relations:
+            a, b = seen.get(question_key(r.source)), seen.get(question_key(r.target))
+            if a and b and a != b and (a, b) not in pairs and (b, a) not in pairs and len(rels) < MAX_MAP_RELATIONS:
+                pairs.add((a, b))
+                rels.append(MapRelation(source=a, target=b, label=r.label[:40]))
+        self.concepts, self.relations = concepts, rels
+        return self

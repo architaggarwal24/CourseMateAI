@@ -61,7 +61,7 @@ describe("streamChat", () => {
     body.close();
 
     expect(await done).toEqual({
-      content: "ATP is energy.", sources: ["bio.pdf · p.4", "bio.pdf · p.9"], blocked: false, needsClarification: false, rewards: undefined,
+      content: "ATP is energy.", sources: ["bio.pdf · p.4", "bio.pdf · p.9"], citations: [], blocked: false, needsClarification: false, rewards: undefined,
     });
   });
 

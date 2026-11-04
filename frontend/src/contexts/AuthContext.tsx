@@ -6,6 +6,9 @@ import { useHUDStore } from "@/hooks/useHUD";
 import { parseApiError, rawApi } from "@/lib/api";
 import type { SignupFailure } from "@/lib/signup";
 import { ROUTES } from "@/lib/routes";
+import { useChampion } from "@/hooks/useChampion";
+import { useReview } from "@/hooks/useReview";
+import { useCourses } from "@/hooks/useCourses";
 
 interface User {
   user_id: number;
@@ -17,7 +20,7 @@ interface User {
 interface AuthContextType {
   user: User | null;
   login: (email: string, password: string) => Promise<boolean>;
-  register: (email: string, password: string, username: string, fullName: string, apiKey: string, provider: string, model?: string, baseUrl?: string) => Promise<true | SignupFailure>;
+  register: (email: string, password: string, username: string, fullName: string, apiKey: string, provider: string, model?: string, baseUrl?: string, inviteCode?: string) => Promise<true | SignupFailure>;
   logout: () => Promise<void>;
   loading: boolean;
 }
@@ -82,10 +85,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }
 
-  async function register(email: string, password: string, username: string, fullName: string, apiKey: string, provider: string, model?: string, baseUrl?: string): Promise<true | SignupFailure> {
+  async function register(email: string, password: string, username: string, fullName: string, apiKey: string, provider: string, model?: string, baseUrl?: string, inviteCode?: string): Promise<true | SignupFailure> {
     try {
       const { error, response } = await rawApi.POST("/auth/register", {
-        body: { email, password, username, full_name: fullName, api_key: apiKey, llm_provider: provider, llm_model: model, llm_base_url: baseUrl, timezone: browserTimeZone() },
+        body: { email, password, username, full_name: fullName, api_key: apiKey, llm_provider: provider, llm_model: model, llm_base_url: baseUrl, timezone: browserTimeZone(), invite_code: inviteCode || null },
       });
       if (response.ok) {
         // FIX BUG 49: Instead of calling login() (which makes a second API round-trip
@@ -113,6 +116,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       await rawApi.POST("/auth/logout");
     } catch {}
     setUser(null);
+    useChampion.getState().reset();             // the next person on this browser starts from the default
+    useReview.getState().reset();
+    useCourses.getState().reset();
     await setUserIdAsync("guest");
     await hudRefresh();
     router.push(ROUTES.study);

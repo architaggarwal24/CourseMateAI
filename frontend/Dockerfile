@@ -15,6 +15,9 @@ COPY . .
 # Where the backend is, as seen from this container (the /api/* rewrite points at it; read at build time).
 ARG BACKEND_URL=http://backend:8000
 ENV BACKEND_URL=$BACKEND_URL
+# Browser error monitoring (docs/security.md): baked in at build time; empty = off.
+ARG NEXT_PUBLIC_SENTRY_DSN=
+ENV NEXT_PUBLIC_SENTRY_DSN=$NEXT_PUBLIC_SENTRY_DSN
 RUN npm run build
 
 # ── runtime: only the traced server (no node_modules, no sources), run by the unprivileged "node" user ──

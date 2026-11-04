@@ -2,14 +2,14 @@
 
 import { Coins, Flame, ShieldPlus, X } from "lucide-react";
 import { motion } from "motion/react";
-import { HeroFace } from "@/components/avatar";
-import { lookFromEquipped } from "@/lib/avatar/look";
+import ChampionAvatar from "@/components/champion/ChampionAvatar";
+import { useChampionLook } from "@/components/champion/useChampionLook";
 import { Button } from "@/components/ui";
 import { useHUDStore } from "@/hooks/useHUD";
-import { previewEquipped, useHeroStore } from "@/hooks/useHero";
+import { useHeroStore } from "@/hooks/useHero";
 
 /**
- * Always on top of the Hero area, whatever tab is open: the avatar (with whatever is being tried on), level, XP bar,
+ * Always on top of the Hero area, whatever tab is open: the champion (with its pet and whatever is being tried on), level, XP bar,
  * coins and streak. All of it is read from the two shared stores, so a purchase or a claim changes it the moment
  * it happens. Pixel font only for the short labels and numbers.
  */
@@ -26,13 +26,16 @@ export default function HeroHeader() {
   const previewId = useHeroStore((s) => s.previewId);
   const setPreview = useHeroStore((s) => s.setPreview);
 
+  const { hero, petId } = useChampionLook({ preview: true });
   const pct = Math.min(100, Math.round((xpInto / Math.max(xpToNext, 1)) * 100));
   const previewItem = previewId ? shop?.items.find((i) => i.id === previewId) : undefined;
+  const petName = petId ? shop?.items.find((i) => i.id === petId)?.name : undefined;
+  const who = `Your champion, ${hero.name}${petName ? `, with ${petName}` : ""}${previewItem ? `, trying on ${previewItem.name}` : ""}`;
 
   return (
     <section aria-label="Hero status" className="hero-header" data-testid="hero-header">
-      <div className="hero-header__avatar" data-previewing={!!previewItem} role="img" aria-label={previewItem ? `Your hero, trying on ${previewItem.name}` : "Your hero"}>
-        <HeroFace look={lookFromEquipped(previewEquipped(shop, previewId))} diameter={64} />
+      <div className="hero-header__avatar" data-previewing={!!previewItem} role="img" aria-label={who} data-testid="hero-header-champion">
+        <ChampionAvatar size={60} withPet preview />
       </div>
 
       <div>

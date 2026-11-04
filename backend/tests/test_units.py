@@ -110,7 +110,7 @@ def test_two_users_with_same_prefix_get_different_clients(monkeypatch):
     created = []
 
     class Fake:
-        def __init__(self, api_key, provider, model, base_url=None):
+        def __init__(self, api_key, provider, model, base_url=None, trusted=False):
             created.append(api_key)
             self.api_key = api_key
 

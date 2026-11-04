@@ -107,7 +107,7 @@ def test_account_deletion_revokes_every_session(make_user, app_module):
     c1, uid = named(make_user, "sess7")
     c2 = login(app_module, "sess7")
     t1, t2 = cookie_of(c1), cookie_of(c2)
-    assert c1.delete("/auth/delete-account").json()["success"]
+    assert c1.request("DELETE", "/auth/delete-account", json={"password": "correct-horse-1"}).json()["success"]
     assert state.db.query("SELECT 1 FROM sessions WHERE user_id = ?", [uid]) == []
     assert with_cookie(app_module, t1).get("/auth/me").status_code == 401
     assert with_cookie(app_module, t2).get("/auth/me").status_code == 401

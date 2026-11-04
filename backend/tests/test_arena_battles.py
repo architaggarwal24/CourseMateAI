@@ -841,7 +841,7 @@ def test_deleting_the_account_removes_its_battles(hero):
     c, uid = hero
     bid = _start(c, "hard")["battle_id"]
     _win(c, bid)
-    assert c.delete("/auth/delete-account").status_code == 200
+    assert c.request("DELETE", "/auth/delete-account", json={"password": "correct-horse-1"}).status_code == 200
     for table in ("arena_battles", "arena_scores", "arena_personal_bests"):
         assert state.store.fetchall(f"SELECT 1 FROM {table} WHERE user_id = ?", (uid,)) == []
     assert state.store.fetchall("SELECT 1 FROM arena_questions WHERE battle_id = ?", (bid,)) == []

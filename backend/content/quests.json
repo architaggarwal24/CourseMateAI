@@ -35,6 +35,15 @@
           "reward_coins": 100,
           "level_required": 1,
           "icon": "🔥"
+        },
+        {
+          "quest_type": "review_cards",
+          "description": "Review 15 cards in your review queue",
+          "target_count": 15,
+          "reward_xp": 60,
+          "reward_coins": 30,
+          "level_required": 1,
+          "icon": "🔁"
         }
       ]
     },
@@ -69,6 +78,15 @@
           "reward_coins": 45,
           "level_required": 5,
           "icon": "🤔"
+        },
+        {
+          "quest_type": "clear_reviews",
+          "description": "Clear today's review queue",
+          "target_count": 1,
+          "reward_xp": 100,
+          "reward_coins": 50,
+          "level_required": 5,
+          "icon": "✅"
         }
       ]
     },
@@ -103,6 +121,15 @@
           "reward_coins": 75,
           "level_required": 10,
           "icon": "🏆"
+        },
+        {
+          "quest_type": "complete_exams",
+          "description": "Finish a mock exam",
+          "target_count": 1,
+          "reward_xp": 150,
+          "reward_coins": 75,
+          "level_required": 10,
+          "icon": "🎓"
         }
       ]
     },

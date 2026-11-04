@@ -119,11 +119,11 @@ def _first_item(data):
 
 def test_the_shipped_content_is_valid_and_complete():
     c = load_content()
-    assert len(c.shop.tiers) == 19 and sum(len(t.items) for t in c.shop.tiers) == 57
+    assert len(c.shop.tiers) == 22 and sum(len(t.items) for t in c.shop.tiers) == 75      # + 3 x 6 mastery skins
     assert len(c.achievements.achievements) == 19 and len(c.levels.xp_to_next_level) == 200
     assert set(c.rewards.actions) == {"arena_round_complete", "boss_defeat", "quiz_complete",
                                       "chat_bundle_5", "notes_generation", "flashcard_complete",
-                                      "expedition_complete"}
+                                      "expedition_complete", "review_complete", "exam_complete"}
     assert len(c.relics.relics) == 12
 
 

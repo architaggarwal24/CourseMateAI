@@ -145,7 +145,7 @@ export default function FileUploader({ sessionId }: FileUploaderProps) {
             filename={doc.filename}
             status={doc.status}
             message={describeDocument(doc)}
-            onPickFile={uploading ? undefined : pickAnotherFile}
+            onPickFile={uploading || doc.kind === "course" ? undefined : pickAnotherFile}
           />
         ) : (
           <label

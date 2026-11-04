@@ -1,7 +1,8 @@
 """Concept mastery: which concepts of a document a user keeps getting wrong (docs/arena-v2.md section 3).
 
     record()         one answer about a concept: seen +1, correct +1 or wrong streak +1. A wrong answer also keeps
-                     the question (text, correct answer, explanation) in missed_questions for the review deck.
+                     the question (text, correct answer, explanation) in missed_questions for the review deck, and
+                     puts it in the spaced-repetition review queue (services/review_service.py).
                      Written by arena answers (inside the battle's transaction), server-graded quiz answers and
                      flashcard reviews - each caller records an answer ONCE (a replayed answer records nothing).
     weak_concepts()  the concepts with misses, weakest first (misses + current wrong streak + how recent the last
@@ -17,6 +18,7 @@ from typing import List, Optional
 
 from core_brains.llm_schemas import question_key
 from services.progression.time_utils import utc_now_iso
+from services.review_service import upsert_item
 
 NEMESIS_MIN_CONCEPTS = 3            # a Nemesis needs at least this many missed concepts
 RECENCY_HALF_LIFE_DAYS = 7.0        # a miss counts half as "recent" after a week
@@ -32,10 +34,14 @@ class MasteryService:
         self.store = store
 
     def doc_hash_for(self, session_id: str, user_id) -> Optional[str]:
-        """The content hash of the user's document (None if it isn't theirs / doesn't exist)."""
+        """The content hash of the user's document - or `course:<id>` for a course of theirs (what was studied on
+        the course as a whole counts for the course). None if it isn't theirs / doesn't exist."""
         row = self.store.fetchone("SELECT file_hash FROM documents WHERE id = ? AND user_id = ?",
                                   (str(session_id), int(user_id)))
-        return row["file_hash"] if row else None
+        if row:
+            return row["file_hash"]
+        course = self.store.fetchone("SELECT id FROM courses WHERE id = ? AND user_id = ?", (str(session_id), int(user_id)))
+        return f"course:{course['id']}" if course else None
 
     # ── writing ──────────────────────────────────────────────────────────────
     def record(self, user_id, doc_hash: str, concept: str, correct: bool, *, question: Optional[dict] = None,
@@ -68,6 +74,10 @@ class MasteryService:
                     (int(user_id), doc_hash, question_key(text)[:500] or key, key, concept, source, text[:2000],
                      str(question.get("correct_answer") or "")[:1000],
                      (str(question.get("explanation") or "")[:2000] or None), now))
+                # ...and it becomes a card in the spaced-repetition review queue (due now if it already was one)
+                upsert_item(self.store, user_id, doc_hash, front=text, back=str(question.get("correct_answer") or ""),
+                            explanation=question.get("explanation"), concept=concept,
+                            source=source if source in ("arena", "quiz", "exam") else "arena")
             row = self.store.fetchone(
                 "SELECT concept, seen, correct, wrong_streak FROM concept_mastery "
                 "WHERE user_id = ? AND doc_hash = ? AND concept_key = ?", (int(user_id), doc_hash, key))

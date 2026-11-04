@@ -39,3 +39,10 @@ backend/uploads/
 # Playwright
 frontend/test-results/
 frontend/playwright-report/
+
+# Deploy (Phase 3 Stage 4e): the local tunnel config, run state, logs and backups
+deploy/windows/.run/
+deploy/windows/cloudflared.yml
+deploy/vps/.env
+logs/
+backups/

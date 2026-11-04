@@ -1,4 +1,5 @@
 fastapi==0.142.2
+sentry-sdk[fastapi]==2.73.0
 uvicorn==0.54.0
 requests==2.34.2
 python-dotenv==1.2.4
@@ -20,4 +21,8 @@ typing-extensions==4.16.0
 python-multipart==0.0.32
 bcrypt==5.0.0
 slowapi==0.1.10
+fsrs==6.3.2          # FSRS spaced-repetition scheduler (review queue)
+reportlab==5.1.0     # exam mode's PDF score report
 tzdata==2026.5          # IANA time-zone database for zoneinfo (Windows and slim images ship none)
+# PostgreSQL (only used when DATABASE_URL is set; docs/postgres.md)
+psycopg[binary]==3.3.8

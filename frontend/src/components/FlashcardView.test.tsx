@@ -135,3 +135,40 @@ describe("FlashcardView: generating a deck", () => {
     expect((screen.getByRole("button", { name: "Generate 10 cards" }) as HTMLButtonElement).disabled).toBe(false);
   });
 });
+
+describe("FlashcardView: the review queue (Phase 3 Stage 3A)", () => {
+  function recorder() {
+    const calls: { path: string; body: any }[] = [];
+    vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const path = new URL(urlOf(input)).pathname.replace("/api/v1", "");
+      calls.push({ path, body: await bodyOf(input, init).catch(() => null) });
+      if (path === "/review/cards") {
+        return json(200, { ok: true, added: 3, existing: 0, skipped: 0, stats: { due: 0, learning: 0, review: 0, new: 0, new_waiting: 0,
+          new_left_today: 20, reviewed_today: 0, total: 3, by_source: {}, next_due_at: null, locked: false } });
+      }
+      return json(200, { ok: true, concept: "Cells", mastery: {} });
+    }));
+    return calls;
+  }
+
+  it("grading a card sends the card itself, so it joins the review queue", async () => {
+    const calls = recorder();
+    render(<FlashcardView documentId="d1" restoreSessionId={SAVED} />);
+    key(" "); fireEvent.click(screen.getByRole("button", { name: "Missed it" }));
+    await act(async () => { await vi.advanceTimersByTimeAsync(10); });
+    const review = calls.find((c) => c.path === "/study/flashcards/review")!;
+    expect(review.body).toMatchObject({ session_id: "d1", concept: "Cells", correct: false, front: "What is ATP?", back: "The cell's energy currency." });
+  });
+
+  it("'Add deck to review' puts every card of the deck in the queue", async () => {
+    const calls = recorder();
+    render(<FlashcardView documentId="d1" restoreSessionId={SAVED} />);
+    fireEvent.click(screen.getByRole("button", { name: "Add deck to review" }));
+    await act(async () => { await vi.advanceTimersByTimeAsync(10); });
+    const add = calls.find((c) => c.path === "/review/cards")!;
+    expect(add.body.session_id).toBe("d1");
+    expect(add.body.cards.map((c: any) => c.front)).toEqual(DECK.map((c) => c.front));
+    expect(toasts.success).toHaveBeenCalledWith("3 cards added to your review queue");
+    expect((screen.getByRole("button", { name: "Add deck to review" }) as HTMLButtonElement).disabled).toBe(true);
+  });
+});

@@ -36,7 +36,7 @@ import uuid
 from datetime import datetime, timedelta, timezone
 from typing import Dict, List, Optional
 
-from core_brains import boss_brain
+from core_brains import boss_brain, kits, mechanics
 from core_brains.boss_brain import boss_taunt, make_intent, player_hit, roll_intent
 from core_brains.llm_schemas import question_key, question_tier
 from errors import AppError
@@ -127,7 +127,7 @@ def gear_for(equipped: dict) -> dict:
     Taken when the battle starts, so changing clothes mid-fight changes nothing."""
     from services.progression.catalog import flatten_catalog
     by_id = {it["id"]: it.get("battle") or {} for it in flatten_catalog()}
-    worn = {slot: (equipped.get(slot) or (equipped.get("outfit_id") if slot == "armor" else "")) or "" for slot in GEAR_SLOTS}
+    worn = {slot: equipped.get(slot) or "" for slot in GEAR_SLOTS}
     stats = [by_id.get(item_id, {}) for item_id in worn.values() if item_id]
     return {
         "items": {slot: item_id for slot, item_id in worn.items() if item_id},
@@ -179,6 +179,19 @@ def is_weakness(boss: dict, question: dict) -> bool:
     weakness = str(boss.get("weakness") or "").strip().lower()
     concept = str(question.get("concept") or "").strip().lower()
     return bool(weakness and concept and (weakness in concept or concept in weakness))
+
+
+def next_intent_for(boss: dict, difficulty: str, turn: int) -> dict:
+    """The intent telegraphed for `turn`: the creature's scheduled special (a grab, a riddle, a charge...) or the
+    usual weighted roll."""
+    m = mechanics.for_boss(boss)
+    special = m.scheduled(boss.get("mech") or {}, boss, difficulty, turn) if m else None
+    return special or roll_intent(boss, difficulty, shield_factor(boss))
+
+
+def mechanic_hud(boss: dict, difficulty: str) -> Optional[dict]:
+    m = mechanics.for_boss(boss)
+    return m.hud(boss.get("mech") or {}, boss, difficulty) if m else None
 
 
 def _err(code: str, message: str, status: int = 409, **details) -> AppError:
@@ -233,6 +246,10 @@ class BattleService:
             # a question is out and its clock is running: a resumed screen goes straight back to it, not to a move choice
             "question_issued": b["status"] == "active" and b["current_seq"] is not None,
             "free_timewarp": "hourglass" in relics_of(boss) and not (boss.get("mods") or {}).get("hourglass_used"),
+            # the creature's signature mechanic (core_brains/mechanics.py): its rule, counters and locked moves
+            "mechanic": mechanic_hud(boss, b["difficulty"]),
+            # the champion's kit (core_brains/kits.py): passive, ultimate and its meter
+            "kit": kits.hud(boss["kit"]) if boss.get("kit") else None,
         }
         if b["status"] != "active":
             out["result"] = json.loads(b["result_json"] or "{}")
@@ -250,7 +267,10 @@ class BattleService:
         options = [o for o in json.loads(q["options_json"]) if o not in removed]
         left = max(0.0, (_parse(q["deadline_at"]) - _now()).total_seconds())
         boss = json.loads(b["boss_json"])
+        intent = json.loads(b["intent_json"]) if b["intent_json"] else {}
         return {
+            "special": intent.get("kind") if intent.get("special") else None,
+            "riddle": intent.get("kind") == "riddle",
             "id": q["seq"], "number": b["answered"] + 1, "question": question["question"], "options": options,
             "concept": question.get("concept"), "difficulty": question.get("difficulty"), "phase": q["phase"],
             "move": q["move"] or DEFAULT_MOVE, "tier": question_tier(question.get("difficulty"), b["difficulty"]),
@@ -287,8 +307,10 @@ class BattleService:
         boss["max_hp"] = int(round(boss["max_hp"] * HP_PACING.get(difficulty, 2.6) * hp_scale))
         boss["difficulty"] = difficulty
         boss["current_hp"] = boss["max_hp"]
-        equipped = json.loads(self.store.get_avatar(str(user_id)).get("equipped_json") or "{}")
+        avatar = self.store.get_avatar(str(user_id))
+        equipped = json.loads(avatar.get("equipped_json") or "{}")
         boss["gear"] = gear_for(equipped)
+        boss["kit"] = kits.init(avatar.get("champion_id"))            # the champion fights as it was when it started
         mods = dict(mods or {})
         mods.setdefault("relics", [])
         mods.update(aegis_used=False, hourglass_used=False)
@@ -298,9 +320,12 @@ class BattleService:
         if hearts is None:
             hearts = max_hearts = PLAYER_MAX_HP + boss["gear"]["hp"]
         boss.update(phase=1, rage=False, rounds_fought=0, total_damage_taken=0, total_damage_dealt=0, asked_concepts=[])
+        mech = mechanics.for_boss(boss)
+        if mech:
+            boss["mech"] = mech.init(boss, difficulty)
         focus = min(focus_cap, (FOCUS_CRYSTAL_START if "focus_crystal" in mods["relics"] else 0)
                     + int(mods.get("focus_bonus", 0)))
-        intent = roll_intent(boss, difficulty, shield_factor(boss))
+        intent = next_intent_for(boss, difficulty, 1)
         now = _iso(_now())
         battle_id = uuid.uuid4().hex
         try:
@@ -370,11 +395,14 @@ class BattleService:
             asked = await asyncio.to_thread(
                 lambda: [json.loads(r["question_json"]).get("concept") or "" for r in self.store.fetchall(
                     "SELECT question_json FROM arena_questions WHERE battle_id = ?", (battle_id,))])
-            targets = json.loads(b["boss_json"]).get("target_concepts") or []
+            boss = json.loads(b["boss_json"])
+            targets = boss.get("target_concepts") or []
+            extra = {"target_concepts": targets} if targets else {}
+            if boss.get("species") == "sphinx":
+                extra["riddles"] = True                  # the Sphinx asks riddles (core_brains/mechanics.py)
             quiz = await boss_brain.generate_battle_quiz_async(
                 vector_store, b["topic"], difficulty=b["difficulty"], num_questions=BATCH_SIZE,
-                asked_concepts=[c for c in asked if c], phase=phase,
-                **({"target_concepts": targets} if targets else {}))
+                asked_concepts=[c for c in asked if c], phase=phase, **extra)
             await asyncio.to_thread(self._store_batch, battle_id, phase, quiz.get("questions", []))
             return None
         except asyncio.CancelledError:
@@ -456,16 +484,30 @@ class BattleService:
         except RuntimeError:        # no running loop (called from a worker thread): the next request will do it
             pass
 
-    def _pick(self, battle_id: str, phase: int, tier: str, difficulty: str) -> Optional[dict]:
-        """The first queued question of the phase in the wanted tier - or, when there is none, the nearest tier."""
+    def _pick(self, battle_id: str, phase: int, tier: str, difficulty: str, riddle: bool = False) -> Optional[dict]:
+        """The first queued question of the phase in the wanted tier - or, when there is none, the nearest tier.
+        `riddle` (a Sphinx riddle turn) takes a question the model wrote as a riddle first, if there is one."""
         queued = self.store.fetchall(
             "SELECT * FROM arena_questions WHERE battle_id = ? AND phase = ? AND status = 'queued' ORDER BY seq",
             (battle_id, phase))
+        if riddle:
+            riddles = [q for q in queued if json.loads(q["question_json"]).get("riddle") is True]
+            queued = riddles + [q for q in queued if q not in riddles]
         for wanted in TIER_ORDER[tier]:
             for q in queued:
                 if question_tier(json.loads(q["question_json"]).get("difficulty"), difficulty) == wanted:
                     return q
         return None
+
+    def _pool_answers(self, battle_id: str, seq: int) -> List[str]:
+        """The right answers of the battle's other questions (a Kitsune borrows one as its illusion)."""
+        return [json.loads(r["question_json"]).get("correct_answer") or "" for r in self.store.fetchall(
+            "SELECT question_json FROM arena_questions WHERE battle_id = ? AND seq != ?", (battle_id, seq))]
+
+    def _pool_concepts(self, battle_id: str) -> List[str]:
+        """The concepts still waiting in the pool (a Rakshasa shifts its weakness to one of them)."""
+        return [json.loads(r["question_json"]).get("concept") or "" for r in self.store.fetchall(
+            "SELECT question_json FROM arena_questions WHERE battle_id = ? AND status = 'queued'", (battle_id,))]
 
     def _issue_next(self, battle_id: str, user_id: str, move: str = DEFAULT_MOVE) -> Optional[dict]:
         """Hand out the next queued question of the current phase for this move: its tier (or the nearest one),
@@ -478,20 +520,35 @@ class BattleService:
             if b["current_seq"] is not None:
                 return self._question_row(battle_id, b["current_seq"])
             boss = json.loads(b["boss_json"])
+            mech = mechanics.for_boss(boss)
+            intent = json.loads(b["intent_json"]) if b["intent_json"] else {}
+            if mech and move in mech.locked_moves(boss.get("mech") or {}):
+                raise _err("move_locked", f"The {boss.get('name') or 'boss'} has your {move.title()} pinned.", move=move)
             cost = move_cost(move, boss)
             if b["focus"] < cost:
                 raise _err("not_enough_focus", f"{move.title()} needs {cost} Focus.", focus=b["focus"], cost=cost)
-            q = self._pick(battle_id, b["phase"], MOVES[move]["tier"], b["difficulty"])
+            tier = (mech.forced_tier(intent) if mech else None) or MOVES[move]["tier"]
+            q = self._pick(battle_id, b["phase"], tier, b["difficulty"], riddle=bool(mech and mech.prefers_riddle(intent)))
             if not q:
                 return None
             options = list(json.loads(q["question_json"])["options"])
             random.shuffle(options)
+            if mech and mech.wants_illusion(intent):
+                fake = mechanics.illusion_option(options, self._pool_answers(battle_id, q["seq"]), random)
+                if fake:
+                    options.insert(random.randrange(len(options) + 1), fake)
+                    boss.setdefault("mech", {})["illusion"] = {"seq": q["seq"], "option": fake}
+                    self.store.execute("UPDATE arena_battles SET boss_json = ? WHERE id = ?", (json.dumps(boss), battle_id))
             now = _now()
             self.store.execute(
                 "UPDATE arena_questions SET status = 'issued', options_json = ?, issued_at = ?, deadline_at = ?, move = ? "
                 "WHERE battle_id = ? AND seq = ? AND status = 'queued'",
                 (json.dumps(options), _iso(now), _iso(now + timedelta(seconds=time_limit(boss, move))), move,
                  battle_id, q["seq"]))
+            kit = boss.get("kit") or {}
+            if kit.pop("library_pending", False):              # Mira's Arcane Library, cast between questions
+                self.store.execute("UPDATE arena_battles SET boss_json = ? WHERE id = ?", (json.dumps(boss), battle_id))
+                self._free_spells(battle_id, q["seq"], boss, json.loads(b["intent_json"] or "{}"))
             self.store.execute("UPDATE arena_battles SET current_seq = ?, focus = focus - ?, updated_at = ? WHERE id = ?",
                                (q["seq"], cost, _iso(now), battle_id))
             return self._question_row(battle_id, q["seq"])
@@ -616,24 +673,49 @@ class BattleService:
         dealt = taken = absorbed = healed = drained = lifesteal = 0
         hit_type = None
         gear_bonus = pet_strike = focus_gained = 0
-        blocked = interrupted = aegis = revived = False
+        blocked = interrupted = aegis = revived = dodged = False
         weak = is_weakness(boss, question)
+
+        # ── the creature's signature mechanic (core_brains/mechanics.py) ──
+        mech = mechanics.for_boss(boss)
+        mstate = boss.setdefault("mech", {}) if mech else {}
+        illusion = mstate.get("illusion") or {}
+        limit = max(1, question_limit(boss, q))
+        turn = mechanics.Turn(
+            difficulty=b["difficulty"], boss=boss, state=mstate, intent=intent, move=move, correct=correct,
+            timed_out=bool(timed_out), turn=b["answered"] + 1, combo=(b["combo"] + 1) if correct else 0,
+            concept_key=mechanics.key(question.get("concept")),
+            spent_ratio=min(1.0, max(0.0, (_now() - _parse(q["issued_at"])).total_seconds() / limit)),
+            illusion_picked=bool(picked is not None and illusion.get("seq") == q["seq"] and picked == illusion.get("option")),
+            pool_concepts=self._pool_concepts(battle_id) if mech else [], rng=random)
+        if mech:
+            mech.prepare(turn)
+        # ── the champion's kit (core_brains/kits.py) ──
+        kstate = boss.get("kit") or kits.init(None)
+        boss["kit"] = kstate
+        kt = kits.KitTurn(champion=kstate["champion"], difficulty=b["difficulty"], state=kstate, move=move,
+                          correct=correct, combo=turn.combo,
+                          damaging=intent.get("kind") in mechanics.DAMAGING_KINDS and not turn.skip, rng=random,
+                          seq=q["seq"])
+        kits.prepare(kt)
+        riposte = 0
 
         # ── the player's hit ──
         if correct:
             combo += 1
-            hit = player_hit(boss, combo)
+            hit = player_hit(boss, combo, kt.combo_extra)
             dealt, hit_type = hit["damage"], hit["hit_type"]
             if weak:
                 dealt *= 3 if "scholar_lens" in relics else 2
-            dealt = int(dealt * MOVES[move]["mult"])
+            move_mult = kt.jab_mult if (move == "jab" and kt.jab_mult) else MOVES[move]["mult"]
+            dealt = int(dealt * move_mult * turn.mult * kt.mult)
             if dealt > 0:                                        # gear rides on a real hit only (not on a guard)
                 gear = boss.get("gear") or {}
                 weapon_bonus = int(round(dealt * float(gear.get("damage_pct", 0))))     # the weapon
                 pet_strike = int(gear.get("strike", 0)) if combo >= 3 else 0            # the pet, on a hot streak
                 gear_bonus = weapon_bonus + pet_strike
                 dealt += gear_bonus
-            if shield and dealt and not weak:                    # weakness hits ignore shields
+            if shield and dealt and not weak and not kt.ignore_shield:   # weakness hits (and the Cut) ignore shields
                 absorbed = min(shield, dealt)
                 shield -= absorbed
                 dealt -= absorbed
@@ -654,13 +736,33 @@ class BattleService:
         attack_name = None
         if boss["current_hp"] > 0:
             kind = intent.get("kind")
-            if kind in ("attack", "heavy"):
-                value = int(intent.get("value", 0))
+            if turn.skip:                                        # takes aim / stunned: nothing this turn
+                pass
+            elif kind in mechanics.DAMAGING_KINDS:
+                value = int(intent.get("value", 0)) + turn.boss_bonus
                 attack_name = intent.get("name")
-                if correct and move == "guard":
+                if turn.dodge:
+                    taken, dodged = 0, True
+                elif kt.block or (correct and move == "guard"):
                     taken, blocked = 0, True
                 else:
-                    taken = value // 2 if correct else value
+                    taken = value if (not correct or turn.no_halve) else value // kt.divisor
+                    if kt.halve_after:
+                        taken //= 2
+                if taken > 0 and kt.dodge:                       # Vex: Shadowstep / Vanish
+                    taken, dodged = 0, True
+                else:
+                    kt.dodge = kt.vanished = False
+                if kt.riposte and blocked and correct and move == "guard":       # Kaien's Riposte
+                    riposte = int(player_hit(boss, combo)["damage"] * kt.riposte)
+                    soak = 0 if weak else min(shield, riposte)
+                    shield -= soak
+                    riposte -= soak
+                    dealt += riposte
+                    boss["current_hp"] = max(0, boss["current_hp"] - riposte)
+                    boss["total_damage_taken"] = boss.get("total_damage_taken", 0) + riposte
+                    if boss["current_hp"] < boss["max_hp"] * boss.get("rage_threshold", 0.4) and boss.get("phase", 1) == 1:
+                        boss["phase"], boss["rage"], phase_changed = 2, True, True
             elif kind == "shield":
                 shield += int(intent.get("value", 0))
             elif kind == "drain" and not correct:
@@ -679,12 +781,33 @@ class BattleService:
         else:
             taunt = boss_taunt(boss, "defeat")
 
-        player_hp = max(0, min(b["player_max_hp"], b["player_hp"] + lifesteal) - taken)
+        # ── the mechanic settles: heads, fury, coils... and their side effects ──
+        mech_heal = mech_damage = 0
+        if mech:
+            turn.dealt = dealt
+            mech.settle(turn)
+            if boss["current_hp"] > 0:
+                mech_heal = max(0, min(turn.boss_heal, boss["max_hp"] - boss["current_hp"]))
+                boss["current_hp"] += mech_heal
+                shield += turn.shield
+                if turn.new_weakness:
+                    boss["weakness"] = turn.new_weakness
+                mech_damage = turn.player_dot
+            focus = max(0, min(focus_cap, focus + turn.focus_delta))
+            mstate.pop("illusion", None)
+        if not (boss["current_hp"] > 0 and intent.get("kind") in mechanics.DAMAGING_KINDS):
+            kt.dodge = kt.vanished = False                       # nothing was swung: no dodge to report
+        kits.settle(kt)
+        focus = max(0, min(focus_cap, focus + kt.focus_delta + kt.refund))
+        meter_gained = kits.charge(kstate, correct, combo)
+
+        player_hp = max(0, min(b["player_max_hp"], b["player_hp"] + lifesteal + (turn.hearts if mech else 0))
+                        - taken - mech_damage)
         if player_hp <= 0 and "phoenix_ash" in relics and not mods.get("phoenix_used"):
             player_hp, revived, mods["phoenix_used"] = min(PHOENIX_HEARTS, b["player_max_hp"]), True, True
         answered = b["answered"] + 1
         over = boss["current_hp"] <= 0 or player_hp <= 0 or answered >= MAX_ANSWERS
-        next_intent = None if over else roll_intent(boss, b["difficulty"], shield_factor(boss))
+        next_intent = None if over else next_intent_for(boss, b["difficulty"], answered + 1)
         now = _now()
         spent = min((now - _parse(q["issued_at"])).total_seconds(), question_limit(boss, q))
         outcome = {
@@ -697,6 +820,13 @@ class BattleService:
             "intent": intent, "next_intent": next_intent, "blocked": blocked, "interrupted": interrupted,
             "shield_absorbed": absorbed, "boss_healed": healed, "focus": focus, "focus_gained": focus_gained,
             "focus_drained": drained, "aegis": aegis, "revived": revived, "lifesteal": lifesteal,
+            "dodged": dodged, "riposte": riposte, "kit_meter_gained": meter_gained,
+            "kit": {"events": kt.events, "refund": kt.refund, "hud": kits.hud(kstate)},
+            # the creature's mechanic this turn: what happened (events), its heal / damage over time, the new HUD
+            "mechanic": ({"id": mech.id, "events": turn.events, "boss_healed": mech_heal, "damage": mech_damage,
+                          "hearts": turn.hearts, "focus": turn.focus_delta, "shield": turn.shield if boss["current_hp"] > 0 else 0,
+                          "illusion_picked": turn.illusion_picked, "hud": mechanic_hud(boss, b["difficulty"])}
+                         if mech else None),
         }
         self.store.execute(
             "UPDATE arena_questions SET status = 'answered', answer = ?, correct = ?, timed_out = ?, answered_at = ?, "
@@ -753,9 +883,10 @@ class BattleService:
             paid = {"arena_round_complete": None, "boss_defeat": None}
             ratio = accuracy / 100
             missed = self.missed(battle_id)
+            champion = self._champion_xp(uid, b, status == "won")
             if b["run_id"]:
                 result = {"grade": grade, "accuracy": accuracy, "time_seconds": seconds, "new_personal_best": False,
-                          "missed": missed}
+                          "missed": missed, "champion": champion}
                 if self.on_run_battle_end is not None:
                     result["run"] = self.on_run_battle_end({**b, "status": status}, status)
                 self.store.execute("UPDATE arena_battles SET rewards_json = ?, result_json = ? WHERE id = ?",
@@ -766,7 +897,7 @@ class BattleService:
                     uid, "arena_round_complete", accuracy=ratio, difficulty=1.5 if b["phase"] == 2 else 1.2,
                     combo_count=max(b["max_combo"], 1), source_id=battle_id)
             result = {"grade": grade, "accuracy": accuracy, "time_seconds": seconds, "new_personal_best": False,
-                      "missed": missed}
+                      "missed": missed, "champion": champion}
             if status == "won":
                 paid["boss_defeat"] = self.rewards.award(
                     uid, "boss_defeat", accuracy=ratio, difficulty=BOSS_DEFEAT_DIFFICULTY.get(b["difficulty"], 1.2),
@@ -775,6 +906,18 @@ class BattleService:
             self.store.execute("UPDATE arena_battles SET rewards_json = ?, result_json = ? WHERE id = ?",
                                (json.dumps(paid), json.dumps(result), battle_id))
             return paid
+
+    def _champion_xp(self, uid: str, b: dict, won: bool) -> dict:
+        """The champion that fought earns XP (inside _end's transaction: once per battle). A level that reaches
+        3 / 6 / 10 grants that champion's mastery skin in the same write."""
+        cid = (json.loads(b["boss_json"]).get("kit") or {}).get("champion") or kits.DEFAULT_CHAMPION
+        xp = kits.battle_xp(b["correct"], won)
+        old, new, total = self.store.add_champion_xp(uid, cid, xp, won, kits.level_for)
+        unlocked = [u["id"] for u in kits.unlocked_between(cid, old, new)]
+        if unlocked:
+            self.store.modify_avatar(uid, lambda eq, ow: ow.extend(i for i in unlocked if i not in ow))
+        return {"id": cid, "xp_gained": xp, "xp": total, "level": new, "leveled_up": new > old,
+                "next_level_xp": kits.next_level_xp(new), "unlocked": unlocked}
 
     def _record_score(self, b: dict, grade: str, accuracy: int, seconds: int, now: str) -> bool:
         user = self.store.fetchone("SELECT username FROM users WHERE id = ?", (b["user_id"],))
@@ -844,9 +987,7 @@ class BattleService:
                     raise _err("already_used", "You already used 50/50 on this question.")
                 if not self._consume(user_id, "fifty_fifty"):
                     raise _err("no_stock", "You don't have a 50/50 charge.")
-                correct = json.loads(q["question_json"])["correct_answer"]
-                wrong = [o for o in json.loads(q["options_json"]) if not same_answer(o, correct)]
-                hidden = random.sample(wrong, min(2, len(wrong)))
+                hidden = self._two_wrong(q, json.loads(b["boss_json"]))
                 self.store.execute("UPDATE arena_questions SET removed_json = ? WHERE battle_id = ? AND seq = ?",
                                    (json.dumps(hidden), battle_id, q["seq"]))
                 self.store.execute("UPDATE arena_battles SET fifty_used = fifty_used + 1, updated_at = ? WHERE id = ?",
@@ -856,6 +997,58 @@ class BattleService:
                 question = self.public_question(self._question_row(battle_id, b["current_seq"]), b)
             return {"ok": True, "item": item, "battle": self.state(b), "question": question,
                     "stock": self.stock(user_id)}
+
+    def _free_spells(self, battle_id: str, seq: int, boss: dict, intent: dict) -> None:
+        """Arcane Library: Insight and Timewarp on question `seq`, free (Insight still can't touch a riddle)."""
+        q = self._question_row(battle_id, seq)
+        mech = mechanics.for_boss(boss)
+        if not q["removed_json"] and not (mech and mech.blocks_insight(intent)):
+            self.store.execute("UPDATE arena_questions SET removed_json = ? WHERE battle_id = ? AND seq = ?",
+                               (json.dumps(self._two_wrong(q, boss)), battle_id, seq))
+        if not q["timewarped"]:
+            deadline = _parse(q["deadline_at"]) + timedelta(seconds=TIMEWARP_SECONDS)
+            self.store.execute("UPDATE arena_questions SET deadline_at = ?, timewarped = 1 WHERE battle_id = ? AND seq = ?",
+                               (_iso(deadline), battle_id, seq))
+
+    def use_ultimate(self, user_id: str, battle_id: str) -> dict:
+        """The champion's ultimate (core_brains/kits.py): needs a full meter, empties it. One at a time."""
+        self._need(battle_id, user_id)
+        self._settle(battle_id, user_id)
+        with self.store.transaction():
+            b = self._need(battle_id, user_id)
+            if b["status"] != "active":
+                raise _err("battle_finished", "That battle is over.")
+            boss = json.loads(b["boss_json"])
+            kstate = boss.setdefault("kit", kits.init(None))
+            try:
+                fx = kits.activate(kstate)
+            except kits.NotReady:
+                raise _err("ultimate_not_ready", "Your ultimate is still charging.", meter=kstate.get("meter", 0))
+            except kits.AlreadyActive:
+                raise _err("ultimate_active", "Your ultimate is already in play.")
+            hearts = max(0, min(int(fx["hearts"]), b["player_max_hp"] - b["player_hp"]))
+            q = self._question_row(battle_id, b["current_seq"]) if b["current_seq"] is not None else None
+            open_q = q is not None and q["status"] == "issued" and _now() <= _parse(q["deadline_at"])
+            if fx["insight"] or fx["timewarp"]:
+                if open_q:
+                    self._free_spells(battle_id, q["seq"], boss, json.loads(b["intent_json"] or "{}"))
+                else:
+                    kstate["library_pending"] = True
+            self.store.execute("UPDATE arena_battles SET boss_json = ?, player_hp = player_hp + ?, updated_at = ? "
+                               "WHERE id = ?", (json.dumps(boss), hearts, _iso(_now()), battle_id))
+            b = self._need(battle_id, user_id)
+            question = self.public_question(self._question_row(battle_id, q["seq"]), b) if open_q else None
+            return {"ok": True, "ultimate": {**fx, "hearts": hearts}, "battle": self.state(b), "question": question}
+
+    @staticmethod
+    def _two_wrong(q: dict, boss: dict) -> List[str]:
+        """The two options a 50/50 or Insight removes: a Kitsune's illusion always goes first."""
+        correct = json.loads(q["question_json"])["correct_answer"]
+        options = json.loads(q["options_json"])
+        illusion = (boss.get("mech") or {}).get("illusion") or {}
+        fake = illusion.get("option") if illusion.get("seq") == q["seq"] and illusion.get("option") in options else None
+        wrong = [o for o in options if not same_answer(o, correct) and o != fake]
+        return ([fake] if fake else []) + random.sample(wrong, min(2 - (1 if fake else 0), len(wrong)))
 
     # ═════════════════════════════ spells ═══════════════════════════════════
     def cast_spell(self, user_id: str, battle_id: str, spell: str) -> dict:
@@ -880,6 +1073,9 @@ class BattleService:
             cost = SPELLS[spell]
             if spell == "insight" and q["removed_json"]:
                 raise _err("already_used", "Two wrong answers are already gone from this question.")
+            mech = mechanics.for_boss(boss)
+            if spell == "insight" and mech and mech.blocks_insight(json.loads(b["intent_json"] or "{}")):
+                raise _err("riddle_no_insight", "A riddle can't be narrowed down: answer it on your own.")
             if spell == "timewarp":
                 if q["timewarped"]:
                     raise _err("already_used", "You already bent time on this question.")
@@ -888,14 +1084,14 @@ class BattleService:
             if b["focus"] < cost:
                 raise _err("not_enough_focus", f"{spell.title()} needs {cost} Focus.", focus=b["focus"], cost=cost)
             if spell == "insight":
-                correct = json.loads(q["question_json"])["correct_answer"]
-                wrong = [o for o in json.loads(q["options_json"]) if not same_answer(o, correct)]
                 self.store.execute("UPDATE arena_questions SET removed_json = ? WHERE battle_id = ? AND seq = ?",
-                                   (json.dumps(random.sample(wrong, min(2, len(wrong)))), battle_id, q["seq"]))
+                                   (json.dumps(self._two_wrong(q, boss)), battle_id, q["seq"]))
             else:
                 deadline = _parse(q["deadline_at"]) + timedelta(seconds=TIMEWARP_SECONDS)
                 self.store.execute("UPDATE arena_questions SET deadline_at = ?, timewarped = 1 "
                                    "WHERE battle_id = ? AND seq = ?", (_iso(deadline), battle_id, q["seq"]))
+            if cost and boss.get("kit"):
+                kits.spent(boss["kit"], q["seq"], cost)             # Mira's Quiet Study gives it back on a right answer
             self.store.execute("UPDATE arena_battles SET focus = focus - ?, boss_json = ?, updated_at = ? WHERE id = ?",
                                (cost, json.dumps(boss), _iso(_now()), battle_id))
             b = self._need(battle_id, user_id)

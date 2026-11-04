@@ -21,6 +21,7 @@ except ContentError as _exc:
     sys.exit(1)
 
 from auth.auth_service import AuthService
+from auth.login_throttle import LoginThrottle
 from auth.middleware import AuthMiddleware
 from config import settings
 from database.db import Database
@@ -41,25 +42,39 @@ from services.arena_service import BattleService
 from services.expedition_service import ExpeditionService
 from services.mastery_service import MasteryService
 from services.quiz_service import QuizService
+from services.review_service import ReviewService
+from services.exam_service import ExamService
+from services.course_service import CourseService
+from services.concept_map_service import ConceptMapService
+from services import entitlements
+from services.usage_service import UsageService
+from services.invite_service import InviteService
+from services.quiz_bank import QuizBank
+from services.billing import BillingService
+from core_brains import usage_meter
 
 logger = logging.getLogger(__name__)
 
 # ── Database & auth ───────────────────────────────────────────────────────────
-# One SQLite file for everything. The schema comes ONLY from backend/migrations (applied here,
-# once, at startup); nothing below or in a request path creates or alters tables.
+# One database for everything: the SQLite file, or PostgreSQL when DATABASE_URL is set (docs/postgres.md). The
+# schema comes ONLY from backend/migrations (applied here, once, at startup); nothing below or in a request path
+# creates or alters tables.
 settings.data_dir.mkdir(parents=True, exist_ok=True)
+DATABASE_TARGET = settings.database_url or str(settings.database_path)
 try:
-    upgrade_database(settings.database_path)
+    upgrade_database(DATABASE_TARGET)
 except MigrationError as _exc:       # e.g. un-merged legacy files, or a migration that was edited after use
     print(f"\nERROR: {_exc}\n", file=sys.stderr)
     sys.exit(1)
-db = Database(str(settings.database_path))
+db = Database(DATABASE_TARGET)
 check_encryption_config()   # fail fast if ENCRYPTION_KEY is missing/invalid
 auth_service = AuthService(db, secret_key=settings.jwt_secret)
 auth_middleware = AuthMiddleware(auth_service)
+# Wrong passwords per account, whatever the client (auth/login_throttle.py).
+login_throttle = LoginThrottle()
 history_service = HistoryService(db)
 
-store = SQLiteStore(str(settings.database_path))
+store = SQLiteStore(DATABASE_TARGET)
 
 # ── Progression services ──────────────────────────────────────────────────────
 achievement_service = AchievementService(store)
@@ -71,6 +86,10 @@ quest_service = DailyQuestService(store)
 # Concept mastery (what each user keeps missing on each document): written by arena, quiz and flashcard reviews.
 mastery_service = MasteryService(store)
 quiz_service = QuizService(store, reward_service, mastery=mastery_service)
+# The spaced-repetition review queue (FSRS): cards from flashcards and every missed arena / quiz / exam question.
+review_service = ReviewService(store, mastery=mastery_service)
+# Exam mode: timed mock tests, graded on the server; misses feed the review queue (through mastery).
+exam_service = ExamService(store, reward_service, mastery=mastery_service, quests=quest_service)
 
 # ── Uploaded documents ────────────────────────────────────────────────────────
 # The `documents` table is the source of truth. `vector_stores` is only a cache of FAISS indexes that have
@@ -85,6 +104,21 @@ documents = DocumentService(
     max_documents=settings.max_sessions,
     expiry_hours=settings.session_expiry_hours,
 )
+
+# Plans (user_plans), usage metering (every AI call is counted for its user) and invite codes.
+entitlements.bind(store)
+usage_service = UsageService(store)
+usage_meter.set_sink(usage_service.record)
+invite_service = InviteService(store)
+# Every quiz question generated for a document's content, shared by everyone with the same PDF (services/quiz_bank.py).
+quiz_bank = QuizBank(store)
+# Paid plans through subscriptions (Razorpay, or a stub in testing); off unless PAYMENTS_ENABLED=1.
+billing_service = BillingService(store)
+
+# Courses: several documents studied together (a course id works wherever a document id does).
+course_service = CourseService(store, documents, mastery=mastery_service, review=review_service)
+# Concept maps: one AI pass per document content, in the background; coloured by concept mastery.
+concept_map_service = ConceptMapService(store, documents)
 
 # Arena fights: the boss, hearts, questions, clock, rewards and leaderboard all live server-side.
 battle_service = BattleService(store, reward_service, buff_service, documents, mastery=mastery_service)

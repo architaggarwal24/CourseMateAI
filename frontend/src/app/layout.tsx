@@ -12,7 +12,8 @@ import "./globals.css";
 export const metadata: Metadata = {
   title: "CourseMateAI",
   description: "AI-powered study companion with gamification",
-  icons: { icon: "/favicon.ico" },
+  icons: { icon: "/favicon.ico", apple: "/icons/apple-touch-icon.png" },
+  appleWebApp: { capable: true, title: "CourseMate", statusBarStyle: "black-translucent" },
 };
 
 export const viewport: Viewport = {

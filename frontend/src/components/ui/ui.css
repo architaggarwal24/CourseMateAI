@@ -371,6 +371,13 @@ textarea.ui-control { min-height: 5rem; resize: vertical; line-height: var(--lin
 }
 /* A tab that is a link (route-based sub-navigation, see components/shell/SubNav.tsx). */
 a.ui-tab { display: inline-flex; align-items: center; text-decoration: none; }
+/* A count on a tab (cards due on Review). */
+.ui-tab__badge {
+  margin-left: var(--space-2); min-width: 1.15rem; height: 1.15rem; padding: 0 0.32rem;
+  display: inline-grid; place-items: center; border-radius: 999px;
+  background: color-mix(in srgb, var(--color-accent) 85%, transparent); color: var(--color-on-accent);
+  font-size: 0.66rem; font-weight: 700; font-variant-numeric: tabular-nums; line-height: 1;
+}
 .ui-tab:disabled { opacity: 0.45; cursor: not-allowed; }
 .ui-tabs__panel { padding-top: var(--space-4); }
 

@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import { useHUDStore } from "@/hooks/useHUD";
+import { useReview } from "@/hooks/useReview";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import ThemeScope from "@/components/ThemeScope";
@@ -15,10 +16,11 @@ import "./shell.css";
 /**
  * The frame around Study, Hero and Account: a frosted sidebar on desktop, a floating dock on mobile, the screen in
  * between, over an ambient backdrop (aurora in Study; aurora + starfield in the Hero area's Play theme).
- * It also keeps what the old home page kept for the whole session: the HUD refresh. ⌘K opens the command palette.
+ * It also keeps what the old home page kept for the whole session: the HUD refresh (and the review queue's due count).
+ * ⌘K opens the command palette.
  */
 export default function AppShell({ children }: { children: React.ReactNode }) {
-  const { loading: authLoading } = useAuth();
+  const { loading: authLoading, user } = useAuth();
   const refresh = useHUDStore((s) => s.refresh);
   const area = areaOf(usePathname());
   const play = area === "hero";
@@ -27,6 +29,16 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     refresh();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // The review queue's due count (the Study badge): once signed in, and again whenever the window gets focus.
+  const signedIn = !!user;
+  useEffect(() => {
+    if (!signedIn) return;
+    const load = () => { void useReview.getState().load(); };
+    load();
+    window.addEventListener("focus", load);
+    return () => window.removeEventListener("focus", load);
+  }, [signedIn]);
 
   return (
     <ThemeScope theme={play ? "play" : "study"}>

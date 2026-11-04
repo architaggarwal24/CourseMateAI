@@ -7,7 +7,7 @@ import { formatWhen } from "./sessionMeta";
 
 const hoursAgo = (h: number) => new Date(Date.now() - h * 3600_000).toISOString();
 const seed = () => saveMetadata({
-  c1: { type: "chat", preview: "What is ATP?", updated: hoursAgo(1), title: "bio.pdf" } as any,
+  c1: { type: "chat", preview: "What is ATP?", updated: hoursAgo(0), title: "bio.pdf" } as any,   // now: "Today" at any hour (1h ago is yesterday just after midnight)
   q1: { type: "quiz", preview: "cells · 3/5 answered", updated: hoursAgo(30) },
   n1: { type: "notes", preview: "key concepts · Normal", updated: hoursAgo(24 * 40) },
   f1: { type: "flashcards", preview: "cells · 1/10", updated: hoursAgo(50) },

@@ -26,9 +26,36 @@ export const MOVE_INFO: Record<Move, { label: string; tier: string; blurb: strin
   guard: { label: "Guard", tier: "Medium question", blurb: "No damage. Right answer blocks the boss's attack.", key: "R" },
 };
 export type Spell = "insight" | "timewarp";
-export type IntentKind = "attack" | "heavy" | "shield" | "drain" | "heal";
+export type IntentKind =
+  | "attack" | "heavy" | "shield" | "drain" | "heal"
+  // a creature's signature turns (backend core_brains/mechanics.py)
+  | "grab" | "riddle" | "illusion" | "charge" | "aim" | "throw" | "hoard" | "stunned";
+/** Intents that hit (their value is damage). */
+export const DAMAGING_INTENTS: readonly IntentKind[] = ["attack", "heavy", "grab", "riddle", "illusion", "charge", "throw", "hoard"];
 /** What the boss will do when this turn resolves (telegraphed before the player picks a move). */
-export interface Intent { kind: IntentKind; name: string; value: number; description: string; amount?: number }
+export interface Intent { kind: IntentKind; name: string; value: number; description: string; amount?: number; special?: boolean }
+
+/** The creature's signature mechanic as the HUD shows it: its rule in one line and its counters. */
+export interface MechanicCounter { label: string; value?: number; max?: number; text?: string; hint?: string }
+export interface MechanicHud { id: string; name: string; summary: string; counters: MechanicCounter[]; locked_moves: Move[] }
+export interface MechanicEvent { type: string; text: string; [key: string]: unknown }
+/** What the mechanic did on one answer. */
+export interface MechanicOutcome {
+  id: string; events: MechanicEvent[]; boss_healed: number; damage: number; hearts: number; focus: number; shield: number;
+  illusion_picked: boolean; hud: MechanicHud | null;
+}
+
+/** The champion's kit in a fight (backend core_brains/kits.py): passive, ultimate and its meter. */
+export interface KitHud {
+  champion: string; meter: number; max: number; ready: boolean; active: boolean;
+  passive: { name: string; text: string }; ultimate: { name: string; text: string };
+  effects: Partial<Record<"armed" | "wall" | "vanish" | "fortress", string | number>>;
+}
+export interface KitOutcome { events: MechanicEvent[]; refund: number; hud: KitHud }
+/** XP the champion earned in a finished battle (and the mastery skins a level-up unlocked). */
+export interface ChampionXp {
+  id: string; xp_gained: number; xp: number; level: number; leveled_up: boolean; next_level_xp: number | null; unlocked: string[];
+}
 
 export interface Relic { id: string; name: string; description: string; rarity: "common" | "rare" | "epic" | "legendary" }
 export interface MissedConcept { concept: string; question: string; correct_answer: string; explanation?: string | null }
@@ -60,6 +87,8 @@ export interface BattleResult {
   grade: string; accuracy: number; time_seconds: number; new_personal_best: boolean;
   /** The questions answered wrong (loot: they become review cards). */
   missed?: MissedConcept[];
+  /** The champion that fought: its XP, level and any mastery skin unlocked. */
+  champion?: ChampionXp;
   /** For a battle inside an expedition: what it did to the run. */
   run?: { status?: string; pending?: string; gained_gold?: number; [key: string]: unknown };
 }
@@ -102,6 +131,10 @@ export interface Battle {
   free_timewarp?: boolean;
   /** A question is out (its clock running): a resumed screen goes straight back to it. */
   question_issued?: boolean;
+  /** The creature's signature mechanic (null for a boss without one). */
+  mechanic?: MechanicHud | null;
+  /** The champion's kit and ultimate meter. */
+  kit?: KitHud | null;
   /** Only once the battle is over. */
   result?: Partial<BattleResult>;
   rewards?: BattleRewards | null;
@@ -122,6 +155,10 @@ export interface Question {
   move?: Move;
   tier?: string;
   timewarped?: boolean;
+  /** The creature's special turn this question belongs to (riddle, illusion, hoard...), if any. */
+  special?: IntentKind | null;
+  /** A Sphinx riddle: Insight can't be cast on it. */
+  riddle?: boolean;
   time_limit: number;
   expires_at: string;
   seconds_left: number;
@@ -161,12 +198,23 @@ export interface Outcome {
   aegis?: boolean;
   revived?: boolean;
   lifesteal?: number;
+  /** The boss's blow missed you entirely (a dodged boulder, Shadowstep, Vanish). */
+  dodged?: boolean;
+  /** Kaien's Riposte: damage hit back on a right Guard (inside damage_dealt). */
+  riposte?: number;
+  kit_meter_gained?: number;
+  mechanic?: MechanicOutcome | null;
+  kit?: KitOutcome | null;
 }
 
 export interface AnswerResponse extends Outcome { ok: boolean; replayed: boolean; battle: Battle; rewards: BattleRewards | null }
 export interface QuestionResponse { ok: boolean; battle: Battle; question: Question | null; previous: Outcome | null; stock?: Stock }
 export interface ItemResponse { ok: boolean; item: ItemId; battle: Battle; question: Question | null; stock: Stock }
 export interface ForfeitResponse { ok: boolean; battle: Battle; rewards: BattleRewards | null }
+export interface UltimateResponse {
+  ok: boolean; ultimate: { name: string; text: string; hearts: number; insight: boolean; timewarp: boolean };
+  battle: Battle; question: Question | null;
+}
 export interface SpellResponse { ok: boolean; spell: Spell; cost: number; battle: Battle; question: Question | null }
 export interface CreateResponse { ok: boolean; battle_id: string; resumed: boolean; boss: BossProfile; battle: Battle }
 export interface BattleGetResponse { ok: boolean; battle_id: string; boss: BossProfile; battle: Battle }

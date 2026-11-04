@@ -8,10 +8,6 @@
   "hat_headband_blue",
   "hat_headband_white"
  ],
- "skin_id": "",
- "hair_id": "",
- "eye_color_id": "",
- "lip_color_id": "",
- "body_type_id": "",
- "outfit_id": ""
+ "champion_id": "kaien",
+ "champion_chosen": false
 }

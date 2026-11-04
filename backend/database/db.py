@@ -45,11 +45,12 @@ class Database:
         try:
             cursor.execute(
                 """INSERT INTO users (email, username, full_name, password_hash, timezone)
-                   VALUES (?, ?, ?, ?, ?)""",
+                   VALUES (?, ?, ?, ?, ?) RETURNING id""",
                 (email, username, full_name, password_hash.decode('utf-8'), normalize_timezone(timezone))
             )
+            new_id = cursor.fetchone()[0]
             conn.commit()
-            return cursor.lastrowid
+            return new_id
         except sqlite3.IntegrityError as e:
             conn.rollback()      # a failed INSERT must not leave its transaction (and write lock) open
             error_msg = str(e).lower()
@@ -81,7 +82,7 @@ class Database:
         cursor = conn.cursor()
 
         cursor.execute(
-            "SELECT * FROM users WHERE username = ? COLLATE NOCASE",
+            "SELECT * FROM users WHERE LOWER(username) = LOWER(?)",
             (username,)
         )
 

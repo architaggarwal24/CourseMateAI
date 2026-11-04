@@ -129,3 +129,101 @@ Decisions where the spec left room:
   active run is 409 `run_in_progress {run_id, difficulty}`; `GET /arena/runs/active` without session_id prefers a
   run whose document is still loadable (`run.document_ready`). Runs are keyed by session_id like battles: a
   re-upload starts a fresh run; the old one stays active until abandoned.
+
+## 8. Creature mechanics, champion kits and champion levels (Phase 3, Stage 2)
+
+Every fight plays differently: the boss's creature brings a signature rule, and the player's champion brings a
+passive and an ultimate. All of it is server-authoritative. The browser shows it, and never decides it.
+
+Code:
+- Creature rules: `core_brains/mechanics.py` (one `Mechanic` class per creature).
+- Champion kits and levels: `core_brains/kits.py`.
+- Wiring: `services/arena_service.py`.
+- Migration `0009_champion_progress.sql`.
+
+Tests:
+- `tests/test_arena_mechanics*.py` and `tests/test_arena_kits*.py`.
+- `tests/test_arena_balance.py`, a seeded bot that checks no creature is far off a plain boss on any difficulty.
+
+Each rule is shown in three places:
+1. **Telegraphed** in the intent or the HUD: the boss's state carries `mechanic {id, name, summary, counters, locked_moves}` and `kit {meter, ready, active, passive, ultimate, effects}`, and special turns come as their own intent kinds.
+2. **Said in the verdict**: every answer's outcome has `mechanic.events[]` and `kit.events[]` with the sentence to show, plus `riposte` and `dodged`.
+3. **Animated** by FightScene beats.
+
+### 8.1 Turn pipeline
+`_resolve` runs the steps in this order:
+1. `Turn.prepare()`, the creature's step: multipliers, "can't be halved", dodges, skipped blows, boss bonus damage.
+2. `KitTurn.prepare()`, the champion's step: passive and armed ultimate.
+3. Damage both ways, the usual rules.
+4. `KitTurn.settle()`: refunds and the meter.
+5. `Turn.settle()`: the creature's state moves on (heads, fury, coils, and so on).
+
+The snapshot for both lives in `boss_json`:
+- `mech`: the creature's state.
+- `kit`: champion, meter, armed, wall, vanish, fortress, spent, library_pending.
+
+Special turns are scheduled by `next_intent_for(boss, difficulty, turn)`. When nothing is scheduled, the usual weighted roll applies. A move a creature has locked is refused at issue with 409 `move_locked`.
+
+### 8.2 The 13 creature mechanics
+Numbers are listed as easy / medium / hard / nightmare where they vary.
+
+| Creature | Mechanic | Rule |
+|---|---|---|
+| Hydra | Regrowth | Every miss grows a head (max 3). Each head heals 3/4/6/8 % max HP on a miss. A right Heavy cauterizes all heads. |
+| Kraken | Tentacle Grab | Every 4th turn is a `grab`. Miss it and the move you used is locked for 1/1/2/2 turns. A right answer breaks free. |
+| Sphinx | Riddle | Every 3rd question is a `riddle`, written as a riddle by the LLM. Right: ×1.5 damage and +1 Focus. Wrong: ⌈1.5 × base⌉ damage. Insight is refused (409 `riddle_no_insight`). |
+| Kitsune | Fox-fire Illusion | Every 3rd question gets one fake option (the right answer of another question). Picking it costs 2 Focus. Insight and 50/50 remove the fake first. |
+| Fenrir | Unchained | Fury +1 per turn. Its blows get +1 per 3/2/2/2 Fury, capped at +1/+2/+2/+3. Each third right answer in a row chains it (Fury goes to 0). |
+| Ammit | Devourer of Hearts | Miss a concept already missed (earlier in the fight, or one a Nemesis targets) and it feasts: it heals 5/6/8/10 %, and each feast gives +1 blow damage (max 3). A right answer on such a concept is "lighter than the feather": ×2. |
+| Minotaur | Labyrinth Charge | Every 4th turn a `charge` for base + turn/2 that a right answer can't halve. A right Guard stuns it: the next turn is `stunned` (no blow, your hit ×1.5). |
+| Cyclops | Boulder Throw | Turn 4k−1 is `aim` (no blow). Turn 4k is `throw`, 3 × base damage that can't be halved. A right Guard or Jab dodges it. |
+| Oni | War Drum | Every turn it takes no damage, the drum beats: +1 blow damage per beat (cap 2/2/3/3). A right Heavy breaks the drum. |
+| Rakshasa | Shapeshift | Every 3rd turn its weakness moves to another concept from your document, and it raises a 5 % shield. |
+| Naga | Serpent's Hoard | Every 4th turn is a `hoard`: a hard question. Right: ×1.5, +1 heart, +2 Focus. Wrong: venom, −1 heart on each of the next 2 turns. |
+| Simurgh | Feathers of Wisdom | An answer slower than half the clock (or a timeout) heals it 2/3/4/5 %. A right answer faster than that plucks a feather: ×1.25. |
+| Jörmungandr | World Coil | Every miss adds a coil (cap 1/1/2/3). The coils already on you squeeze 1 heart each per turn. A right Strike or Heavy removes one coil, a right Guard removes all. |
+
+### 8.3 Champion kits
+**Ultimate meter:** +25 per right answer, +10 more at combo 3+, capped at 100.
+- Cast with `POST /arena/battles/{id}/ultimate` (rate limit 30/min). Refusals: 409 `ultimate_not_ready` or `ultimate_active`.
+- It can be cast while choosing a move or while a question is open.
+- UI: the meter is in the HUD, the button is in the items row, and the key is **U**.
+
+| Champion | Passive | Ultimate |
+|---|---|---|
+| Kaien | **Riposte**: a right Guard against a blow hits back for ½ a Strike. | **Ninth Page Cut**: next right answer ×2.5 and ignores shields. |
+| Asha | **Reach**: Jab ×0.8 (not 0.6). | **Dawn Wall**: for 2 turns blows are halved and every right answer gives +1 Focus. |
+| Brak | **Iron Combo**: combo bonus doubled (+6 per step) and capped at 8 (not 5). | **Iron Rush**: next right answer × (1 + 0.25 × combo). |
+| Mira | **Quiet Study**: a spell's Focus comes back if you answer right. | **Arcane Library**: free Insight and Timewarp, and the next right answer ×2. |
+| Vex | **Shadowstep**: dodge chance 25 / 20 / 20 / 15 %. | **Vanish**: the next 2 blows miss, and the next right answer ×1.5. |
+| Thorne | **Bulwark**: a right answer cuts a blow to ⅓ (not ½). | **Last Chapter**: +3 hearts now, and the next turn's blow is fully blocked. |
+
+The kit is snapshotted when the battle is created, so switching champion mid-fight changes nothing.
+
+### 8.4 Champion progression
+- Each champion has its own XP, stored in `champion_progress(user_id, champion_id, xp, level, battles, wins)`, migration 0009.
+- XP per battle = 10 × right answers + 50 for a win. It goes to the champion that fought.
+- Level thresholds: 0, 100, 250, 450, 700, 1000, 1350, 1750, 2200, 2700 (Lv 1–10).
+- Mastery skins, three per champion, 18 items `mastery_<champion>_<outfit|head|weapon>`:
+  - outfit at Lv 3, head piece at Lv 6, weapon finish at Lv 10;
+  - cosmetic, never sold (purchase refused, hidden in the shop);
+  - granted on the level-up and wearable only by that champion (equip refused for others, dropped from the loadout when you switch).
+- Where it shows:
+  - the answer that ends a battle carries `result.champion {id, xp_gained, xp, level, leveled_up, next_level_xp, unlocked[]}`;
+  - `GET /avatar/champion` returns `progress` per champion: level, XP, mastery and the kit's text.
+
+### 8.5 FightScene beats (frontend)
+`beatsFor(outcome, battle)` in `BattleScreen.tsx` plays the beats in this order:
+1. Boosts before your blow: `feather`, `ultimate_hit`.
+2. Your strike.
+3. What your strike set off: chains, broken drum, treasure, plucked feather, uncoil, Focus refund, and so on.
+4. Rage.
+5. The boss's blow: a swing, a `charge` (a long rush), a `throw` (a boulder in an arc), or a `dodge` (the hero hops back, see-through).
+6. `stunned` or `fortress`.
+7. `riposte`.
+8. The creature's own move: regrowth, devour, riddle failed, illusion, grab, drum, venom, poisoned, wisdom, squeeze, shapeshift.
+9. KO.
+
+Casting an ultimate plays the `ultimate` beat: a ring in the champion's accent colour, motes, and the name as a banner.
+
+Each effect's look is pure data in `MECHANIC_FX` (`lib/pixel/fight.ts`): who acts, pose, colour, motion and an optional call-out such as GRABBED, CHAINED or STUNNED. A test reads `t.event("…")` from the backend and fails if any server event has no beat, or if a beat has no server event. Reduced motion keeps the poses and rings, but drops particles, shake and dashes.

@@ -10,9 +10,11 @@ from core_brains.llm_connection import (
     InvalidApiKeyError, ProviderUnreachableError, QuotaExceededError,
     clear_request_key, set_request_key,
 )
+from core_brains import usage_meter
 from errors import AppError, provider_key_rejected, provider_quota, provider_unreachable
 from key_service import decrypt_key
-from state import auth_middleware, db
+from services import entitlements
+from state import auth_middleware, db, usage_service
 
 logger = logging.getLogger(__name__)
 
@@ -78,11 +80,35 @@ def get_user_llm(user: dict):
     )
 
 
-async def inject_user_llm_key(user=Depends(require_auth)):
-    """FastAPI dependency: sets the per-request LLM settings for this request."""
-    api_key, provider, model, base_url = get_user_llm(user)
-    set_request_key(api_key, provider, model, base_url)
-    try:
-        yield user
-    finally:
-        clear_request_key()
+def uses_own_key(user: dict) -> bool:
+    """The user saved their own provider key (BYOK): their AI calls are metered but outside the plan's quotas."""
+    key_data = db.get_api_key_data(user["user_id"])
+    return bool(key_data and key_data.get("api_key_encrypted"))
+
+
+def managed_ai_available() -> bool:
+    """The server has its own AI (provider keys in its environment), so an account needs no key of its own."""
+    return bool(settings.fallback_llm_keys)
+
+
+def _llm_dependency(check_quota: bool):
+    async def dependency(user=Depends(require_auth)):
+        api_key, provider, model, base_url = get_user_llm(user)
+        byok = uses_own_key(user)
+        if check_quota:
+            usage_service.check_ai(user["user_id"], byok=byok)       # 429 plan_limit before any work starts
+        set_request_key(api_key, provider, model, base_url)
+        usage_meter.begin(user["user_id"], byok, tier=entitlements.tier_for(user["user_id"]))
+        try:
+            yield user
+        finally:
+            clear_request_key()
+            usage_meter.end()
+    return dependency
+
+
+# FastAPI dependency for endpoints that START AI work (a chat answer, a quiz, a battle, a map): checks the plan's
+# AI quota, sets the per-request LLM settings and meters every model call the request (or a task it starts) makes.
+inject_user_llm_key = _llm_dependency(check_quota=True)
+# The same for the turns of work already started (a battle's next question / answer): metered, never cut off.
+inject_user_llm_key_in_flight = _llm_dependency(check_quota=False)

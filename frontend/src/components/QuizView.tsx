@@ -38,11 +38,15 @@ interface SavedQuiz {
 }
 
 /** `documentId` is the workspace's active document (what the quiz is about); `historyId` is just this saved quiz. */
-export default function QuizView({ documentId, restoreSessionId }: { documentId?: string; restoreSessionId?: string }) {
+export default function QuizView({ documentId, restoreSessionId, initialTopic }: {
+  documentId?: string; restoreSessionId?: string;
+  /** A topic to start from (the concept map's "Quick quiz" / "Flashcards" on one concept). */
+  initialTopic?: string;
+}) {
   const [historyId, setHistoryId] = useState(() => restoreSessionId || crypto.randomUUID());
   const sessionId = documentId ?? historyId;
   const refreshIfStale = useHUDStore((s) => s.refreshIfStale);
-  const [topic, setTopic] = useState("");
+  const [topic, setTopic] = useState(initialTopic ?? "");
   const [qType, setQType] = useState("MCQ");
   const [numQ, setNumQ] = useState(5);
   const [loading, setLoading] = useState(false);

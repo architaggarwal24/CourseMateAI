@@ -5,8 +5,9 @@ from typing import Optional
 from langchain_core.messages import SystemMessage, HumanMessage
 from core_brains import bestiary
 from core_brains.llm_connection import StructuredOutputError, generate_structured_async
+from core_brains.model_router import llm_job
 from core_brains.llm_schemas import BattleQuiz, BossFlavor, ExpeditionActs
-from prompts.boss_prompts import BATTLE_QUIZ_PROMPT, BOSS_FLAVOR_PROMPT, EXPEDITION_ACTS_PROMPT, NEMESIS_TARGET_BLOCK
+from prompts.boss_prompts import RIDDLE_BLOCK, BATTLE_QUIZ_PROMPT, BOSS_FLAVOR_PROMPT, EXPEDITION_ACTS_PROMPT, NEMESIS_TARGET_BLOCK
 
 
 logger = logging.getLogger(__name__)
@@ -123,7 +124,8 @@ async def boss_flavor_async(vector_store, species: str, topic: str) -> dict:
             HumanMessage(content=BOSS_FLAVOR_PROMPT.format(creature=creature["name"], origin=creature["origin"],
                                                            topic=topic, context=context)),
         ]
-        return (await generate_structured_async(messages, BossFlavor, max_attempts=1)).provided()
+        with llm_job("small"):                 # flavour: a cheap or local model is fine (model_router)
+            return (await generate_structured_async(messages, BossFlavor, max_attempts=1)).provided()
 
     return await asyncio.wait_for(_call(), timeout=FLAVOR_TIMEOUT)
 
@@ -163,11 +165,13 @@ async def generate_battle_quiz_async(
     asked_concepts: Optional[list] = None,
     phase: int = 1,
     target_concepts: Optional[list] = None,
+    riddles: bool = False,
 ) -> dict:
     """Async version — runs LLM in thread pool, never blocks event loop.
 
     Every question comes back filed under a tier (easy / medium / hard: the arena's moves pick by it).
-    `target_concepts` (a Nemesis fight) tells the model to ask about exactly those concepts."""
+    `target_concepts` (a Nemesis fight) tells the model to ask about exactly those concepts.
+    `riddles` (a Sphinx fight) asks for about a third of the questions written as riddles, flagged riddle: true."""
     if asked_concepts is None:
         asked_concepts = []
     targets = [str(c).strip() for c in (target_concepts or []) if str(c).strip()]
@@ -185,7 +189,8 @@ async def generate_battle_quiz_async(
         phase=phase,
         asked_concepts=", ".join(asked_concepts) if asked_concepts else "None yet",
         num_questions=num_questions,
-        target_block=NEMESIS_TARGET_BLOCK.format(targets="\n".join(f"- {t}" for t in targets)) if targets else "",
+        target_block=(NEMESIS_TARGET_BLOCK.format(targets="\n".join(f"- {t}" for t in targets)) if targets else "")
+        + (RIDDLE_BLOCK if riddles else ""),
     )
 
     messages = [
@@ -266,14 +271,14 @@ def get_damage_multiplier(accuracy: float) -> tuple:
     return 1.0, "hit"
 
 
-def apply_player_attack(boss: dict, score: int, total: int, combo: int = 0) -> dict:
+def apply_player_attack(boss: dict, score: int, total: int, combo: int = 0, bonus: int = 0) -> dict:
     accuracy = score / max(total, 1)
     multiplier, hit_type = get_damage_multiplier(accuracy)
 
     base = 35 if boss.get("phase", 1) == 2 else 25
     combo_bonus = min(combo, 5) * 3
     perfect_bonus = 10 if score == total and total >= 3 else 0
-    damage = max(int((base + combo_bonus + perfect_bonus) * multiplier), 1)
+    damage = max(int((base + combo_bonus + perfect_bonus + bonus) * multiplier), 1)
 
     boss["current_hp"] = max(0, boss["current_hp"] - damage)
     boss["total_damage_taken"] = boss.get("total_damage_taken", 0) + damage
@@ -411,9 +416,10 @@ def roll_intent(boss: dict, difficulty: str, shield_factor: float = 1.0, rng=ran
     return make_intent(kind, boss, difficulty, shield_factor)
 
 
-def player_hit(boss: dict, combo: int) -> dict:
-    """What a right answer hits for under apply_player_attack's rules, WITHOUT touching the boss."""
+def player_hit(boss: dict, combo: int, bonus: int = 0) -> dict:
+    """What a right answer hits for under apply_player_attack's rules, WITHOUT touching the boss.
+    `bonus`: extra base damage before the hit multiplier (Brak's Iron Combo)."""
     shadow = {k: boss[k] for k in ("phase", "max_hp", "rage_threshold", "hit_taunts", "miss_taunts") if k in boss}
     shadow.update(current_hp=boss.get("current_hp", 0), total_damage_taken=0, rounds_fought=0)
-    attack = apply_player_attack(shadow, 1, 1, combo)
+    attack = apply_player_attack(shadow, 1, 1, combo, bonus)
     return {"damage": attack["damage"], "hit_type": attack["hit_type"]}

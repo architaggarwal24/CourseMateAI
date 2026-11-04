@@ -3,21 +3,24 @@
 import { useEffect, useRef, useState } from "react";
 import { motion } from "motion/react";
 import { Brain, ChevronRight, Flag, FlaskConical, Hourglass, Scissors, ShieldCheck, Zap } from "lucide-react";
-import { GearChips } from "@/components/avatar";
+import GearChips from "@/components/champion/GearChips";
 import { Badge, Button, Modal } from "@/components/ui";
 import { type useArenaBattle } from "@/hooks/useArenaBattle";
 import { shortcutBlocked } from "@/lib/keys";
 import { DIFFICULTY_LABEL, MOVE_INFO, type Battle, type Outcome } from "@/lib/arena/types";
 import { bossById } from "@/lib/pixel/bosses";
-import type { Beat, IntentTint } from "@/lib/pixel/fight";
+import { MECHANIC_FX, type Beat, type IntentTint, type MechanicEffect } from "@/lib/pixel/fight";
 import FocusPips from "./FocusPips";
 import Hearts from "./Hearts";
 import Intent from "./Intent";
+import MechanicHud from "./MechanicHud";
 import MovePicker from "./MovePicker";
 import PixelArena, { type Floater } from "./pixel/PixelArena";
 import PixelSprite from "./pixel/PixelSprite";
-import { useFighter } from "./pixel/useFighter";
+import { useFighter, useFighterPet } from "./pixel/useFighter";
 import TimerRing from "./TimerRing";
+import UltimateMeter from "./UltimateMeter";
+import { mechanicLines } from "./verdict";
 
 type Arena = ReturnType<typeof useArenaBattle>;
 
@@ -84,19 +87,46 @@ function ForgingWait({ first }: { first: boolean }) {
   );
 }
 
-/** What the pixel stage should play for a verdict: your blow, the rage, the boss's move, a KO. */
+/** Kit / mechanic events that land before your blow (they make it bigger). */
+const BEFORE_STRIKE: readonly string[] = ["feather", "ultimate_hit"];
+/** Events that answer the boss's blow (a charge staggered on your guard, the Last Chapter holding). */
+const AFTER_BLOW: readonly string[] = ["stunned", "fortress"];
+/** The boss's side of a mechanic: what it does to you or for itself after the exchange. */
+const BOSS_SIDE: readonly string[] = ["regrowth", "devour", "riddle_failed", "illusion", "grabbed", "drum", "venom", "poisoned", "wisdom", "squeeze", "shapeshift"];
+/** Events that are a dodge (played as the dodge itself, not as an effect). */
+export const DODGE_EVENTS: readonly string[] = ["dodged", "shadowstep", "vanish"];
+
+/**
+ * What the pixel stage should play for a verdict, in the order it happened: effects that boost your blow, your blow,
+ * what it set off (chains, a broken drum, a stolen treasure...), the rage, the boss's move (a swing, a charge, a
+ * thrown boulder, or a dodge), a riposte, the creature's own move (a regrown head, a grab, coils...), then a KO.
+ */
 export function beatsFor(o: Outcome, battle: Battle): Beat[] {
   const out: Beat[] = [];
+  const events = [...(o.mechanic?.events ?? []), ...(o.kit?.events ?? [])].map((e) => e.type);
+  const effect = (t: string): Beat => ({ kind: "mechanic", effect: t as MechanicEffect });
+  const known = (t: string) => t in MECHANIC_FX;
+  const pick = (group: readonly string[]) => events.filter((t) => group.includes(t) && known(t)).map(effect);
+
+  out.push(...pick(BEFORE_STRIKE));
   const struck = o.correct && (o.damage_dealt > 0 || (o.shield_absorbed ?? 0) > 0);
   if (struck) out.push({ kind: "hero-strike", heavy: o.move === "heavy", crit: !!o.weakness, shielded: o.damage_dealt === 0 });
+  const heroSide = events.filter((t) => known(t) && ![...BEFORE_STRIKE, ...AFTER_BLOW, ...BOSS_SIDE].includes(t));
+  out.push(...heroSide.map(effect));
   if (o.phase_changed) out.push({ kind: "rage" });
   const won = battle.status === "won";
   if (!won) {
     const kind = o.intent?.kind;
-    if (o.damage_taken > 0 || o.blocked || o.aegis) out.push({ kind: "boss-strike", blocked: !!(o.blocked || o.aegis) && o.damage_taken === 0 });
+    const style: Partial<Beat> = kind === "charge" ? { charge: true } : kind === "throw" ? { projectile: true } : {};
+    const dodged = !!o.dodged || events.some((t) => DODGE_EVENTS.includes(t));
+    if (dodged && o.damage_taken === 0) out.push({ kind: "dodge", ...style });
+    else if (o.damage_taken > 0 || o.blocked || o.aegis) out.push({ kind: "boss-strike", blocked: !!(o.blocked || o.aegis) && o.damage_taken === 0, ...style });
     else if (kind === "shield") out.push({ kind: "boss-shield" });
     else if (kind === "heal" && (o.boss_healed ?? 0) > 0) out.push({ kind: "boss-heal" });
     else if (kind === "drain" && o.focus_drained) out.push({ kind: "boss-drain" });
+    out.push(...pick(AFTER_BLOW));
+    if ((o.riposte ?? 0) > 0) out.push({ kind: "riposte" });
+    out.push(...pick(BOSS_SIDE));
   }
   if (won) out.push({ kind: "boss-ko" });
   else if (battle.status === "lost") out.push({ kind: "hero-ko" });
@@ -127,6 +157,7 @@ export default function BattleScreen({ arena, context }: { arena: Arena; context
   const questionRef = useRef<HTMLHeadingElement>(null);
   const lastTaunt = useRef<string | undefined>(undefined);
   const fighter = useFighter();
+  const pet = useFighterPet();
 
   const clock = stage === "asking" || stage === "answering" ? deadline : null;
   const expired = useExpired(clock);
@@ -135,12 +166,15 @@ export default function BattleScreen({ arena, context }: { arena: Arena; context
 
   // Keyboard: 1-4 answer the question in the order the options are listed. One listener for the whole fight that
   // reads the current state from a ref, so there is never a moment between questions when a key press is lost.
-  const keys = useRef({ asking, confirmRetreat, question, answer });
-  keys.current = { asking, confirmRetreat, question, answer };
+  const ultReady = !!battle?.kit?.ready && !battle?.kit?.active && (stage === "choosing" || asking);
+  const keys = useRef({ asking, confirmRetreat, question, answer, ultReady, ultimate: arena.ultimate });
+  keys.current = { asking, confirmRetreat, question, answer, ultReady, ultimate: arena.ultimate };
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const k = keys.current;
-      if (k.confirmRetreat || !k.asking || shortcutBlocked(e)) return;
+      if (k.confirmRetreat || shortcutBlocked(e)) return;
+      if (e.key.toLowerCase() === "u" && k.ultReady) { e.preventDefault(); void k.ultimate(); return; }
+      if (!k.asking) return;
       const index = ["1", "2", "3", "4"].indexOf(e.key);
       const option = index >= 0 ? k.question?.options[index] : undefined;
       if (option !== undefined) { e.preventDefault(); void k.answer(option); }
@@ -170,9 +204,12 @@ export default function BattleScreen({ arena, context }: { arena: Arena; context
   const focusCap = battle.focus_cap ?? 5;
   const creature = bossById(boss.species ?? battle.boss.species);
   const casting = (itemBusy === "insight" || itemBusy === "timewarp") && question ? `c${question.id}-${itemBusy}` : "";
+  const ultKey = arena.ultimateCast ? `u${arena.ultimateCast.key}` : "";
   // keyed on the answer, not the view: a timed-out question seen first as a notice, then as a verdict, plays once
-  const beatKey = casting || ((showingVerdict || outcome?.timed_out) && outcome ? `o${outcome.question_id}` : "");
-  const beats: Beat[] = casting ? [{ kind: "hero-cast" }] : beatKey && outcome ? beatsFor(outcome, battle) : [];
+  const beatKey = casting || ultKey || ((showingVerdict || outcome?.timed_out) && outcome ? `o${outcome.question_id}` : "");
+  const beats: Beat[] = casting ? [{ kind: "hero-cast" }]
+    : ultKey ? [{ kind: "ultimate", text: arena.ultimateCast!.name.toUpperCase() }]
+    : beatKey && outcome ? beatsFor(outcome, battle) : [];
   const intentTint: IntentTint = !over && (stage === "choosing" || stage === "fetching" || stage === "asking") ? (battle.intent?.kind ?? null) : null;
 
   const optionState = (option: string) => {
@@ -191,11 +228,13 @@ export default function BattleScreen({ arena, context }: { arena: Arena; context
         <div className="arena-hud__you ff-hud__side">
           <span className="ff-hud__portrait" style={{ "--hero-accent": fighter.accent } as React.CSSProperties}>
             <PixelSprite hero={fighter} portrait className="ff-hud__face" />
+            {pet && <span className="ff-hud__pet" data-pet={pet}><PixelSprite pet={pet} className="ff-hud__pet-sprite" /></span>}
           </span>
           <div className="arena-hud__youinfo">
             <span className="ff-hud__name pixel-font">{fighter.name}<span className="sr-only"> (you)</span></span>
             <Hearts hp={battle.player.hp} max={battle.player.max_hp} />
             <span className="inline-flex items-center gap-2"><span className="arena-stat__label">Focus</span><FocusPips focus={focus} cap={focusCap} /></span>
+            <UltimateMeter kit={battle.kit} compact />
             <GearChips stats={battle.gear} className="gear-chips--tiny" />
           </div>
         </div>
@@ -239,12 +278,13 @@ export default function BattleScreen({ arena, context }: { arena: Arena; context
               {(battle.shield ?? 0) > 0 && <span className="arena-stat__shield"><ShieldCheck size={13} aria-hidden="true" />{battle.shield}</span>}
             </span>
             {!over && stage !== "choosing" && <Intent intent={battle.intent} compact />}
+            {!over && stage !== "choosing" && <MechanicHud mechanic={battle.mechanic} compact />}
           </div>
         </div>
       </header>
 
       <PixelArena
-        hero={fighter} bossId={creature.id} rage={battle.rage} intent={intentTint} shield={battle.shield ?? 0}
+        hero={fighter} pet={pet} bossId={creature.id} rage={battle.rage} intent={intentTint} shield={battle.shield ?? 0}
         beats={beats} beatKey={beatKey} floaters={floaters} speech={speech}
         label={`${battle.boss.name}, the boss, a ${creature.name} of ${creature.origin} myth, faces ${fighter.name}`}
         introText={battle.mode === "nemesis" ? "NEMESIS" : battle.answered > 0 ? "RESUME" : "FIGHT!"}
@@ -291,6 +331,9 @@ export default function BattleScreen({ arena, context }: { arena: Arena; context
             {question.weakness && <Badge tone="reward">Weakness x2</Badge>}
             {question.fifty_used && <Badge tone="accent">50/50</Badge>}
             {question.timewarped && <Badge tone="accent">+15s</Badge>}
+            {question.riddle && <Badge tone="reward">Riddle: no Insight</Badge>}
+            {question.special === "illusion" && <Badge tone="epic">Illusion: one option is fake</Badge>}
+            {question.special === "hoard" && <Badge tone="reward">Treasure</Badge>}
           </div>
           <h3 id="arena-question-text" ref={questionRef} tabIndex={-1} className="arena-question__text">{question.question}</h3>
           <ol className="arena-options">
@@ -312,7 +355,8 @@ export default function BattleScreen({ arena, context }: { arena: Arena; context
 
           {(stage === "asking" || stage === "answering") && (
             <div className="arena-spells" role="group" aria-label="Spells">
-              <Button size="sm" disabled={!spellOk(1) || !!question.fifty_used || question.options.length <= 2}
+              <Button size="sm" disabled={!spellOk(1) || !!question.fifty_used || question.options.length <= 2 || !!question.riddle}
+                      title={question.riddle ? "A riddle can't be narrowed down" : undefined}
                       loading={itemBusy === "insight"} onClick={() => void arena.cast("insight")}>
                 <Brain size={15} aria-hidden="true" />Insight <span className="arena-item-count pixel-font">1◆</span>
               </Button>
@@ -357,6 +401,7 @@ export default function BattleScreen({ arena, context }: { arena: Arena; context
           {(outcome.focus_gained ?? 0) > 0 && <p className="arena-verdict__line">+{outcome.focus_gained} Focus.</p>}
           {outcome.revived && <p className="arena-verdict__line">Phoenix Ash! You rise again.</p>}
           {(outcome.lifesteal ?? 0) > 0 && <p className="arena-verdict__line">Vampiric Tome: +{outcome.lifesteal} heart.</p>}
+          {mechanicLines(outcome).map((line, i) => <p key={`m${i}`} className="arena-verdict__line arena-verdict__line--mech">{line}</p>)}
           {outcome.phase_changed && <p className="arena-verdict__line">The boss is enraged!</p>}
           {!outcome.correct && <p className="arena-verdict__line">Correct answer: {outcome.correct_answer}</p>}
           {outcome.explanation && <p className="arena-verdict__line arena-verdict__explain">{outcome.explanation}</p>}
@@ -382,6 +427,8 @@ export default function BattleScreen({ arena, context }: { arena: Arena; context
         >
           <Scissors size={16} aria-hidden="true" />50/50 <span className="arena-item-count pixel-font">x{stock.fifty_fifty}</span>
         </Button>
+        {!over && <UltimateMeter kit={battle.kit} onCast={() => void arena.ultimate()} busy={itemBusy === "ultimate"}
+                                 disabled={!(stage === "choosing" || asking) || (itemBusy !== null && itemBusy !== "ultimate")} />}
         <span className="arena-items__spacer" />
         {!over && <Button variant="ghost" onClick={() => setConfirmRetreat(true)}><Flag size={16} aria-hidden="true" />Retreat</Button>}
       </div>

@@ -20,8 +20,11 @@ PER_USER_TABLES = [
     "documents", "sessions", "activity_log", "user_progress", "user_avatar", "user_buffs", "user_inventory",
     "daily_action_counts", "daily_quests", "user_achievements", "leaderboard", "reward_events", "quizzes",
     "arena_battles", "arena_scores", "arena_personal_bests", "arena_runs", "concept_mastery", "missed_questions",
+    "champion_progress", "review_items", "review_logs", "exams", "courses", "user_plans", "usage_daily",
+    "invite_redemptions", "quiz_bank_served", "subscriptions",
 ]
-ALL_TABLES = {"users", "achievements", "schema_migrations", "quiz_answers", "arena_questions", *PER_USER_TABLES}
+ALL_TABLES = {"users", "achievements", "schema_migrations", "quiz_answers", "arena_questions", "exam_questions",
+              "exam_answers", "course_documents", "concept_maps", "invite_codes", "model_usage_daily", "quiz_bank", "payment_events", *PER_USER_TABLES}
 
 
 def _load_merge_script():
@@ -55,13 +58,16 @@ def signature(db_path):
 # ── runner ────────────────────────────────────────────────────────────────────
 def test_fresh_install_applies_every_migration_once(tmp_path):
     db = tmp_path / DATABASE_FILENAME
-    assert migrate(db) == [1, 2, 3, 4, 5, 6, 7]
+    assert migrate(db) == [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]
     assert migrate(db) == []                                   # idempotent
     c = sqlite3.connect(db)
     assert {r[0] for r in c.execute("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'")} == ALL_TABLES
     assert c.execute("SELECT version, name FROM schema_migrations").fetchall() == [(1, "initial"), (2, "documents"), (3, "revocable_sessions"),
                                                                                  (4, "reward_events_and_timezones"), (5, "quizzes"),
-                                                                                 (6, "arena_battles"), (7, "arena_v2")]
+                                                                                 (6, "arena_battles"), (7, "arena_v2"), (8, "champion_avatar"),
+                                                                                 (9, "champion_progress"), (10, "study_power"), (11, "courses_and_maps"),
+                                                                                 (12, "plans_and_usage"), (13, "routing_costs_quiz_bank"),
+                                                                                 (14, "subscriptions")]
 
 
 def test_connections_use_wal_foreign_keys_and_busy_timeout(tmp_path):
@@ -100,9 +106,9 @@ def test_database_newer_than_code_is_rejected(tmp_path):
     d = _migrations_copy(tmp_path)
     db = tmp_path / "x.db"
     migrate(db, d)
-    (d / "0008_more.sql").write_text("CREATE TABLE extra (id INTEGER PRIMARY KEY);\n", encoding="utf-8")
+    (d / "0015_more.sql").write_text("CREATE TABLE extra (id INTEGER PRIMARY KEY);\n", encoding="utf-8")
     migrate(db, d)
-    (d / "0008_more.sql").unlink()
+    (d / "0015_more.sql").unlink()
     with pytest.raises(MigrationError, match="newer version"):
         migrate(db, d)
 
@@ -111,13 +117,13 @@ def test_a_failing_migration_rolls_back_completely(tmp_path):
     d = _migrations_copy(tmp_path)
     db = tmp_path / "x.db"
     migrate(db, d)
-    (d / "0008_broken.sql").write_text(
+    (d / "0015_broken.sql").write_text(
         "CREATE TABLE half_done (id INTEGER PRIMARY KEY);\nINSERT INTO nope VALUES (1);\n", encoding="utf-8")
-    with pytest.raises(MigrationError, match="0008_broken.sql failed"):
+    with pytest.raises(MigrationError, match="0015_broken.sql failed"):
         migrate(db, d)
     c = sqlite3.connect(db)
     assert c.execute("SELECT name FROM sqlite_master WHERE name = 'half_done'").fetchone() is None
-    assert [r[0] for r in c.execute("SELECT version FROM schema_migrations")] == [1, 2, 3, 4, 5, 6, 7]
+    assert [r[0] for r in c.execute("SELECT version FROM schema_migrations")] == [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]
 
 
 def test_migration_files_must_be_named_and_consecutive(tmp_path):
@@ -171,6 +177,28 @@ def _fill_every_per_user_table(c, uid):
          (uid, "h", "c", "C", now)),
         ("INSERT INTO missed_questions (user_id, doc_hash, text_key, concept_key, concept, source, question, correct_answer, "
          "missed_at) VALUES (?,?,?,?,?,?,?,?,?)", (uid, "h", "q", "c", "C", "arena", "Q?", "A", now)),
+        ("INSERT INTO champion_progress (user_id, champion_id, xp, level, updated_at) VALUES (?,?,?,?,?)",
+         (uid, "kaien", 120, 2, now)),
+        ("INSERT INTO review_items (user_id, doc_hash, item_key, source, front, back, due, created_at, updated_at) "
+         "VALUES (?,?,?,?,?,?,?,?,?)", (uid, "h", "q", "arena", "Q?", "A", now, now, now)),
+        ("INSERT INTO review_logs (user_id, item_id, rating, reviewed_at, local_date) "
+         "VALUES (?, (SELECT id FROM review_items WHERE user_id = ?), 3, ?, '2026-01-01')", (uid, uid, now)),
+        ("INSERT INTO exams (id, user_id, session_id, doc_hash, doc_name, length, difficulty, time_limit_s, started_at, "
+         "deadline, total) VALUES (?,?,?,?,?,?,?,?,?,?,?)", (f"e{uid}", uid, "s", "h", "d.pdf", 1, "mixed", 60, now, now, 1)),
+        ("INSERT INTO exam_questions (exam_id, idx, question, options_json, correct_answer, concept, difficulty) "
+         "VALUES (?,?,?,?,?,?,?)", (f"e{uid}", 0, "Q?", "[]", "A", "C", "medium")),
+        ("INSERT INTO exam_answers (exam_id, idx, answer, answered_at) VALUES (?,?,?,?)", (f"e{uid}", 0, "A", now)),
+        ("INSERT INTO courses (id, user_id, name, created_at, updated_at) VALUES (?,?,?,?,?)", (f"c{uid}", uid, "C", now, now)),
+        ("INSERT INTO course_documents (course_id, document_id, added_at) VALUES (?,?,?)", (f"c{uid}", f"d{uid}", now)),
+        ("INSERT INTO user_plans (user_id, tier, source, started_at, updated_at) VALUES (?,?,?,?,?)", (uid, "sage", "admin", now, now)),
+        ("INSERT INTO usage_daily (user_id, day, ai_calls) VALUES (?,?,?)", (uid, "2026-01-01", 3)),
+        ("INSERT OR IGNORE INTO invite_codes (code, tier, max_uses, created_at) VALUES ('BETA-1', 'sage', 9, ?)", (now,)),
+        ("INSERT INTO invite_redemptions (code, user_id, redeemed_at) VALUES ('BETA-1', ?, ?)", (uid, now)),
+        ("INSERT OR IGNORE INTO quiz_bank (id, doc_hash, topic_key, question_type, text_key, question_json, created_at) "
+         "VALUES (1, 'h', 't', 'MCQ', 'q', '{}', ?)", (now,)),
+        ("INSERT INTO quiz_bank_served (user_id, bank_id, served_at) VALUES (?, 1, ?)", (uid, now)),
+        ("INSERT INTO subscriptions (id, user_id, provider, tier, period, status, created_at, updated_at) "
+         "VALUES (?, ?, 'stub', 'sage', 'month', 'active', ?, ?)", (f"sub{uid}", uid, now, now)),
     ]:
         c.execute(sql, args)
 
@@ -192,6 +220,10 @@ def test_deleting_a_user_cascades_to_every_table_and_nothing_else(tmp_path):
     assert c.execute("SELECT COUNT(*) FROM quiz_answers WHERE quiz_id = ?", (f"q{b}",)).fetchone()[0] == 1
     assert c.execute("SELECT COUNT(*) FROM arena_questions WHERE battle_id = ?", (f"b{a}",)).fetchone()[0] == 0   # questions go with their battle
     assert c.execute("SELECT COUNT(*) FROM arena_questions WHERE battle_id = ?", (f"b{b}",)).fetchone()[0] == 1
+    for t, key in (("exam_questions", "exam_id"), ("exam_answers", "exam_id"), ("course_documents", "course_id")):                        # go with their exam
+        pre = "c" if t == "course_documents" else "e"
+        assert c.execute(f"SELECT COUNT(*) FROM {t} WHERE {key} = ?", (f"{pre}{a}",)).fetchone()[0] == 0, t
+        assert c.execute(f"SELECT COUNT(*) FROM {t} WHERE {key} = ?", (f"{pre}{b}",)).fetchone()[0] == 1, t
     assert c.execute("SELECT COUNT(*) FROM achievements").fetchone()[0] == 1                           # catalogue survives
 
 
@@ -211,15 +243,18 @@ def test_startup_refuses_unmerged_legacy_files_and_names_the_fix(tmp_path):
         upgrade(tmp_path / DATABASE_FILENAME)
     assert not (tmp_path / DATABASE_FILENAME).exists()               # nothing was created behind the user's back
     (tmp_path / DATABASE_FILENAME).touch()                           # once coursemate.db exists the old files are ignored
-    assert upgrade(tmp_path / DATABASE_FILENAME) == [1, 2, 3, 4, 5, 6, 7]
+    assert upgrade(tmp_path / DATABASE_FILENAME) == [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]
 
 
 def test_app_uses_one_database_file(app_module):
     import state
     from config import settings
-    assert state.db.db_path == state.store.db_path == str(settings.database_path)
+    assert state.db.db_path == state.store.db_path == state.DATABASE_TARGET
+    if not settings.database_url:
+        assert state.DATABASE_TARGET == str(settings.database_path)
     assert settings.database_path.name == DATABASE_FILENAME
-    assert {p.name for p in settings.data_dir.glob("*.db")} == {DATABASE_FILENAME}
+    if not settings.database_url:
+        assert {p.name for p in settings.data_dir.glob("*.db")} == {DATABASE_FILENAME}
 
 
 def test_schema_is_only_ever_created_by_migrations():
@@ -407,3 +442,30 @@ def test_user_ids_stay_strings_above_the_database_layer(make_user):
     assert state.store.get_avatar(str(uid))["user_id"] == str(uid)
     assert c.get("/profile").json()["progress"]["user_id"] == str(uid)
     assert state.db.get_user_by_id(uid)["id"] == uid                 # the users table itself is unchanged
+
+
+def test_study_power_migration_keeps_missed_questions_and_queues_them_for_review(tmp_path):
+    older = tmp_path / "migrations"
+    shutil.copytree(MIGRATIONS_DIR, older)
+    (older / "0010_study_power.sql").unlink()
+    (older / "0011_courses_and_maps.sql").unlink()
+    (older / "0012_plans_and_usage.sql").unlink()
+    (older / "0013_routing_costs_quiz_bank.sql").unlink()
+    (older / "0014_subscriptions.sql").unlink()
+    db = tmp_path / "x.db"
+    migrate(db, older)
+    c = sqlite3.connect(db)
+    c.execute("INSERT INTO users (email, username, full_name, password_hash) VALUES ('a@x.io','a','A','h')")
+    c.execute("INSERT INTO missed_questions (user_id, doc_hash, text_key, concept_key, concept, source, question, "
+              "correct_answer, explanation, missed_at) VALUES (1,'h','what is atp','atp','ATP','arena','What is ATP?',"
+              "'Energy currency','It stores energy.','2026-10-01T10:00:00+00:00')")
+    c.execute("INSERT INTO missed_questions (user_id, doc_hash, text_key, concept_key, concept, source, question, "
+              "correct_answer, missed_at) VALUES (1,'h','blank','b','B','quiz','Blank?','  ','2026-10-02T10:00:00+00:00')")
+    c.commit(); c.close()
+    assert migrate(db) == [10, 11, 12, 13, 14]
+    c = sqlite3.connect(db)
+    assert c.execute("SELECT COUNT(*) FROM missed_questions").fetchone()[0] == 2                      # nothing lost
+    rows = c.execute("SELECT source, front, back, explanation, concept, due, reps FROM review_items").fetchall()
+    assert rows == [("arena", "What is ATP?", "Energy currency", "It stores energy.", "ATP", "2026-10-01T10:00:00+00:00", 0)]
+    c.execute("INSERT INTO missed_questions (user_id, doc_hash, text_key, concept_key, concept, source, question, "
+              "correct_answer, missed_at) VALUES (1,'h','x','x','X','exam','X?','Y','2026-10-03')")      # 'exam' is allowed now

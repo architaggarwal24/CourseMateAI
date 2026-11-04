@@ -65,18 +65,41 @@ class DocumentRepository:
         return self.db.query("SELECT COUNT(*) AS n FROM documents WHERE status = 'ready'")[0]["n"]
 
     def oldest_removable(self, limit: int, user_id: Optional[int] = None, exclude_id: str = "") -> List[Dict]:
-        """Least recently used documents that are not being processed right now."""
+        """Least recently used documents that are not being processed right now - documents in no course first
+        (a course's documents go only when nothing else can)."""
         sql = (f"SELECT {_PUBLIC} FROM documents WHERE status IN ({_marks(TERMINAL)}) AND id != ?")
         params: list = [*TERMINAL, exclude_id]
         if user_id is not None:
             sql += " AND user_id = ?"
             params.append(user_id)
-        return self.db.query(sql + " ORDER BY last_used_at ASC LIMIT ?", [*params, limit])
+        return self.db.query(sql + " ORDER BY EXISTS (SELECT 1 FROM course_documents cd WHERE cd.document_id = "
+                             "documents.id) ASC, last_used_at ASC LIMIT ?", [*params, limit])
 
     def idle_since(self, cutoff: str) -> List[Dict]:
+        """Documents unused since `cutoff` - never one that is part of a course (those are pinned)."""
         return self.db.query(
-            f"SELECT {_PUBLIC} FROM documents WHERE status IN ({_marks(TERMINAL)}) AND last_used_at < ?",
+            f"SELECT {_PUBLIC} FROM documents WHERE status IN ({_marks(TERMINAL)}) AND last_used_at < ? "
+            "AND NOT EXISTS (SELECT 1 FROM course_documents cd WHERE cd.document_id = documents.id)",
             [*TERMINAL, cutoff])
+
+    # ── courses (the documents side; services/course_service.py owns the rest) ──
+    def course(self, course_id: str) -> Optional[Dict]:
+        rows = self.db.query("SELECT id, user_id, name, description, created_at, updated_at FROM courses WHERE id = ?",
+                             [course_id])
+        return rows[0] if rows else None
+
+    def course_documents(self, course_id: str) -> List[Dict]:
+        return self.db.query(
+            f"SELECT {', '.join('d.' + c.strip() for c in _PUBLIC.split(','))} FROM course_documents cd "
+            "JOIN documents d ON d.id = cd.document_id WHERE cd.course_id = ? ORDER BY cd.position, cd.added_at",
+            [course_id])
+
+    def pinned(self, doc_id: str) -> bool:
+        return bool(self.db.query("SELECT 1 AS x FROM course_documents WHERE document_id = ? LIMIT 1", [doc_id]))
+
+    def hash_refs(self, file_hash: str) -> int:
+        """How many documents (any user) still have this content - its kept PDF may only go at zero."""
+        return self.db.query("SELECT COUNT(*) AS n FROM documents WHERE file_hash = ?", [file_hash])[0]["n"]
 
     # ── writes ───────────────────────────────────────────────────────────────
     def upsert_queued(self, doc_id: str, user_id: int, filename: str, file_hash: str) -> None:

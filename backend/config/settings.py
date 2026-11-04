@@ -10,6 +10,7 @@ they are switched at runtime and their tests rely on that:
   * key_service.py  - ENCRYPTION_KEY / ALLOW_INSECURE_DEV_KEY / SECRET_KEY (lazy Fernet)
   * providers.py    - ENABLE_OLLAMA / ALLOW_LOCAL_PROVIDERS
 """
+import logging
 import os
 import sys
 from dataclasses import dataclass, field
@@ -57,6 +58,7 @@ class Settings:
     # ── storage ──
     data_dir: Path
     database_path: Path        # the single SQLite file (data_dir/coursemate.db)
+    database_url: str          # DATABASE_URL=postgresql://... switches to PostgreSQL (docs/postgres.md); "" = SQLite
     upload_dir: Path
     max_file_size: int
 
@@ -121,6 +123,16 @@ def _check_fernet_key(raw: str) -> Optional[str]:
     return None
 
 
+def _database_url(env: Mapping[str, str], problems: List[str]) -> str:
+    url = (env.get("DATABASE_URL") or "").strip()
+    if not url or url.startswith("sqlite"):
+        return ""                                           # the default: the SQLite file in data_dir
+    if not url.startswith(("postgres://", "postgresql://")):
+        problems.append("DATABASE_URL must be a postgresql://user:password@host:5432/dbname URL (or unset for SQLite).")
+        return ""
+    return url
+
+
 def load_settings(env: Optional[Mapping[str, str]] = None) -> Settings:
     """Build and validate Settings. Pass `env` (a plain dict) to test without touching os.environ."""
     if env is None:
@@ -143,10 +155,16 @@ def load_settings(env: Optional[Mapping[str, str]] = None) -> Settings:
     elif not allow_insecure:
         problems.append(f"ENCRYPTION_KEY is required but not set. {_FERNET_HINT} and add it to backend/.env as ENCRYPTION_KEY=<value>.")
 
+    if jwt_secret and len(jwt_secret) < 32:
+        logging.getLogger(__name__).warning("JWT_SECRET is shorter than 32 characters: use a long random one (%s)", _JWT_HINT)
+
     origins = ["http://localhost:3000", "http://localhost:3001", "http://127.0.0.1:3000"]
-    extra_origin = env.get("ALLOWED_ORIGIN", "")
-    if extra_origin:
-        origins.append(extra_origin)
+    extra_origin = env.get("ALLOWED_ORIGIN", "").strip()
+    if extra_origin == "*":
+        # The login cookie is sent with credentials; a wildcard origin would hand it to any site. Never.
+        logging.getLogger(__name__).warning("ALLOWED_ORIGIN=* is ignored: name the front end's origin instead")
+    elif extra_origin:
+        origins.extend(o.strip() for o in extra_origin.split(",") if o.strip())
 
     session_expiry_hours = _int(env, "SESSION_EXPIRY_HOURS", 24, problems)   # idle time, not age
     max_sessions = _int(env, "MAX_SESSIONS", 100, problems)                  # global cap
@@ -194,6 +212,7 @@ def load_settings(env: Optional[Mapping[str, str]] = None) -> Settings:
         # Overridable so tests (and Docker volumes) never touch the real data directory.
         data_dir=data_dir,
         database_path=data_dir / "coursemate.db",
+        database_url=_database_url(env, problems),
         upload_dir=Path(env.get("COURSEMATE_UPLOAD_DIR", str(_BACKEND_DIR / "uploads"))),
         max_file_size=50 * 1024 * 1024,  # 50 MB
         session_expiry_hours=session_expiry_hours,
@@ -221,6 +240,8 @@ except SettingsError as _exc:
 
 # Module-level aliases kept so existing `from config import X` imports keep working.
 ALLOWED_ORIGINS = settings.allowed_origins
+# Where the data lives: the PostgreSQL URL when DATABASE_URL is set, else the SQLite file.
+DATABASE_TARGET = settings.database_url or str(settings.database_path)
 DATA_DIR = settings.data_dir
 UPLOAD_DIR = settings.upload_dir
 SESSION_EXPIRY_HOURS = settings.session_expiry_hours

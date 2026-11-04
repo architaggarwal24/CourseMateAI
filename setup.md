@@ -215,7 +215,7 @@ After starting the app for the first time:
 
 5. **Level up** — at Level 5 the shop unlocks. Visit **Shop** to browse gear with passive bonuses and consumables for the Battle Arena.
 
-6. **Build your avatar** — go to your **Avatar** page and open **Hero Forge** to customize skin, hair, body type, and equipped gear. Your avatar appears in the Battle Arena.
+6. **Pick your champion** — open **Hero → Champion** to choose one of six pixel champions and the skins it wears (outfit, head piece, weapon finish, pet), with a live idle / attack / win preview. Your champion is your avatar everywhere and fights for you in the Battle Arena.
 
 ---
 

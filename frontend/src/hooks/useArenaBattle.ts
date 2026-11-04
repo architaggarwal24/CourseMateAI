@@ -5,7 +5,7 @@ import { toast } from "@/components/ui/Toast";
 import { ApiError } from "@/lib/api/errors";
 import { useHeroStore } from "@/hooks/useHero";
 import {
-  castSpell, fetchActiveBattle, fetchBattle, fetchQuestion, forfeitBattle, startBattle, submitAnswer, consumeItem as postItem,
+  castSpell, castUltimate, fetchActiveBattle, fetchBattle, fetchQuestion, forfeitBattle, startBattle, submitAnswer, consumeItem as postItem,
 } from "@/lib/arena/api";
 import type {
   Battle, BattleRewards, BossProfile, Difficulty, ItemId, Move, Outcome, Question, Spell,
@@ -56,7 +56,9 @@ export interface ArenaState {
   /** When the verdict on screen moves on by itself (ms since epoch); null = it waits (paused). */
   advanceAt: number | null;
   stock: { heal: number; fifty_fifty: number };
-  itemBusy: ItemId | Spell | null;
+  itemBusy: ItemId | Spell | "ultimate" | null;
+  /** The ultimate just cast (name and what it did), for the stage and the screen reader; cleared on the next turn. */
+  ultimateCast: { name: string; text: string; key: number } | null;
   rewards: BattleRewards | null;
   retreated: boolean;
 }
@@ -79,10 +81,13 @@ function rememberSessionId(id: string) {
 
 const refreshGame = () => { void useHeroStore.getState().reconcile(); };
 
-export function useArenaBattle({ autoResume = true }: { autoResume?: boolean } = {}) {
+/** `documentId`: the document (or course) to fight on when no battle is in progress - the concept map's "Summon its
+ *  boss" opens the arena on the map's document. Without it the arena keeps its own last one. */
+export function useArenaBattle({ autoResume = true, documentId }: { autoResume?: boolean; documentId?: string } = {}) {
   const [state, setState] = useState<ArenaState>(() => ({
     phase: "loading", stage: "choosing", sessionId: "", battle: null, boss: null, question: null, deadline: null,
     outcome: null, advanceAt: null, stock: { heal: 0, fifty_fifty: 0 }, itemBusy: null, rewards: null, retreated: false,
+    ultimateCast: null,
   }));
   const patch = useCallback((p: Partial<ArenaState> | ((s: ArenaState) => Partial<ArenaState>)) => {
     setState((s) => ({ ...s, ...(typeof p === "function" ? p(s) : p) }));
@@ -122,7 +127,7 @@ export function useArenaBattle({ autoResume = true }: { autoResume?: boolean } =
       if (r.previous) refreshGame();
     } catch (e) {
       if (!alive.current || gen !== generation.current) return;
-      if (e instanceof ApiError && (e.code === "not_enough_focus" || e.code === "invalid_move")) {
+      if (e instanceof ApiError && (e.code === "not_enough_focus" || e.code === "invalid_move" || e.code === "move_locked")) {
         patch({ stage: "choosing" });                                     // a refused move: pick another
         toast.apiError(e);
         return;
@@ -165,7 +170,11 @@ export function useArenaBattle({ autoResume = true }: { autoResume?: boolean } =
 
   // ── Opening the arena: resume the battle in progress, if there is one ─────────────────────────────────────────
   useEffect(() => {
-    if (!autoResume) { patch({ phase: "summon", sessionId: readSessionId() }); return; }
+    const summonOn = () => {
+      if (documentId) rememberSessionId(documentId);
+      return documentId ?? readSessionId();
+    };
+    if (!autoResume) { patch({ phase: "summon", sessionId: summonOn() }); return; }
     let cancelled = false;
     (async () => {
       try {
@@ -176,10 +185,10 @@ export function useArenaBattle({ autoResume = true }: { autoResume?: boolean } =
         if (cancelled) return;
         toast.apiError(e);
       }
-      patch({ phase: "summon", sessionId: readSessionId() });
+      patch({ phase: "summon", sessionId: summonOn() });
     })();
     return () => { cancelled = true; };
-  }, [enter, patch, autoResume]);
+  }, [enter, patch, autoResume, documentId]);
 
   // ── The clock ran out: wait out the server's grace, then read the battle (the server settles the miss on read) and
   //    go to the next move choice. Nothing new is issued, so no Focus is spent on a move the player didn't pick. ─────
@@ -258,7 +267,7 @@ export function useArenaBattle({ autoResume = true }: { autoResume?: boolean } =
       if (!alive.current || gen !== generation.current) return;
       const over = r.battle.status !== "active";
       patch({
-        battle: r.battle, outcome: r, stage: "feedback", deadline: null,
+        battle: r.battle, outcome: r, stage: "feedback", deadline: null, ultimateCast: null,
         rewards: r.rewards ?? r.battle.rewards ?? null,
         advanceAt: Date.now() + (r.correct && !over ? AUTO_ADVANCE_MS.correct : AUTO_ADVANCE_MS.wrong),
       });
@@ -351,6 +360,31 @@ export function useArenaBattle({ autoResume = true }: { autoResume?: boolean } =
     }
   }, [patch]);
 
+  /** Cast the champion's ultimate (meter full): before picking a move, or while a question is open. */
+  const ultimate = useCallback(async () => {
+    const { battle, stage, itemBusy } = latest.current;
+    if (!battle?.kit?.ready || itemBusy || (stage !== "choosing" && stage !== "asking")) return;
+    patch({ itemBusy: "ultimate" });
+    const gen = generation.current;
+    try {
+      const r = await castUltimate(battle.battle_id);
+      if (!alive.current) return;
+      patch((s) => {
+        const same = gen === generation.current && !!r.question && !!s.question && r.question.id === s.question.id;
+        return {
+          battle: r.battle, itemBusy: null, ultimateCast: { name: r.ultimate.name, text: r.ultimate.text, key: Date.now() },
+          question: same ? { ...s.question!, ...r.question! } : s.question,
+          deadline: same && r.question!.timewarped ? Date.now() + Math.max(0, r.question!.seconds_left) * 1000 : s.deadline,
+        };
+      });
+      toast.success(`${r.ultimate.name}!`);
+    } catch (e) {
+      if (!alive.current) return;
+      patch({ itemBusy: null });
+      toast.apiError(e);
+    }
+  }, [patch]);
+
   const retreat = useCallback(async () => {
     const { battle } = latest.current;
     if (!battle) return;
@@ -371,7 +405,7 @@ export function useArenaBattle({ autoResume = true }: { autoResume?: boolean } =
     patch({ phase: "summon", battle: null, boss: null, question: null, deadline: null, outcome: null, advanceAt: null, rewards: null, retreated: false });
   }, [patch]);
 
-  return { ...state, summon, chooseMove, answer, next, holdVerdict, retryQuestion, applyItem, cast, retreat, playAgain, enterById };
+  return { ...state, summon, chooseMove, answer, next, holdVerdict, retryQuestion, applyItem, cast, ultimate, retreat, playAgain, enterById };
 }
 
 /** Whole seconds left until `deadline` (ms since epoch); null when there is no clock. Ticks four times a second. */

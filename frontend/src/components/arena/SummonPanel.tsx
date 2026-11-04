@@ -2,9 +2,9 @@
 
 import { useEffect, useState } from "react";
 import { ArrowLeft, Flame, Skull, Swords, Target, Trophy } from "lucide-react";
-import { GearChips } from "@/components/avatar";
+import GearChips from "@/components/champion/GearChips";
 import PixelSprite from "./pixel/PixelSprite";
-import { useFighter } from "./pixel/useFighter";
+import { useFighter, useFighterPet } from "./pixel/useFighter";
 import FileUploader from "@/components/FileUploader";
 import { Badge, Button, Input } from "@/components/ui";
 import { previewEquipped, useHeroStore } from "@/hooks/useHero";
@@ -15,16 +15,19 @@ import { DIFFICULTIES, DIFFICULTY_BLURB, DIFFICULTY_LABEL, type Difficulty, type
 const mmss = (seconds: number) => `${Math.floor(seconds / 60)}m ${Math.round(seconds % 60)}s`;
 
 /** Pick a document, a topic and a difficulty; the server builds the boss. */
-export default function SummonPanel({ sessionId, starting, onSummon, mode = "quick", onBack }: {
+export default function SummonPanel({ sessionId, starting, onSummon, mode = "quick", onBack, initialTopic }: {
   sessionId: string;
   starting: boolean;
   onSummon: (topic: string, difficulty: Difficulty, mode: "quick" | "nemesis") => void;
   /** "nemesis": no topic - the boss is built from the concepts the player keeps missing. */
   mode?: "quick" | "nemesis";
   onBack?: () => void;
+  /** The boss topic to start from (the concept map's "Summon its boss"). */
+  initialTopic?: string;
 }) {
   const nemesis = mode === "nemesis";
   const fighter = useFighter();
+  const pet = useFighterPet();
   const [weak, setWeak] = useState<WeakConceptsResponse | null>(null);
   useEffect(() => {
     if (!nemesis || !sessionId) return;
@@ -32,12 +35,12 @@ export default function SummonPanel({ sessionId, starting, onSummon, mode = "qui
     fetchWeakConcepts(sessionId).then((r) => { if (alive) setWeak(r); }).catch(() => { if (alive) setWeak({ concepts: [], missed_total: 0, nemesis_ready: false }); });
     return () => { alive = false; };
   }, [nemesis, sessionId]);
-  const [topic, setTopic] = useState("");
+  const [topic, setTopic] = useState(initialTopic ?? "");
   const [difficulty, setDifficulty] = useState<Difficulty>("medium");
   const [entries, setEntries] = useState<LeaderboardEntry[]>([]);
   const shop = useHeroStore((s) => s.shop);
   const equipped = previewEquipped(shop, null);
-  const worn = ["weapon", "armor", "headgear", "pet"].map((k) => shop?.items.find((i) => i.id === (equipped[k] || (k === "armor" ? equipped.outfit_id : ""))));
+  const worn = ["weapon", "armor", "headgear", "pet"].map((k) => shop?.items.find((i) => i.id === equipped[k]));
   const gear = totalGear(worn as never);
 
   // The board for this topic and difficulty (what the server has recorded), after the player stops typing.
@@ -64,12 +67,12 @@ export default function SummonPanel({ sessionId, starting, onSummon, mode = "qui
     <section className="arena-summon" aria-labelledby="arena-summon-title">
       <aside className="arena-summon__hero" aria-label="Your hero">
         <div className="arena-summon__spot">
-          <PixelSprite hero={fighter} label={`${fighter.name}, your champion`} className="arena-summon__sprite" />
+          <PixelSprite hero={fighter} pet={pet} label={`${fighter.name}, your champion`} className="arena-summon__sprite" />
         </div>
         <p className="arena-summon__name"><span className="pixel-font">{fighter.name}</span> is ready</p>
         {Object.values(gear).some(Boolean)
           ? <GearChips stats={gear} />
-          : <p className="arena-summon__hint">Your gear shows here. A weapon, armor, headgear or a pet gives you an edge.</p>}
+          : <p className="arena-summon__hint">Your gear shows here. An outfit, head piece, weapon finish or pet gives you an edge.</p>}
       </aside>
 
       <div className="arena-summon__panel">

@@ -19,11 +19,16 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import List, Optional, Union
 
+from database import pg
 from database.connection import connect
 
 logger = logging.getLogger(__name__)
 
 MIGRATIONS_DIR = Path(__file__).resolve().parent.parent / "migrations"
+# PostgreSQL (DATABASE_URL): a baseline equal to SQLite's schema at that version, then numbered twins of every
+# later SQLite migration (scripts/postgres_schema.py writes the baseline; docs/postgres.md).
+PG_MIGRATIONS_DIR = MIGRATIONS_DIR / "postgres"
+_PG_LOCK = 7_420_314_001                    # pg_advisory_lock key: one migrator at a time across processes
 DATABASE_FILENAME = "coursemate.db"
 # The two files this single database replaced (see scripts/merge_legacy_dbs.py).
 LEGACY_FILENAMES = ("app.db", "progression.db")
@@ -99,8 +104,70 @@ def _apply(conn: sqlite3.Connection, mig: Migration) -> None:
         raise
 
 
+def discover_pg(directory: Union[str, Path] = PG_MIGRATIONS_DIR) -> List[Migration]:
+    """The PostgreSQL files: NNNN_baseline.sql first, then consecutive versions after it."""
+    found: List[Migration] = []
+    for path in sorted(Path(directory).glob("*.sql")):
+        m = _FILE_RE.match(path.name)
+        if not m:
+            raise MigrationError(f"Migration file {path.name!r} must be named NNNN_description.sql")
+        sql = path.read_text(encoding="utf-8")
+        found.append(Migration(int(m.group(1)), m.group(2), sql, _checksum(sql)))
+    if not found or found[0].name != "baseline":
+        raise MigrationError(f"{directory} must start with an NNNN_baseline.sql (scripts/postgres_schema.py writes it)")
+    versions = [mig.version for mig in found]
+    if versions != list(range(versions[0], versions[0] + len(versions))):
+        raise MigrationError(f"PostgreSQL migration versions must be consecutive after the baseline, found {versions}")
+    return found
+
+
+def _migrate_pg(url: str, directory: Union[str, Path]) -> List[int]:
+    migrations = discover_pg(directory)
+    conn = connect(url)
+    raw = conn._c                                            # the psycopg connection (autocommit)
+    applied_now: List[int] = []
+    try:
+        raw.execute("SELECT pg_advisory_lock(%s)", (_PG_LOCK,))
+        raw.execute("CREATE TABLE IF NOT EXISTS schema_migrations (version BIGINT PRIMARY KEY, name TEXT NOT NULL, "
+                    "checksum TEXT NOT NULL, applied_at TEXT NOT NULL)")
+        done = {r["version"]: r["checksum"] for r in raw.execute("SELECT version, checksum FROM schema_migrations").fetchall()}
+        unknown = sorted(set(done) - {m.version for m in migrations})
+        if unknown:
+            raise MigrationError(f"The database was migrated to version(s) {unknown} which this code does not know about "
+                                 "- it was created by a newer version of the app.")
+        for mig in migrations:
+            if mig.version in done and done[mig.version] != mig.checksum:
+                raise MigrationError(f"PostgreSQL migration {mig.version:04d}_{mig.name}.sql was changed after it was "
+                                     "applied. Never edit an applied migration - add a new numbered one instead.")
+        baseline = migrations[0]
+        if done and baseline.version not in done:
+            raise MigrationError("The database has migrations recorded but not the baseline: it wasn't made by this app.")
+        stamp = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+        for mig in migrations:
+            if mig.version in done:
+                continue
+            try:
+                with raw.transaction():                       # DDL is transactional in PostgreSQL: all or nothing
+                    raw.execute(mig.sql)
+                    raw.execute("INSERT INTO schema_migrations (version, name, checksum, applied_at) VALUES (%s, %s, %s, %s)",
+                                (mig.version, mig.name, mig.checksum, stamp))
+            except Exception as exc:
+                raise MigrationError(f"PostgreSQL migration {mig.version:04d}_{mig.name}.sql failed: {exc}") from exc
+            applied_now.append(mig.version)
+            logger.info("Applied PostgreSQL migration %04d_%s", mig.version, mig.name)
+        return applied_now
+    finally:
+        try:
+            raw.execute("SELECT pg_advisory_unlock(%s)", (_PG_LOCK,))
+        finally:
+            conn.close()
+
+
 def migrate(path: Union[str, Path], directory: Union[str, Path] = MIGRATIONS_DIR) -> List[int]:
-    """Bring the database at `path` (created if missing) up to the latest version. Returns the versions applied."""
+    """Bring the database at `path` (created if missing) up to the latest version. Returns the versions applied.
+    A postgresql:// URL is migrated from migrations/postgres/ instead."""
+    if pg.is_url(path):
+        return _migrate_pg(str(path), PG_MIGRATIONS_DIR if Path(directory) == MIGRATIONS_DIR else directory)
     migrations = discover(directory)
     conn = connect(path)
     applied_now: List[int] = []
@@ -146,6 +213,8 @@ def upgrade(path: Union[str, Path], migrations_dir: Optional[Union[str, Path]] =
 
     Starting with a brand-new empty coursemate.db next to existing app.db / progression.db would make
     every account and score look lost, so that situation is an error with the exact fix in the message."""
+    if pg.is_url(path):
+        return migrate(str(path), migrations_dir or MIGRATIONS_DIR)
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
     old = legacy_files(path.parent)

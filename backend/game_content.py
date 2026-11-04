@@ -32,7 +32,8 @@ KNOWN_EFFECTS = frozenset({"heal_1", "hint_charge", "fifty_fifty", "xp_boost_1h"
 KNOWN_UNLOCK_TYPES = frozenset({"total_quizzes_completed", "streak_days", "total_bosses_defeated", "current_level",
                                 "best_quiz_accuracy", "nightmare_bosses_defeated"})        # AchievementService._get_stat_value
 REWARD_ACTIONS = ("arena_round_complete", "boss_defeat", "quiz_complete", "chat_bundle_5",
-                  "notes_generation", "flashcard_complete", "expedition_complete")          # RewardService.award
+                  "notes_generation", "flashcard_complete", "expedition_complete",
+                  "review_complete", "exam_complete")                                       # RewardService.award
 KNOWN_RELICS = frozenset({"owl_feather", "whetstone", "aegis", "phoenix_ash", "scholar_lens", "quill", "hourglass",
                           "lucky_coin", "iron_will", "focus_crystal", "vampiric_tome", "ink_bomb"})  # arena/expedition
 
@@ -85,6 +86,15 @@ class ItemBattle(_Model):
     strike: Optional[int] = Field(default=None, ge=0)            # pet: flat damage once the combo reaches 3
 
 
+CHAMPION_IDS = ("kaien", "asha", "brak", "mira", "vex", "thorne")      # frontend/src/lib/pixel/heroes.ts
+
+
+class Mastery(_Model):
+    """A champion's mastery skin: free, never sold, granted when that champion reaches `level`, worn only by it."""
+    champion: Literal["kaien", "asha", "brak", "mira", "vex", "thorne"]
+    level: int = Field(ge=2, le=10)
+
+
 class Item(_Model):
     id: str = Field(min_length=1)
     type: Literal["armor", "headgear", "weapon", "pet", "potion", "title"]
@@ -98,9 +108,16 @@ class Item(_Model):
     consumable: bool = False
     effect: Optional[str] = None
     arena_only: bool = False
+    rarity: Optional[Literal["common", "rare", "epic", "legendary"]] = None
+    mastery: Optional[Mastery] = None
 
     @model_validator(mode="after")
     def _consumable_rules(self):
+        if self.mastery is not None:
+            if self.price != 0 or self.bonus is not None or self.battle is not None or self.consumable:
+                raise ValueError(f"mastery item {self.id!r} must be free and purely cosmetic (no price, bonus or battle)")
+            if self.type not in ("armor", "headgear", "weapon"):
+                raise ValueError(f"mastery item {self.id!r} must be an armor, headgear or weapon skin")
         if self.consumable and self.effect is None:
             raise ValueError(f"item {self.id!r} is consumable but has no effect")
         if self.effect is not None and not self.consumable:

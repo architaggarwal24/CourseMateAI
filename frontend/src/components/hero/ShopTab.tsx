@@ -2,11 +2,11 @@
 
 import { useEffect, useRef, useState } from "react";
 import { Lock, ShoppingBag, Eye, Check, Sparkles, Swords } from "lucide-react";
-import { HeroFigure } from "@/components/avatar";
-import { lookFromEquipped } from "@/lib/avatar/look";
+import PixelSprite from "@/components/arena/pixel/PixelSprite";
+import { useChampionLook } from "@/components/champion/useChampionLook";
 import { Badge, Button, EmptyState } from "@/components/ui";
 import { useHUDStore } from "@/hooks/useHUD";
-import { previewEquipped, useHeroStore, type ShopItem, type ShopState } from "@/hooks/useHero";
+import { useHeroStore, type ShopItem, type ShopState } from "@/hooks/useHero";
 import { CategoryIcon } from "./icons";
 import ItemCard, { Price } from "./ItemCard";
 
@@ -36,6 +36,13 @@ function LockedNotice({ title, level, need }: { title: string; level: number; ne
       description={`Reach Level ${need} to unlock it. You are Level ${level}.`}
     />
   );
+}
+
+/** The champion in its skins, wearing the item being tried on (and its pet, or the pet being tried on). */
+function ShopPreview() {
+  const { hero, petId } = useChampionLook({ preview: true });
+  const previewName = useHeroStore((s) => (s.previewId ? s.shop?.items.find((i) => i.id === s.previewId)?.name : undefined));
+  return <PixelSprite hero={hero} pet={petId} label={previewName ? `${hero.name}, trying on ${previewName}` : `${hero.name}, your champion`} className="hero-stage__sprite" />;
 }
 
 /** Everything that can be bought and then worn or used. */
@@ -188,14 +195,15 @@ export default function ShopTab() {
   const categories = shopCategories(shop);
   const cat = categories.find((c) => c.id === selected) ?? { id: selected, name: selected, icon: "", desc: "", unlockLevel: 5 };
   const catLocked = level < cat.unlockLevel;
-  const inCategory = shop.items.filter((i) => i.category === selected);
+  // mastery skins are earned with a champion's levels, never sold (they show in the Champion tab)
+  const inCategory = shop.items.filter((i) => i.category === selected && !i.mastery);
 
   return (
     <div className="hero-split">
       <aside className="hero-split__side" aria-label="Shop sidebar">
         <p className="hero-label">Try it on</p>
         <div className="hero-stage" data-testid="shop-preview">
-          <HeroFigure look={lookFromEquipped(previewEquipped(shop, previewId))} size="min(100%, 13rem)" animate title="Your hero, trying on the previewed item" />
+          <ShopPreview />
         </div>
         {previewId && (
           <p className="text-sm text-ink-purple mt-2" data-testid="shop-preview-name">
@@ -207,7 +215,7 @@ export default function ShopTab() {
         <div className="space-y-2" role="group" aria-label="Shop categories">
           {categories.map((c) => {
             const isLocked = level < c.unlockLevel;
-            const total = shop.items.filter((i) => i.category === c.id);
+            const total = shop.items.filter((i) => i.category === c.id && !i.mastery);
             return (
               <button key={c.id} type="button" className="hero-cat" aria-pressed={selected === c.id} data-locked={isLocked || undefined} onClick={() => setSelected(c.id)}>
                 <span className="hero-cat__icon"><CategoryIcon id={c.id} /></span>
@@ -229,7 +237,7 @@ export default function ShopTab() {
             <div className="mb-5 pb-4 border-b border-line">
               <h2 id="shop-category" className="m-0 text-xl font-bold text-fg inline-flex items-center gap-2"><CategoryIcon id={cat.id} size={22} />{cat.name}</h2>
               <p className="m-0 mt-1 text-sm text-fg-muted">{cat.desc}</p>
-              <p className="m-0 mt-2 text-xs text-fg-muted"><Eye size={12} className="inline mr-1" aria-hidden="true" />Press the eye to preview an item on your hero.</p>
+              <p className="m-0 mt-2 text-xs text-fg-muted"><Eye size={12} className="inline mr-1" aria-hidden="true" />Press the eye to try a skin on your champion.</p>
             </div>
             {inCategory.length === 0 ? (
               <p className="py-12 text-center text-fg-muted">No items in this category yet</p>

@@ -31,7 +31,13 @@ async function battleServer(page: Page) {
       battle = { battle_id: "b1", status: "active", session_id: "s", topic: "cells", difficulty: "medium", phase: 1, rage: false,
         boss: { name: "Cell Warden", hp: 20, max_hp: 20, species: "minotaur", title: "Warden of cells" }, player: { hp: 10, max_hp: 10 }, combo: 0, max_combo: 0, answered: 0, correct: 0, heals_used: 0, fifty_used: 0,
         mode: "quick", run_id: null, focus: 0, focus_cap: 5, shield: 0, heavy_cost: 2, free_timewarp: false, relics: [],
-        intent: { kind: "attack", name: "Concept Crush", value: 5, description: "Hits for 5 on a wrong answer." } };
+        intent: { kind: "attack", name: "Concept Crush", value: 5, description: "Hits for 5 on a wrong answer." },
+        // Phase 3 Stage 2: the creature's mechanic and the champion's kit (meter already full, so U can be tried)
+        mechanic: { id: "minotaur", name: "Labyrinth Charge", summary: "Every third turn it charges: a right answer can't halve it, a right Guard stuns it.",
+          counters: [{ label: "Charge in", value: 2, hint: "turns until it charges" }], locked_moves: [] },
+        kit: { champion: "kaien", meter: 100, max: 100, ready: true, active: false, effects: {},
+          passive: { name: "Riposte", text: "A right Guard against a blow hits back for half a Strike." },
+          ultimate: { name: "Ninth Page Cut", text: "Your next right answer hits x2.5 and cuts through shields." } } };
       seq = -1; answered = false;
       return json(route, { ok: true, battle_id: "b1", resumed: false, boss: PROFILE, battle });
     }
@@ -53,6 +59,10 @@ async function battleServer(page: Page) {
         correct_answer: q.correct, explanation: `It is ${q.correct}.`, damage_dealt: correct ? 10 : 0, hit_type: "normal", weakness: false,
         damage_taken: correct ? 0 : 5, attack_name: correct ? undefined : "Concept Crush", taunt: correct ? "Hm." : "Ha!", phase_changed: false, combo: battle.combo,
         move: "strike", intent: battle.intent, next_intent: battle.status === "active" ? battle.intent : null });
+    }
+    if (path.endsWith("/ultimate")) {
+      battle.kit = { ...battle.kit, meter: 0, ready: false, active: true, effects: { armed: "cut" } };
+      return json(route, { ok: true, ultimate: { name: battle.kit.ultimate.name, text: battle.kit.ultimate.text, hearts: 0, insight: false, timewarp: false }, battle, question: null });
     }
     if (path.endsWith("/forfeit")) { end("lost"); return json(route, { ok: true, battle, rewards: battle.rewards }); }
     return json(route, { error: { code: "not_found", message: "Not found.", action: null, details: null } }, 404);
@@ -150,6 +160,20 @@ test("RETREAT, and a reload in the middle of a fight resumes it", async ({ page 
   await page.getByRole("button", { name: /Retreat/ }).click();
   await page.getByRole("alertdialog").getByRole("button", { name: "Retreat" }).click();
   await expect(page.getByRole("heading", { name: "Retreated" })).toBeVisible();
+});
+
+test("the creature's mechanic is in the HUD, and U casts the champion's ultimate once", async ({ page }) => {
+  await battleServer(page);
+  await summon(page);
+  await expect(page.getByRole("group", { name: "Creature mechanic: Labyrinth Charge" }).first()).toBeVisible();
+  const meter = page.getByRole("progressbar", { name: "Ultimate: Ninth Page Cut" }).first();
+  await expect(meter).toHaveAttribute("aria-valuetext", "Ninth Page Cut ready");
+  const cast = page.waitForRequest((r) => r.url().endsWith("/ultimate") && r.method() === "POST");
+  await page.keyboard.press("u");
+  await cast;
+  await expect(meter).toHaveAttribute("aria-valuenow", "0");
+  await expect(page.getByRole("button", { name: /Ninth Page Cut/ })).toBeDisabled();
+  await axeClean(page, "battle: ultimate cast");
 });
 
 test.describe("reduced motion", () => {

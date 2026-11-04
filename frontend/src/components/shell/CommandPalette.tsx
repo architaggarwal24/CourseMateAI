@@ -5,8 +5,8 @@ import { useRouter } from "next/navigation";
 import { Command } from "cmdk";
 import { Dialog } from "radix-ui";
 import {
-  Backpack, BookOpen, Brain, CornerDownLeft, FileText, History, Layers, MessageSquare, Paintbrush, ScrollText,
-  Search, Settings, ShoppingBag, Swords, Trophy, User, UserCircle,
+  Backpack, BookOpen, Brain, CornerDownLeft, FileText, GraduationCap, History, Layers, MessageSquare, ScrollText,
+  Repeat, Search, Settings, ShoppingBag, Swords, Trophy, User, UserCircle,
 } from "lucide-react";
 import ThemeScope from "@/components/ThemeScope";
 import { ROUTES } from "@/lib/routes";
@@ -20,7 +20,9 @@ const GROUPS: { heading: string; items: Entry[] }[] = [
       { id: "chat", label: "Chat with your document", href: ROUTES.studyTab("chat"), icon: <MessageSquare size={16} />, keywords: ["ask", "pdf"] },
       { id: "quiz", label: "Generate a quiz", href: ROUTES.studyTab("quiz"), icon: <Brain size={16} />, keywords: ["mcq", "test"] },
       { id: "notes", label: "Study notes", href: ROUTES.studyTab("notes"), icon: <FileText size={16} /> },
-      { id: "flashcards", label: "Flashcards", href: ROUTES.studyTab("flashcards"), icon: <Layers size={16} />, keywords: ["cards", "review"] },
+      { id: "flashcards", label: "Flashcards", href: ROUTES.studyTab("flashcards"), icon: <Layers size={16} />, keywords: ["cards"] },
+      { id: "review", label: "Daily review", hint: "Spaced repetition", href: ROUTES.studyTab("review"), icon: <Repeat size={16} />, keywords: ["review", "due", "srs", "spaced", "repetition", "mistakes"] },
+      { id: "exam", label: "Mock exam", hint: "Timed test", href: ROUTES.studyTab("exam"), icon: <GraduationCap size={16} />, keywords: ["exam", "test", "mock", "timed", "report"] },
     ],
   },
   {
@@ -30,8 +32,7 @@ const GROUPS: { heading: string; items: Entry[] }[] = [
       { id: "quests", label: "Daily quests", href: ROUTES.heroQuests, icon: <ScrollText size={16} /> },
       { id: "shop", label: "Shop", href: ROUTES.heroShop, icon: <ShoppingBag size={16} />, keywords: ["buy", "gear", "potion"] },
       { id: "inventory", label: "Inventory", href: ROUTES.heroInventory, icon: <Backpack size={16} /> },
-      { id: "avatar", label: "Avatar", href: ROUTES.heroAvatar, icon: <User size={16} /> },
-      { id: "forge", label: "Hero Forge", href: ROUTES.heroForge, icon: <Paintbrush size={16} />, keywords: ["customize", "look"] },
+      { id: "champion", label: "Champion & skins", href: ROUTES.heroChampion, icon: <User size={16} />, keywords: ["avatar", "skin", "customize", "look", "outfit", "pet"] },
       { id: "achievements", label: "Achievements", href: ROUTES.heroAchievements, icon: <Trophy size={16} /> },
     ],
   },

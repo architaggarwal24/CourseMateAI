@@ -1,14 +1,15 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Check, Eye, EyeOff, Key } from "lucide-react";
+import { Check, Eye, EyeOff, Key, Sparkles } from "lucide-react";
 import ProviderPicker, { type ProviderFieldErrors } from "@/components/ProviderPicker";
 import { Button, Card, Input } from "@/components/ui";
 import { useAuth } from "@/contexts/AuthContext";
 import { rawApi } from "@/lib/api";
+import { fetchPlans } from "@/lib/account/plans";
 import { emptyLLMForm, formForProvider, llmPayload, useProviders, type LLMForm } from "@/lib/llmProviders";
 import {
-  ACCOUNT_FIELDS, WHY_A_KEY, emptyAccountForm, routeSignupFailure, validateAccount, validateField, validateProviderStep,
+  ACCOUNT_FIELDS, MANAGED_AI, WHY_A_KEY, emptyAccountForm, routeSignupFailure, validateAccount, validateField, validateProviderStep,
   type AccountErrors, type AccountField, type AccountForm,
 } from "@/lib/signup";
 
@@ -39,6 +40,19 @@ export default function SignupFlow({ onDone }: { onDone: () => void }) {
   const [usernameCheck, setUsernameCheck] = useState<UsernameCheck>({ status: "idle" });
   const [focusTick, setFocusTick] = useState(0);
   const panelRef = useRef<HTMLDivElement>(null);
+  // How signup works on this server (GET /plans): invite-only, and whether it has its own AI (then no key needed).
+  const [server, setServer] = useState({ inviteOnly: false, managed: false });
+  const [aiMode, setAiMode] = useState<"managed" | "own">("own");
+  useEffect(() => {
+    let alive = true;
+    fetchPlans().then((p) => {
+      if (!alive) return;
+      setServer({ inviteOnly: p.invite_only, managed: p.managed_ai });
+      if (p.managed_ai) setAiMode("managed");
+    }).catch(() => { /* older server, or offline: ask for a key as before */ });
+    return () => { alive = false; };
+  }, []);
+  const managed = server.managed && aiMode === "managed";
 
   // Preselect the first provider (Gemini — free) once the catalogue arrives.
   useEffect(() => {
@@ -75,6 +89,9 @@ export default function SignupFlow({ onDone }: { onDone: () => void }) {
   const takenHere = usernameCheck.status === "taken" && usernameCheck.name === username;
   const errorFor = (field: AccountField): string | undefined => {
     if (serverAccountErrors[field]) return serverAccountErrors[field];
+    if (field === "inviteCode") {
+      return touched.inviteCode && server.inviteOnly && !account.inviteCode.trim() ? "Enter your invite code" : undefined;
+    }
     if (field === "username" && takenHere) return "That username is already taken";      // worth saying as soon as it is known
     if (!touched[field]) return undefined;
     return validateField(field, account) ?? undefined;
@@ -100,8 +117,10 @@ export default function SignupFlow({ onDone }: { onDone: () => void }) {
   function next() {
     const all = Object.fromEntries(ACCOUNT_FIELDS.map((f) => [f, true])) as Record<AccountField, boolean>;
     setTouched(all);
+    setTouched((t) => ({ ...t, inviteCode: true }));
     const problems = validateAccount(account);
-    if (Object.keys(problems).length > 0 || takenHere || Object.values(serverAccountErrors).some(Boolean)) {
+    const needsCode = server.inviteOnly && !account.inviteCode.trim();
+    if (Object.keys(problems).length > 0 || needsCode || takenHere || Object.values(serverAccountErrors).some(Boolean)) {
       setFocusTick((n) => n + 1);                       // the errors render beside their fields; jump to the first
       return;
     }
@@ -111,7 +130,7 @@ export default function SignupFlow({ onDone }: { onDone: () => void }) {
 
   async function submit() {
     setGeneral("");
-    const problems = validateProviderStep(llm, spec);
+    const problems = managed ? {} : validateProviderStep(llm, spec);
     if (Object.keys(problems).length > 0) {
       setProviderErrors(problems);
       setFocusTick((n) => n + 1);
@@ -119,10 +138,11 @@ export default function SignupFlow({ onDone }: { onDone: () => void }) {
     }
     setProviderErrors({});
     setLoading(true);
-    const payload = llmPayload(llm, spec!);
+    const payload = managed ? { api_key: "", llm_model: undefined, llm_base_url: undefined } : llmPayload(llm, spec!);
     const result = await register(
       account.email.trim(), account.password, account.username.trim(), account.fullName.trim(),
-      payload.api_key, llm.provider, payload.llm_model, payload.llm_base_url,
+      payload.api_key, managed ? "" : llm.provider, payload.llm_model, payload.llm_base_url,
+      account.inviteCode.trim() || undefined,
     );
     setLoading(false);
     if (result === true) { onDone(); return; }
@@ -194,19 +214,40 @@ export default function SignupFlow({ onDone }: { onDone: () => void }) {
               error={errorFor("confirmPassword")}
               trailing={toggle(showConfirm, setShowConfirm, "password")} />
 
+            <Input label={server.inviteOnly ? "Invite code" : "Invite code (optional)"} type="text" name="inviteCode"
+              value={account.inviteCode} onChange={change} onBlur={blur} placeholder="BETA-XXXX" autoComplete="off"
+              spellCheck={false} error={errorFor("inviteCode")}
+              hint={server.inviteOnly ? "CourseMate is in testing: sign-up needs a code from the team." : "A code from the team puts you on its plan."} />
+
             <Button type="submit" variant="primary" block>Next</Button>
           </>
         ) : (
           <>
             <h3 data-step-heading tabIndex={-1} className="flex items-center gap-2 text-base font-semibold text-fg outline-none">
-              <Key size={15} className="text-ink-blue" aria-hidden="true" /> Connect your AI provider
+              {managed ? <Sparkles size={15} className="text-ink-blue" aria-hidden="true" /> : <Key size={15} className="text-ink-blue" aria-hidden="true" />}
+              {managed ? " Your AI" : " Connect your AI provider"}
             </h3>
-            <p className="text-sm text-fg-2">{WHY_A_KEY}</p>
+            {server.managed && (
+              <fieldset className="signup-ai">
+                <legend className="sr-only">Which AI to use</legend>
+                <label className="signup-ai__opt">
+                  <input type="radio" name="ai-mode" checked={aiMode === "managed"} onChange={() => setAiMode("managed")} />
+                  <span><b>CourseMate&apos;s AI</b><span>Included in your plan</span></span>
+                </label>
+                <label className="signup-ai__opt">
+                  <input type="radio" name="ai-mode" checked={aiMode === "own"} onChange={() => setAiMode("own")} />
+                  <span><b>My own provider key</b><span>Doesn&apos;t use your plan&apos;s AI allowance</span></span>
+                </label>
+              </fieldset>
+            )}
+            <p className="text-sm text-fg-2">{managed ? MANAGED_AI : WHY_A_KEY}</p>
 
-            <ProviderPicker
-              providers={providers} loading={providersLoading} error={providersError} onRetry={reload}
-              value={llm} onChange={changeLlm} errors={providerErrors}
-            />
+            {!managed && (
+              <ProviderPicker
+                providers={providers} loading={providersLoading} error={providersError} onRetry={reload}
+                value={llm} onChange={changeLlm} errors={providerErrors}
+              />
+            )}
 
             {general && (
               <Card tone="danger" pad="sm" role="alert">

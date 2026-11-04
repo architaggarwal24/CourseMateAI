@@ -35,7 +35,8 @@ class SQLiteStore:
 
     def __init__(self, db_path: str):
         self.db_path = db_path
-        os.makedirs(os.path.dirname(db_path), exist_ok=True)
+        if not str(db_path).startswith(("postgres://", "postgresql://")):
+            os.makedirs(os.path.dirname(db_path), exist_ok=True)
         # RLock: service code wraps multi-step read-modify-write sequences in
         # `with store.atomic():` and those sequences call execute() internally.
         self._write_lock = threading.RLock()
@@ -208,6 +209,35 @@ class SQLiteStore:
             SET equipped_json = ?, owned_json = ?, updated_at = ?
             WHERE user_id = ?
         """, (json.dumps(equipped), json.dumps(owned), utc_now_iso(), user_id))
+
+    def set_champion(self, user_id: str, champion_id: str) -> None:
+        """The player chose a champion (validated by the caller)."""
+        self.ensure_user(user_id)
+        now = utc_now_iso()
+        self.execute("""
+            UPDATE user_avatar SET champion_id = ?, champion_set_at = ?, updated_at = ? WHERE user_id = ?
+        """, (champion_id, now, now, user_id))
+
+    # --------------------------
+    # Champion progression (migration 0009)
+    # --------------------------
+    def get_champion_progress(self, user_id: str) -> "dict[str, dict]":
+        rows = self.fetchall("SELECT * FROM champion_progress WHERE user_id = ?", (int(user_id),))
+        return {r["champion_id"]: r for r in rows}
+
+    def add_champion_xp(self, user_id: str, champion_id: str, xp: int, won: bool, level_for) -> tuple:
+        """Add a battle's XP to a champion. Returns (old_level, new_level, total_xp). Call inside a transaction."""
+        now = utc_now_iso()
+        self.execute("INSERT OR IGNORE INTO champion_progress (user_id, champion_id, xp, level, updated_at) "
+                     "VALUES (?, ?, 0, 1, ?)", (int(user_id), champion_id, now))
+        row = self.fetchone("SELECT xp, level FROM champion_progress WHERE user_id = ? AND champion_id = ?",
+                            (int(user_id), champion_id))
+        old_level, total = int(row["level"]), int(row["xp"]) + max(0, int(xp))
+        new_level = max(old_level, level_for(total))
+        self.execute("UPDATE champion_progress SET xp = ?, level = ?, battles = battles + 1, wins = wins + ?, "
+                     "updated_at = ? WHERE user_id = ? AND champion_id = ?",
+                     (total, new_level, int(bool(won)), now, int(user_id), champion_id))
+        return old_level, new_level, total
 
     # --------------------------
     # Daily action counts (caps/cooldowns)

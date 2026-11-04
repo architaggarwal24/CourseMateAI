@@ -19,6 +19,13 @@ const STUDY_FILES = [
   "components/study/StudyToolbar.tsx", "components/history/sessionMeta.tsx",
   "app/login/page.tsx", "app/(app)/account/settings/page.tsx", "app/(app)/account/page.tsx",
   "app/(app)/account/history/page.tsx", "app/layout.tsx", "app/globals.css",
+  "components/review/ReviewView.tsx", "components/review/review.css", "components/study/UpgradeCard.tsx",
+  "components/shell/ReviewBadge.tsx", "components/exam/ExamView.tsx", "components/exam/ExamRunner.tsx", "components/exam/exam.css",
+  "components/pdf/PdfViewer.tsx", "components/pdf/pdf.css", "components/chat/CitationList.tsx",
+  "components/course/CourseEditor.tsx", "components/course/CourseOverview.tsx", "components/course/LibraryMenu.tsx",
+  "components/course/course.css", "components/map/ConceptMapView.tsx", "components/map/Constellation.tsx", "components/map/map.css",
+  "components/account/PlanUsage.tsx", "components/account/plan-usage.css", "app/(app)/account/usage/page.tsx",
+  "components/pwa/InstallApp.tsx", "app/offline/page.tsx",
 ];
 // Hero (the play theme): everything under app/(app)/hero is wrapped once, by its layout.
 const PLAY_ROUTES = [
@@ -27,7 +34,7 @@ const PLAY_ROUTES = [
 const HERO_COMPONENTS = [
   "components/hero/HeroArea.tsx", "components/hero/HeroHeader.tsx", "components/hero/ItemCard.tsx",
   "components/hero/QuestsTab.tsx", "components/hero/ShopTab.tsx", "components/hero/InventoryTab.tsx",
-  "components/hero/AvatarTab.tsx", "components/hero/ForgeTab.tsx",
+  "components/hero/ChampionTab.tsx", "components/champion/ChampionAvatar.tsx", "components/champion/ItemArt.tsx",
 ];
 const PLAY_FILES = [
   ...HERO_COMPONENTS,
@@ -52,6 +59,10 @@ const KIT_STUDY_FILES = [
   "components/HistoryView.tsx", "components/HistoryPanel.tsx", "components/FileUploader.tsx",
   "components/chat/ChatMarkdown.tsx", "components/chat/SourceChips.tsx", "components/chat/NotFoundCard.tsx",
   "components/quiz/QuizQuestionView.tsx", "components/quiz/QuizReview.tsx", "components/study/StudyToolbar.tsx",
+  "components/review/ReviewView.tsx", "components/study/UpgradeCard.tsx", "components/exam/ExamView.tsx",
+  "components/exam/ExamRunner.tsx", "components/pdf/PdfViewer.tsx", "components/chat/CitationList.tsx",
+  "components/course/CourseEditor.tsx", "components/course/CourseOverview.tsx", "components/course/LibraryMenu.tsx",
+  "components/map/ConceptMapView.tsx", "components/map/Constellation.tsx", "components/account/PlanUsage.tsx",
 ];
 describe("Kit-styled Study tools", () => {
   it.each(KIT_STUDY_FILES)("%s has no Play styling", (file) => {

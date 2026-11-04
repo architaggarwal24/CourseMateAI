@@ -68,12 +68,14 @@ CourseMateAI turns your study documents into an interactive learning experience.
 - **Achievements** — 19 achievements across Common → Legendary tiers, each with a progress bar
 - **Active buffs** — XP boosts, coin boosts, with live countdown timers in the sidebar
 
-### 🛍️ Shop & Avatar
+### 🛍️ Shop & Champion
 
-- Armor, headgear, weapons, pets, and prestige titles — each with passive stat bonuses
+- **Your pixel champion is your avatar** — pick one of six champions in the **Champion** tab; it shows in the header,
+  the sidebar menu, your profile, the shop, the inventory and the Battle Arena. The choice is saved on your account.
+- **Champion skins** — outfits (palette skins), head pieces (circlets, hoods, helms, crowns, horns), weapon finishes
+  with rarity glows, and pixel pets that idle beside your champion. One loadout fits all six champions.
+- Skins and prestige titles carry passive study bonuses and arena gear (damage, hearts, time, pet strikes)
 - Consumables: health potions, XP elixirs, coin boosts, Streak Shields, Veil of Duality (50/50)
-- **Hero Forge** — full pixel-art avatar customization (skin, hair, body type, outfit)
-- Equipment syncs across the shop, inventory, and Battle Arena
 
 ---
 

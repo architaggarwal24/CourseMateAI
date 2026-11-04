@@ -3,6 +3,8 @@
 import { useEffect, useState } from "react";
 import { MotionConfig } from "motion/react";
 import { AuthProvider } from "@/contexts/AuthContext";
+import { initMonitoring } from "@/lib/monitoring";
+import { startPwa } from "@/lib/pwa";
 
 /** True while <html> has the in-app "Reduce animations" class (Settings → Appearance), kept live as it is toggled. */
 function useAppReduceAnimations() {
@@ -24,6 +26,8 @@ function useAppReduceAnimations() {
  */
 export function Providers({ children }: { children: React.ReactNode }) {
   const reduce = useAppReduceAnimations();
+  // Once per page: error monitoring (when a DSN is configured) and the installable app.
+  useEffect(() => { void initMonitoring(); startPwa(); }, []);
   return (
     <MotionConfig reducedMotion={reduce ? "always" : "user"}>
       <AuthProvider>{children}</AuthProvider>
