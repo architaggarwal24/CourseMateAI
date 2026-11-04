@@ -1,0 +1,44 @@
+// Cloudflare Workers settings for CourseMateAI (Phase 4; docs/deploy-cloudflare.md).
+// `npm run cf:deploy` (or the GitHub Action on main) builds the Next.js app with OpenNext and deploys it here.
+{
+	"$schema": "node_modules/wrangler/config-schema.json",
+	"name": "coursemate",
+	"main": ".open-next/worker.js",
+	"compatibility_date": "2026-10-01",
+	"compatibility_flags": [
+		"nodejs_compat"
+	],
+	"assets": {
+		"directory": ".open-next/assets",
+		"binding": "ASSETS"
+	},
+	"observability": {
+		"enabled": true
+	},
+	// Settings typed into the Cloudflare dashboard (BACKEND_URL, OWNER_EMAIL, ...) survive a deploy.
+	"keep_vars": true,
+	// OpenNext calls the Worker itself for some requests.
+	"services": [
+		{
+			"binding": "WORKER_SELF_REFERENCE",
+			"service": "coursemate"
+		}
+	],
+	// The database. `npx wrangler d1 create coursemate --location apac` prints the real id: paste it here.
+	"d1_databases": [
+		{
+			"binding": "coursemate",
+			"database_name": "coursemate",
+			"database_id": "5ebf4a8b-272a-4031-a790-d77b32715450",
+			"remote": true
+		}
+	],
+	// Uploaded PDFs. `npx wrangler r2 bucket create coursemate-files`
+	"r2_buckets": [
+		{
+			"bucket_name": "coursemate-files",
+			"binding": "coursemate_files",
+			"remote": true
+		}
+	]
+}

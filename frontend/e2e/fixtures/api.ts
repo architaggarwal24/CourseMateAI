@@ -87,6 +87,18 @@ export interface MockOptions {
   documents?: typeof DOCUMENT[];
 }
 
+const ADMIN_USERS = [
+  { user_id: 1, email: "alice@example.com", username: "alice", full_name: "Alice Example", email_verified: true, role: "admin", is_owner: true,
+    banned: false, ban_reason: null, ban_expires: null, created_at: "2026-11-01T09:00:00Z", tier: "archmage", tier_name: "Archmage", plan: null },
+  { user_id: 2, email: "ravi@example.com", username: "ravi", full_name: "Ravi Kumar", email_verified: false, role: "user", is_owner: false,
+    banned: false, ban_reason: null, ban_expires: null, created_at: "2026-11-03T09:00:00Z", tier: "sage", tier_name: "Sage",
+    plan: { tier: "sage", source: "admin", expires_at: "2026-12-03T09:00:00Z", started_at: "2026-11-03T09:00:00Z" } },
+];
+const INVITES = [
+  { code: "SAGE-7KQ2M9XA", tier: "sage", tier_name: "Sage", days: 30, max_uses: 20, uses: 3, note: "first testers",
+    created_at: "2026-11-02T09:00:00Z", expires_at: null, revoked: false, usable: true },
+];
+
 /** Installs the mock. Returns the list of GET paths nothing answered, so a test can say a new call needs a fixture. */
 export async function mockApi(page: Page, { signedIn = true, advanced = true, documents = [DOCUMENT] }: MockOptions = {}) {
   const unanswered: string[] = [];
@@ -161,6 +173,14 @@ export async function mockApi(page: Page, { signedIn = true, advanced = true, do
 
   // Nothing outside the app is fetched (web fonts, images): the run is the same offline.
   await page.route((url) => !/^(localhost|127\.0\.0\.1)$/.test(url.hostname), (route) => route.abort());
+  // Better Auth (Stage 4.1): sign-up needs the emailed code; a wrong password is refused.
+  await page.route("**/api/auth/**", async (route) => {
+    const path = new URL(route.request().url()).pathname.replace(/^\/api\/auth/, "");
+    if (path === "/sign-up/email") return json(route, 200, { token: null, user: { id: "3", email: "alice@example.com" } });
+    if (path === "/sign-in/email") return json(route, 401, { code: "INVALID_EMAIL_OR_PASSWORD", message: "Invalid email or password" });
+    if (path === "/email-otp/send-verification-otp") return json(route, 200, { success: true });
+    return json(route, 404, { code: "NOT_FOUND", message: "Not found" });
+  });
   await page.route("**/api/v1/**", async (route) => {
     const url = new URL(route.request().url());
     const path = url.pathname.replace(/^\/api\/v1/, "");
@@ -184,6 +204,10 @@ export async function mockApi(page: Page, { signedIn = true, advanced = true, do
     if (path === "/achievements") return json(route, 200, achievements);
     if (path === "/providers") return json(route, 200, providers);
     if (path === "/auth/api-key") return json(route, 200, apiKey);
+    // Stage 4.1: accounts on the Worker.
+    if (path === "/auth/config") return json(route, 200, { google: false, email_delivery: true, verification_required: true, invite_only: false });
+    if (path === "/admin/users") return json(route, 200, { users: ADMIN_USERS, total: ADMIN_USERS.length, offset: 0, limit: 25 });
+    if (path === "/admin/invites") return json(route, 200, { invites: INVITES });
     if (path === "/auth/check-username") return json(route, 200, { available: true });
     if (path === "/documents") return json(route, 200, { documents: signedIn ? documents : [] });
     if (path === "/plans") return json(route, 200, PLANS);

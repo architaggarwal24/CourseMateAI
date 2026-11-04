@@ -1,0 +1,20 @@
+# Local settings for `npm run dev` / `npm run cf:preview` (copy to .dev.vars; never commit .dev.vars).
+# In production these are set in the Cloudflare dashboard (Workers -> coursemate -> Settings -> Variables).
+
+# The Python backend that still answers the areas not moved yet (Phase 4 is a staged port).
+BACKEND_URL=http://localhost:8000
+# Shared with the backend's PROXY_SECRET (32+ characters) so it believes the client address the Worker sends.
+PROXY_SECRET=
+# Accounts (Stage 4.1; docs/deploy-cloudflare.md "Accounts").
+# 32+ random characters: signs sessions and encrypts two-step secrets. Never change it once people have accounts.
+BETTER_AUTH_SECRET=
+# Your own account: once its email is verified it is always the admin, on the top plan.
+OWNER_EMAIL=
+# Optional: Google sign-in (Google Cloud -> Credentials -> OAuth client ID, type Web application).
+# GOOGLE_CLIENT_ID=
+# GOOGLE_CLIENT_SECRET=
+# Optional: the sender for verification / reset codes. Without an email service codes only go to the log.
+# EMAIL_FROM=CourseMate <no-reply@your-domain>
+# RESEND_API_KEY=
+# PBKDF2 work for passwords: 20000 fits the free plan's CPU limit; raise to 100000 on Workers Paid.
+# PASSWORD_HASH_ITERATIONS=20000

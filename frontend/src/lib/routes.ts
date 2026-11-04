@@ -41,6 +41,10 @@ export const ROUTES = {
   accountHistory: "/account/history",
   /** Account -> Plan & usage: the plan, its limits, what has been used, invite codes, the plans to compare. */
   accountUsage: "/account/usage",
+  /** Account -> Security: verify the email, two-step sign-in. */
+  accountSecurity: "/account/security",
+  /** Account -> Admin (admins only): accounts, plans, bans, invite codes. */
+  accountAdmin: "/account/admin",
 } as const;
 
 export function isHeroTab(value: string | undefined | null): value is HeroTab {

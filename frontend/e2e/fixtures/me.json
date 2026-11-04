@@ -1,6 +1,14 @@
 {
- "user_id": 1,
- "email": "a@example.com",
- "username": "alice",
- "full_name": "Alice"
+  "user_id": 1,
+  "email": "a@example.com",
+  "username": "alice",
+  "full_name": "Alice",
+  "email_verified": true,
+  "is_admin": true,
+  "is_owner": true,
+  "two_factor_enabled": false,
+  "has_password": true,
+  "tier": "archmage",
+  "tier_name": "Archmage",
+  "role": "admin"
 }

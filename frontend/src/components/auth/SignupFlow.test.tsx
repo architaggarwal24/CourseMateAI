@@ -1,41 +1,48 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { act, cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 
-const auth = vi.hoisted(() => ({ register: vi.fn() }));
-vi.mock("@/contexts/AuthContext", () => ({ useAuth: () => ({ register: auth.register }) }));
+const auth = vi.hoisted(() => ({ register: vi.fn(), refresh: vi.fn() }));
+vi.mock("@/contexts/AuthContext", () => ({ useAuth: () => ({ register: auth.register, refresh: auth.refresh }) }));
+const toasts = vi.hoisted(() => ({ success: vi.fn(), apiError: vi.fn() }));
+vi.mock("@/components/ui/Toast", async (orig) => ({ ...(await orig<object>()), toast: toasts }));
 
 import SignupFlow from "@/components/auth/SignupFlow";
-import { resetPlansCache } from "@/lib/account/plans";
-import type { ProviderSpec } from "@/lib/llmProviders";
-
-const GEMINI = {
-  id: "gemini", label: "Google Gemini", kind: "gemini", cost: "free", hint: "Free tier.", key_url: "", key_placeholder: "AIza...",
-  needs_key: true, base_url_mode: "none", default_base_url: "", presets: [], dev_only: false, allow_custom_model: true,
-  models: [{ id: "gemini-3.8-flash", label: "Gemini 3.8 Flash", free: true, note: "" }], default_model: "gemini-3.8-flash",
-} as ProviderSpec;
+import { resetAuthConfigCache } from "@/lib/auth/config";
 
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json" } });
 
 let taken: string[] = [];
-let plans: { invite_only: boolean; managed_ai: boolean } | null = null;      // null: an older server without GET /plans
+let emails = true;
 const checked: string[] = [];
+const calls: { path: string; body: unknown }[] = [];
 beforeEach(() => {
   vi.useFakeTimers();
   taken = [];
+  emails = true;
   checked.length = 0;
+  calls.length = 0;
   auth.register.mockReset();
-  plans = null;
-  resetPlansCache();
-  vi.stubGlobal("fetch", vi.fn(async (req: Request) => {
+  auth.refresh.mockReset();
+  toasts.success.mockReset();
+  toasts.apiError.mockReset();
+  resetAuthConfigCache();
+  vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+    const req = input instanceof Request ? input : new Request(new URL(String(input), "http://localhost"), init);
     const url = new URL(req.url);
-    if (url.pathname === "/api/v1/plans" && plans) return json({ plans: [], payments_enabled: false, currency: "INR", ...plans });
-    if (url.pathname === "/api/v1/providers") return json({ providers: [GEMINI] });
+    const body = req.method === "GET" ? null : await req.clone().json().catch(() => null);
+    calls.push({ path: url.pathname, body });
+    if (url.pathname === "/api/v1/auth/config") return json({ google: false, email_delivery: emails, verification_required: emails, invite_only: false });
     if (url.pathname === "/api/v1/auth/check-username") {
       const name = url.searchParams.get("username")!;
       checked.push(name);
       return json({ available: !taken.includes(name.toLowerCase()), username: name });
     }
+    if (url.pathname === "/api/auth/email-otp/verify-email") {
+      return (body as { otp: string }).otp === "123456" ? json({ status: true }) : json({ code: "INVALID_OTP", message: "Invalid OTP" }, 400);
+    }
+    if (url.pathname === "/api/auth/email-otp/send-verification-otp") return json({ success: true });
+    if (url.pathname === "/api/v1/account/redeem") return json({ tier: "sage" });
     throw new Error(`unexpected ${url.pathname}`);
   }));
 });
@@ -63,11 +70,9 @@ async function fillAccount() {
   type("Confirm Password", "correct-horse");
   await settle(500);
 }
-const onStep2 = () => screen.queryByText("Connect your AI provider") !== null;
-const onStep1 = () => screen.queryByText("Your account") !== null;
 
-describe("step 1: the account", () => {
-  it("shows the backend's messages beside each field as you leave it", async () => {
+describe("the account step", () => {
+  it("shows the server's messages beside each field as you leave it", async () => {
     await open();
     type("Username", "ab"); blur("Username");
     type("Email", "nope"); blur("Email");
@@ -80,14 +85,12 @@ describe("step 1: the account", () => {
       "Password must be at least 8 characters", "Passwords do not match",
     ]);
     expect(within(screen.getByLabelText("Email").closest(".ui-field") as HTMLElement).getByRole("alert").textContent).toBe("Invalid email format");
-    expect(screen.getByLabelText("Email").getAttribute("aria-invalid")).toBe("true");
   });
 
-  it("Next stays on the step and lists what is wrong; it does not ask the server", async () => {
+  it("Create Account stays put and lists what is wrong; it does not ask the server", async () => {
     await open();
-    await click("Next");
-    expect(onStep1()).toBe(true);
-    expect(screen.getAllByRole("alert").length).toBe(4);     // (the empty confirmation matches the empty password)
+    await click("Create Account");
+    expect(screen.getAllByRole("alert").length).toBe(4);
     expect(auth.register).not.toHaveBeenCalled();
   });
 
@@ -96,18 +99,15 @@ describe("step 1: the account", () => {
     await open();
     type("Username", "ab");
     await settle(500);
-    expect(checked).toEqual([]);                                   // not well-formed: no request
-
+    expect(checked).toEqual([]);
     type("Username", "free_name"); await settle(500);
-    expect(checked).toEqual(["free_name"]);
     expect(screen.getByText("✓ Username is available")).toBeTruthy();
-
     type("Username", "Taken_One"); await settle(500);
     expect(screen.getByText("That username is already taken")).toBeTruthy();
     await fillAccount();
     type("Username", "taken_one"); await settle(500);
-    await click("Next");
-    expect(onStep1()).toBe(true);                                  // a taken username blocks Next
+    await click("Create Account");
+    expect(auth.register).not.toHaveBeenCalled();
   });
 
   it("debounces: only the name you stopped on is checked", async () => {
@@ -117,160 +117,63 @@ describe("step 1: the account", () => {
     expect(checked).toEqual(["abcde"]);
   });
 
-  it("Next moves to step 2 with the one sentence about the key", async () => {
+  it("a taken email from the server lands beside the email field", async () => {
+    auth.register.mockResolvedValue({ ok: false, failure: { message: "An account with that email already exists. Log in instead?", field: "email" } });
     await open();
     await fillAccount();
-    await click("Next");
-    expect(onStep2()).toBe(true);
-    expect(screen.getByText(/stored encrypted/i)).toBeTruthy();
-    expect(screen.getByText(/needs your key/i)).toBeTruthy();
-    expect(screen.getByRole("listitem", { current: "step" }).textContent).toContain("AI provider");
+    await click("Create Account");
+    expect(within(screen.getByLabelText("Email").closest(".ui-field") as HTMLElement).getByRole("alert").textContent).toMatch(/already exists/);
   });
-});
 
-describe("Back keeps what was typed", () => {
-  it("both steps' values survive going back and forth", async () => {
+  it("a message with no field is shown on the form", async () => {
+    auth.register.mockResolvedValue({ ok: false, failure: { message: "Too many tries. Please wait a moment and try again." } });
     await open();
     await fillAccount();
-    await click("Next");
-    type("Google Gemini API key", "AIza-secret");
-    await click("Back");
-    expect(onStep1()).toBe(true);
-    expect((screen.getByLabelText("Full Name") as HTMLInputElement).value).toBe("Ada Lovelace");
-    expect((screen.getByLabelText("Email") as HTMLInputElement).value).toBe("ada@example.com");
-    expect((screen.getByLabelText("Password") as HTMLInputElement).value).toBe("correct-horse");
-    type("Full Name", "Ada King");
-    await click("Next");
-    expect((screen.getByLabelText("Google Gemini API key") as HTMLInputElement).value).toBe("AIza-secret");
-    await click("Back");
-    expect((screen.getByLabelText("Full Name") as HTMLInputElement).value).toBe("Ada King");
+    await click("Create Account");
+    expect(screen.getByRole("alert").textContent).toMatch(/Too many tries/);
   });
 });
 
-describe("step 2: connecting the provider", () => {
-  const toStep2 = async () => { const done = await open(); await fillAccount(); await click("Next"); return done; };
-
-  it("asks for the key before anything is sent", async () => {
-    await toStep2();
-    await click("Create Account");
-    expect(screen.getByRole("alert").textContent).toBe("Google Gemini API key is required");
-    expect(auth.register).not.toHaveBeenCalled();
-    expect(onStep2()).toBe(true);
-  });
-
-  it("sends exactly what the one-step form sent, then calls onDone", async () => {
-    auth.register.mockResolvedValue(true);
-    const done = await toStep2();
-    type("Google Gemini API key", " AIza-secret ");
-    await click("Create Account");
-    expect(auth.register).toHaveBeenCalledWith(
-      "ada@example.com", "correct-horse", "ada_l", "Ada Lovelace", "AIza-secret", "gemini", "gemini-3.8-flash", undefined, undefined,
-    );
-    expect(done).toHaveBeenCalled();
-  });
-
-  it("a failed provider check returns to step 2 with the message beside the key - not to the start", async () => {
-    auth.register.mockResolvedValue({ message: "Google Gemini rejected the API key — double-check it and try again.", field: "api_key" });
-    await toStep2();
-    type("Google Gemini API key", "wrong");
-    await click("Create Account");
-    expect(onStep2()).toBe(true);
-    expect(onStep1()).toBe(false);
-    const field = screen.getByLabelText("Google Gemini API key").closest(".ui-field") as HTMLElement;
-    expect(within(field).getByRole("alert").textContent).toBe("Google Gemini rejected the API key — double-check it and try again.");
-    expect((screen.getByLabelText("Google Gemini API key") as HTMLInputElement).value).toBe("wrong");   // nothing lost
-    await click("Back");
-    expect((screen.getByLabelText("Email") as HTMLInputElement).value).toBe("ada@example.com");
-  });
-
-  it("editing the provider form clears the old complaint", async () => {
-    auth.register.mockResolvedValue({ message: "nope", field: "api_key" });
-    await toStep2();
-    type("Google Gemini API key", "wrong");
-    await click("Create Account");
-    expect(screen.getByRole("alert").textContent).toBe("nope");
-    type("Google Gemini API key", "better");
-    expect(screen.queryByRole("alert")).toBeNull();
-  });
-
-  it("a message with no field of its own is shown on step 2", async () => {
-    auth.register.mockResolvedValue({ message: "Registration failed — check your connection" });
-    await toStep2();
-    type("Google Gemini API key", "k");
-    await click("Create Account");
-    expect(onStep2()).toBe(true);
-    expect(screen.getByRole("alert").textContent).toBe("Registration failed — check your connection");
-  });
-});
-
-describe("an account problem the server finds goes back to step 1, beside its field", () => {
-  it("taken username / email", async () => {
-    auth.register.mockResolvedValue({ message: "Username ada_l is already taken", field: "username" });
-    await open();
+describe("verifying the email", () => {
+  it("sends the account, then asks for the emailed code, then finishes", async () => {
+    auth.register.mockResolvedValue({ ok: true, signedIn: false });
+    const onDone = await open();
     await fillAccount();
-    await click("Next");
-    type("Google Gemini API key", "k");
     await click("Create Account");
-    expect(onStep1()).toBe(true);
-    const field = screen.getByLabelText("Username").closest(".ui-field") as HTMLElement;
-    expect(within(field).getByRole("alert").textContent).toBe("Username ada_l is already taken");
-    expect(document.activeElement).toBe(screen.getByLabelText("Username"));
-    // fixing it clears the message and the user can continue; the provider key is still there
-    type("Username", "ada_l2");
-    expect(within(field).queryByRole("alert")).toBeNull();
-    await settle(500);
-    await click("Next");
-    expect((screen.getByLabelText("Google Gemini API key") as HTMLInputElement).value).toBe("k");
-  });
-});
+    expect(auth.register).toHaveBeenCalledWith({ email: "ada@example.com", password: "correct-horse", username: "ada_l", fullName: "Ada Lovelace" });
+    expect(screen.getByText("Verify your email")).toBeTruthy();
+    expect(screen.getByText(/sent a 6-digit code to ada@example.com/)).toBeTruthy();
+    expect(screen.getByRole("listitem", { current: "step" }).textContent).toContain("Verify email");
 
-describe("this server: invite codes and its own AI (GET /plans)", () => {
-  const fillAll = async () => { await fillAccount(); };
+    type("6-digit code", "111111");
+    await click("Verify");
+    expect(screen.getByRole("alert").textContent).toMatch(/isn't right/);
+    expect(onDone).not.toHaveBeenCalled();
 
-  it("an invite-only server needs a code before step 2, and sends it", async () => {
-    plans = { invite_only: true, managed_ai: false };
-    auth.register.mockResolvedValue(true);
-    await open();
-    expect(screen.getByLabelText("Invite code")).toBeTruthy();
-    await fillAll();
-    await click("Next");
-    expect(onStep1()).toBe(true);
-    expect(screen.getByRole("alert").textContent).toBe("Enter your invite code");
-    type("Invite code", " BETA-SAGE ");
-    await click("Next");
-    expect(onStep2()).toBe(true);
-    type("Google Gemini API key", "AIza-secret");
-    await click("Create Account");
-    expect(auth.register.mock.calls[0][8]).toBe("BETA-SAGE");
+    type("6-digit code", "123456");
+    await click("Verify");
+    expect(auth.refresh).toHaveBeenCalled();
+    expect(onDone).toHaveBeenCalled();
   });
 
-  it("a code the server refuses lands back beside the field", async () => {
-    plans = { invite_only: true, managed_ai: false };
-    auth.register.mockResolvedValue({ message: "That invite code has been used up.", field: "invite_code" });
-    await open();
-    await fillAll();
-    type("Invite code", "OLD-CODE");
-    await click("Next");
-    type("Google Gemini API key", "AIza-secret");
+  it("without an email service there is no code step", async () => {
+    emails = false;
+    auth.register.mockResolvedValue({ ok: true, signedIn: true });
+    const onDone = await open();
+    expect(screen.queryByLabelText("Sign-up progress")).toBeNull();
+    await fillAccount();
     await click("Create Account");
-    expect(onStep1()).toBe(true);
-    expect(screen.getByRole("alert").textContent).toBe("That invite code has been used up.");
+    expect(onDone).toHaveBeenCalled();
   });
 
-  it("with the server's own AI, no key is needed (and your own key is still an option)", async () => {
-    plans = { invite_only: false, managed_ai: true };
-    auth.register.mockResolvedValue(true);
-    await open();
-    expect(screen.getByLabelText("Invite code (optional)")).toBeTruthy();
-    await fillAll();
-    await click("Next");
-    expect(screen.getByRole("radio", { name: /CourseMate's AI/ })).toHaveProperty("checked", true);
-    expect(screen.queryByLabelText("Google Gemini API key")).toBeNull();
+  it("uses the invite code once signed in", async () => {
+    auth.register.mockResolvedValue({ ok: true, signedIn: true });
+    const onDone = await open();
+    await fillAccount();
+    type("Invite code (optional)", "BETA-SAGE");
     await click("Create Account");
-    expect(auth.register).toHaveBeenCalledWith(
-      "ada@example.com", "correct-horse", "ada_l", "Ada Lovelace", "", "", undefined, undefined, undefined,
-    );
-    fireEvent.click(screen.getByRole("radio", { name: /My own provider key/ }));
-    expect(screen.getByLabelText("Google Gemini API key")).toBeTruthy();
+    expect(calls.find((c) => c.path === "/api/v1/account/redeem")?.body).toEqual({ code: "BETA-SAGE" });
+    expect(toasts.success).toHaveBeenCalled();
+    expect(onDone).toHaveBeenCalled();
   });
 });

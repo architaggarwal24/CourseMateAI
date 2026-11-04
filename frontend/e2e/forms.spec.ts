@@ -8,7 +8,7 @@ test.describe("form errors", () => {
     await mockApi(page, { signedIn: false });
     await page.goto("/login");
     await page.getByRole("button", { name: /Register/ }).click();
-    await page.getByRole("button", { name: "Next" }).click();            // nothing filled in
+    await page.getByRole("button", { name: "Create Account" }).click();  // nothing filled in
 
     const invalid = page.locator("input[aria-invalid='true']");
     expect(await invalid.count()).toBeGreaterThanOrEqual(3);
@@ -24,12 +24,10 @@ test.describe("form errors", () => {
 
   test("login: a wrong password is announced and reachable", async ({ page }) => {
     await mockApi(page, { signedIn: false });
-    await page.route("**/api/v1/auth/login", (route) =>
-      route.fulfill({ status: 401, contentType: "application/json", body: JSON.stringify({ error: { code: "invalid_credentials", message: "Wrong email or password.", action: null, details: null } }) }));
     await page.goto("/login");
     await page.getByLabel("Email").fill("alice@example.com");
     await page.getByLabel("Password", { exact: true }).fill("not-the-password");
     await page.getByRole("button", { name: "Login" }).click();
-    await expect(page.locator(".ui-card--danger[role=alert]")).toContainText(/invalid credentials/i);
+    await expect(page.locator(".ui-card--danger[role=alert]")).toContainText(/don't match an account/i);
   });
 });

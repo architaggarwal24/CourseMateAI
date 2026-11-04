@@ -8,8 +8,9 @@ import type { paths } from "./generated/schema";
 import { ApiError, parseApiError } from "./errors";
 
 /**
- * The browser never talks to the backend directly: every call goes to THIS origin under /api/*, and the Next.js
- * rewrite in next.config.ts forwards it to the backend (BACKEND_URL). So there is no CORS, and the login cookie
+ * The browser never talks to the backend directly: every call goes to THIS origin under /api/*. Routes moved to
+ * TypeScript answer there; the rest is forwarded to the Python backend (src/app/api/[...path]/route.ts, BACKEND_URL).
+ * So there is no CORS, and the login cookie
  * (HttpOnly, SameSite=Lax, Secure over https) belongs to the site the user is actually on.
  * (Server-side rendering has no origin to be relative to, so it names the backend itself.)
  */

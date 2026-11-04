@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRouter } from 'next/navigation';
 import { Brain, Eye, EyeOff, Layers, MessageSquare, Sparkles, Swords, Trophy, Zap } from 'lucide-react';
@@ -8,18 +8,43 @@ import { motion } from 'motion/react';
 import { Aurora, Magnetic, TextReveal, TiltCard } from '@/components/fx';
 import './login.css';
 import SignupFlow from '@/components/auth/SignupFlow';
+import GoogleButton from '@/components/auth/GoogleButton';
+import ResetPassword from '@/components/auth/ResetPassword';
+import TwoFactorStep from '@/components/auth/TwoFactorStep';
+import VerifyEmailStep from '@/components/auth/VerifyEmailStep';
 import { Button, Card, Input } from '@/components/ui';
+import { fetchAuthConfig } from '@/lib/auth/config';
 import { ROUTES } from '@/lib/routes';
+
+/** What the card shows: the log-in form, or one of the steps that can follow it. */
+type Mode = 'login' | 'register' | 'two-factor' | 'verify' | 'forgot';
 
 export default function LoginPage() {
   const [formData, setFormData] = useState({ email: '', password: '' });
-  const [isRegister, setIsRegister] = useState(false);
+  const [mode, setMode] = useState<Mode>('login');
   const [error, setError] = useState('');
+  const [notice, setNotice] = useState('');
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [google, setGoogle] = useState(false);
+  const isRegister = mode === 'register';
 
-  const { login } = useAuth();
+  const { login, refresh } = useAuth();
   const router = useRouter();
+
+  useEffect(() => {
+    let alive = true;
+    fetchAuthConfig().then((c) => { if (alive) setGoogle(c.google); });
+    if (typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('error') === 'google') {
+      setError("Google sign-in didn't finish. Please try again.");
+    }
+    return () => { alive = false; };
+  }, []);
+
+  async function signedIn() {
+    await refresh();
+    router.push(ROUTES.study);
+  }
 
   const handleChange = (e: React.FormEvent<HTMLInputElement>) => {
     const { name, value } = e.currentTarget;
@@ -30,10 +55,13 @@ export default function LoginPage() {
     e.preventDefault();
     setError('');
     setLoading(true);
+    setNotice('');
     try {
-      const success = await login(formData.email, formData.password);
-      if (success === true) router.push(ROUTES.study);
-      else setError('Invalid credentials');
+      const result = await login(formData.email, formData.password);
+      if (result.status === 'signed-in') router.push(ROUTES.study);
+      else if (result.status === 'two-factor') setMode('two-factor');
+      else if (result.status === 'verify-email') setMode('verify');
+      else setError(result.failure.message);
     } catch {
       setError('Could not reach the server. Please try again.');
     } finally {
@@ -42,10 +70,12 @@ export default function LoginPage() {
   }
 
   const toggleMode = () => {
-    setIsRegister(!isRegister);
+    setMode(isRegister ? 'login' : 'register');
     setError('');
+    setNotice('');
     setFormData({ email: '', password: '' });
   };
+  const backToLogin = () => { setMode('login'); setError(''); };
 
   return (
     <main id="main-content" tabIndex={-1} className="login outline-none">
@@ -107,8 +137,23 @@ export default function LoginPage() {
           <h2 className="login__welcome">{isRegister ? 'Create Account' : 'Welcome Back'}</h2>
           <p className="login__sub">{isRegister ? 'A few details and you are in.' : 'Log in to pick up where you left off.'}</p>
 
-          {isRegister ? (
+          {(mode === 'login' || mode === 'register') && google && (
+            <div className="space-y-4 mb-4">
+              <GoogleButton onError={setError} />
+              <p className="login__or text-center text-xs text-fg-muted" aria-hidden="true">or with your email</p>
+            </div>
+          )}
+
+          {mode === 'register' ? (
             <SignupFlow onDone={() => router.push(ROUTES.study)} />
+          ) : mode === 'two-factor' ? (
+            <TwoFactorStep onDone={signedIn} onCancel={backToLogin} />
+          ) : mode === 'verify' ? (
+            <VerifyEmailStep email={formData.email} sent={false} onVerified={signedIn} />
+          ) : mode === 'forgot' ? (
+            <ResetPassword initialEmail={formData.email}
+              onDone={(email) => { setMode('login'); setFormData({ email, password: '' }); setNotice('Password changed. Log in with the new one.'); }}
+              onCancel={backToLogin} />
           ) : (
             <form onSubmit={handleLogin} className="space-y-4">
               <Input label="Email" type="email" name="email" value={formData.email} onChange={handleChange}
@@ -123,6 +168,11 @@ export default function LoginPage() {
                   </Button>
                 } />
 
+              <div className="text-right -mt-2">
+                <Button variant="ghost" size="sm" onClick={() => { setMode('forgot'); setError(''); }}>Forgot password?</Button>
+              </div>
+
+              {notice && <Card tone="success" pad="sm" role="status"><p className="text-sm">{notice}</p></Card>}
               {error && (
                 <Card tone="danger" pad="sm" role="alert">
                   <p className="text-sm text-ink-red">{error}</p>
@@ -137,12 +187,16 @@ export default function LoginPage() {
             </form>
           )}
 
-          <div className="mt-6 text-center">
+          {mode !== 'login' && mode !== 'register' && error && (
+            <Card tone="danger" pad="sm" role="alert" className="mt-4"><p className="text-sm text-ink-red">{error}</p></Card>
+          )}
+
+          {(mode === 'login' || mode === 'register') && <div className="mt-6 text-center">
             <Button variant="ghost" size="sm" onClick={toggleMode}>
               {isRegister ? 'Already have an account? ' : "Don't have an account? "}
               <span className="font-semibold text-ink-blue">{isRegister ? 'Login' : 'Register'}</span>
             </Button>
-          </div>
+          </div>}
         </motion.div>
 
         <p className="text-center text-xs text-fg-muted mt-6">

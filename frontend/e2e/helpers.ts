@@ -14,7 +14,7 @@ export async function openPage(page: Page, c: PageCase) {
       await page.getByLabel("Email").fill("alice@example.com");
       await page.getByLabel("Password", { exact: true }).fill("correct-horse-1");
       await page.getByLabel("Confirm Password").fill("correct-horse-1");
-      await page.getByRole("button", { name: "Next" }).click();
+      await page.getByRole("button", { name: "Create Account" }).click();
     }
   }
   await page.locator(c.ready).first().waitFor({ state: "visible" });

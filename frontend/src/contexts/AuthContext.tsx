@@ -1,41 +1,46 @@
 "use client";
 
-import { createContext, useContext, useState, useEffect, useCallback } from "react";
+// Who is signed in, and the account actions every screen shares. Since Stage 4.1 accounts live on the Worker
+// (Better Auth, src/server/auth): sign-in, sign-up and codes go to /api/auth/* (src/lib/auth/authApi.ts), and
+// GET /api/v1/auth/me says who you are, with your plan and whether you are an admin.
+import { createContext, useCallback, useContext, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useHUDStore } from "@/hooks/useHUD";
-import { parseApiError, rawApi } from "@/lib/api";
-import type { SignupFailure } from "@/lib/signup";
+import { rawApi } from "@/lib/api";
+import * as authApi from "@/lib/auth/authApi";
+import type { AuthFailure, SignInResult, SignUpForm } from "@/lib/auth/authApi";
 import { ROUTES } from "@/lib/routes";
 import { useChampion } from "@/hooks/useChampion";
 import { useReview } from "@/hooks/useReview";
 import { useCourses } from "@/hooks/useCourses";
 
-interface User {
+export interface User {
   user_id: number;
   email: string;
   username?: string;
   full_name?: string;
+  email_verified?: boolean;
+  is_admin?: boolean;
+  is_owner?: boolean;
+  two_factor_enabled?: boolean;
+  has_password?: boolean;
+  tier?: string;
+  tier_name?: string;
 }
+
+export type RegisterResult = { ok: true; signedIn: boolean } | { ok: false; failure: AuthFailure };
 
 interface AuthContextType {
   user: User | null;
-  login: (email: string, password: string) => Promise<boolean>;
-  register: (email: string, password: string, username: string, fullName: string, apiKey: string, provider: string, model?: string, baseUrl?: string, inviteCode?: string) => Promise<true | SignupFailure>;
-  logout: () => Promise<void>;
   loading: boolean;
+  /** Re-reads who is signed in (after a code, a profile change, Google). */
+  refresh: () => Promise<User | null>;
+  login: (email: string, password: string) => Promise<SignInResult>;
+  register: (form: SignUpForm) => Promise<RegisterResult>;
+  logout: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
-
-// The browser's IANA time zone (e.g. "Asia/Kolkata"). Sent silently so the server can use the user's
-// local calendar day for streaks, daily quests and caps. Never shown; undefined if the browser has none.
-function browserTimeZone(): string | undefined {
-  try {
-    return Intl.DateTimeFormat().resolvedOptions().timeZone || undefined;
-  } catch {
-    return undefined;
-  }
-}
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
@@ -44,88 +49,51 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const hudRefresh = useHUDStore((s) => s.refresh);
   const setUserIdAsync = useHUDStore((s) => s.setUserIdAsync);
 
-  useEffect(() => {
-    checkAuth();
-  }, []);
-
-  // FIX BUG 50: Wrap in useCallback so checkAuth has a stable reference.
-  // Without this, adding checkAuth to a dependency array causes infinite loops.
-  const checkAuth = useCallback(async function checkAuth() {
+  const refresh = useCallback(async (): Promise<User | null> => {
+    let next: User | null = null;
     try {
       const { data, response } = await rawApi.GET("/auth/me");
-      if (response.ok && data) {
-        setUser(data as unknown as User);
-        await setUserIdAsync(String(data.user_id));
-        await hudRefresh();
-      } else {
-        setUser(null);
-        await setUserIdAsync("guest");
-        await hudRefresh();
-      }
-    } catch (error) {
-      setUser(null);
-      await setUserIdAsync("guest");
-      await hudRefresh();
-    } finally {
-      setLoading(false);
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // stable — deps are setState functions which never change
-
-  async function login(email: string, password: string): Promise<boolean> {
+      if (response.ok && data) next = data as unknown as User;
+    } catch { /* offline: signed out */ }
+    setUser(next);
     try {
-      const { response } = await rawApi.POST("/auth/login", { body: { email, password, timezone: browserTimeZone() } });
-      if (response.ok) {
-        await checkAuth();
-        return true;
-      }
-      return false;
-    } catch {
-      return false;
-    }
+      await setUserIdAsync(next ? String(next.user_id) : "guest");
+      await hudRefresh();
+    } catch { /* the HUD isn't on the Worker yet; it fills in later */ }
+    setLoading(false);
+    return next;
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => { void refresh(); }, [refresh]);
+
+  async function login(email: string, password: string): Promise<SignInResult> {
+    const result = await authApi.signIn(email, password);
+    if (result.status === "signed-in") await refresh();
+    return result;
   }
 
-  async function register(email: string, password: string, username: string, fullName: string, apiKey: string, provider: string, model?: string, baseUrl?: string, inviteCode?: string): Promise<true | SignupFailure> {
-    try {
-      const { error, response } = await rawApi.POST("/auth/register", {
-        body: { email, password, username, full_name: fullName, api_key: apiKey, llm_provider: provider, llm_model: model, llm_base_url: baseUrl, timezone: browserTimeZone(), invite_code: inviteCode || null },
-      });
-      if (response.ok) {
-        // FIX BUG 49: Instead of calling login() (which makes a second API round-trip
-        // and could fail independently), call checkAuth() to verify the session.
-        // The register endpoint doesn't set a session cookie so we still need to
-        // log in — but we do it directly without risking a false "registration failed"
-        // error if the second call encounters a transient failure.
-        const loginOk = await login(email, password);
-        if (!loginOk) {
-          return { message: "Account created but login failed — please log in manually." };
-        }
-        return true;
-      }
-      // Surface the actual error from the backend, with the request field it is about (error.details.field)
-      const failure = parseApiError(response.status, error, "Registration failed");
-      const field = failure.details?.field;
-      return { message: failure.message, field: typeof field === "string" ? field : undefined };
-    } catch {
-      return { message: "Registration failed — check your connection" };
-    }
+  async function register(form: SignUpForm): Promise<RegisterResult> {
+    const r = await authApi.signUp(form);
+    if (r.ok && r.signedIn) await refresh();
+    return r;
   }
 
   async function logout() {
-    try {
-      await rawApi.POST("/auth/logout");
-    } catch {}
+    try { await rawApi.POST("/auth/logout"); } catch { /* signed out here either way */ }
     setUser(null);
     useChampion.getState().reset();             // the next person on this browser starts from the default
     useReview.getState().reset();
     useCourses.getState().reset();
-    await setUserIdAsync("guest");
-    await hudRefresh();
+    try {
+      await setUserIdAsync("guest");
+      await hudRefresh();
+    } catch { /* see refresh */ }
     router.push(ROUTES.study);
   }
 
   return (
-    <AuthContext.Provider value={{ user, login, register, logout, loading }}>
+    <AuthContext.Provider value={{ user, loading, refresh, login, register, logout }}>
       {children}
     </AuthContext.Provider>
   );

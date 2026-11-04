@@ -10,8 +10,10 @@ const ITEMS = [
   { href: ROUTES.account, label: "Profile" },
   { href: ROUTES.accountUsage, label: "Plan & usage" },
   { href: ROUTES.accountSettings, label: "Settings" },
+  { href: ROUTES.accountSecurity, label: "Security" },
   { href: ROUTES.accountHistory, label: "History" },
 ];
+const ADMIN_ITEM = { href: ROUTES.accountAdmin, label: "Admin" };
 
 /** Account's sections, plus Sign out (the sidebar's user menu is not on the mobile layout). */
 export default function AccountNav() {
@@ -25,7 +27,7 @@ export default function AccountNav() {
           <span className="ws-doc__meta">Profile, plan, settings and history</span>
         </div>
       </div>
-      <div className="ws-top__tabs"><SubNav label="Account" items={ITEMS} className="!px-[3px]" /></div>
+      <div className="ws-top__tabs"><SubNav label="Account" items={user?.is_admin ? [...ITEMS, ADMIN_ITEM] : ITEMS} className="!px-[3px]" /></div>
       {user && (
         <div className="ws-top__end">
           <Button variant="ghost" size="sm" onClick={() => logout()}>

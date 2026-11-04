@@ -5,7 +5,7 @@ export const PAGES: PageCase[] = [
   { name: "offline", path: "/offline", auth: false, ready: "role=heading[name=\"You're offline\"]" },
   { name: "login", path: "/login", auth: false, ready: "role=heading[name='Welcome Back']" },
   { name: "signup step 1", path: "/login", auth: false, ready: "role=heading[name='Your account']", before: "register" },
-  { name: "signup step 2", path: "/login", auth: false, ready: "role=heading[name=/Your AI|Connect your AI provider/i]", before: "register-step-2" },
+  { name: "signup: verify email", path: "/login", auth: false, ready: "role=heading[name='Verify your email']", before: "register-step-2" },
   { name: "study: chat", path: "/study?tab=chat&doc=doc-1", auth: true, ready: "role=log" },
   { name: "study: quiz", path: "/study?tab=quiz&doc=doc-1", auth: true, ready: "role=heading[name=/quiz/i]" },
   { name: "study: notes", path: "/study?tab=notes&doc=doc-1", auth: true, ready: "role=heading[name=/notes/i]" },
@@ -24,4 +24,6 @@ export const PAGES: PageCase[] = [
   { name: "account: plan & usage", path: "/account/usage", auth: true, ready: "role=heading[name='Plan & usage']" },
   { name: "account: settings", path: "/account/settings", auth: true, ready: "role=heading[name='Settings']" },
   { name: "account: history", path: "/account/history", auth: true, ready: "main" },
+  { name: "account: security", path: "/account/security", auth: true, ready: "role=heading[name='Security']" },
+  { name: "account: admin", path: "/account/admin", auth: true, ready: "role=list[name='Accounts']" },
 ];
