@@ -25,20 +25,13 @@
 		}
 	],
 	// The database. `npx wrangler d1 create coursemate --location apac` prints the real id: paste it here.
-	"d1_databases": [
-		{
-			"binding": "coursemate",
-			"database_name": "coursemate",
-			"database_id": "5ebf4a8b-272a-4031-a790-d77b32715450",
-			"remote": true
-		}
-	],
-	// Uploaded PDFs. `npx wrangler r2 bucket create coursemate-files`
-	"r2_buckets": [
-		{
-			"bucket_name": "coursemate-files",
-			"binding": "coursemate_files",
-			"remote": true
-		}
-	]
+   "d1_databases": [
+     {
+       "binding": "DB",
+       "database_name": "coursemate",
+       "database_id": "5ebf4a8b-272a-4031-a790-d77b32715450",
+       "migrations_dir": "migrations"
+     }
+   ],
+   "r2_buckets": [{ "binding": "FILES", "bucket_name": "coursemate-files" }]
 }

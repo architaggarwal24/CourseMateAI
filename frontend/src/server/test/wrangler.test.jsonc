@@ -1,0 +1,12 @@
+// The bindings server tests run against (src/server/test/platform.ts): local D1 and R2 only, never anything
+// remote, whatever frontend/wrangler.jsonc says for your own dev setup. Workers AI and Vectorize are stand-ins
+// in the tests (src/server/test/search-fakes.ts), so they are declared here only so the names exist.
+{
+  "name": "coursemate-tests",
+  "compatibility_date": "2026-10-01",
+  "compatibility_flags": ["nodejs_compat"],
+  "d1_databases": [{ "binding": "DB", "database_name": "coursemate-tests", "database_id": "00000000-0000-0000-0000-000000000000" }],
+  "r2_buckets": [{ "binding": "FILES", "bucket_name": "coursemate-tests" }],
+  "ai": { "binding": "AI" },
+  "vectorize": [{ "binding": "VECTORS", "index_name": "coursemate-tests" }]
+}

@@ -1,5 +1,7 @@
 // Real Cloudflare bindings for server tests: wrangler's local platform (workerd + miniflare) with an in-memory D1
 // and R2, migrated with the same files `wrangler d1 migrations apply` runs. Each call gets a fresh, empty platform.
+// The bindings come from wrangler.test.jsonc (next to this file), not frontend/wrangler.jsonc, so a remote or
+// renamed binding in your own setup can never point a test at real data.
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -29,11 +31,12 @@ export interface LocalPlatform {
 
 export async function localPlatform(): Promise<LocalPlatform> {
   const proxy = await getPlatformProxy<CloudflareEnv>({
-    configPath: join(ROOT, "wrangler.jsonc"),
+    configPath: join(ROOT, "src", "server", "test", "wrangler.test.jsonc"),
     persist: false,
     remoteBindings: false,
     envFiles: [],
   });
+  if (!proxy.env.DB || !proxy.env.FILES) throw new Error("src/server/test/wrangler.test.jsonc must declare the DB and FILES bindings");
   await migrate(proxy.env.DB);
   return { env: proxy.env, dispose: proxy.dispose };
 }
