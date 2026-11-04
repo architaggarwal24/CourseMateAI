@@ -7,8 +7,12 @@ import { unstable_readConfig } from "wrangler";
 
 const CONFIG = fileURLToPath(new URL("../../wrangler.jsonc", import.meta.url));
 
+type D1Entry = { binding: string; database_id?: string; migrations_dir?: string };
+type R2Entry = { binding: string; bucket_name?: string };
+
 describe("wrangler.jsonc", () => {
-  const config = unstable_readConfig({ config: CONFIG });
+  const raw = unstable_readConfig({ config: CONFIG }) as unknown as { d1_databases?: D1Entry[]; r2_buckets?: R2Entry[] };
+  const config = { d1_databases: raw.d1_databases ?? [], r2_buckets: raw.r2_buckets ?? [] };
 
   it("has the D1 database as DB, with its migrations folder", () => {
     const db = config.d1_databases.find((d) => d.binding === "DB");
