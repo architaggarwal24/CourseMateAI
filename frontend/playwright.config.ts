@@ -16,7 +16,9 @@ export default defineConfig({
   timeout: 60_000,
   expect: { timeout: 10_000 },
   fullyParallel: true,
-  workers: process.env.CI ? 2 : undefined,
+  // Each worker drives a whole browser against one production server: more than 4 at once overloads a laptop and
+  // tests time out waiting (PW_WORKERS overrides).
+  workers: Number(process.env.PW_WORKERS) || (process.env.CI ? 2 : 4),
   reporter: [["list"]],
   use: {
     baseURL,

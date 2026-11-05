@@ -1,5 +1,7 @@
 # Arena v2 — design spec
 
+> **Note (Stage 4.6):** written for the Python backend, which is gone. The rules still hold; the code is now under `frontend/src/server/`, and settings and admin tasks are in [deploy-cloudflare.md](deploy-cloudflare.md) and the in-app Admin panel.
+
 Status: agreed direction (tactical combat + mistake-driven bosses + roguelite Expedition). Multiplayer = "coming soon" card only.
 
 The existing server-authoritative engine (`backend/services/arena_service.py`) stays the foundation: the server owns

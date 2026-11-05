@@ -2,9 +2,8 @@ import type { NextConfig } from "next";
 import { initOpenNextCloudflareForDev } from "@opennextjs/cloudflare";
 import { LEGACY_REDIRECTS, STUDY_TAB_PATH_SOURCE, STUDY_UNKNOWN_TAB_SOURCE } from "./src/lib/routes";
 
-// The backend: the browser only ever calls this site (/api/*). Routes moved to TypeScript answer under
-// src/app/api/; everything else is forwarded to the Python backend by src/app/api/[...path]/route.ts
-// (BACKEND_URL, read when a request arrives, not when the app is built). One site, so no CORS and a first-party cookie.
+// The API: the browser only ever calls this site (/api/*), answered by the Worker's routes under src/app/api/
+// (an unknown path is a JSON 404). One site, so no CORS and a first-party cookie.
 
 // Dev-only pages are files named page.dev.tsx (e.g. src/app/dev/kit/page.dev.tsx). They are routes only while
 // `next dev` runs: a production build does not count "dev.tsx" as a page extension, so they are not built or served.

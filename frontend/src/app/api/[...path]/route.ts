@@ -1,12 +1,10 @@
-// Every /api call no route of the Worker's own answers goes on to the Python backend (src/server/proxy.ts).
-// A route moved to TypeScript (src/app/api/v1/...) is more specific than this one, so it wins.
-import { backendUrl, proxySecret } from "@/server/config";
-import { proxyToBackend } from "@/server/proxy";
+// Any /api path no route answers: a JSON 404 (Stage 4.6: the Python backend is gone, so nothing is forwarded).
+import { HttpError, toResponse } from "@/server/http";
 
 export const dynamic = "force-dynamic";
 
-function handle(req: Request): Promise<Response> {
-  return proxyToBackend(req, { backendUrl: backendUrl(), proxySecret: proxySecret() });
+function handle(): Response {
+  return toResponse(new HttpError(404, "not_found", "There is no such API route."));
 }
 
 export { handle as GET, handle as POST, handle as PUT, handle as PATCH, handle as DELETE, handle as OPTIONS, handle as HEAD };

@@ -1,0 +1,12 @@
+/* The policy pages: plain, readable text on the app's surface. */
+.legal { min-height: 100dvh; padding: var(--space-6) var(--space-4); background: var(--color-surface); color: var(--color-text-secondary); }
+.legal__nav { max-width: 46rem; margin: 0 auto var(--space-6); display: flex; flex-wrap: wrap; gap: var(--space-4); align-items: center; }
+.legal__nav a { color: var(--color-text-secondary); text-decoration: underline; text-underline-offset: 3px; min-height: 44px; display: inline-flex; align-items: center; }
+.legal__nav .legal__home { margin-right: auto; font-weight: 700; color: var(--color-text); text-decoration: none; }
+.legal__body { max-width: 46rem; margin: 0 auto; line-height: 1.65; }
+.legal__body h1 { color: var(--color-text); font-size: 1.6rem; margin: 0 0 var(--space-2); }
+.legal__body h2 { color: var(--color-text); font-size: 1.1rem; margin: var(--space-6) 0 var(--space-2); }
+.legal__body p, .legal__body li { margin: 0 0 var(--space-3); }
+.legal__body ul { padding-left: 1.2rem; }
+.legal__body a { color: var(--color-text); text-decoration: underline; }
+.legal__updated { font-size: 0.85rem; }

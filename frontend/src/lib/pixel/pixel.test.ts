@@ -1,5 +1,3 @@
-import { readFileSync } from "node:fs";
-import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import { PixelBuffer } from "./buffer";
 import { hex, ramp, unpack } from "./color";
@@ -7,6 +5,7 @@ import { BOSSES, BOSS_ANIMS, bossById } from "./bosses";
 import { HEROES, heroAnims, heroById, geared } from "./heroes";
 import { bossFrame, heroFrame } from "./sprites";
 import { STAGES, stageBackdrop, STAGE_W, STAGE_H } from "./stages";
+import { CREATURES } from "@/server/game/bestiary";
 
 const filled = (b: PixelBuffer) => b.px.reduce((n, c) => n + (c ? 1 : 0), 0);
 
@@ -58,9 +57,8 @@ describe("bestiary", () => {
       list.forEach((_, i) => expect(filled(bossFrame(BOSSES[id], anim as never, i).buf), `${anim}#${i}`).toBeGreaterThan(heroSize * 1.5));
     }
   });
-  it("has a sprite for every creature the backend can summon (core_brains/bestiary.py)", () => {
-    const py = readFileSync(resolve(__dirname, "../../../../backend/core_brains/bestiary.py"), "utf8");
-    const ids = [...py.matchAll(/^ {4}"([a-z]+)": \{$/gm)].map((m) => m[1]);
+  it("has a sprite for every creature the server can summon (server/game/bestiary.ts)", () => {
+    const ids = Object.keys(CREATURES);
     expect(ids.length).toBeGreaterThanOrEqual(13);
     for (const id of ids) expect(BOSSES[id], id).toBeDefined();
     expect(bossById("unknown").id).toBe("hydra");

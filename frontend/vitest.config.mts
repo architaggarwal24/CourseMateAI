@@ -12,7 +12,8 @@ export default defineConfig({
     environment: "jsdom",
     include: ["src/**/*.test.{ts,tsx}"],
     setupFiles: ["./src/test/node-uploads.ts", "./src/test/setup-timeouts.ts"],
-    // slower machines (and Windows CI) get more room before a test is called stuck
-    testTimeout: 15_000,
+    // Room before a test is called stuck. The server tests boot a local Workers runtime and walk whole flows; on a
+    // laptop that is busy with something else they can take 3x longer than usual (15 s was too tight on Windows).
+    testTimeout: 30_000,
   },
 });

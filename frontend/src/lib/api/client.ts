@@ -2,19 +2,17 @@
 // (or the domain functions in ../api.ts), so there is exactly one base URL, one error
 // parser and one set of global side effects.
 //
-// Types come from the backend's OpenAPI schema:  npm run gen:api  ->  ./generated/schema.d.ts
+// Types: ./generated/schema.d.ts (generated from the old Python backend's OpenAPI schema, now kept by hand).
 import createClient from "openapi-fetch";
 import type { paths } from "./generated/schema";
 import { ApiError, parseApiError } from "./errors";
 
 /**
- * The browser never talks to the backend directly: every call goes to THIS origin under /api/*. Routes moved to
- * TypeScript answer there; the rest is forwarded to the Python backend (src/app/api/[...path]/route.ts, BACKEND_URL).
- * So there is no CORS, and the login cookie
- * (HttpOnly, SameSite=Lax, Secure over https) belongs to the site the user is actually on.
- * (Server-side rendering has no origin to be relative to, so it names the backend itself.)
+ * Every call goes to THIS origin under /api/*, answered by the Worker's own routes (src/app/api/). So there is no
+ * CORS, and the login cookie (HttpOnly, SameSite=Lax, Secure over https) belongs to the site the user is on.
+ * (Server-side rendering has no origin to be relative to, so it names the site itself.)
  */
-const SERVER_SIDE_BACKEND = (process.env.BACKEND_URL || "http://localhost:8000").replace(/\/+$/, "");
+const SERVER_SIDE_ORIGIN = (process.env.BETTER_AUTH_URL || "http://localhost:3000").replace(/\/+$/, "");
 
 export const API_PREFIX = "/api/v1";
 
@@ -27,7 +25,7 @@ export type V1Paths = {
 };
 
 // (An absolute URL on the page's own origin: `Request` objects need one outside a real browser too.)
-const baseUrl = `${typeof window === "undefined" ? SERVER_SIDE_BACKEND : window.location.origin}${API_PREFIX}`;
+const baseUrl = `${typeof window === "undefined" ? SERVER_SIDE_ORIGIN : window.location.origin}${API_PREFIX}`;
 // Look fetch up at call time (not import time) so it can be swapped in tests.
 const rawFetch = (request: Request) => globalThis.fetch(request);
 

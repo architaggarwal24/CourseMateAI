@@ -584,3 +584,27 @@ export const arenaRuns = sqliteTable("arena_runs", {
   index("arena_runs_finished_idx").on(t.finishedAt, t.score),
   uniqueIndex("arena_runs_active_idx").on(t.userId, t.sessionId).where(sql`status = 'active'`),
 ]);
+
+// ── billing (Stage 4.6: src/server/billing.ts). Razorpay subscriptions; each webhook event handled once. ────────
+export const subscriptions = sqliteTable("subscriptions", {
+  id: text("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => user.id, { onDelete: "cascade" }),
+  provider: text("provider").notNull(),
+  tier: text("tier").notNull(),
+  period: text("period").notNull(),
+  status: text("status").notNull(),
+  shortUrl: text("short_url"),
+  currentStart: text("current_start"),
+  currentEnd: text("current_end"),
+  cancelAtPeriodEnd: integer("cancel_at_period_end", { mode: "boolean" }).notNull().default(false),
+  createdAt: text("created_at").notNull(),
+  updatedAt: text("updated_at").notNull(),
+}, (t) => [index("subscriptions_user_idx").on(t.userId, t.createdAt)]);
+
+export const paymentEvents = sqliteTable("payment_events", {
+  id: text("id").primaryKey(),
+  provider: text("provider").notNull(),
+  event: text("event").notNull(),
+  subscriptionId: text("subscription_id"),
+  receivedAt: text("received_at").notNull(),
+});

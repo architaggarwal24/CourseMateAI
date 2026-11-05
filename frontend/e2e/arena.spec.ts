@@ -2,8 +2,8 @@ import { test, expect, type Page, type Route } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 import { mockApi } from "./fixtures/api";
 
-// A whole battle in a real browser, against a small stand-in for the battle API (same contract as backend/routers/arena.py;
-// the backend's own tests cover the rules). Win, lose and retreat, keyboard answering, the sprites actually painted,
+// A whole battle in a real browser, against a small stand-in for the battle API (same contract as src/server/game/arena.ts;
+// the server's own tests cover the rules). Win, lose and retreat, keyboard answering, the sprites actually painted,
 // and axe on every state of the screen.
 
 const BANK = [

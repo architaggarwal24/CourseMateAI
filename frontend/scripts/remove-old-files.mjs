@@ -1,4 +1,4 @@
-// One-off cleanup after the redesign: files the redesign replaced or removed. Unzipping updates cannot delete files,
+// One-off cleanup: files later stages replaced or removed ("../" paths are at the repo root). Unzipping updates cannot delete files,
 // so run this once from the frontend folder:   node scripts/remove-old-files.mjs
 // Safe to run again: missing files are skipped. (PostCSS config is checked and repaired by scripts/doctor.mjs.)
 import { existsSync, rmSync } from "node:fs";
@@ -37,6 +37,21 @@ const OLD = [
   "src/components/ProviderPicker.tsx",
   "src/components/ProviderPicker.test.tsx",
   "src/lib/llmProviders.ts",
+  // Phase 4 / Stage 4.6: everything runs on the Worker; the Python backend, Docker and the VPS/Windows setups are gone
+  "src/server/proxy.ts",
+  "src/server/proxy.test.ts",
+  "src/server/config.ts",
+  "src/server/config.test.ts",
+  "Dockerfile",
+  "../backend",
+  "../deploy",
+  "../docker-compose.yml",
+  "../Makefile",
+  "../setup.md",
+  "../AUDIT_FIXES.md",
+  "../docs/deploy-vps.md",
+  "../docs/deploy-windows.md",
+  "../docs/postgres.md",
 ];
 
 for (const rel of OLD) {

@@ -1,5 +1,7 @@
 # Model routing, costs and the quiz bank (Phase 3, Stage 4b)
 
+> **Note (Stage 4.6):** written for the Python backend, which is gone. The rules still hold; the code is now under `frontend/src/server/`, and settings and admin tasks are in [deploy-cloudflare.md](deploy-cloudflare.md) and the in-app Admin panel.
+
 ## Who answers
 
 `core_brains/model_router.py` picks the models; `core_brains/llm_connection.py` (`request_targets`, `_routed`, `_routed_async`, `stream_llm_with_key`) calls them.

@@ -17,7 +17,7 @@ import { toPng } from "./pixel-png";
 const out = resolve(process.argv[2] ?? "pixel-previews");
 mkdirSync(out, { recursive: true });
 
-const shop = JSON.parse(readFileSync(resolve(__dirname, "../../backend/content/shop.json"), "utf8"));
+const shop = JSON.parse(readFileSync(resolve(__dirname, "../src/server/game/content/shop.json"), "utf8"));
 const items: Record<string, { name: string; price: number }> = {};
 for (const t of shop.tiers) for (const i of t.items) items[i.id] = i;
 const rarity = (id: string) => { const p = items[id]?.price ?? 0; return p >= 3000 ? "legendary" : p >= 1000 ? "epic" : p >= 300 ? "rare" : "common"; };

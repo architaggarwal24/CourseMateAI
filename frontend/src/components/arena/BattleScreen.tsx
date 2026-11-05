@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { motion } from "motion/react";
 import { Brain, ChevronRight, Flag, FlaskConical, Hourglass, Scissors, ShieldCheck, Zap } from "lucide-react";
 import GearChips from "@/components/champion/GearChips";
@@ -169,7 +169,8 @@ export default function BattleScreen({ arena, context }: { arena: Arena; context
   const ultReady = !!battle?.kit?.ready && !battle?.kit?.active && (stage === "choosing" || asking);
   const keys = useRef({ asking, confirmRetreat, question, answer, ultReady, ultimate: arena.ultimate });
   keys.current = { asking, confirmRetreat, question, answer, ultReady, ultimate: arena.ultimate };
-  useEffect(() => {
+  // A layout effect: bound as the screen appears, so a key pressed the moment it shows is never missed.
+  useLayoutEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const k = keys.current;
       if (k.confirmRetreat || shortcutBlocked(e)) return;

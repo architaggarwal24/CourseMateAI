@@ -790,3 +790,17 @@ Each stage ships a zip of the changed files plus a test checklist. Ready-to-past
   - `/arena/battles/{id}` and `/{id}/{question,answer,items,spells,ultimate,forfeit}`;
   - `/arena/leaderboard` (everyone, by username), `/arena/weak-concepts`;
   - `/arena/runs`, `/arena/runs/{active,leaderboard}`, `/arena/runs/{id}` and `/{id}/{travel,choose,abandon}`.
+
+### Phase 4, Stage 4.6: billing, policy pages, and no more Python (5 Nov 2026)
+
+- **Billing:** `src/server/billing.ts`, a port of `routers/billing.py`, with migration `0007_billing` (`subscriptions`, `payment_events`).
+  - Off unless `PAYMENTS_ENABLED`. `PAYMENTS_PROVIDER=stub` only on purpose; Razorpay only with keys. `GET /plans → payments_enabled` follows it.
+  - Checkout and webhook signatures are HMAC-SHA256 through WebCrypto. Each webhook event id is handled once (insert-or-ignore).
+  - Plan sync: live statuses keep the plan to the period's end + 3 days; cancelled/completed to the period's end; halted/paused/expired drop it now. A newer plan is never touched by an old subscription.
+  - The webhook route has no same-origin check (Razorpay calls it) and is rate-limited by address.
+- **Policy pages:** `/legal/terms`, `/legal/privacy`, `/legal/refunds` (`src/app/legal/`), operator Archit Aggarwal, architarwl123@gmail.com. Linked from the sign-in page.
+- **The Python backend is deleted**, with Docker, `deploy/` (VPS, Windows), the `Makefile`, `setup.md` and the VPS/Windows/Postgres docs.
+  - The `/api/[...path]` proxy now answers a JSON 404. `server/proxy.ts` and `server/config.ts` are gone, and `/api/system/status` no longer has a `backend` part.
+  - `lib/api/generated/schema.d.ts` is kept by hand now. `lib/api/schema.test.ts` checks every path in it has a Worker route (seven retired paths listed).
+  - Tests that read Python files (bestiary, mechanic events, the shop) read the TypeScript ports instead.
+  - CI has one test job; deploy needs only it.

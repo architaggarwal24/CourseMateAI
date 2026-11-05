@@ -1,10 +1,6 @@
 # Local settings for `npm run dev` / `npm run cf:preview` (copy to .dev.vars; never commit .dev.vars).
-# In production these are set in the Cloudflare dashboard (Workers -> coursemate -> Settings -> Variables).
+# In production these are set in the Cloudflare dashboard (Workers -> coursemateai -> Settings -> Variables).
 
-# The Python backend that still answers the areas not moved yet (Phase 4 is a staged port).
-BACKEND_URL=http://localhost:8000
-# Shared with the backend's PROXY_SECRET (32+ characters) so it believes the client address the Worker sends.
-PROXY_SECRET=
 # Accounts (Stage 4.1; docs/deploy-cloudflare.md "Accounts").
 # 32+ random characters: signs sessions and encrypts two-step secrets. Never change it once people have accounts.
 BETTER_AUTH_SECRET=
@@ -37,3 +33,14 @@ OWNER_EMAIL=
 # TOPIC_MIN_SIMILARITY=0.40
 # Days a generated flashcard set or notes are reused for the same request (0 = off)
 # GENERATION_CACHE_DAYS=7
+
+# Payments (Stage 4.6; docs/payments.md). Off unless PAYMENTS_ENABLED is set: everyone stays on Free, the owner on Archmage.
+# PAYMENTS_ENABLED=1
+# Only for trying the flow locally: a fake provider that "pays" without money.
+# PAYMENTS_PROVIDER=stub
+# Razorpay (Dashboard -> Account & Settings -> API Keys / Webhooks)
+# RAZORPAY_KEY_ID=rzp_test_...
+# RAZORPAY_KEY_SECRET=
+# RAZORPAY_WEBHOOK_SECRET=
+# One Razorpay plan per tier and period you sell
+# RAZORPAY_PLAN_IDS_JSON={"scholar:month": "plan_...", "scholar:year": "plan_...", "sage:month": "plan_..."}

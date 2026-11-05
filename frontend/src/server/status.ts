@@ -12,7 +12,6 @@ export interface SystemStatus {
   ai?: PartStatus;
   /** Accounts: BETTER_AUTH_SECRET set (and OWNER_EMAIL, so there is an admin). */
   accounts?: PartStatus;
-  backend: { configured: boolean; ok: boolean };
 }
 
 type Bindings = Pick<CloudflareEnv, "DB" | "FILES"> & Partial<Pick<CloudflareEnv, "AI" | "VECTORS">>;
@@ -24,16 +23,6 @@ async function checkDatabase(db: D1Database | undefined): Promise<PartStatus> {
     return row ? { ok: true } : { ok: false, detail: "not migrated: run npm run db:migrate:remote" };
   } catch {
     return { ok: false, detail: "the database did not answer" };
-  }
-}
-
-async function checkBackend(url: string, fetchImpl: typeof fetch): Promise<SystemStatus["backend"]> {
-  if (!url) return { configured: false, ok: false };
-  try {
-    const res = await fetchImpl(`${url}/api/v1/health`, { signal: AbortSignal.timeout(5_000) });
-    return { configured: true, ok: res.ok };
-  } catch {
-    return { configured: true, ok: false };
   }
 }
 
@@ -51,16 +40,14 @@ export function checkAi(settings: Record<string, string | undefined>): PartStatu
 
 export async function systemStatus(
   env: Bindings | null,
-  { backendUrl, fetchImpl = fetch, settings = process.env }: { backendUrl: string; fetchImpl?: typeof fetch; settings?: Record<string, string | undefined> },
+  { settings = process.env }: { settings?: Record<string, string | undefined> } = {},
 ): Promise<SystemStatus> {
-  const backend = await checkBackend(backendUrl, fetchImpl);
-  if (!env) return { ok: backend.ok, runtime: "node", backend };
+  if (!env) return { ok: false, runtime: "node" };
   const database = await checkDatabase(env.DB);
   const storage: PartStatus = env.FILES ? { ok: true } : { ok: false, detail: "no R2 binding named FILES" };
   const accounts = checkAccounts(settings);
   const ai = checkAi(settings);
   const search: PartStatus = env.AI && env.VECTORS ? { ok: true }
     : { ok: false, detail: "bind Workers AI (AI) and the Vectorize index (VECTORS): see docs/deploy-cloudflare.md" };
-  // The backend is on its way out, so it doesn't decide whether the Worker is healthy.
-  return { ok: database.ok && storage.ok && accounts.ok && search.ok, runtime: "cloudflare", database, storage, search, ai, accounts, backend };
+  return { ok: database.ok && storage.ok && accounts.ok && search.ok, runtime: "cloudflare", database, storage, search, ai, accounts };
 }

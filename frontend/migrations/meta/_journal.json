@@ -50,6 +50,13 @@
       "when": 1793859878204,
       "tag": "0006_arena",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "6",
+      "when": 1793865151783,
+      "tag": "0007_billing",
+      "breakpoints": true
     }
   ]
 }

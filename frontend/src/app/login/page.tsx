@@ -200,7 +200,8 @@ export default function LoginPage() {
         </motion.div>
 
         <p className="text-center text-xs text-fg-muted mt-6">
-          By continuing, you agree to our Terms of Service and Privacy Policy
+          By continuing, you agree to our <a className="underline" href="/legal/terms">Terms of Service</a> and{" "}
+          <a className="underline" href="/legal/privacy">Privacy Policy</a>. <a className="underline" href="/legal/refunds">Refunds</a>
         </p>
       </section>
     </main>

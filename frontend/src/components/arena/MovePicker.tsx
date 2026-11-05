@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useLayoutEffect, useRef } from "react";
 import { motion } from "motion/react";
 import { Feather, Hammer, Lock, ShieldHalf, Sword } from "lucide-react";
 import { MOVES, MOVE_INFO, type Battle, type Move } from "@/lib/arena/types";
@@ -28,7 +28,8 @@ export default function MovePicker({ battle, onPick, disabled }: { battle: Battl
   // Q W E R pick a move. One listener reading the latest props through a ref (no gap between re-renders).
   const live = useRef({ disabled, onPick, can });
   live.current = { disabled, onPick, can };
-  useEffect(() => {
+  // A layout effect: bound as the screen appears, so a key pressed the moment it shows is never missed.
+  useLayoutEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const l = live.current;
       if (l.disabled || shortcutBlocked(e)) return;

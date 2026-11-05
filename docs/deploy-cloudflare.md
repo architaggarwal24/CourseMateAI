@@ -1,6 +1,6 @@
 # CourseMate on Cloudflare Workers (Phase 4)
 
-Phase 4 moves the whole app onto Cloudflare and removes the Python backend. It happens one area at a time:
+Phase 4 moved the whole app onto Cloudflare, one area at a time, and then removed the Python backend:
 
 | Stage | Area |
 |---|---|
@@ -10,16 +10,16 @@ Phase 4 moves the whole app onto Cloudflare and removes the Python backend. It h
 | 4.3 | the AI layer |
 | 4.4 | study tools |
 | 4.5 | the game |
-| 4.6 | billing and launch |
-
-Until an area has moved, the Worker forwards its calls to the Python backend.
+| 4.6 | billing, policy pages, and the Python backend deleted |
 
 ```
 browser ── https://coursemateai.<you>.workers.dev (or your domain)
-              │  Cloudflare Worker: the Next.js app (OpenNext) + the routes already moved (src/app/api/…)
-              │  bindings: D1 database (DB), R2 bucket (FILES)
-              └─ every other /api call ──► BACKEND_URL (the Python backend on your PC, through a Cloudflare Tunnel)
+              │  Cloudflare Worker: the Next.js app (OpenNext) and the whole API (src/app/api/…)
+              │  bindings: D1 (DB), R2 (FILES), Workers AI (AI), Vectorize (VECTORS)
+              └─ outbound: your AI providers, Razorpay (when payments are on), the email service
 ```
+
+Nothing runs on your PC. An `/api` path no route answers is a JSON 404.
 
 Pushing to `main` deploys the app, once the tests pass (GitHub Actions, `.github/workflows/ci.yml`).
 
@@ -47,14 +47,12 @@ Pushing to `main` deploys the app, once the tests pass (GitHub Actions, `.github
 
    | Name | Value |
    |---|---|
-   | `BACKEND_URL` | the Python backend's address (next section), e.g. `https://legacy.example.com` |
-   | `PROXY_SECRET` (Secret) | 32+ random characters. **The same value** goes in `backend\.env` as `PROXY_SECRET`. |
    | `OWNER_EMAIL` | your email (see *Accounts* below) |
    | `BETTER_AUTH_SECRET` (Secret) | 32+ random characters (see *Accounts*) |
 
    A deploy keeps these, because `keep_vars` is set in `wrangler.jsonc`. To generate a secret:
    `node -e "console.log(require('crypto').randomBytes(36).toString('base64url'))"`
-7. **Check:** open `https://<address>/api/system/status`. It should answer `"ok": true`, with the database and storage ok, and `backend.ok` true once step 8 of the next section is done.
+7. **Check:** open `https://<address>/api/system/status`. It should answer `"ok": true`, with the database, storage, search and accounts ok.
 
 ## Accounts (Stage 4.1)
 
@@ -201,7 +199,7 @@ XP, coins, levels, streaks, daily quests, achievements, the shop, potions, champ
 2. In GitHub: repository → Settings → Secrets and variables → Actions → *New repository secret*:
    - `CLOUDFLARE_API_TOKEN`: the token;
    - `CLOUDFLARE_ACCOUNT_ID`: the long hex id in the dashboard URL (`dash.cloudflare.com/<account id>/...`), or run `npx wrangler whoami`.
-3. Push to `main`. The **deploy** job runs after the backend and frontend tests pass. It migrates D1, builds with OpenNext and deploys. Without the two secrets the deploy job fails (red X) and says which secret is missing. After adding them, open the latest run → *Re-run all jobs*.
+3. Push to `main`. The **deploy** job runs after the tests pass. It migrates D1, builds with OpenNext and deploys. Without the two secrets the deploy job fails (red X) and says which secret is missing. After adding them, open the latest run → *Re-run all jobs*.
 
 A deploy doesn't cut off people already using the app: requests that are already running finish on the old version.
 
@@ -209,25 +207,23 @@ Don't also connect the repository under Workers Builds in the dashboard (Worker 
 
 **Renaming the Worker:** change `"name"` and the `WORKER_SELF_REFERENCE` `"service"` in `wrangler.jsonc` together, deploy (a new Worker is created), set its Variables and Secrets again (they belong to a Worker), then delete the old Worker. D1 and R2 aren't touched.
 
-## The Python backend during the move
+## Payments (Stage 4.6)
 
-Your PC runs the backend only; the app itself is the Worker.
+Off by default: everyone is on Free, the owner on Archmage, and the upgrade buttons say "coming soon". To sell plans with Razorpay, follow **docs/payments.md** and then add, under Variables and Secrets:
 
-1. `backend\.env`:
-   - `PROXY_SECRET=<the same value as the Worker's>`
-   - `ALLOWED_ORIGIN=https://coursemateai.<you>.workers.dev` (the Worker's address, or your domain once you add one)
-   - `COOKIE_SECURE=true`
-2. **A tunnel hostname for the backend**, e.g. `legacy.example.com`:
-   ```powershell
-   .\deploy\windows\tunnel.ps1 -Hostname legacy.example.com
-   ```
-   This script sets `ALLOWED_ORIGIN` to the tunnel address, so set it back to the Worker's address afterwards (step 1).
-3. **Start:** `.\deploy\windows\start.ps1 -BackendOnly`. This starts the backend, Ollama and the tunnel, without the frontend.
-4. **Point the Worker at it:** `BACKEND_URL=https://legacy.example.com` (dashboard, step 6 above).
+| Name | Value |
+|---|---|
+| `PAYMENTS_ENABLED` | `1` |
+| `RAZORPAY_KEY_ID` | `rzp_test_…` (later `rzp_live_…`) |
+| `RAZORPAY_KEY_SECRET` (Secret) | from Razorpay → API keys |
+| `RAZORPAY_WEBHOOK_SECRET` (Secret) | the secret you typed when adding the webhook |
+| `RAZORPAY_PLAN_IDS_JSON` | `{"scholar:month": "plan_…", …}` |
 
-To try it without a domain, run `start.ps1 -BackendOnly -Quick` and use the `trycloudflare.com` address it prints as `BACKEND_URL`. It changes on every start.
+The webhook URL is `https://<address>/api/v1/billing/webhook`. Migration `0007_billing` adds the tables on deploy.
 
-`PROXY_SECRET` is what lets the backend see each student's real address through the Worker and the tunnel. Without it, every student shares one address, and the per-address rate limits (login, sign-up) would count them all together.
+## Policy pages (Stage 4.6)
+
+`/legal/terms`, `/legal/privacy` and `/legal/refunds`, linked from the sign-in page. Razorpay asks for these (plus a contact) when it reviews the site. The operator's name, email and the "last updated" date are in `frontend/src/app/legal/legal.ts`. Read them through before going live: they are a sensible starting point, not legal advice.
 
 ## Working on it locally
 
@@ -241,9 +237,9 @@ To try it without a domain, run `start.ps1 -BackendOnly -Quick` and use the `try
 
 Local settings go in `frontend\.dev.vars` (copy `.dev.vars.example`); it's never committed.
 
-## Rules for the TypeScript backend
+## Rules for the server code
 
-- **Routes** go in `src/app/api/v1/<area>/…/route.ts`. They take priority over the catch-all proxy (`src/app/api/[...path]/route.ts`), so moving a route is: write it, test it, push.
+- **Routes** go in `src/app/api/v1/<area>/…/route.ts`. Anything else under `/api` is answered by `src/app/api/[...path]/route.ts` with a JSON 404. `src/lib/api/schema.test.ts` checks every path the client is typed for has a route.
 - **Errors** use `apiError()` (`src/server/errors.ts`): the same `{ error: { code, message, action, details } }` shape the UI already reads.
 - **Bindings** come from `getEnv()` (`src/server/env.ts`). Tests use a real local D1/R2 (`localPlatform()` in `src/server/test/platform.ts`) and start server test files with `/** @vitest-environment node */`.
 - **Migrations only add.** The deploy migrates before the new version goes live, so the version still serving must keep working. `src/server/migrations.test.ts` enforces this.

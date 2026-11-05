@@ -1,5 +1,7 @@
 # Hardening: security pass, rate limits, monitoring, installable app (Phase 3, Stage 4d)
 
+> **Note (Stage 4.6):** written for the Python backend, which is gone. The rules still hold; the code is now under `frontend/src/server/`, and settings and admin tasks are in [deploy-cloudflare.md](deploy-cloudflare.md) and the in-app Admin panel.
+
 ## Security pass: what was checked, what changed
 
 | Area | State before | Now |

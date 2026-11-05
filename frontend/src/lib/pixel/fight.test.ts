@@ -9,10 +9,10 @@ import { DODGE_EVENTS } from "@/components/arena/BattleScreen";
 import { FightScene, MECHANIC_FX, type Beat, type BeatKind, type MechanicEffect } from "./fight";
 import { HEROES } from "./heroes";
 
-// Every event the server can send (backend core_brains/mechanics.py and kits.py: t.event("type", ...)) has a beat.
-const BACKEND = resolve(__dirname, "../../../../backend/core_brains");
-const serverEvents = () => [...new Set(["mechanics.py", "kits.py"].flatMap((f) =>
-  [...readFileSync(resolve(BACKEND, f), "utf8").matchAll(/\bt\.event\("([a-z_]+)"/g)].map((m) => m[1])))];
+// Every event the server can send (server/game/mechanics.ts and kits.ts: t.event("type", ...)) has a beat.
+const GAME = resolve(__dirname, "../../server/game");
+const serverEvents = () => [...new Set(["mechanics.ts", "kits.ts"].flatMap((f) =>
+  [...readFileSync(resolve(GAME, f), "utf8").matchAll(/\bt\.event\("([a-z_]+)"/g)].map((m) => m[1])))];
 
 describe("the beats cover the server's mechanic and kit events", () => {
   it("each event is an effect beat or a dodge", () => {

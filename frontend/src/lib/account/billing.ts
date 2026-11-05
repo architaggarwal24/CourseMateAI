@@ -1,4 +1,4 @@
-// Subscriptions (backend routers/billing.py; docs/payments.md): Razorpay Checkout, or the test stub.
+// Subscriptions (server/billing.ts; docs/payments.md): Razorpay Checkout, or the test stub.
 import { api } from "@/lib/api/client";
 import type { components } from "@/lib/api/generated/schema";
 

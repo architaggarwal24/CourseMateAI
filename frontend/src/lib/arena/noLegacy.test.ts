@@ -27,12 +27,10 @@ describe("the arena is React all the way down", () => {
     }
   });
 
-  it("the legacy arena is gone: no static files, no old component, no /static rewrite, no legacy aliases", () => {
-    expect(existsSync(join(ROOT, "backend/static"))).toBe(false);
+  it("the legacy arena is gone: no Python backend, no old component, no /static rewrite", () => {
+    expect(existsSync(join(ROOT, "backend"))).toBe(false);
     expect(existsSync(join(SRC, "components/ArenaView.tsx"))).toBe(false);
-    expect(existsSync(join(ROOT, "backend/routers/legacy.py"))).toBe(false);
     expect(readFileSync(join(ROOT, "frontend/next.config.ts"), "utf8")).not.toMatch(/\/static\/:path/);
-    expect(readFileSync(join(ROOT, "backend/app.py"), "utf8")).not.toMatch(/StaticFiles|legacy_router/);
   });
 
   it("the old client-side battle state is gone from the frontend", () => {

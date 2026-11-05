@@ -4,6 +4,9 @@ export interface PageCase { name: string; path: string; auth: boolean; ready: st
 export const PAGES: PageCase[] = [
   { name: "offline", path: "/offline", auth: false, ready: "role=heading[name=\"You're offline\"]" },
   { name: "login", path: "/login", auth: false, ready: "role=heading[name='Welcome Back']" },
+  { name: "terms", path: "/legal/terms", auth: false, ready: "role=heading[name='Terms of Service']" },
+  { name: "privacy", path: "/legal/privacy", auth: false, ready: "role=heading[name='Privacy Policy']" },
+  { name: "refunds", path: "/legal/refunds", auth: false, ready: "role=heading[name='Cancellation & Refund Policy']" },
   { name: "signup step 1", path: "/login", auth: false, ready: "role=heading[name='Your account']", before: "register" },
   { name: "signup: verify email", path: "/login", auth: false, ready: "role=heading[name='Verify your email']", before: "register-step-2" },
   { name: "study: chat", path: "/study?tab=chat&doc=doc-1", auth: true, ready: "role=log" },

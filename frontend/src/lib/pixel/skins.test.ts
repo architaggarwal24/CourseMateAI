@@ -9,7 +9,7 @@ import { ARMOR_SKINS, HEAD_SKINS, RARITY_GLOW, WEAPON_SKINS, dressed, hasSkin, l
 import { heroFrame, lookKey } from "./sprites";
 import { hex } from "./color";
 
-const shop = JSON.parse(readFileSync(resolve(__dirname, "../../../../backend/content/shop.json"), "utf8"));
+const shop = JSON.parse(readFileSync(resolve(__dirname, "../../server/game/content/shop.json"), "utf8"));
 const items: Array<{ id: string; type: string; price: number }> = shop.tiers.flatMap((t: { items: unknown[] }) => t.items);
 const ofType = (t: string) => items.filter((i) => i.type === t).map((i) => i.id);
 const filled = (b: PixelBuffer) => b.px.reduce((n, c) => n + (c ? 1 : 0), 0);

@@ -1,6 +1,6 @@
-# Payments: Razorpay subscriptions (Phase 3, Stage 4c)
+# Payments: Razorpay subscriptions (Phase 3 Stage 4c; on the Worker since Phase 4 Stage 4.6)
 
-Payments are off unless `PAYMENTS_ENABLED=1`. While they are off, plans come only from invite codes and `scripts/admin.py plan set`, and the upgrade buttons say "coming soon".
+Payments are off unless `PAYMENTS_ENABLED=1`. While they are off, plans come only from the admin panel (Admin → Users → plan) and invite codes, and the upgrade buttons say "coming soon". Settings go in the Cloudflare dashboard (Workers → `coursemateai` → Settings → Variables and Secrets), or in `frontend/.dev.vars` locally. The code is `frontend/src/server/billing.ts`.
 
 ## Providers
 
@@ -19,8 +19,8 @@ Payments are off unless `PAYMENTS_ENABLED=1`. While they are off, plans come onl
    - URL: `https://<your domain>/api/v1/billing/webhook`
    - Secret: any long random string; put the same in `RAZORPAY_WEBHOOK_SECRET`
    - Events: every `subscription.*` event (authenticated, activated, charged, pending, halted, cancelled, completed, paused, resumed)
-   - The webhook needs a public URL, so test it through the Cloudflare Tunnel (Stage 4e).
-4. Set `PAYMENTS_ENABLED=1` and restart. Test with Razorpay's test cards or UPI (`success@razorpay`).
+   - The webhook needs a public URL: use the Worker's address.
+4. Set `PAYMENTS_ENABLED=1` (a dashboard change takes effect at once). Test with Razorpay's test cards or UPI (`success@razorpay`).
 5. To go live: generate live keys, create the same plans in live mode, update the env, and add a live webhook.
 
 ## The flow
@@ -48,6 +48,6 @@ An old subscription ending never touches a newer plan.
 
 `GET /billing`, `POST /billing/checkout`, `POST /billing/verify`, `POST /billing/cancel`, `POST /billing/webhook`, `POST /billing/stub/complete` (stub only). `GET /plans → payments_enabled` drives the UI.
 
-## Data (migration 0014)
+## Data (migration 0007_billing)
 
 `subscriptions` (deleted with the user) and `payment_events`.
