@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { bodyOf, json, urlOf } from "@/test/sse";
 
 const toasts = vi.hoisted(() => ({ success: vi.fn(), error: vi.fn(), info: vi.fn(), apiError: vi.fn(), dismiss: vi.fn() }));
@@ -7,6 +7,7 @@ vi.mock("@/components/ui/Toast", async (orig) => ({ ...(await orig<typeof import
 vi.mock("@/hooks/useHUD", () => ({ useHUDStore: (sel: (s: unknown) => unknown) => sel({ refreshIfStale: vi.fn() }) }));
 
 import ReviewView from "./ReviewView";
+import { flushUndoables } from "@/lib/undo";
 import { useReview } from "@/hooks/useReview";
 
 const IV = { "1": 60, "2": 330, "3": 600, "4": 8 * 86400 };
@@ -114,13 +115,25 @@ describe("ReviewView: the daily review, keyboard first", () => {
     expect(log.calls[0]).toBe("GET /review/queue?limit=20");
   });
 
-  it("a card can be removed from the queue for good", async () => {
+  it("Remove takes a card out at once with an Undo toast; Undo brings it back, otherwise it is removed for good", async () => {
     const log = server();
     render(<ReviewView />);
     await screen.findByText("Question 1?");
     fireEvent.click(screen.getByRole("button", { name: /Remove/ }));
     await screen.findByText("Question 2?");
-    expect(log.deletes).toEqual(["/review/cards/1"]);
+    expect(log.deletes).toEqual([]);                                                  // not yet: undo window
+    const [message, options] = toasts.success.mock.calls.at(-1)!;
+    expect(message).toBe("Card removed from your review queue");
+    const undo = render(<>{options.action}</>);
+    fireEvent.click(undo.getByRole("button", { name: "Undo" }));
+    await screen.findByText("Question 1?");                                         // back on top
+    await act(async () => { flushUndoables(); });
+    expect(log.deletes).toEqual([]);
+
+    fireEvent.click(screen.getByRole("button", { name: /Remove/ }));
+    await screen.findByText("Question 2?");
+    await act(async () => { flushUndoables(); });
+    await waitFor(() => expect(log.deletes).toEqual(["/review/cards/1"]));
   });
 });
 

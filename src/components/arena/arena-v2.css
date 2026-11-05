@@ -86,7 +86,7 @@
 .arena-mech__name { color: var(--color-reward); font-size: 0.72rem; letter-spacing: 0.04em; }
 .arena-mech__rule { color: var(--color-text-secondary); font-size: 0.78rem; line-height: 1.4; }
 .arena-mech__counters { display: flex; flex-wrap: wrap; gap: var(--space-2); margin: 0; padding: 0; list-style: none; }
-.arena-mech__counter { display: inline-flex; align-items: baseline; gap: 0.35rem; font-size: 0.75rem; color: var(--color-text); }
+.arena-mech__counter { display: inline-flex; align-items: baseline; gap: 0.35rem; font-size: 0.75rem; color: var(--color-text); font-variant-numeric: tabular-nums; }
 .arena-mech__counter b { color: var(--color-reward); }
 .arena-mech__counter[data-locked="true"] { align-items: center; color: var(--color-danger-text); font-weight: 600; }
 .arena-mech__text { font-weight: 600; max-width: 14rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

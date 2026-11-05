@@ -40,5 +40,5 @@
 /* beside the conversation (ChatView); a full-screen sheet on phones */
 .pdf-panel[data-side] { width: min(46%, 560px); flex: none; }
 @media (max-width: 900px) {
-  .pdf-panel[data-side] { position: fixed; inset: 0; width: auto; z-index: 60; border-left: 0; }
+  .pdf-panel[data-side] { position: fixed; inset: 0; width: auto; z-index: 60; border-left: 0; padding: var(--safe-top) var(--safe-right) var(--safe-bottom) var(--safe-left); }
 }

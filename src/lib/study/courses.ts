@@ -1,5 +1,6 @@
 // Courses (backend routers/courses.py): several PDFs studied together. A course id works wherever a document id does.
 import { api } from "@/lib/api/client";
+import { idempotencyKey } from "@/lib/api/idempotency";
 import type { components } from "@/lib/api/generated/schema";
 
 export type Course = components["schemas"]["Course"];
@@ -20,7 +21,10 @@ export async function fetchCourses(): Promise<Course[]> {
 }
 
 export async function createCourse(name: string, documentIds: string[], description?: string) {
-  const { data } = await api.POST("/courses", { body: { name, document_ids: documentIds, description: description || null } });
+  const body = { name, document_ids: documentIds, description: description || null };
+  const once = idempotencyKey("courses", body);
+  const { data } = await api.POST("/courses", { body, headers: once.headers });
+  once.done();
   return data as Course;
 }
 

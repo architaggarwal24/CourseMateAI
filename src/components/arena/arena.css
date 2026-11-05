@@ -65,7 +65,7 @@
 .arena-hud__bossline { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-2); }
 .arena-hud__name { margin: 0; font-size: 1.125rem; font-weight: 800; letter-spacing: -0.01em; color: var(--color-text); }
 .arena-hud__tagline { margin: 0; color: var(--color-muted); font-size: 0.8125rem; }
-.arena-stat { display: inline-flex; align-items: center; gap: var(--space-2); color: var(--color-text); font-size: 0.8125rem; }
+.arena-stat { display: inline-flex; align-items: center; gap: var(--space-2); color: var(--color-text); font-size: 0.8125rem; font-variant-numeric: tabular-nums; }
 .arena-stat__label { color: var(--color-muted); font-size: 0.75rem; }
 
 .arena-bar { position: relative; height: 0.875rem; overflow: hidden; border: 1px solid var(--color-border-strong); border-radius: var(--radius-full); background: var(--color-surface-sunken); }
@@ -82,7 +82,7 @@
 .arena-timer svg { position: absolute; inset: 0; }
 .arena-timer__track { fill: color-mix(in srgb, var(--color-surface-sunken) 80%, transparent); stroke: var(--color-border-strong); stroke-width: 5; }
 .arena-timer__arc { fill: none; stroke: var(--color-accent-text); stroke-width: 5; stroke-linecap: round; transition: stroke-dashoffset 300ms linear, stroke var(--motion-base) var(--motion-ease); }
-.arena-timer__num { position: relative; font-size: 0.9375rem; }
+.arena-timer__num { position: relative; font-size: 0.9375rem; font-variant-numeric: tabular-nums; }
 .arena-timer[data-urgency="low"] { color: var(--color-warning-text); }
 .arena-timer[data-urgency="low"] .arena-timer__arc { stroke: var(--color-warning-text); }
 .arena-timer[data-urgency="critical"] { color: var(--color-danger-text); animation: arena-tick 1s ease-in-out infinite; }
@@ -193,7 +193,7 @@
 /* ── Items and retreat ───────────────────────────────────────────────────────────────────────────────────────── */
 .arena-items { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); }
 .arena-items__spacer { flex: 1 1 auto; }
-.arena-item-count { color: var(--color-reward); font-size: 0.8125rem; }
+.arena-item-count { color: var(--color-reward); font-size: 0.8125rem; font-variant-numeric: tabular-nums; }
 
 /* ── Result ──────────────────────────────────────────────────────────────────────────────────────────────────── */
 .arena-result {

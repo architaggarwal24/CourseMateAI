@@ -1,6 +1,7 @@
 // GET: past exams. POST: write a new exam from the document and start its clock.
 import { requireUser } from "@/server/context";
 import { rateLimit, readJson } from "@/server/http";
+import { idempotent } from "@/server/idempotency";
 import { api } from "@/server/route";
 import { createExam, gate, history } from "@/server/study/exams";
 
@@ -16,5 +17,5 @@ export const POST = api(async (req, ctx) => {
   const u = await requireUser(req, ctx);
   await gate(ctx, u);
   await rateLimit(ctx.db, `exam-create:${u.id}`, 6, 60);
-  return createExam(ctx, u, await readJson(req));
+  return idempotent(req, ctx.db, `exam-create:${u.id}`, async () => createExam(ctx, u, await readJson(req)));
 });

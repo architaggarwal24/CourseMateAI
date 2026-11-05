@@ -585,6 +585,7 @@ Shop categories (`backend/content/shop.json`): armor (Outfits), headgear (Head P
 - **Cloudflare types:** `cloudflare-env.d.ts` is generated with `--include-runtime=false`. The binding types come from `src/server/cf-bindings.d.ts`, because the global Workers runtime types clash with the DOM types.
 - **Remote-only bindings** (Workers AI, Vectorize) make `next dev` and `cf:preview` ask for a Cloudflare login. Add them only in the stage that uses them.
 - **A new Worker route** uses `api()` (`src/server/route.ts`): the same-site check, the context, errors in the API's shape. Use `requireUser` / `requireAdmin` from `src/server/context.ts`, and `rateLimit()` for anything that changes data.
+- **A POST that creates a record** (or spends coins or money) wraps its work in `idempotent(req, ctx.db, "<route>:<user id>", run)`, and its client call sends `idempotencyKey(action, body).headers` (then `done()` on success). Its button uses `loading` while the request runs.
 - **Ids are integers** (Better Auth `generateId: "serial"`), so later tables can use `INTEGER REFERENCES user(id)`.
 - **Server tests that sign people in** use `src/server/test/auth-helpers.ts`: `Browser`, a cookie jar, and `fakeMailer`, which reads the code. Set them up with `setEnvForTests`, `setMailerForTests` and `vi.stubEnv(SETTINGS)`.
 - **Workers AI and Vectorize can't run locally:** tests use `setSearchForTests({ embedder: fakeEmbedder(), vectors: fakeVectors() })`. Unit tests that upload mock `@/lib/upload` (pdf.js doesn't run in jsdom); `e2e/upload.spec.ts` runs the real reader.
@@ -810,3 +811,14 @@ Each stage ships a zip of the changed files plus a test checklist. Ready-to-past
 - **Repo:** the Python-era docs moved to `docs/archive/`; `.wrangler/` is ignored at any depth; the old root `STAGE*_NOTES.md` are gone.
 - **Tests:** server tests migrate in one D1 batch; arena keys bind in a layout effect; 30 s test timeout; e2e uses 4 workers locally.
 - **Layout:** the app moved from `frontend/` to the repo root (git mv, history kept). Every command now runs in the project folder; CI has no working directory. `*.tsbuildinfo` is no longer tracked.
+
+### UX details pass (5 Nov 2026)
+
+- **Skeletons** show only after 300 ms (`.ui-skeleton` waits, also under reduced motion).
+- **Command palette** (⌘K / Ctrl+K): every page, concept map, plan, security, admin (admins only), Log out. Shortcut labels come from `shortcutLabel()` / `useShortcutLabel()` (⌘ on Apple, Ctrl elsewhere).
+- **Undo, not "are you sure?"** (`src/lib/undo.tsx`): deleting a document, a history session or a review card hides it at once with an 8 s Undo toast; the request goes when the window closes (or the page is hidden).
+- **Revalidate** (`useRevalidate`): the review badge and the open document are re-checked on focus, tab shown, and back online. Not for coins.
+- **Page changes** fade in 250 ms; full page loads cross-fade with `@view-transition` (200 ms, motion allowed only).
+- **Phones:** a Modal is a bottom sheet (drag the handle or title down, or flick, to close; the handle is a Close button). The page draws under the notch (`viewport-fit=cover`); edges pad by `--safe-top/right/bottom/left`.
+- **Type:** headings `text-wrap: balance`, running text `pretty`; changing numbers use tabular figures; kit corners are squircles where `corner-shape` exists.
+- **Idempotency keys** (`src/server/idempotency.ts`, table `idempotency_keys`): course, exam, invite code, shop purchase and checkout POSTs. Same key + same body within 24 h replays the first answer (`idempotent-replayed: true`); 409 while it runs; 422 for a different body; a failure keeps nothing. The client (`src/lib/api/idempotency.ts`) keeps one key per action and input until it succeeds.

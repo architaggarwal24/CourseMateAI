@@ -127,6 +127,17 @@ export const apiRateLimits = sqliteTable("api_rate_limits", {
   count: integer("count").notNull(),
 });
 
+// Idempotency keys (src/server/idempotency.ts): the first answer to a record-creating POST, kept for 24 hours, so a
+// retry with the same Idempotency-Key gets that answer instead of a second record. `status` is null while it runs.
+export const idempotencyKeys = sqliteTable("idempotency_keys", {
+  scope: text("scope").notNull(),                                   // "<route>:<user id>"
+  key: text("key").notNull(),
+  requestHash: text("request_hash").notNull(),
+  status: integer("status"),
+  body: text("body"),
+  createdAt: integer("created_at").notNull(),                       // ms
+}, (t) => [primaryKey({ columns: [t.scope, t.key] }), index("idempotency_keys_created_idx").on(t.createdAt)]);
+
 // ── documents and courses (Stage 4.2: src/server/documents.ts, courses.ts). The PDF is in R2 (FILES), each chunk's
 //    text here, its embedding in Vectorize (VECTORS, id "<document id>:<chunk index>"). ───────────────────────────
 export const documents = sqliteTable("documents", {

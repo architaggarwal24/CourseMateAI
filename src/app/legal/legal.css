@@ -1,5 +1,5 @@
 /* The policy pages: plain, readable text on the app's surface. */
-.legal { min-height: 100dvh; padding: var(--space-6) var(--space-4); background: var(--color-surface); color: var(--color-text-secondary); }
+.legal { min-height: 100dvh; padding: calc(var(--space-6) + var(--safe-top)) calc(var(--space-4) + var(--safe-right)) calc(var(--space-6) + var(--safe-bottom)) calc(var(--space-4) + var(--safe-left)); background: var(--color-surface); color: var(--color-text-secondary); }
 .legal__nav { max-width: 46rem; margin: 0 auto var(--space-6); display: flex; flex-wrap: wrap; gap: var(--space-4); align-items: center; }
 .legal__nav a { color: var(--color-text-secondary); text-decoration: underline; text-underline-offset: 3px; min-height: 44px; display: inline-flex; align-items: center; }
 .legal__nav .legal__home { margin-right: auto; font-weight: 700; color: var(--color-text); text-decoration: none; }

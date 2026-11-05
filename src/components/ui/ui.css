@@ -324,6 +324,28 @@ textarea.ui-control { min-height: 5rem; resize: vertical; line-height: var(--lin
 .ui-modal__body { color: var(--color-text-secondary); font-size: 0.9375rem; line-height: var(--line-height-body); }
 .ui-modal__actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: var(--space-2); margin-top: var(--space-5); }
 
+/* On a phone: a bottom sheet (Modal.tsx). Motion springs it in and follows the drag, so no CSS entrance here. The
+ * handle is a full-width 44px Close button; the handle and the title start a drag. */
+.ui-modal-overlay--sheet { align-items: flex-end; padding: 0; }
+.ui-modal.ui-modal--sheet {
+  animation: none;
+  max-width: none;
+  max-height: calc(100dvh - var(--safe-top) - var(--space-6));
+  padding: 0 calc(var(--space-5) + var(--safe-right)) calc(var(--space-5) + var(--safe-bottom)) calc(var(--space-5) + var(--safe-left));
+  border-bottom: 0;
+  border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+  overscroll-behavior: contain;
+}
+.ui-modal__handle {
+  display: flex; align-items: center; justify-content: center;
+  width: 100%; min-height: 44px; margin: 0 0 var(--space-1); padding: 0;
+  background: none; border: 0; cursor: grab; touch-action: none;
+}
+.ui-modal__handle:active { cursor: grabbing; }
+.ui-modal__grip { width: 2.5rem; height: 5px; border-radius: var(--radius-full); background: var(--color-border-strong); transition: background var(--motion-fast) var(--motion-ease); }
+.ui-modal__handle:hover .ui-modal__grip, .ui-modal__handle:focus-visible .ui-modal__grip { background: var(--color-muted); }
+.ui-modal--sheet .ui-modal__title { touch-action: none; }
+
 /* ── Tabs ────────────────────────────────────────────────────────────────────────────────────────────────────── *
  * A segmented glass track; the active tab sits on a sliding lit pill (a motion layout element). */
 .ui-tabs__list {
@@ -384,8 +406,8 @@ a.ui-tab { display: inline-flex; align-items: center; text-decoration: none; }
 /* ── Toast ───────────────────────────────────────────────────────────────────────────────────────────────────── */
 .ui-toasts {
   position: fixed;
-  top: var(--space-4);
-  right: var(--space-4);
+  top: calc(var(--space-4) + var(--safe-top));
+  right: calc(var(--space-4) + var(--safe-right));
   z-index: 200;
   display: flex;
   flex-direction: column;
@@ -463,6 +485,17 @@ a.ui-tab { display: inline-flex; align-items: center; text-decoration: none; }
 .ui-error__actions { flex: none; }
 .ui-error__wait { color: var(--color-muted); font-size: 0.8125rem; }
 
+/* Squircle corners (corner-shape, where the browser has it; elsewhere the round corners above stay). A squircle of
+ * the same radius reads tighter, so the radius grows by --squircle-k to keep the same softness. Pills and circles
+ * (radius-full) stay round. */
+@supports (corner-shape: squircle) {
+  .ui-btn, .ui-control, .ui-card, .ui-modal, .ui-toast { --squircle-k: 1.5; corner-shape: squircle; }
+  .ui-btn, .ui-control { border-radius: calc(var(--radius-md) * var(--squircle-k)); }
+  .ui-btn--sm { border-radius: calc(var(--radius-sm) * var(--squircle-k)); }
+  .ui-btn--lg, .ui-card, .ui-toast { border-radius: calc(var(--radius-lg) * var(--squircle-k)); }
+  .ui-modal { border-radius: calc(var(--radius-xl) * var(--squircle-k)); }
+}
+
 /* ── Skeleton ────────────────────────────────────────────────────────────────────────────────────────────────── */
 .ui-skeleton {
   display: block;
@@ -470,10 +503,14 @@ a.ui-tab { display: inline-flex; align-items: center; text-decoration: none; }
   background-size: 220% 100%, auto;
   background-repeat: no-repeat;
   border-radius: var(--radius-sm);
-  animation: shimmer 1.8s linear infinite;
+  /* Takes its place at once (nothing jumps when the content arrives) but only shows after 300 ms: a fast load never
+     flashes a skeleton. */
+  opacity: 0;
+  animation: ui-skeleton-show 1ms linear 300ms forwards, shimmer 1.8s linear 300ms infinite;
 }
 .ui-skeleton--circle { border-radius: var(--radius-full); }
-@media (prefers-reduced-motion: reduce) { .ui-skeleton { animation: none; } }
+@keyframes ui-skeleton-show { to { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .ui-skeleton { animation: ui-skeleton-show 1ms linear 300ms forwards; } }
 
 /* ── EmptyState ──────────────────────────────────────────────────────────────────────────────────────────────── */
 .ui-empty {

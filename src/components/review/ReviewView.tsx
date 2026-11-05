@@ -10,6 +10,7 @@ import { useHUDStore } from "@/hooks/useHUD";
 import { useReview } from "@/hooks/useReview";
 import { ApiError } from "@/lib/api";
 import { shortcutBlocked } from "@/lib/keys";
+import { undoable } from "@/lib/undo";
 import { ROUTES } from "@/lib/routes";
 import {
   RATINGS, SOURCE_LABEL, fetchReviewQueue, formatInterval, gradeReview, removeFromReview,
@@ -48,15 +49,17 @@ export default function ReviewView({ documentId }: { documentId?: string }) {
   const cardRef = useRef<HTMLElement>(null);
   const scope = thisDocOnly ? documentId : undefined;
 
+  const removing = useRef(new Set<ReviewItem["id"]>());               // removed, still inside the undo window
   const load = useCallback(async () => {
     setPhase((p) => (p === "reviewing" ? p : "loading"));
     try {
       const q = await fetchReviewQueue({ sessionId: scope, limit: 20 });
       setStats(q.stats as ReviewStats);
-      setItems(q.items);
+      setItems(q.items.filter((i) => !removing.current.has(i.id)));       // (a card waiting out its undo window)
       setRevealed(false);
       shownAt.current = Date.now();
-      setPhase(q.items.length ? "reviewing" : q.stats.total ? "done" : "empty");
+      const left = q.items.filter((i) => !removing.current.has(i.id)).length;
+      setPhase(left ? "reviewing" : q.stats.total ? "done" : "empty");
     } catch (e) {
       if (e instanceof ApiError && e.code === "feature_locked") {
         setLockInfo({ plan: String(e.details?.required_tier_name ?? "Scholar") });
@@ -105,18 +108,26 @@ export default function ReviewView({ documentId }: { documentId?: string }) {
     requestAnimationFrame(() => cardRef.current?.focus({ preventScroll: true }));
   };
 
-  const remove = async () => {
+  // Remove: out of the queue at once, with an Undo toast; the request goes when the undo window closes.
+  const remove = () => {
     if (!item || busy) return;
-    setBusy(true);
-    try {
-      await removeFromReview(item.id);
-      toast.info("Card removed from your review queue.");
-      advance();
-    } catch (e) {
-      toast.apiError(e);
-    } finally {
-      setBusy(false);
-    }
+    const card = item;
+    removing.current.add(card.id);
+    advance();
+    undoable({
+      message: "Card removed from your review queue",
+      undo: () => {
+        removing.current.delete(card.id);
+        setItems((list) => [card, ...list.filter((i) => i.id !== card.id)]);
+        setRevealed(false);
+        shownAt.current = Date.now();
+        setPhase("reviewing");
+      },
+      commit: async () => {
+        await removeFromReview(card.id);
+        removing.current.delete(card.id);
+      },
+    });
   };
 
   // Keyboard: Space / Enter reveal; 1-4 grade once the answer shows.
@@ -276,7 +287,7 @@ export default function ReviewView({ documentId }: { documentId?: string }) {
           <div className="mt-5 flex items-center gap-3 text-xs text-fg-muted">
             <CalendarClock size={14} aria-hidden="true" />
             <span>{revealed ? "1-4 grade · swipe → Good, ← Again" : "Space shows the answer"}</span>
-            <Button size="sm" variant="ghost" onClick={() => void remove()} disabled={busy} title="Remove this card from your review queue">
+            <Button size="sm" variant="ghost" onClick={remove} disabled={busy} title="Remove this card from your review queue (you can undo it)">
               <Trash2 size={14} aria-hidden="true" />Remove
             </Button>
           </div>

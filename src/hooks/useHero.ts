@@ -2,6 +2,7 @@ import { create } from "zustand";
 import { toast } from "@/components/ui/Toast";
 import { claimQuest, parseApiError, rawApi } from "@/lib/api";
 import { useHUDStore } from "@/hooks/useHUD";
+import { idempotencyKey } from "@/lib/api/idempotency";
 
 /**
  * The Hero area's one source of truth for what the hero owns, wears and can afford.
@@ -204,7 +205,9 @@ export const useHeroStore = create<HeroState>((set, get) => {
       if (coins < Number(item.price)) { toast.error(`Not enough coins! Need ${Number(item.price) - coins} more 🪙`); return false; }
       return withPending(item.id, async () => {
         try {
-          const { data, error, response } = await rawApi.POST("/shop/purchase", { body: { item_id: item.id } });
+          const once = idempotencyKey("shop-purchase", { item_id: item.id });
+          const { data, error, response } = await rawApi.POST("/shop/purchase", { body: { item_id: item.id }, headers: once.headers });
+          if (response.ok) once.done();
           return settle(response, data, error, (result) => {
             toast.success(`${item.name} purchased! 🎉`);
             const shop = get().shop;

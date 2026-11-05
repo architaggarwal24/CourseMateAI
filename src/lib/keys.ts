@@ -10,3 +10,20 @@ export function shortcutBlocked(e: KeyboardEvent): boolean {
   if (t?.closest('[role="dialog"], [role="alertdialog"], [role="menu"], [role="listbox"], [role="tablist"], [cmdk-root]')) return true;
   return typeof document !== "undefined" && !!document.querySelector('[aria-modal="true"], [role="menu"][data-state="open"]');
 }
+
+/** True on a Mac (and iPad / iPhone keyboards), where shortcuts use ⌘ rather than Ctrl. */
+export function isApple(): boolean {
+  if (typeof navigator === "undefined") return false;
+  const platform = (navigator as Navigator & { userAgentData?: { platform?: string } }).userAgentData?.platform || navigator.platform || "";
+  return /mac|iphone|ipad|ipod/i.test(platform) || /Macintosh|iPhone|iPad/.test(navigator.userAgent);
+}
+
+/** The modifier's label for this keyboard: "⌘" on Apple, "Ctrl" elsewhere. */
+export const modKey = (): string => (isApple() ? "⌘" : "Ctrl");
+
+/** A shortcut as people read it: ["mod", "K"] -> "⌘K" on a Mac, "Ctrl+K" elsewhere. */
+export function shortcutLabel(keys: string[]): string {
+  const apple = isApple();
+  const parts = keys.map((k) => (k === "mod" ? (apple ? "⌘" : "Ctrl") : k === "shift" ? (apple ? "⇧" : "Shift") : k));
+  return apple ? parts.join("") : parts.join("+");
+}

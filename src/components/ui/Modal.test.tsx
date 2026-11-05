@@ -1,13 +1,13 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { useRef, useState } from "react";
 
 
 import ThemeScope from "@/components/ThemeScope";
 import Button from "./Button";
-import Modal from "./Modal";
+import Modal, { sheetShouldClose } from "./Modal";
 
-afterEach(() => { cleanup(); document.body.style.overflow = ""; });
+afterEach(() => { cleanup(); document.body.style.overflow = ""; vi.unstubAllGlobals(); });
 
 const tab = (shift = false) => {
   const ev = new KeyboardEvent("keydown", { key: "Tab", shiftKey: shift, bubbles: true, cancelable: true });
@@ -150,5 +150,49 @@ describe("Modal", () => {
     expect(dialog().closest("[data-theme]")?.getAttribute("data-theme")).toBe("study");
     rerender(<ThemeScope theme="play"><Modal open onClose={() => {}} title="Play one">x</Modal></ThemeScope>);
     expect(dialog().closest("[data-theme]")?.getAttribute("data-theme")).toBe("play");
+  });
+
+  it("is a centred dialog on wider screens: no sheet, no grab handle", () => {
+    render(<Demo />);
+    openIt();
+    expect(dialog().className).not.toContain("ui-modal--sheet");
+    expect(screen.queryByRole("button", { name: "Close" })).toBeNull();
+  });
+});
+
+const phone = () => vi.stubGlobal("matchMedia", (query: string) => ({
+  matches: query === "(max-width: 767px)", media: query, addEventListener() {}, removeEventListener() {},
+}));
+
+describe("Modal on a phone: a bottom sheet", () => {
+  it("slides up from the bottom with a grab handle that is also a Close button (focus still starts on the content)", () => {
+    phone();
+    render(<Demo />);
+    openIt();
+    expect(dialog().className).toContain("ui-modal--sheet");
+    const handle = screen.getByRole("button", { name: "Close" });
+    expect(dialog().contains(handle)).toBe(true);
+    expect(document.activeElement).toBe(screen.getByLabelText("field"));
+  });
+
+  it("closes from the handle, and Escape still works", async () => {
+    phone();
+    const onClose = vi.fn();
+    render(<Demo onClose={onClose} />);
+    openIt();
+    fireEvent.click(screen.getByRole("button", { name: "Close" }));
+    await waitFor(() => expect(onClose).toHaveBeenCalledTimes(1));
+    openIt();
+    esc();
+    expect(onClose).toHaveBeenCalledTimes(2);
+  });
+
+  it("closes when dragged down far enough or flicked down fast; otherwise it springs back", () => {
+    expect(sheetShouldClose(30, 100, 600)).toBe(false);                    // a nudge
+    expect(sheetShouldClose(160, 0, 600)).toBe(true);                      // dragged well down
+    expect(sheetShouldClose(80, 0, 200)).toBe(true);                       // a short sheet: a third of its height
+    expect(sheetShouldClose(40, 900, 600)).toBe(true);                     // a flick
+    expect(sheetShouldClose(-40, 900, 600)).toBe(false);                   // up is never a close
+    expect(sheetShouldClose(5, 900, 600)).toBe(false);                     // a twitch, however fast
   });
 });

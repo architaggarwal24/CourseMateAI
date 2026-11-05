@@ -6,6 +6,7 @@ import { Button, EmptyState, Tabs } from "@/components/ui";
 import { loadMetadata, deleteSession } from "@/lib/sessions";
 import { SessionMeta } from "@/types";
 import { MODE_META, formatWhen, modeMeta } from "./history/sessionMeta";
+import { undoable } from "@/lib/undo";
 
 interface HistoryPanelProps {
   /** Which tab to show by default ("all" | "chat" | "quiz" | "notes" | "flashcards") */
@@ -23,6 +24,7 @@ type PanelTab = typeof TABS[number];
 export default function HistoryPanel({ activeMode = "all", onSelect, onNew, onClose }: HistoryPanelProps) {
   const [tab, setTab] = useState<PanelTab>(TABS.includes(activeMode as PanelTab) ? (activeMode as PanelTab) : "all");
   const [sessions, setSessions] = useState<[string, SessionMeta & { title?: string }][]>([]);
+  const [hidden, setHidden] = useState<ReadonlySet<string>>(new Set());     // deleted, inside the undo window
 
   const reload = useCallback(() => {
     const meta = loadMetadata();
@@ -33,11 +35,19 @@ export default function HistoryPanel({ activeMode = "all", onSelect, onNew, onCl
 
   useEffect(() => { reload(); }, [reload]);
 
-  const filtered = tab === "all" ? sessions : sessions.filter(([, m]) => m.type === tab);
+  const visible = sessions.filter(([id]) => !hidden.has(id));
+  const filtered = tab === "all" ? visible : visible.filter(([, m]) => m.type === tab);
 
+  const toggleHidden = (id: string, on: boolean) =>
+    setHidden((h) => { const next = new Set(h); if (on) next.add(id); else next.delete(id); return next; });
+  // Gone at once, with Undo; removed from storage when the undo window closes.
   const handleDelete = (id: string) => {
-    deleteSession(id);
-    reload();
+    toggleHidden(id, true);
+    undoable({
+      message: "Session deleted",
+      undo: () => toggleHidden(id, false),
+      commit: async () => { deleteSession(id); reload(); toggleHidden(id, false); },
+    });
   };
 
   return (

@@ -6,10 +6,12 @@
   display: flex;
   flex-direction: column;
   height: 100dvh;
+  /* clear of the notch; the bottom bar pads for the home bar itself (BottomNav), the desktop layout here */
+  padding: var(--safe-top) var(--safe-right) 0 var(--safe-left);
   overflow: hidden;
   background: var(--gradient-page), var(--color-surface);
 }
-@media (min-width: 768px) { .app-shell { flex-direction: row; } }
+@media (min-width: 768px) { .app-shell { flex-direction: row; padding-bottom: var(--safe-bottom); } }
 .app-backdrop { position: absolute; inset: 0; z-index: 0; pointer-events: none; overflow: hidden; }
 .app-shell > :not(.app-backdrop) { position: relative; z-index: 1; }
 

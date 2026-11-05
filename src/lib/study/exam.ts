@@ -1,5 +1,6 @@
 // Exam mode (backend routers/exams.py): a timed mock test from a document, graded on the server.
 import { api } from "@/lib/api/client";
+import { idempotencyKey } from "@/lib/api/idempotency";
 import type { components } from "@/lib/api/generated/schema";
 
 export type Exam = components["schemas"]["Exam"];
@@ -20,7 +21,10 @@ export async function fetchExamOptions(sessionId: string) {
 }
 
 export async function startExam(sessionId: string, length: number, difficulty: ExamDifficulty, topics: string[]) {
-  const { data } = await api.POST("/exams", { body: { session_id: sessionId, length: length as 10 | 20 | 30, difficulty, topics } });
+  const body = { session_id: sessionId, length: length as 10 | 20 | 30, difficulty, topics };
+  const once = idempotencyKey("exams", body);
+  const { data } = await api.POST("/exams", { body, headers: once.headers });
+  once.done();
   return data as Exam;
 }
 

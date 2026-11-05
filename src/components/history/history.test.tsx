@@ -1,8 +1,13 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { act, cleanup, fireEvent, render, screen, within } from "@testing-library/react";
+
+const toasts = vi.hoisted(() => ({ success: vi.fn(), error: vi.fn(), info: vi.fn(), apiError: vi.fn(), dismiss: vi.fn() }));
+vi.mock("@/components/ui/Toast", async (orig) => ({ ...(await orig<typeof import("@/components/ui/Toast")>()), toast: toasts }));
+
 import HistoryPanel from "@/components/HistoryPanel";
 import HistoryView from "@/components/HistoryView";
-import { saveMetadata } from "@/lib/sessions";
+import { loadMetadata, saveMetadata } from "@/lib/sessions";
+import { flushUndoables } from "@/lib/undo";
 import { formatWhen } from "./sessionMeta";
 
 const hoursAgo = (h: number) => new Date(Date.now() - h * 3600_000).toISOString();
@@ -55,16 +60,31 @@ describe("HistoryView", () => {
     expect(screen.getByText("What is ATP?")).toBeTruthy();
   });
 
-  it("opens a session in its own tool, and deletes one", () => {
-    vi.useFakeTimers();
+  it("opens a session in its own tool", () => {
     const onNavigate = vi.fn();
     render(<HistoryView onNavigate={onNavigate} />);
     fireEvent.click(screen.getByRole("button", { name: /Flashcards[\s\S]*cells · 1\/10/ }));
     expect(onNavigate).toHaveBeenCalledWith("flashcards", "f1");
+  });
+
+  it("deletes a session at once with an Undo toast; it is only removed for good when the window closes", async () => {
+    render(<HistoryView />);
+    fireEvent.click(screen.getByRole("button", { name: "Delete quiz session" }));
+    expect(screen.queryByText("cells · 3/5 answered")).toBeNull();                 // gone at once
+    expect(screen.getByText("3 sessions")).toBeTruthy();
+    expect(loadMetadata().q1).toBeTruthy();                                         // still saved
+    const [message, options] = toasts.success.mock.calls.at(-1)!;
+    expect(message).toBe("Session deleted");
+
+    const undo = render(<>{options.action}</>);
+    fireEvent.click(undo.getByRole("button", { name: "Undo" }));
+    expect(screen.getByText("cells · 3/5 answered")).toBeTruthy();                 // back
+    await act(async () => { flushUndoables(); });
+    expect(loadMetadata().q1).toBeTruthy();
 
     fireEvent.click(screen.getByRole("button", { name: "Delete quiz session" }));
-    act(() => { vi.advanceTimersByTime(250); });
-    vi.useRealTimers();
+    await act(async () => { flushUndoables(); });
+    expect(loadMetadata().q1).toBeUndefined();
     expect(screen.queryByText("cells · 3/5 answered")).toBeNull();
   });
 
@@ -97,6 +117,22 @@ describe("HistoryPanel", () => {
     fireEvent.click(screen.getByRole("button", { name: "New" }));
     fireEvent.click(screen.getByRole("button", { name: "Close history" }));
     expect(onNew).toHaveBeenCalled(); expect(onClose).toHaveBeenCalled();
+  });
+
+  it("deletes a session at once with an Undo toast", async () => {
+    render(<HistoryPanel activeMode="quiz" onSelect={vi.fn()} onNew={vi.fn()} onClose={vi.fn()} />);
+    fireEvent.click(screen.getByRole("button", { name: /Delete/ }));
+    expect(screen.queryByText("cells · 3/5 answered")).toBeNull();
+    expect(loadMetadata().q1).toBeTruthy();
+    const [message, options] = toasts.success.mock.calls.at(-1)!;
+    expect(message).toBe("Session deleted");
+    const undo = render(<>{options.action}</>);
+    fireEvent.click(undo.getByRole("button", { name: "Undo" }));
+    expect(screen.getByText("cells · 3/5 answered")).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("button", { name: /Delete/ }));
+    await act(async () => { flushUndoables(); });
+    expect(loadMetadata().q1).toBeUndefined();
   });
 
   it("shows the empty state for a mode with no sessions", () => {

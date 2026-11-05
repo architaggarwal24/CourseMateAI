@@ -208,6 +208,19 @@ describe("the shop, potions and the avatar", () => {
     expect((await json(await unequip.POST(post(b, "/api/v1/shop/unequip", { slot: "cape" })))).reason).toMatch(/Invalid slot/);
   });
 
+  it("a retried purchase (same Idempotency-Key) spends the coins once and answers the same", async () => {
+    const b = await person(mail, "free@example.com", "free");
+    await pay(b, 1300, 200);
+    const buy = (key: string) => purchase.POST(b.request("/api/v1/shop/purchase", { body: { item_id: "potion_health_small" }, headers: { "idempotency-key": key } }));
+    const first = await json(await buy("tap-1-0123456789abcdef"));
+    const retry = await buy("tap-1-0123456789abcdef");
+    expect(retry.headers.get("idempotent-replayed")).toBe("true");
+    expect(await json(retry)).toEqual(first);
+    expect((await json(await shopRoute.GET(b.request("/api/v1/shop")))).coins).toBe(120);
+    await buy("tap-2-0123456789abcdef");                                            // a second tap is a second potion
+    expect((await json(await shopRoute.GET(b.request("/api/v1/shop")))).coins).toBe(40);
+  });
+
   it("a potion is bought, used once, and its effect waits for the arena", async () => {
     const b = await person(mail, "free@example.com", "free");
     await pay(b, 1300, 200);

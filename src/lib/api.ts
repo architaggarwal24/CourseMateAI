@@ -7,6 +7,7 @@ import { API_BASE_URL, api, rawApi } from "./api/client";
 import { readPdf, type ReadPdf } from "./upload";
 import type { components } from "./api/generated/schema";
 import { ApiError, parseApiError } from "./api/errors";
+import { idempotencyKey } from "./api/idempotency";
 
 type QuestionType = components["schemas"]["QuizRequest"]["question_type"];
 
@@ -167,7 +168,9 @@ export async function fetchShop() {
 }
 
 export async function purchaseItem(itemId: string) {
-  const { data } = await api.POST("/shop/purchase", { body: { item_id: itemId } });
+  const once = idempotencyKey("shop-purchase", { item_id: itemId });
+  const { data } = await api.POST("/shop/purchase", { body: { item_id: itemId }, headers: once.headers });
+  once.done();
   return body({ data });
 }
 

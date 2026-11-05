@@ -1,5 +1,6 @@
 // The /admin page's calls (src/app/api/v1/admin/*). Errors come back as ApiError (the API's error shape).
 import { ApiError, parseApiError } from "@/lib/api/errors";
+import { idempotencyKey } from "@/lib/api/idempotency";
 
 export type Tier = "apprentice" | "scholar" | "sage" | "archmage";
 export const TIER_OPTIONS: { value: Tier; label: string }[] = [
@@ -55,12 +56,12 @@ export interface AiReport {
   routes: Record<Tier, { small: string[]; strong: string[] }>;
 }
 
-async function call<T>(path: string, init: { method?: string; body?: unknown } = {}): Promise<T> {
+async function call<T>(path: string, init: { method?: string; body?: unknown; headers?: Record<string, string> } = {}): Promise<T> {
   let res: Response;
   try {
     res = await fetch(`/api/v1/admin${path}`, {
       method: init.method ?? (init.body !== undefined ? "POST" : "GET"),
-      headers: init.body !== undefined ? { "Content-Type": "application/json" } : undefined,
+      headers: { ...(init.body !== undefined && { "Content-Type": "application/json" }), ...init.headers },
       credentials: "same-origin",
       body: init.body !== undefined ? JSON.stringify(init.body) : undefined,
     });
@@ -82,8 +83,12 @@ export const adminApi = {
   ban: (id: number, reason: string, days: number | null) => call<AdminUser>(`/users/${id}/ban`, { body: { reason, days } }),
   unban: (id: number) => call<AdminUser>(`/users/${id}/ban`, { method: "DELETE" }),
   invites: () => call<{ invites: Invite[] }>("/invites"),
-  createInvite: (b: { tier: Tier; days: number | null; max_uses: number; code?: string; note?: string; valid_days: number | null }) =>
-    call<Invite>("/invites", { body: b }),
+  createInvite: async (b: { tier: Tier; days: number | null; max_uses: number; code?: string; note?: string; valid_days: number | null }) => {
+    const once = idempotencyKey("admin-invite", b);
+    const invite = await call<Invite>("/invites", { body: b, headers: once.headers });
+    once.done();
+    return invite;
+  },
   ai: () => call<AiReport>("/ai"),
   setCap: (usd: number) => call<AiReport>("/ai", { method: "PUT", body: { cap_usd: usd } }),
   revokeInvite: (code: string) => call<{ ok: true }>(`/invites/${encodeURIComponent(code)}`, { method: "DELETE" }),

@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { bodyOf, json, urlOf } from "@/test/sse";
 
 const toasts = vi.hoisted(() => ({ success: vi.fn(), error: vi.fn(), info: vi.fn(), apiError: vi.fn(), dismiss: vi.fn() }));
@@ -7,6 +7,7 @@ vi.mock("@/components/ui/Toast", async (orig) => ({ ...(await orig<typeof import
 vi.mock("@/contexts/AuthContext", () => ({ useAuth: () => ({ user: { user_id: 1 } }) }));
 
 import PlanUsage from "./PlanUsage";
+import { flushUndoables } from "@/lib/undo";
 import { resetPlansCache } from "@/lib/account/plans";
 import { useSessionStore } from "@/hooks/useSessions";
 
@@ -95,15 +96,28 @@ describe("Plan & usage", () => {
     expect(toasts.success).toHaveBeenCalledWith("You're on Sage now.");
   });
 
-  it("deletes a document after asking, to free a place", async () => {
+  it("deletes a document at once with an Undo toast (no 'are you sure?'); the request goes when the window closes", async () => {
     const log = server();
     render(<PlanUsage />);
     const box = await screen.findByRole("region", { name: /Your documents/ });
     await within(box).findByText("biology.pdf");
     fireEvent.click(within(box).getByRole("button", { name: "Delete biology.pdf" }));
-    const dialog = screen.getByRole("dialog", { name: "Delete this document?" });
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(within(box).queryByText("biology.pdf")).toBeNull();                      // gone from the list at once
+    expect(log.deleted).toEqual([]);                                                 // nothing sent yet
+    const [message, options] = toasts.success.mock.calls.at(-1)!;
+    expect(message).toBe("biology.pdf deleted");
+
+    // Undo: back in the list, and the delete is never sent
+    const undo = render(<>{options.action}</>);
+    fireEvent.click(undo.getByRole("button", { name: "Undo" }));
+    expect(await within(box).findByText("biology.pdf")).toBeTruthy();
+    await act(async () => { flushUndoables(); });
     expect(log.deleted).toEqual([]);
-    fireEvent.click(within(dialog).getByRole("button", { name: "Delete" }));
+
+    // again, and this time let it go
+    fireEvent.click(within(box).getByRole("button", { name: "Delete biology.pdf" }));
+    await act(async () => { flushUndoables(); });
     await waitFor(() => expect(log.deleted).toEqual(["d1"]));
     await waitFor(() => expect(within(box).queryByText("biology.pdf")).toBeNull());
   });

@@ -2,6 +2,7 @@
 .login {
   position: relative; isolation: isolate;
   min-height: 100dvh;
+  padding: var(--safe-top) var(--safe-right) var(--safe-bottom) var(--safe-left);
   display: grid;
   grid-template-columns: 1fr;
   background: var(--gradient-page), var(--color-surface);

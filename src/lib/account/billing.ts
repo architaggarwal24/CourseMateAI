@@ -1,5 +1,6 @@
 // Subscriptions (server/billing.ts; docs/payments.md): Razorpay Checkout, or the test stub.
 import { api } from "@/lib/api/client";
+import { idempotencyKey } from "@/lib/api/idempotency";
 import type { components } from "@/lib/api/generated/schema";
 
 export type BillingStatus = components["schemas"]["BillingStatus"];
@@ -13,7 +14,9 @@ export async function fetchBilling(): Promise<BillingStatus> {
 }
 
 export async function startCheckout(tier: string, period: Period): Promise<Checkout> {
-  const { data } = await api.POST("/billing/checkout", { body: { tier, period } });
+  const once = idempotencyKey("billing-checkout", { tier, period });
+  const { data } = await api.POST("/billing/checkout", { body: { tier, period }, headers: once.headers });
+  once.done();
   return data as Checkout;
 }
 

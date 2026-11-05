@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import { useHUDStore } from "@/hooks/useHUD";
 import { useReview } from "@/hooks/useReview";
+import { useRevalidate } from "@/hooks/useRevalidate";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import ThemeScope from "@/components/ThemeScope";
@@ -30,15 +31,12 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // The review queue's due count (the Study badge): once signed in, and again whenever the window gets focus.
+  // The review queue's due count (the Study badge): once signed in, and again when the user comes back to the tab or
+  // the network comes back (the badge stays as it was meanwhile).
   const signedIn = !!user;
-  useEffect(() => {
-    if (!signedIn) return;
-    const load = () => { void useReview.getState().load(); };
-    load();
-    window.addEventListener("focus", load);
-    return () => window.removeEventListener("focus", load);
-  }, [signedIn]);
+  const loadReview = () => { void useReview.getState().load(); };
+  useEffect(() => { if (signedIn) loadReview(); }, [signedIn]);
+  useRevalidate(loadReview, signedIn);
 
   return (
     <ThemeScope theme={play ? "play" : "study"}>

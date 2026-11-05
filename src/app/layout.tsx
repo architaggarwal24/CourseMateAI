@@ -19,6 +19,8 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   themeColor: "#101117",
   colorScheme: "dark",
+  // Draw under the notch and home bar (with statusBarStyle "black-translucent"); edges pad by --safe-* (globals.css).
+  viewportFit: "cover",
 };
 
 const appearanceScript = `(function(){try{var p=JSON.parse(localStorage.getItem('cmai_appearance')||'{}');if(p.fontSize==='large')document.documentElement.classList.add('text-lg-mode');if(p.reduceAnimations)document.documentElement.classList.add('reduce-animations');}catch(e){try{localStorage.removeItem('cmai_appearance');}catch(e2){}}})();`;

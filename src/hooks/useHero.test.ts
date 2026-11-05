@@ -139,7 +139,9 @@ describe("buying (the Done-when: coins, inventory and avatar preview update with
     const bought = useHeroStore.getState().purchase(hat);
 
     // Hold the re-read back: everything below must already be true without it.
-    await vi.waitFor(() => expect(api.POST).toHaveBeenCalledWith("/shop/purchase", { body: { item_id: "hat_new" } }));
+    await vi.waitFor(() => expect(api.POST).toHaveBeenCalledWith("/shop/purchase", {
+      body: { item_id: "hat_new" }, headers: { "Idempotency-Key": expect.any(String) },  // a retry would reuse it
+    }));
     await bought;
     const { shop, previewId } = useHeroStore.getState();
     expect(useHUDStore.getState().coins).toBe(50);                                   // header coins

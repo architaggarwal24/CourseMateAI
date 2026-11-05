@@ -52,6 +52,15 @@
   --animate-border-spin: border-spin 4s linear infinite;
 }
 
+/* The notch, rounded corners and home bar (the page runs under them: viewport-fit=cover in app/layout.tsx). Edges
+ * that touch the screen's edge pad by these; 0 on screens without them. */
+:root {
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-right: env(safe-area-inset-right, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-left: env(safe-area-inset-left, 0px);
+}
+
 @layer base {
   *,
   ::after,
@@ -72,6 +81,13 @@
   }
   h1, h2, h3 {
     letter-spacing: var(--heading-tracking);
+  }
+  /* Headings break into even lines; running text avoids a single word on its last line. */
+  h1, h2, h3, h4 {
+    text-wrap: balance;
+  }
+  p, li, figcaption, blockquote {
+    text-wrap: pretty;
   }
   button:not(:disabled),
   [role="button"]:not([aria-disabled="true"]),
@@ -206,7 +222,20 @@
     animation-duration: 2s !important;
     animation-iteration-count: infinite !important;
   }
+  /* A skeleton still waits 300 ms before it shows (a delay, not motion: no shimmer). */
+  .ui-skeleton { animation-delay: 300ms !important; }
 }
+
+/* Full-page loads (signing in or out, a typed URL, a reload) cross-fade instead of flashing white, in under 300 ms.
+ * In-app page changes are client-side and use the (app) template's own short fade. Only when motion is allowed. */
+@media (prefers-reduced-motion: no-preference) {
+  @view-transition { navigation: auto; }
+  ::view-transition-group(root) { animation-duration: 200ms; }
+  ::view-transition-old(root), ::view-transition-new(root) { animation-duration: 200ms; animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1); }
+}
+html.reduce-animations::view-transition-group(*),
+html.reduce-animations::view-transition-old(*),
+html.reduce-animations::view-transition-new(*) { animation: none; }
 
 /* ── Markdown styling for notes ─────────────────────────────────────────────── */
 .notes-canvas {
@@ -313,6 +342,7 @@ html.reduce-animations .ui-spinner {
   animation-duration: 2s !important;
   animation-iteration-count: infinite !important;
 }
+html.reduce-animations .ui-skeleton { animation-delay: 300ms !important; }
 html.reduce-animations .loading-dot {
   animation-duration: 0.8s !important;
   animation-iteration-count: infinite !important;
@@ -333,7 +363,7 @@ html.reduce-animations .loading-dot {
 .loading-dot:nth-child(3) { animation-delay: 0.4s; }
 
 /* The offline page of the installed app (app/offline/page.tsx) */
-.offline { min-height: 100dvh; display: grid; place-items: center; padding: var(--space-6); background: var(--color-surface); }
+.offline { min-height: 100dvh; display: grid; place-items: center; padding: calc(var(--space-6) + var(--safe-top)) calc(var(--space-6) + var(--safe-right)) calc(var(--space-6) + var(--safe-bottom)) calc(var(--space-6) + var(--safe-left)); background: var(--color-surface); }
 .offline__card { max-width: 26rem; display: grid; justify-items: center; gap: var(--space-3); text-align: center; color: var(--color-text-secondary); }
 .offline__card h1 { margin: 0; font-size: 1.4rem; font-weight: 700; color: var(--color-text); }
 .offline__card p { margin: 0; line-height: 1.5; }

@@ -6,6 +6,7 @@ import { Button, EmptyState, Input, Tabs } from "@/components/ui";
 import { loadMetadata, loadSession, deleteSession } from "@/lib/sessions";
 import { SessionMeta } from "@/types";
 import { MODE_META, formatWhen, modeMeta } from "./history/sessionMeta";
+import { undoable } from "@/lib/undo";
 
 type AnyMode = "chat" | "quiz" | "flashcards" | "notes";
 
@@ -32,7 +33,7 @@ export default function HistoryView({ onNavigate }: HistoryViewProps) {
   const [tab, setTab] = useState<ViewTab>("all");
   const [sessions, setSessions] = useState<[string, SessionMeta & { title?: string }][]>([]);
   const [search, setSearch] = useState("");
-  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [hidden, setHidden] = useState<ReadonlySet<string>>(new Set());     // deleted, inside the undo window
 
   const reload = useCallback(() => {
     const meta = loadMetadata();
@@ -43,20 +44,24 @@ export default function HistoryView({ onNavigate }: HistoryViewProps) {
 
   useEffect(() => { reload(); }, [reload]);
 
-  const filtered = sessions.filter(([, m]) => {
+  const visible = sessions.filter(([id]) => !hidden.has(id));
+  const filtered = visible.filter(([, m]) => {
     const typeMatch = tab === "all" || m.type === tab;
     const q = search.toLowerCase();
     const textMatch = !q || (m.preview || "").toLowerCase().includes(q) || (m.title || "").toLowerCase().includes(q);
     return typeMatch && textMatch;
   });
 
+  const toggleHidden = (id: string, on: boolean) =>
+    setHidden((h) => { const next = new Set(h); if (on) next.add(id); else next.delete(id); return next; });
+  // Gone at once, with Undo; removed from storage when the undo window closes.
   const handleDelete = (id: string) => {
-    setDeletingId(id);
-    setTimeout(() => {
-      deleteSession(id);
-      reload();
-      setDeletingId(null);
-    }, 200);
+    toggleHidden(id, true);
+    undoable({
+      message: "Session deleted",
+      undo: () => toggleHidden(id, false),
+      commit: async () => { deleteSession(id); reload(); toggleHidden(id, false); },
+    });
   };
 
   const handleOpen = (id: string, type: string) => {
@@ -69,7 +74,7 @@ export default function HistoryView({ onNavigate }: HistoryViewProps) {
         <div className="mx-auto w-full max-w-[72ch] space-y-3">
           <div className="flex items-baseline justify-between gap-3">
             <h2 className="text-lg font-semibold text-fg">Session history</h2>
-            <span className="text-xs text-fg-muted">{sessions.length} {sessions.length === 1 ? "session" : "sessions"}</span>
+            <span className="text-xs text-fg-muted">{visible.length} {visible.length === 1 ? "session" : "sessions"}</span>
           </div>
           <Input
             aria-label="Search sessions"
@@ -92,7 +97,7 @@ export default function HistoryView({ onNavigate }: HistoryViewProps) {
             onChange={(id) => setTab(id as ViewTab)}
             tabs={TABS.map((t) => ({
               id: t,
-              label: t === "all" ? "All" : `${MODE_META[t].label} ${sessions.filter(([, m]) => m.type === t).length}`,
+              label: t === "all" ? "All" : `${MODE_META[t].label} ${visible.filter(([, m]) => m.type === t).length}`,
             }))}
           />
         </div>
@@ -113,7 +118,7 @@ export default function HistoryView({ onNavigate }: HistoryViewProps) {
                 const msgCount = getMessageCount(id, meta.type);
                 const when = formatWhen(meta.updated);
                 return (
-                  <li key={id} className={`review-item !p-0 group relative transition-[opacity,transform] duration-300 hover:-translate-y-0.5 ${deletingId === id ? "opacity-30" : ""}`}>
+                  <li key={id} className={`review-item !p-0 group relative transition-[opacity,transform] duration-300 hover:-translate-y-0.5`}>
                     <button type="button" onClick={() => handleOpen(id, meta.type)}
                             className="flex w-full items-start gap-4 rounded-[var(--radius-lg)] px-4 py-3 pr-24 text-left">
                       <span className="ws-doc__icon mt-0.5">
@@ -146,10 +151,10 @@ export default function HistoryView({ onNavigate }: HistoryViewProps) {
         </div>
       </div>
 
-      {sessions.length > 0 && (
+      {visible.length > 0 && (
         <div className="ws-bar !mb-0">
           <div className="mx-auto flex w-full max-w-[72ch] items-center justify-between">
-            <span className="text-xs text-fg-muted">{filtered.length} of {sessions.length} sessions</span>
+            <span className="text-xs text-fg-muted">{filtered.length} of {visible.length} sessions</span>
             <Button size="sm" variant="ghost" onClick={reload}><RotateCcw size={12} aria-hidden="true" />Refresh</Button>
           </div>
         </div>

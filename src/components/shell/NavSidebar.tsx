@@ -11,13 +11,15 @@ import { dueBadge, useReview } from "@/hooks/useReview";
 import { NAV_ITEMS } from "./nav-items";
 import ReviewBadge from "./ReviewBadge";
 import { openCommandPalette } from "./CommandPalette";
+import { useShortcutLabel } from "@/hooks/useShortcutLabel";
 
 /**
- * Desktop: a frosted rail down the left. Brand, a "Go to…" search (⌘K), the three areas (the active one rides a lit
+ * Desktop: a frosted rail down the left. Brand, a "Go to…" search (⌘K on a Mac, Ctrl+K elsewhere), the three areas (the active one rides a lit
  * sliding pill, the pointer casts a soft light over the rail; Study carries the review queue's due count), the
  * signed-in user pinned at the bottom. Hidden below md.
  */
 export default function NavSidebar() {
+  const paletteKey = useShortcutLabel(["mod", "K"]);
   const area = areaOf(usePathname());
   const pointer = usePointerVars<HTMLElement>();
   const due = useReview((s) => dueBadge(s.stats));
@@ -38,7 +40,7 @@ export default function NavSidebar() {
       <button type="button" className="side__search" onClick={openCommandPalette}>
         <Search size={15} aria-hidden="true" />
         <span>Go to…</span>
-        <kbd className="kbd">⌘K</kbd>
+        <kbd className="kbd">{paletteKey}</kbd>
       </button>
 
       <nav aria-label="Main" className="side__nav">

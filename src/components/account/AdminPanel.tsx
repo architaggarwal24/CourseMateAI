@@ -301,7 +301,7 @@ function AiSpend() {
     <Card title={<span className="inline-flex items-center gap-2"><Sparkles size={16} aria-hidden="true" />AI spend</span>} className="settings-section">
       {!report ? <Skeleton className="h-16" /> : (
         <div className="space-y-4">
-          <p className="text-sm text-fg">
+          <p className="text-sm text-fg tabular-nums">
             Today: <b>{usd(report.today_usd)}</b> of a {usd(report.cap_usd)} cap
             {" · "}last {report.days} days: <b>{usd(report.total_usd)}</b>
             {report.capped && <> {" "}<Badge tone="warning">Cap reached: everyone is on Workers AI until midnight UTC</Badge></>}
@@ -318,7 +318,7 @@ function AiSpend() {
           {report.models.length > 0 && (
             <ul className="divide-y divide-line list-none p-0 m-0" aria-label="Cost per model">
               {report.models.map((m) => (
-                <li key={`${m.provider}:${m.model}`} className="flex flex-wrap items-center gap-3 py-2 text-sm">
+                <li key={`${m.provider}:${m.model}`} className="flex flex-wrap items-center gap-3 py-2 text-sm tabular-nums">
                   <span className="font-mono text-fg min-w-0 flex-1 truncate">{m.provider}:{m.model}</span>
                   <span className="text-fg-muted">{m.calls} calls · {(m.tokens_in + m.tokens_out).toLocaleString("en-IN")} tokens</span>
                   <span className="text-fg">{usd(m.cost_usd)}</span>

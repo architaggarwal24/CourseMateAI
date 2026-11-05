@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { Check, CreditCard, FileText, KeyRound, Sparkles, Ticket, Trash2 } from "lucide-react";
 import { Badge, Button, Card, Input, Modal, Skeleton, toast } from "@/components/ui";
+import { undoable } from "@/lib/undo";
 import { ApiError } from "@/lib/api";
 import { useDocuments, useSessionStore } from "@/hooks/useSessions";
 import {
@@ -279,42 +280,41 @@ function RedeemBox({ onRedeemed }: { onRedeemed: (u: Usage) => void }) {
 function DocumentsBox({ allowed, onChanged }: { allowed: number; onChanged: () => void }) {
   const { list } = useDocuments();
   const refreshDocument = useSessionStore((s) => s.refreshDocument);
-  const [confirm, setConfirm] = useState<{ id: string; name: string } | null>(null);
-  const [busy, setBusy] = useState(false);
-  const remove = async () => {
-    if (!confirm) return;
-    setBusy(true);
-    try {
-      await deleteDocument(confirm.id);
-      await refreshDocument(confirm.id).catch(() => null);             // gone on the server: gone here too
-      toast.success(`${confirm.name} deleted`);
-      setConfirm(null);
-      onChanged();
-    } catch (e) {
-      toast.apiError(e);
-    } finally {
-      setBusy(false);
-    }
+  // Deleted here but still inside their undo window: hidden at once, sent when the window closes.
+  const [hidden, setHidden] = useState<ReadonlySet<string>>(new Set());
+  const shown = list.filter((d) => !hidden.has(d.id));
+  const show = (id: string, on: boolean) => setHidden((h) => {
+    const next = new Set(h);
+    if (on) next.delete(id); else next.add(id);
+    return next;
+  });
+  const remove = (id: string, name: string) => {
+    show(id, false);
+    undoable({
+      message: `${name} deleted`,
+      undo: () => show(id, true),
+      commit: async () => {
+        await deleteDocument(id);
+        await refreshDocument(id).catch(() => null);                   // gone on the server: gone here too
+        show(id, true);                                                 // (the list no longer has it)
+        onChanged();
+      },
+    });
   };
   return (
     <section className="pu-box" aria-labelledby="pu-docs-title">
-      <h2 id="pu-docs-title" className="pu-h2"><FileText size={16} aria-hidden="true" />Your documents <span className="pu-count">{list.length} of {allowed}</span></h2>
-      {list.length === 0 ? <p className="pu-box__text">No documents yet.</p> : (
+      <h2 id="pu-docs-title" className="pu-h2"><FileText size={16} aria-hidden="true" />Your documents <span className="pu-count">{shown.length} of {allowed}</span></h2>
+      {shown.length === 0 ? <p className="pu-box__text">No documents yet.</p> : (
         <ul className="pu-docs">
-          {list.map((d) => (
+          {shown.map((d) => (
             <li key={d.id}>
               <span className="pu-docs__name" title={d.filename}>{d.filename}</span>
-              <Button size="sm" icon variant="ghost" onClick={() => setConfirm({ id: d.id, name: d.filename })}
-                      aria-label={`Delete ${d.filename}`} title="Delete"><Trash2 size={15} /></Button>
+              <Button size="sm" icon variant="ghost" onClick={() => remove(d.id, d.filename)}
+                      aria-label={`Delete ${d.filename}`} title="Delete (you can undo it for a few seconds)"><Trash2 size={15} /></Button>
             </li>
           ))}
         </ul>
       )}
-      <Modal open={!!confirm} onClose={() => setConfirm(null)} title="Delete this document?"
-             actions={<><Button onClick={() => setConfirm(null)}>Keep it</Button>
-                       <Button variant="danger" loading={busy} onClick={() => void remove()}>Delete</Button></>}>
-        <p className="m-0 text-fg-2"><b>{confirm?.name}</b> is removed with its index, and it leaves its courses. You can upload it again later.</p>
-      </Modal>
     </section>
   );
 }

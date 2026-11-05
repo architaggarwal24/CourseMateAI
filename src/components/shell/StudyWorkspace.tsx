@@ -10,6 +10,7 @@ import { useDocumentUpload } from "@/hooks/useDocumentUpload";
 import { useDocuments, useSessionStore } from "@/hooks/useSessions";
 import { dueBadge, useReview } from "@/hooks/useReview";
 import { courseById, useCourses } from "@/hooks/useCourses";
+import { useRevalidate } from "@/hooks/useRevalidate";
 import type { Course } from "@/lib/study/courses";
 import LibraryMenu from "@/components/course/LibraryMenu";
 import "@/components/course/course.css";
@@ -84,23 +85,21 @@ export default function StudyWorkspace() {
     }
   }, [loaded, documentId, requestedDocId, tab, restoreSessionId, router]);
 
-  // Ask the server again whether the document is still there: on opening a tab, when the window is focused again
-  // and when a request fails because its document is gone. (A document that vanished is dropped from the list.)
+  // Ask the server again whether the document is still there: on opening a tab, when the user comes back to the
+  // tab, when the network comes back, and when a request fails because its document is gone. (A document that
+  // vanished is dropped from the list.)
+  const canRecheck = loaded && !!documentId && !!documents[documentId];
+  const recheckDocument = () => {
+    if (documentId) refreshDocument(documentId).catch(() => { /* offline: keep what we know */ });
+  };
   useEffect(() => {
-    if (!loaded || !documentId || !documents[documentId]) return;
-    const recheck = () => { refreshDocument(documentId).catch(() => { /* offline: keep what we know */ }); };
-    const onVisible = () => { if (document.visibilityState === "visible") recheck(); };
-    recheck();
-    window.addEventListener("focus", recheck);
-    window.addEventListener(DOCUMENT_GONE_EVENT, recheck);
-    document.addEventListener("visibilitychange", onVisible);
-    return () => {
-      window.removeEventListener("focus", recheck);
-      window.removeEventListener(DOCUMENT_GONE_EVENT, recheck);
-      document.removeEventListener("visibilitychange", onVisible);
-    };
+    if (!canRecheck) return;
+    recheckDocument();
+    window.addEventListener(DOCUMENT_GONE_EVENT, recheckDocument);
+    return () => window.removeEventListener(DOCUMENT_GONE_EVENT, recheckDocument);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loaded, documentId, tab, !!doc, refreshDocument]);
+  useRevalidate(recheckDocument, canRecheck);
 
   const due = useReview((s) => dueBadge(s.stats));
   const items = (course ? COURSE_TABS : DOCUMENT_TABS).map((t) => ({

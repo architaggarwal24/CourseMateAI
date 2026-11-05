@@ -5,13 +5,16 @@ import { useRouter } from "next/navigation";
 import { Command } from "cmdk";
 import { Dialog } from "radix-ui";
 import {
-  Backpack, BookOpen, Brain, CornerDownLeft, FileText, GraduationCap, History, Layers, MessageSquare, ScrollText,
-  Repeat, Search, Settings, ShoppingBag, Swords, Trophy, User, UserCircle,
+  Backpack, BookOpen, Brain, CornerDownLeft, FileText, Gauge, GraduationCap, History, Layers, LogOut, MessageSquare,
+  Network, ScrollText, Repeat, Search, Settings, Shield, ShieldCheck, ShoppingBag, Swords, Trophy, User, UserCircle,
 } from "lucide-react";
 import ThemeScope from "@/components/ThemeScope";
+import { useAuth } from "@/contexts/AuthContext";
+import { useShortcutLabel } from "@/hooks/useShortcutLabel";
 import { ROUTES } from "@/lib/routes";
 
-interface Entry { id: string; label: string; hint?: string; href: string; icon: ReactNode; keywords?: string[] }
+/** A page to go to (`href`), or an action to run (`run`). */
+interface Entry { id: string; label: string; hint?: string; href?: string; run?: "logout"; icon: ReactNode; keywords?: string[]; adminOnly?: boolean }
 
 const GROUPS: { heading: string; items: Entry[] }[] = [
   {
@@ -21,6 +24,7 @@ const GROUPS: { heading: string; items: Entry[] }[] = [
       { id: "quiz", label: "Generate a quiz", href: ROUTES.studyTab("quiz"), icon: <Brain size={16} />, keywords: ["mcq", "test"] },
       { id: "notes", label: "Study notes", href: ROUTES.studyTab("notes"), icon: <FileText size={16} /> },
       { id: "flashcards", label: "Flashcards", href: ROUTES.studyTab("flashcards"), icon: <Layers size={16} />, keywords: ["cards"] },
+      { id: "map", label: "Concept map", hint: "How the ideas connect", href: ROUTES.studyTab("map"), icon: <Network size={16} />, keywords: ["graph", "constellation", "mastery"] },
       { id: "review", label: "Daily review", hint: "Spaced repetition", href: ROUTES.studyTab("review"), icon: <Repeat size={16} />, keywords: ["review", "due", "srs", "spaced", "repetition", "mistakes"] },
       { id: "exam", label: "Mock exam", hint: "Timed test", href: ROUTES.studyTab("exam"), icon: <GraduationCap size={16} />, keywords: ["exam", "test", "mock", "timed", "report"] },
     ],
@@ -41,7 +45,16 @@ const GROUPS: { heading: string; items: Entry[] }[] = [
     items: [
       { id: "profile", label: "Profile", href: ROUTES.account, icon: <UserCircle size={16} /> },
       { id: "history", label: "History", href: ROUTES.accountHistory, icon: <History size={16} /> },
-      { id: "settings", label: "Settings", hint: "API key, appearance", href: ROUTES.accountSettings, icon: <Settings size={16} />, keywords: ["key", "provider", "theme"] },
+      { id: "usage", label: "Plan & usage", hint: "Limits, upgrade, documents", href: ROUTES.accountUsage, icon: <Gauge size={16} />, keywords: ["plan", "upgrade", "billing", "subscription", "invite", "limit"] },
+      { id: "settings", label: "Settings", hint: "Appearance, app", href: ROUTES.accountSettings, icon: <Settings size={16} />, keywords: ["theme", "font", "animations", "install"] },
+      { id: "security", label: "Security", hint: "Password, two-step", href: ROUTES.accountSecurity, icon: <ShieldCheck size={16} />, keywords: ["password", "2fa", "two-factor", "email"] },
+      { id: "admin", label: "Admin", hint: "Accounts, plans, AI spend", href: ROUTES.accountAdmin, icon: <Shield size={16} />, keywords: ["users", "invite", "ban", "cap"], adminOnly: true },
+    ],
+  },
+  {
+    heading: "Actions",
+    items: [
+      { id: "logout", label: "Log out", run: "logout", icon: <LogOut size={16} />, keywords: ["log out", "logout", "exit"] },
     ],
   },
 ];
@@ -55,7 +68,10 @@ export const openCommandPalette = () => window.dispatchEvent(new Event("cmai:com
  */
 export default function CommandPalette() {
   const router = useRouter();
+  const { user, logout } = useAuth();
   const [open, setOpen] = useState(false);
+  const toggleLabel = useShortcutLabel(["mod", "K"]);
+  const isAdmin = !!(user as { is_admin?: boolean } | null)?.is_admin;
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -73,6 +89,11 @@ export default function CommandPalette() {
   }, []);
 
   const go = (href: string) => { setOpen(false); router.push(href); };
+  const choose = (it: Entry) => {
+    if (it.href) { go(it.href); return; }
+    setOpen(false);
+    if (it.run === "logout") void logout();                             // (the same as the account menu's Log out)
+  };
 
   return (
     <Dialog.Root open={open} onOpenChange={setOpen}>
@@ -91,8 +112,8 @@ export default function CommandPalette() {
                 <Command.Empty className="cmdk-empty">Nothing matches that.</Command.Empty>
                 {GROUPS.map((g) => (
                   <Command.Group key={g.heading} heading={g.heading} className="cmdk-group">
-                    {g.items.map((it) => (
-                      <Command.Item key={it.id} value={`${it.label} ${g.heading}`} keywords={it.keywords} onSelect={() => go(it.href)} className="cmdk-item">
+                    {g.items.filter((it) => !it.adminOnly || isAdmin).map((it) => (
+                      <Command.Item key={it.id} value={`${it.label} ${g.heading}`} keywords={it.keywords} onSelect={() => choose(it)} className="cmdk-item">
                         <span className="cmdk-item__icon" aria-hidden="true">{it.icon}</span>
                         <span className="cmdk-item__label">{it.label}</span>
                         {it.hint && <span className="cmdk-item__hint">{it.hint}</span>}
@@ -105,6 +126,7 @@ export default function CommandPalette() {
               <div className="cmdk-foot" aria-hidden="true">
                 <span><kbd className="kbd">↑</kbd><kbd className="kbd">↓</kbd> move</span>
                 <span><kbd className="kbd">↵</kbd> open</span>
+                <span><kbd className="kbd">{toggleLabel}</kbd> open / close</span>
                 <span className="cmdk-foot__brand"><BookOpen size={12} /> CourseMateAI</span>
               </div>
             </Command>
