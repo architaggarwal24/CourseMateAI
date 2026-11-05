@@ -24,6 +24,10 @@
 			"service": "coursemateai"
 		}
 	],
+	// ...
+	"vars": {
+	"OWNER_EMAIL": "architarwl123@gmail.com"
+	},
 	// The database. `npx wrangler d1 create coursemate --location apac` prints the real id: paste it here.
    "d1_databases": [
      {
