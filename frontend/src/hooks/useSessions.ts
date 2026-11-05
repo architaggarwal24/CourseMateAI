@@ -3,6 +3,7 @@ import { create } from "zustand";
 import { useAuth } from "@/contexts/AuthContext";
 import { fetchDocument, fetchDocuments, uploadPDF, type DocumentInfo } from "@/lib/api";
 import { isInFlight, POLL_INTERVAL_MS, SLOW_POLL_AFTER, SLOW_POLL_INTERVAL_MS } from "@/lib/documents";
+import { sendUpload } from "@/lib/upload";
 
 interface SessionStore {
   // ── Documents: the SERVER is the source of truth (status, filename, expiry). This is only a cache of
@@ -84,8 +85,20 @@ export const useSessionStore = create<SessionStore>()((set, get) => ({
   },
 
   uploadDocument: async (sessionId: string | undefined, file: File) => {
-    const { document } = await uploadPDF(file, sessionId);   // returns at once; indexing runs on the server
-    set({ documents: { ...get().documents, [document.id]: document } });
+    // The browser reads the PDF and the server accepts it (queued); then the file and the pages go up in the
+    // background, each answer moving the document on (reading -> indexing -> ready). Polling covers a reload.
+    const { document, reused, read } = await uploadPDF(file, sessionId);
+    const put = (doc: DocumentInfo) => set({ documents: { ...get().documents, [doc.id]: doc } });
+    put(document);
+    if (!reused) {
+      void sendUpload(document.id, file, read, put).catch((e: unknown) => {
+        const current = get().documents[document.id];
+        if (current && isInFlight(current.status)) {
+          put({ ...current, status: "failed", error: e instanceof Error ? e.message : "The upload stopped. Please try again." });
+          stopDocumentPolling(document.id);
+        }
+      });
+    }
     if (isInFlight(document.status)) startPolling(document.id, get);
     return document;
   },

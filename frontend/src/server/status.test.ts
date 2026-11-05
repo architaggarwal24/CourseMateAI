@@ -19,6 +19,7 @@ describe("systemStatus", () => {
       runtime: "cloudflare",
       database: { ok: true },
       storage: { ok: true },
+      search: { ok: true },
       backend: { configured: true, ok: true },
     });
   });

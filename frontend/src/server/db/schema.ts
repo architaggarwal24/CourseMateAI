@@ -126,3 +126,46 @@ export const apiRateLimits = sqliteTable("api_rate_limits", {
   windowStart: integer("window_start").notNull(),
   count: integer("count").notNull(),
 });
+
+// ── documents and courses (Stage 4.2: src/server/documents.ts, courses.ts). The PDF is in R2 (FILES), each chunk's
+//    text here, its embedding in Vectorize (VECTORS, id "<document id>:<chunk index>"). ───────────────────────────
+export const documents = sqliteTable("documents", {
+  id: text("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => user.id, { onDelete: "cascade" }),
+  filename: text("filename").notNull(),
+  fileHash: text("file_hash").notNull(),
+  sizeBytes: integer("size_bytes").notNull(),
+  pages: integer("pages").notNull(),
+  status: text("status", { enum: ["queued", "reading", "indexing", "ready", "failed"] }).notNull(),
+  error: text("error"),
+  chunks: integer("chunks").notNull().default(0),
+  indexedPages: integer("indexed_pages").notNull().default(0),
+  embeddingModel: text("embedding_model").notNull(),
+  pdfStored: integer("pdf_stored", { mode: "boolean" }).notNull().default(false),
+  createdAt: text("created_at").notNull(),
+  updatedAt: text("updated_at").notNull(),
+  lastUsedAt: text("last_used_at").notNull(),
+}, (t) => [index("documents_user_idx").on(t.userId), index("documents_hash_idx").on(t.fileHash)]);
+
+export const documentChunks = sqliteTable("document_chunks", {
+  documentId: text("document_id").notNull().references(() => documents.id, { onDelete: "cascade" }),
+  idx: integer("idx").notNull(),
+  page: integer("page").notNull(),
+  text: text("text").notNull(),
+}, (t) => [primaryKey({ columns: [t.documentId, t.idx] })]);
+
+export const courses = sqliteTable("courses", {
+  id: text("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => user.id, { onDelete: "cascade" }),
+  name: text("name").notNull(),
+  description: text("description"),
+  createdAt: text("created_at").notNull(),
+  updatedAt: text("updated_at").notNull(),
+}, (t) => [index("courses_user_idx").on(t.userId)]);
+
+export const courseDocuments = sqliteTable("course_documents", {
+  courseId: text("course_id").notNull().references(() => courses.id, { onDelete: "cascade" }),
+  documentId: text("document_id").notNull().references(() => documents.id, { onDelete: "cascade" }),
+  position: integer("position").notNull(),
+  addedAt: text("added_at").notNull(),
+}, (t) => [primaryKey({ columns: [t.courseId, t.documentId] }), index("course_documents_doc_idx").on(t.documentId)]);

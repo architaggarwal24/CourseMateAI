@@ -2,6 +2,8 @@
 import { requireUser } from "@/server/context";
 import { rateLimit, readJson } from "@/server/http";
 import { redeemInvite } from "@/server/invites";
+import { courseCount } from "@/server/courses";
+import { documentCount } from "@/server/documents";
 import { usageSummary } from "@/server/plans";
 import { api } from "@/server/route";
 
@@ -12,5 +14,5 @@ export const POST = api(async (req, ctx) => {
   await rateLimit(ctx.db, `redeem:${u.id}`, 10, 3600);
   const { code } = await readJson<{ code?: string }>(req);
   await redeemInvite(ctx.db, u.id, String(code ?? ""));
-  return usageSummary(ctx.db, { id: u.id, owner: u.owner });
+  return usageSummary(ctx.db, { id: u.id, owner: u.owner }, { documents: await documentCount(ctx, u.id), courses: await courseCount(ctx, u.id) });
 });

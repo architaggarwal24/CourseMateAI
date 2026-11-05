@@ -7,7 +7,9 @@ import { USERNAME_RE, googleEnabled } from "./auth";
 import { verifyPassword } from "./auth/password";
 import { account as accountTable, user as userTable } from "./db/schema";
 import type { CurrentUser, RequestContext } from "./context";
+import { purgeUserFiles } from "./documents";
 import { HttpError } from "./http";
+import { searchDeps } from "./search";
 import { TIER_NAMES, tierFor } from "./plans";
 
 /** A Better Auth refusal in the API's error shape (beside `field` when the UI shows one). */
@@ -135,6 +137,7 @@ export async function deleteAccount(req: Request, ctx: RequestContext, u: Curren
     }
   }
   const out = await ctx.auth.api.signOut({ headers: req.headers, asResponse: true });
+  await purgeUserFiles(ctx, searchDeps(ctx.env), u.id);                 // PDFs (R2) and search vectors too
   await ctx.db.delete(userTable).where(eq(userTable.id, u.id));
   return out.headers;
 }

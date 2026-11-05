@@ -1,6 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { act, cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 
+vi.mock("@/lib/upload", () => ({
+  readPdf: vi.fn(async () => ({ pageCount: 1, pages: [{ page: 1, text: "Cells." }], hash: "a".repeat(64), textChars: 6 })),
+  sendUpload: vi.fn(() => new Promise(() => {})),          // the file and pages: followed here by polling instead
+}));
 vi.mock("@/contexts/AuthContext", () => ({ useAuth: () => ({ user: { user_id: 1 } }) }));
 vi.mock("@/components/ui/Toast", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 

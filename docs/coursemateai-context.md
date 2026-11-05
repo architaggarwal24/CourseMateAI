@@ -437,6 +437,18 @@ Full plan: `docs/deploy-cloudflare.md`.
   - the login page adds Forgot password, two-step and Google;
   - new pages Account → Security (`SecurityPanel`) and Account → Admin (`AdminPanel`).
 
+### Phase 4, Stage 4.2: documents, search and courses on the Worker (5 Nov 2026)
+
+- **The browser reads the PDF** (`src/lib/upload.ts`: pdf.js, each page's text, a SHA-256 fingerprint). Scans with no text are refused there. Then:
+  1. `POST /upload` (JSON) checks the plan's limits (documents, PDF size) and creates the row;
+  2. `PUT /documents/{id}/file` streams the PDF into R2, with the hash checked;
+  3. `POST /documents/{id}/pages`, in batches of 20 pages, chunks the text (`search/chunker.ts`, 1000/200, per page), embeds it (Workers AI bge-small, CLS pooling) and adds it to Vectorize, with the text in D1 `document_chunks`.
+- **Search:** `searchPassages()` (`src/server/search/index.ts`) uses MMR, and in a course every document nearly as good as the best gets a passage. `GET /documents/{id}/search?q=` shows it; the chat uses it from 4.3.
+- **Courses** are ported (`src/server/courses.ts`). A course id works as a document id. Progress returns zeros until mastery, review and exams move over (4.4–4.5).
+- **The page viewer's PDF** comes from R2, with byte ranges (a Sage feature).
+- **Deleting** a document or an account clears R2 and Vectorize too.
+- An upload left unfinished becomes `failed` after 15 minutes.
+
 ---
 
 ## 5. Key file map
@@ -486,6 +498,8 @@ frontend/src/app/api/*           its routes; [...path]/route.ts forwards the res
 frontend/src/server/auth/*       Better Auth (index.ts), password.ts (PBKDF2), mailer.ts; context.ts = per-request auth + current user
 frontend/src/server/{account,admin,plans,invites,http,route}.ts   the account/admin/plan logic; route.ts wraps every route
 frontend/src/lib/auth/*          the browser side (authApi.ts, config.ts); components/auth/*, account/AdminPanel, SecurityPanel
+frontend/src/server/documents.ts, courses.ts, search/*   uploads (R2 + D1 chunks + Vectorize), courses, search (MMR)
+frontend/src/lib/upload.ts       the browser reads the PDF (pdf.js) and sends the file and pages
 docs/arena-v2.md, docs/pixel-sprites.md
 ```
 
@@ -523,6 +537,7 @@ Shop categories (`backend/content/shop.json`): armor (Outfits), headgear (Head P
 - **A new Worker route** uses `api()` (`src/server/route.ts`): the same-site check, the context, errors in the API's shape. Use `requireUser` / `requireAdmin` from `src/server/context.ts`, and `rateLimit()` for anything that changes data.
 - **Ids are integers** (Better Auth `generateId: "serial"`), so later tables can use `INTEGER REFERENCES user(id)`.
 - **Server tests that sign people in** use `src/server/test/auth-helpers.ts`: `Browser`, a cookie jar, and `fakeMailer`, which reads the code. Set them up with `setEnvForTests`, `setMailerForTests` and `vi.stubEnv(SETTINGS)`.
+- **Workers AI and Vectorize can't run locally:** tests use `setSearchForTests({ embedder: fakeEmbedder(), vectors: fakeVectors() })`. Unit tests that upload mock `@/lib/upload` (pdf.js doesn't run in jsdom); `e2e/upload.spec.ts` runs the real reader.
 - **D1 migrations only add** (`migrations.test.ts`). Generate them with `npm run db:generate`; never write them by hand.
 - **Killing `next start` from a shell:** `pkill -f "next start"` can match the shell itself. Stop it by PID (`ps -eo pid,args`, look for `next-server`). The same goes for `wrangler dev` / `workerd`: kill the whole tree by PID (`ps -eo pid,ppid,args`).
 

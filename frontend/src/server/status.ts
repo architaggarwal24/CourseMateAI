@@ -5,12 +5,14 @@ export interface SystemStatus {
   runtime: "cloudflare" | "node";
   database?: PartStatus;
   storage?: PartStatus;
+  /** Search: Workers AI (AI) and Vectorize (VECTORS) bound. */
+  search?: PartStatus;
   /** Accounts: BETTER_AUTH_SECRET set (and OWNER_EMAIL, so there is an admin). */
   accounts?: PartStatus;
   backend: { configured: boolean; ok: boolean };
 }
 
-type Bindings = Pick<CloudflareEnv, "DB" | "FILES">;
+type Bindings = Pick<CloudflareEnv, "DB" | "FILES"> & Partial<Pick<CloudflareEnv, "AI" | "VECTORS">>;
 
 async function checkDatabase(db: D1Database | undefined): Promise<PartStatus> {
   if (!db) return { ok: false, detail: "no D1 binding named DB" };
@@ -47,6 +49,8 @@ export async function systemStatus(
   const database = await checkDatabase(env.DB);
   const storage: PartStatus = env.FILES ? { ok: true } : { ok: false, detail: "no R2 binding named FILES" };
   const accounts = checkAccounts(settings);
+  const search: PartStatus = env.AI && env.VECTORS ? { ok: true }
+    : { ok: false, detail: "bind Workers AI (AI) and the Vectorize index (VECTORS): see docs/deploy-cloudflare.md" };
   // The backend is on its way out, so it doesn't decide whether the Worker is healthy.
-  return { ok: database.ok && storage.ok && accounts.ok, runtime: "cloudflare", database, storage, accounts, backend };
+  return { ok: database.ok && storage.ok && accounts.ok && search.ok, runtime: "cloudflare", database, storage, search, accounts, backend };
 }

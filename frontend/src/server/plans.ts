@@ -4,6 +4,7 @@
 import { eq } from "drizzle-orm";
 import type { Db } from "./db";
 import { userPlans } from "./db/schema";
+import { HttpError } from "./http";
 
 export const TIERS = ["apprentice", "scholar", "sage", "archmage"] as const;
 export type Tier = (typeof TIERS)[number];
@@ -141,4 +142,28 @@ export async function usageSummary(db: Db, who: PlanHolder, used: { ai_calls_day
     resets: { ai_calls_day: nextDay(now), tokens_month: nextMonth(now) },
     history: [] as { day: string; ai_calls: number; tokens: number }[],
   };
+}
+
+function lowestTierWith(key: (typeof LIMIT_KEYS)[number], needed: number): Tier | null {
+  return TIERS.find((t) => limits(t)[key] >= needed) ?? null;
+}
+
+/** The error for a plan limit: 403 (documents, size, courses) or 429 (AI calls, tokens), action "plans". */
+export function planLimit(tier: Tier, key: (typeof LIMIT_KEYS)[number], used: number, allowed: number, message: string,
+  { status = 403, resetsAt }: { status?: number; resetsAt?: string } = {}): HttpError {
+  let up: Tier | null = TIERS.indexOf(tier) < TIERS.length - 1 ? lowestTierWith(key, Math.max(allowed + 1, used + 1)) : null;
+  if (up && TIERS.indexOf(up) <= TIERS.indexOf(tier)) up = TIERS[TIERS.indexOf(tier) + 1] ?? null;
+  const details: Record<string, unknown> = {
+    limit: key, used, allowed, tier, tier_name: TIER_NAMES[tier], upgrade_tier: up, upgrade_tier_name: up ? TIER_NAMES[up] : null,
+  };
+  if (resetsAt) details.resets_at = resetsAt;
+  return new HttpError(status, "plan_limit", message, "plans", details);
+}
+
+/** 403 feature_locked unless the plan has `feature`. */
+export function requireFeature(tier: Tier, feature: Feature): void {
+  if (has(tier, feature)) return;
+  const need = FEATURES[feature];
+  throw new HttpError(403, "feature_locked", `${FEATURE_NAMES[feature]} comes with the ${TIER_NAMES[need]} plan.`, "plans",
+    { feature, tier, required_tier: need, required_tier_name: TIER_NAMES[need] });
 }

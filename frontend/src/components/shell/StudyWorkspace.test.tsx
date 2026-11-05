@@ -2,6 +2,10 @@ import { Suspense, lazy } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 
+vi.mock("@/lib/upload", () => ({
+  readPdf: vi.fn(async () => ({ pageCount: 1, pages: [{ page: 1, text: "Cells." }], hash: "a".repeat(64), textChars: 6 })),
+  sendUpload: vi.fn(() => new Promise(() => {})),
+}));
 vi.mock("@/contexts/AuthContext", () => ({ useAuth: () => ({ user: { user_id: 1 } }) }));
 vi.mock("@/components/ui/Toast", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 
@@ -46,7 +50,7 @@ const gone = () => json(404, { error: { code: "document_not_found", message: "Th
 
 /** The server: `docs` is what it holds (mutable, so a test can delete a document behind the page's back). */
 function server(docs: DocumentInfo[], courses: any[] = []) {
-  const uploads: FormData[] = [];
+  const uploads: { session_id?: string; filename: string }[] = [];
   const spy = vi.fn(async (req: Request) => {
     const { pathname } = new URL(req.url);
     if (pathname === "/api/v1/documents") return json(200, { documents: [...docs] });
@@ -57,10 +61,10 @@ function server(docs: DocumentInfo[], courses: any[] = []) {
                                      documents: course.documents.map((d: { id: string }) => d.id) }));
     }
     if (pathname === "/api/v1/upload") {
-      const form = await req.formData();
-      uploads.push(form);
-      const id = String(form.get("session_id") || "new-id");
-      const created = doc("queued", { id, filename: (form.get("file") as File).name });
+      const body = await req.json();
+      uploads.push(body);
+      const id = String(body.session_id || "new-id");
+      const created = doc("queued", { id, filename: body.filename });
       docs.push(created);
       return json(202, { ok: true, message: "ok", session_id: id, reused: false, document: created });
     }
@@ -140,8 +144,8 @@ describe("Study workspace: the document comes first", () => {
     await open("tab=chat&doc=d1");
     const input = document.querySelector("input[type=file]") as HTMLInputElement;
     await act(async () => { fireEvent.change(input, { target: { files: [new File(["%PDF-1.4"], "v2.pdf", { type: "application/pdf" })] } }); });
-    await vi.waitFor(() => expect(s.uploads).toHaveLength(1));        // the server stub reads the multipart body asynchronously
-    expect(s.uploads[0].get("session_id")).toBe("d1");
+    await vi.waitFor(() => expect(s.uploads).toHaveLength(1));        // the server stub reads the body asynchronously
+    expect(s.uploads[0].session_id).toBe("d1");
     expect(screen.getByRole("banner").textContent).toContain("Indexing");     // the replaced document is being processed
   });
 });
@@ -168,7 +172,7 @@ describe("Study workspace: a document the server no longer has", () => {
     const input = document.querySelector("input[type=file]") as HTMLInputElement;
     await act(async () => { fireEvent.change(input, { target: { files: [new File(["%PDF-1.4"], "lecture.pdf", { type: "application/pdf" })] } }); });
     await vi.waitFor(() => expect(s.uploads).toHaveLength(1));
-    expect(s.uploads[0].get("session_id")).toBe("d1");
+    expect(s.uploads[0].session_id).toBe("d1");
     expect(screen.queryByText("This document is no longer available")).toBeNull();
     expect(screen.getByRole("banner").textContent).toContain("Indexing");
   });

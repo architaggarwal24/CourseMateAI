@@ -6,6 +6,8 @@ declare global {
   type D1Database = CF.D1Database;
   type D1PreparedStatement = CF.D1PreparedStatement;
   type R2Bucket = CF.R2Bucket;
+  type R2ObjectBody = CF.R2ObjectBody;
+  type VectorizeIndex = CF.VectorizeIndex;
   type Ai = CF.Ai;
   type Fetcher = CF.Fetcher;
 }

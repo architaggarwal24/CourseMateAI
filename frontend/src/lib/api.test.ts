@@ -1,3 +1,4 @@
+
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   ApiError,
@@ -12,6 +13,10 @@ import {
   rawApi,
   uploadPDF,
 } from "@/lib/api";
+vi.mock("@/lib/upload", () => ({
+  readPdf: async () => ({ pageCount: 2, pages: [{ page: 1, text: "One" }, { page: 2, text: "Two" }], hash: "f".repeat(64), textChars: 6 }),
+  sendUpload: async () => ({}),
+}));
 
 // Shape of every backend error body (backend/errors.py)
 const body = (code: string, message: string, action: string | null = null, details: object | null = null) => ({
@@ -189,19 +194,17 @@ describe("typed client: URLs, bodies and request behaviour", () => {
     expect(fakeWindow.dispatchEvent).not.toHaveBeenCalled();
   });
 
-  it("uploadPDF posts multipart form data to /api/v1/upload", async () => {
+  it("uploadPDF reads the PDF in the browser, then starts the upload with its pages and fingerprint", async () => {
     const document = { id: "sid", filename: "notes.pdf", file_hash: "h", status: "queued", error: null, chunks: null,
       embedding_model: null, created_at: "t", last_used_at: "t" };
     const spy = mockFetch(202, { ok: true, message: "received", session_id: "sid", reused: false, document });
     const res = await uploadPDF(new File(["%PDF-1.4"], "notes.pdf", { type: "application/pdf" }), "sid");
     const req = spy.mock.calls[0][0];
     expect(new URL(req.url).pathname).toBe("/api/v1/upload");
-    expect(req.headers.get("content-type")).toMatch(/^multipart\/form-data; boundary=/);
-    const form = await req.formData();
-    expect(form.get("session_id")).toBe("sid");
-    expect(await (form.get("file") as Blob).text()).toBe("%PDF-1.4");   // the real file travels in the "file" part
+    expect(await req.json()).toEqual({ filename: "notes.pdf", size: 8, pages: 2, file_hash: "f".repeat(64), session_id: "sid" });
     expect(res.session_id).toBe("sid");
-    expect(res.document.status).toBe("queued");           // answered at once; indexing continues on the server
+    expect(res.read.pages).toHaveLength(2);
+    expect(res.document.status).toBe("queued");
   });
 });
 

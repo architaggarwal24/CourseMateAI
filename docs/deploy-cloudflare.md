@@ -111,6 +111,40 @@ A Google account with the same email as an existing account signs into that acco
 
 They're kept in D1, so every Worker instance shares them.
 
+## Documents and search (Stage 4.2)
+
+PDFs, their text and search all run on Cloudflare:
+
+- **Reading the PDF:** done in the browser (pdf.js). The Worker never parses a PDF, so it fits the free plan's CPU limit.
+- **The file:** kept in R2 (`FILES`) for the page viewer.
+- **The text:** each page is cut into chunks (1000 characters), stored in D1.
+- **Search:** each chunk is embedded by Workers AI (`@cf/baai/bge-small-en-v1.5`) and the vectors go in Vectorize (`VECTORS`).
+
+**One-time setup** (in `frontend\`):
+
+```powershell
+npx wrangler vectorize create coursemate-chunks --dimensions=384 --metric=cosine
+npx wrangler vectorize create-metadata-index coursemate-chunks --property-name=doc --type=string
+```
+
+Create the metadata index before uploading anything: vectors added earlier can't be filtered by document. Also give the GitHub deploy token **Account → Vectorize → Edit** and **Account → Workers AI → Read**.
+
+**Check:** `/api/system/status` shows `search: ok`. Then upload a PDF and try `/api/v1/documents/<id>/search?q=<a question>`, which lists the passages the chat would answer from.
+
+**Running it locally:** Workers AI and Vectorize only run on Cloudflare's network. So `npm run dev` / `cf:preview` can only index and search after `npx wrangler login`. The tests use stand-ins (`src/server/test/search-fakes.ts`).
+
+**Scanned PDFs** (photos of pages, no text layer) are refused before anything is uploaded, with a message saying so.
+
+**Free plan limits:**
+
+| Service | Free allowance | About |
+|---|---|---|
+| Workers AI | 10,000 neurons a day | ~20,000 chunks embedded a day |
+| Vectorize | 5 million stored dimensions | ~13,000 chunks in all, i.e. 10–15 textbooks across every user |
+| Workers Paid | 10 million stored dimensions included, then very cheap | — |
+
+A deleted document frees its share.
+
 ## Auto-deploy from GitHub
 
 1. Cloudflare dashboard → *My Profile* → API Tokens → *Create Token* → template **Edit Cloudflare Workers**. Add the permission *Account → D1 → Edit*, then create it.

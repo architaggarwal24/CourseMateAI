@@ -3,7 +3,8 @@
 //
 // Error handling is shared: failures throw an ApiError (code / message / action / details),
 // a 401 sends the user to /login and a vanished document raises "cmai:document-gone" - see ./api/client.ts.
-import { api, rawApi } from "./api/client";
+import { API_BASE_URL, api, rawApi } from "./api/client";
+import { readPdf, type ReadPdf } from "./upload";
 import type { components } from "./api/generated/schema";
 import { ApiError, parseApiError } from "./api/errors";
 
@@ -37,25 +38,26 @@ function body(result: { data?: unknown }): any {
 }
 
 /**
- * Upload a PDF (with a document id: replace that document). The server answers at once (202) with the document, which is then queued, read and
- * indexed in the background - poll fetchDocument() / use the session store to follow its status.
- * Throws an ApiError with the backend's message on failure.
+ * Start uploading a PDF (with a document id: replace that document). The browser reads the PDF first (pages and
+ * fingerprint, lib/upload.ts); the server checks the plan and answers with the document (queued), or with the
+ * document already there (`reused`). Then `sendUpload` (lib/upload.ts) sends the file and the pages.
+ * Throws an ApiError with the server's message on failure (and "no_text" for a scanned PDF).
  */
-export async function uploadPDF(file: File, sessionId?: string): Promise<UploadResult> {
-  const { data, error, response } = await rawApi.POST("/upload", {
-    // The schema types a file part as string; the serializer below sends the real File.
-    body: { file: file as unknown as string, session_id: sessionId },
-    bodySerializer: () => {
-      const formData = new FormData();
-      formData.append("file", file);
-      if (sessionId) formData.append("session_id", sessionId);   // without one the server picks the document id
-      return formData;
-    },
-  });
-  if (!response.ok) {
-    throw parseApiError(response.status, error, `Upload failed with status ${response.status}`);
+export async function uploadPDF(file: File, sessionId?: string): Promise<UploadResult & { read: ReadPdf }> {
+  const read = await readPdf(file);
+  let res: Response;
+  try {
+    res = await fetch(new Request(`${API_BASE_URL}/upload`, {
+      method: "POST", credentials: "include", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ filename: file.name, size: file.size, pages: read.pageCount, file_hash: read.hash, session_id: sessionId }),
+    }));
+  } catch {
+    throw new ApiError(0, { code: "network", message: "Couldn't reach CourseMate. Check your connection and try again.", action: "retry", details: null });
   }
-  return data!;
+  let body: unknown = null;
+  try { body = await res.json(); } catch { /* not JSON */ }
+  if (!res.ok) throw parseApiError(res.status, body, `Upload failed with status ${res.status}`);
+  return { ...(body as UploadResult), read };
 }
 
 /** All of the logged-in user's documents, most recently used first. */
