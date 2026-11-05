@@ -1,32 +1,33 @@
-# FIX BUG 55: CRITICAL — .env files containing real secrets were committed.
-# These keys must be rotated immediately. Never commit .env files.
-frontend/.env.local
+# Never commit secrets: .env files and the Worker's local settings.
 *.env
 .env.*
 !.env.example
 !.env.local.example
+.dev.vars
 
-# Node
+# Node / Next.js
 node_modules/
 .next/
 out/
 build/
+*.tsbuildinfo
+
+# Cloudflare: the OpenNext build and wrangler's local state (any folder)
+.open-next/
+.wrangler/
+
+# Tests
+test-results/
+playwright-report/
+
+# Local previews and logs
+previews/
+pixel-previews/
+logs/
+backups/
 
 # IDEs
 .vscode/
 .idea/
 *.swp
 *.swo
-
-# Playwright
-frontend/test-results/
-frontend/playwright-report/
-
-logs/
-backups/
-
-# Cloudflare (Phase 4)
-frontend/.open-next/
-.wrangler/
-frontend/.dev.vars
-frontend/previews/

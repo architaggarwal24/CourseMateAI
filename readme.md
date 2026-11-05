@@ -81,17 +81,17 @@ CourseMateAI turns your study documents into an interactive learning experience.
 ## 🗂️ Project Structure
 
 ```
-CourseMateAI/
-├── .github/workflows/ci.yml     # type check, tests, build; pushes to main deploy to Cloudflare
+CourseMateAI/                    # the whole app: Next.js 16 on a Cloudflare Worker (OpenNext)
+├── .github/workflows/ci.yml     # type check, tests; pushes to main deploy to Cloudflare
 ├── docs/                        # deploy-cloudflare.md, payments.md, coursemateai-context.md; archive/ = Python-era notes
-└── frontend/                    # the whole app: Next.js 16 on a Cloudflare Worker (OpenNext)
-    ├── migrations/              # D1 (SQLite) migrations, applied on every deploy
-    ├── wrangler.jsonc           # the Worker and its bindings: D1, R2, Workers AI, Vectorize
-    └── src/
-        ├── app/                 # pages, and the API under app/api/v1/…
-        ├── server/              # the server: accounts, documents + search, AI, study tools, the game, billing
-        ├── components/          # React UI
-        └── lib/                 # client-side API calls, the pixel engine, routes
+├── migrations/                  # D1 (SQLite) migrations, applied on every deploy
+├── wrangler.jsonc               # the Worker and its bindings: D1, R2, Workers AI, Vectorize
+├── e2e/                         # Playwright browser tests (axe, keyboard, 360px)
+└── src/
+    ├── app/                     # pages, and the API under app/api/v1/…
+    ├── server/                  # the server: accounts, documents + search, AI, study tools, the game, billing
+    ├── components/              # React UI
+    └── lib/                     # client-side API calls, the pixel engine, routes
 ```
 
 ---
@@ -101,7 +101,6 @@ CourseMateAI/
 You need **Node.js 22**. Everything else (database, files, search, AI) is Cloudflare, run locally by wrangler.
 
 ```powershell
-cd frontend
 npm ci
 Copy-Item .dev.vars.example .dev.vars   # fill BETTER_AUTH_SECRET (32+ chars) and OWNER_EMAIL
 npm run db:migrate:local
@@ -171,4 +170,4 @@ MIT — do whatever you want, just keep the attribution.
 Built with 🧠 for students who actually want to study.
 </div>
 
-Policy pages: [Terms](frontend/src/app/legal/terms/page.tsx), [Privacy](frontend/src/app/legal/privacy/page.tsx), [Refunds](frontend/src/app/legal/refunds/page.tsx) (served at `/legal/…`).
+Policy pages: [Terms](src/app/legal/terms/page.tsx), [Privacy](src/app/legal/privacy/page.tsx), [Refunds](src/app/legal/refunds/page.tsx) (served at `/legal/…`).

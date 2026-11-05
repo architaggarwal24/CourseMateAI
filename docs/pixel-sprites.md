@@ -1,6 +1,6 @@
 # Pixel arena: sprites, stages and swapping in real art
 
-The arena's fighters, creatures and stages are drawn by code (`frontend/src/lib/pixel`), so the game ships with no
+The arena's fighters, creatures and stages are drawn by code (`src/lib/pixel`), so the game ships with no
 image files. Real sprite sheets you buy or commission can replace any of them, one at a time, with no code changes.
 
 ## How the hand-coded art works
@@ -40,8 +40,8 @@ has one. A sprite sheet listed for a champion (below) replaces its procedural fr
 
 ## Replacing art with sprite sheets
 
-1. Put the PNG in `frontend/public/sprites/`.
-2. List it in `frontend/public/sprites/manifest.json`:
+1. Put the PNG in `public/sprites/`.
+2. List it in `public/sprites/manifest.json`:
 
 ```json
 {

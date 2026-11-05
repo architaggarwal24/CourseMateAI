@@ -1,5 +1,5 @@
-// One-off cleanup: files later stages replaced or removed ("../" paths are at the repo root). Unzipping updates cannot delete files,
-// so run this once from the frontend folder:   node scripts/remove-old-files.mjs
+// One-off cleanup: files later stages replaced or removed. Unzipping updates cannot delete files,
+// so run this once from the repo root:   node scripts/remove-old-files.mjs
 // Safe to run again: missing files are skipped. (PostCSS config is checked and repaired by scripts/doctor.mjs.)
 import { existsSync, rmSync } from "node:fs";
 import { join } from "node:path";
@@ -43,21 +43,24 @@ const OLD = [
   "src/server/config.ts",
   "src/server/config.test.ts",
   "Dockerfile",
-  "../backend",
-  "../deploy",
-  "../docker-compose.yml",
-  "../Makefile",
-  "../setup.md",
-  "../AUDIT_FIXES.md",
-  "../docs/deploy-vps.md",
-  "../docs/deploy-windows.md",
-  "../docs/postgres.md",
-  // After 4.6: old Phase 2 notes at the root (the Python-era docs moved to docs/archive/ with git mv)
-  "../STAGE1_NOTES.md",
-  "../STAGE2_NOTES.md",
-  "../STAGE3_NOTES.md",
-  "../STAGE4_NOTES.md",
-  "../STAGE5_NOTES.md",
+  "backend",
+  "deploy",
+  "docker-compose.yml",
+  "Makefile",
+  "setup.md",
+  "AUDIT_FIXES.md",
+  "docs/deploy-vps.md",
+  "docs/deploy-windows.md",
+  "docs/postgres.md",
+  // After 4.6: old Phase 2 notes (the Python-era docs moved to docs/archive/ with git mv)
+  "STAGE1_NOTES.md",
+  "STAGE2_NOTES.md",
+  "STAGE3_NOTES.md",
+  "STAGE4_NOTES.md",
+  "STAGE5_NOTES.md",
+  // The app moved from frontend/ to the repo root (git mv); what git doesn't track stays behind in frontend/
+  "frontend/.dockerignore",
+  "frontend/tsconfig.tsbuildinfo",
 ];
 
 for (const rel of OLD) {

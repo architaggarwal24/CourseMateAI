@@ -1,4 +1,4 @@
-// Checks (and where it is safe, repairs) a frontend folder after applying the redesign zips.
+// Checks (and where it is safe, repairs) the project folder after applying update zips.
 //   node scripts/doctor.mjs
 // It never deletes anything you wrote; it only rewrites postcss.config.js when that file is the old Tailwind 3 one.
 import { existsSync, readFileSync, writeFileSync, rmSync } from "node:fs";
@@ -10,7 +10,7 @@ const ok = (m) => console.log("  ok      " + m);
 const bad = (m) => { problems++; console.log("  FIX     " + m); };
 const did = (m) => console.log("  fixed   " + m);
 
-console.log("\nCourseMateAI frontend doctor\n");
+console.log("\nCourseMateAI doctor\n");
 
 // 1. package.json is the redesign's one
 const pkg = JSON.parse(readFileSync(join(root, "package.json"), "utf8"));

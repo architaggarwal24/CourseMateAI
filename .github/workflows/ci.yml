@@ -19,9 +19,6 @@ jobs:
     concurrency:
       group: test-${{ github.ref }}
       cancel-in-progress: true
-    defaults:
-      run:
-        working-directory: frontend
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -31,8 +28,8 @@ jobs:
         id: deps
         uses: actions/cache@v4
         with:
-          path: frontend/node_modules
-          key: node-modules-${{ runner.os }}-${{ hashFiles('frontend/package-lock.json') }}
+          path: node_modules
+          key: node-modules-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
       - if: steps.deps.outputs.cache-hit != 'true'
         run: npm ci
       - run: npm run typecheck
@@ -52,9 +49,6 @@ jobs:
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
       WRANGLER_SEND_METRICS: "false"
       NEXT_TELEMETRY_DISABLED: "1"
-    defaults:
-      run:
-        working-directory: frontend
     steps:
       - uses: actions/checkout@v4
       - name: Cloudflare is set up
@@ -73,17 +67,17 @@ jobs:
         id: deps
         uses: actions/cache@v4
         with:
-          path: frontend/node_modules
-          key: node-modules-${{ runner.os }}-${{ hashFiles('frontend/package-lock.json') }}
+          path: node_modules
+          key: node-modules-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
       - if: steps.deps.outputs.cache-hit != 'true'
         run: npm ci
       # Next.js reuses the previous build's work for files that didn't change.
       - name: Restore the Next.js build cache
         uses: actions/cache@v4
         with:
-          path: frontend/.next/cache
-          key: next-${{ runner.os }}-${{ hashFiles('frontend/package-lock.json') }}-${{ github.sha }}
-          restore-keys: next-${{ runner.os }}-${{ hashFiles('frontend/package-lock.json') }}-
+          path: .next/cache
+          key: next-${{ runner.os }}-${{ hashFiles('package-lock.json') }}-${{ github.sha }}
+          restore-keys: next-${{ runner.os }}-${{ hashFiles('package-lock.json') }}-
       # Migrations first: they only ever add, so the version still serving keeps working while the new one uploads.
       - name: Migrate the database
         run: npx wrangler d1 migrations apply DB --remote

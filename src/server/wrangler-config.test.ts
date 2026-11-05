@@ -1,5 +1,5 @@
 /** @vitest-environment node */
-// frontend/wrangler.jsonc names the bindings the code reads (env.DB, env.FILES). `wrangler d1 create` and
+// wrangler.jsonc names the bindings the code reads (env.DB, env.FILES). `wrangler d1 create` and
 // `wrangler r2 bucket create` offer to add entries of their own with other names: those are never used.
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";

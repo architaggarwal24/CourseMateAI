@@ -26,17 +26,17 @@ Pushing to `main` deploys the app, once the tests pass (GitHub Actions, `.github
 ## What you need
 
 - A Cloudflare account. The free plan allows commercial use. **Workers Paid** (about $5 a month) raises the limits and is needed later for Queues and Durable Objects. Check the current prices on cloudflare.com.
-- Node.js 22 and the project's `frontend` folder (`npm ci` done).
+- Node.js 22 and the project folder (`npm ci` done).
 - Your GitHub repository.
 
-## One-time setup (PowerShell, in `frontend\`)
+## One-time setup (PowerShell, in the project folder)
 
 1. **Log in:** `npx wrangler login`. A browser opens; allow it.
 2. **Create the database** in Asia-Pacific:
    ```powershell
    npx wrangler d1 create coursemate --location apac
    ```
-   Copy the printed `database_id` into `frontend\wrangler.jsonc`, replacing the `00000000-…` placeholder. Commit it: it isn't a secret.
+   Copy the printed `database_id` into `wrangler.jsonc`, replacing the `00000000-…` placeholder. Commit it: it isn't a secret.
 3. **Create the file bucket:**
    ```powershell
    npx wrangler r2 bucket create coursemate-files
@@ -118,7 +118,7 @@ PDFs, their text and search all run on Cloudflare:
 - **The text:** each page is cut into chunks (1000 characters), stored in D1.
 - **Search:** each chunk is embedded by Workers AI (`@cf/baai/bge-small-en-v1.5`) and the vectors go in Vectorize (`VECTORS`).
 
-**One-time setup** (in `frontend\`):
+**One-time setup** (in the project folder):
 
 ```powershell
 npx wrangler vectorize create coursemate-chunks --dimensions=384 --metric=cosine
@@ -191,7 +191,7 @@ Quizzes, flashcards, notes, the history, the review queue, exams and the concept
 XP, coins, levels, streaks, daily quests, achievements, the shop, potions, champions, the arena (battles, Nemesis, leaderboards) and Expeditions all run on the Worker. Migrations `0005_game` and `0006_arena` add their tables on deploy. Nothing to set up.
 
 - **A player's day** (streaks, daily quests, daily caps) is their own local date: the browser sends its time zone with every request.
-- **The game's numbers** (prices, rewards, quests, achievements, levels, relics) are in `frontend/src/server/game/content/*.json`. Change a number there, push, and the game changes.
+- **The game's numbers** (prices, rewards, quests, achievements, levels, relics) are in `src/server/game/content/*.json`. Change a number there, push, and the game changes.
 - **Arena questions** come from your strong model in batches of 6. The boss's topic lines come from a small job (Workers AI on most plans). Each batch counts as one AI call on the student's plan.
 
 ## Auto-deploy from GitHub
@@ -224,11 +224,11 @@ The webhook URL is `https://<address>/api/v1/billing/webhook`. Migration `0007_b
 
 ## Policy pages (Stage 4.6)
 
-`/legal/terms`, `/legal/privacy` and `/legal/refunds`, linked from the sign-in page. Razorpay asks for these (plus a contact) when it reviews the site. The operator's name, email and the "last updated" date are in `frontend/src/app/legal/legal.ts`. Read them through before going live: they are a sensible starting point, not legal advice.
+`/legal/terms`, `/legal/privacy` and `/legal/refunds`, linked from the sign-in page. Razorpay asks for these (plus a contact) when it reviews the site. The operator's name, email and the "last updated" date are in `src/app/legal/legal.ts`. Read them through before going live: they are a sensible starting point, not legal advice.
 
 ## Working on it locally
 
-| Command (in `frontend\`) | What it does |
+| Command (in the project folder) | What it does |
 |---|---|
 | `npm run dev` | Next.js dev server; D1 and R2 come from wrangler's local copy (`.wrangler/`) |
 | `npm run db:migrate:local` | migrate that local D1 |
@@ -236,7 +236,7 @@ The webhook URL is `https://<address>/api/v1/billing/webhook`. Migration `0007_b
 | `npm run db:generate` | after changing `src/server/db/schema.ts`, write the next migration into `migrations/` |
 | `npm run cf:typegen` | after changing `wrangler.jsonc`, regenerate `cloudflare-env.d.ts` |
 
-Local settings go in `frontend\.dev.vars` (copy `.dev.vars.example`); it's never committed.
+Local settings go in `.dev.vars` (copy `.dev.vars.example`); it's never committed.
 
 ## Rules for the server code
 

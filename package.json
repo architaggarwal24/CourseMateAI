@@ -1,5 +1,5 @@
 {
-  "name": "coursemateai-frontend",
+  "name": "coursemateai",
   "version": "1.0.0",
   "private": true,
   "scripts": {
@@ -72,7 +72,11 @@
     "wrangler": "4.154.0"
   },
   "allowScripts": {
-    "sharp@0.34.5": true
+    "sharp@0.34.5": true,
+    "esbuild@0.18.20": true,
+    "esbuild@0.25.12": true,
+    "esbuild@0.28.2": true,
+    "workerd@1.20261023.1": true
   },
   "overrides": {
     "katex": "$katex",

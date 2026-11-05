@@ -32,7 +32,7 @@ An AI study companion with an RPG game layer.
   - a **"what to test"** checklist.
 
   Then carry straight on with the next stage.
-- **Deleted files.** Unzipping cannot delete files, so removals go into `frontend/scripts/remove-old-files.mjs`. Tell the owner to run it.
+- **Deleted files.** Unzipping cannot delete files, so removals go into `scripts/remove-old-files.mjs`. Tell the owner to run it.
 - **Ask first.** The owner says "ask me questions": clarify scope with multiple-choice questions before building.
 - **Skills the owner invokes:** `/caveman` (terse chat replies, while code, commits and docs stay normal), `/superpowers-workflow` (brainstorm → plan → TDD → review → finish), `/ui-styling`, `/ui-ux-pro-max`, `/design`, `/design-system`.
 - **Owner's machine.** Windows, PowerShell, project at `C:\Archit\Projects\CourseMateAI`. The backend runs in `backend\.venv`.
@@ -46,7 +46,7 @@ An AI study companion with an RPG game layer.
 
 ## 3. Tech stack (current)
 
-**Frontend (`frontend/`)**
+**Frontend (``)**
 - Core: Next.js **16.4.3** (Turbopack), React **19.3**, TypeScript **5.9**.
 - Styling: Tailwind **4.3**, CSS-first through `@theme inline` in `src/app/globals.css`, with `@tailwindcss/postcss` and `tw-animate-css`.
 - Animation and UI: motion 14.8, GSAP plus @gsap/react, radix-ui, cmdk, class-variance-authority.
@@ -67,16 +67,15 @@ An AI study companion with an RPG game layer.
   - A terminal shows readable one-liners (`LOG_FORMAT=pretty`, the default when stdout is a TTY).
   - Production writes JSON lines with secrets redacted.
 
-**Run locally**
-- Backend: `cd backend; .venv\Scripts\activate; uvicorn main:app --reload --port 8000` (install with `pip install -r requirements-dev.txt`).
-- Frontend: `cd frontend; npm install; npm run dev` (port 3000; `/api/*` is proxied to the backend).
-- If the frontend environment is broken: `node scripts/doctor.mjs`, then the clean install it prints:
+**Run locally** (Phase 4: everything in the project folder; see docs/deploy-cloudflare.md "Working on it locally")
+- `npm ci`, copy `.dev.vars.example` to `.dev.vars`, `npm run db:migrate:local`, `npm run dev` (port 3000).
+- `npm run test:quick` while coding, `npm run check` before pushing, `npm run test:e2e` once per stage.
+- If the environment is broken: `node scripts/doctor.mjs`, then the clean install it prints:
   ```
   Remove-Item -Recurse -Force node_modules, .next; npm install
   ```
-- Docker: `docker-compose.yml` exists (backend, frontend and volumes for data, uploads and the embedding cache).
 - Dev-only pages, served by `next dev` only: `/dev/pixel` (every sprite in every animation, every skin and pet).
-- Static skin previews: `npx jiti scripts/pixel-preview.ts` (HTML contact sheets in `frontend/pixel-previews/`).
+- Static skin previews: `npx jiti scripts/pixel-preview.ts` (HTML contact sheets in `pixel-previews/`).
 
 ---
 
@@ -173,7 +172,7 @@ Choices the owner made:
   - Expected API errors (`session_expired`, `document_not_found` and similar) are no longer `console.warn`ed.
   - The first-question wait shows progress messages and a seconds counter (`ForgingWait`).
 
-**Stage B: the pixel engine (`frontend/src/lib/pixel/`)**
+**Stage B: the pixel engine (`src/lib/pixel/`)**
 
 | File | Purpose |
 |---|---|
@@ -414,7 +413,7 @@ Full plan: `docs/deploy-cloudflare.md`.
 
 ### Phase 4, Stage 4.0: the Cloudflare base (4 Nov 2026)
 
-- `frontend/wrangler.jsonc` (D1 `DB`, R2 `FILES`), `open-next.config.ts`, `drizzle.config.ts`, `migrations/` (D1), `src/server/*` (the TypeScript backend: config, env, errors, proxy, status, db).
+- `wrangler.jsonc` (D1 `DB`, R2 `FILES`), `open-next.config.ts`, `drizzle.config.ts`, `migrations/` (D1), `src/server/*` (the TypeScript backend: config, env, errors, proxy, status, db).
 - `src/app/api/[...path]/route.ts` forwards whatever isn't moved yet to `BACKEND_URL`. This replaces the build-time rewrite: the address is now read at request time. It sends `PROXY_SECRET` and the client IP, which the backend's `middleware/client.py` trusts.
 - `GET /api/system/status` checks the database, storage and backend.
 - The CI `deploy` job (push to `main`): D1 migrations, OpenNext build, deploy.
@@ -513,7 +512,7 @@ backend/
   services/mastery_service.py    per-concept mastery -> Nemesis
   routers/arena.py               /arena/* endpoints
   content/*.json                 shop, relics, rewards, quests, achievements, levels
-frontend/src/
+src/
   lib/pixel/*                    pixel engine (see above)
   core_brains/mechanics.py       the 13 creature signature mechanics (Phase 3 Stage 2)
   core_brains/kits.py            champion passives, ultimates, champion XP / levels / mastery skins
@@ -542,15 +541,15 @@ frontend/src/
 backend/database/pg.py           PostgreSQL adapter (SQLite SQL translated); migrate.py runs migrations/postgres/ for a URL
 backend/scripts/postgres_schema.py, sqlite_to_postgres.py   the PG baseline generator, the data copy
 deploy/windows/*                 PC + Cloudflare Tunnel scripts; deploy/vps/* Docker Compose + Caddy
-frontend/src/server/*            the TypeScript backend (Phase 4): proxy.ts, env.ts (bindings), errors.ts, db/schema.ts
-frontend/src/app/api/*           its routes; [...path]/route.ts forwards the rest to Python; wrangler.jsonc, migrations/
-frontend/src/server/auth/*       Better Auth (index.ts), password.ts (PBKDF2), mailer.ts; context.ts = per-request auth + current user
-frontend/src/server/{account,admin,plans,invites,http,route}.ts   the account/admin/plan logic; route.ts wraps every route
-frontend/src/lib/auth/*          the browser side (authApi.ts, config.ts); components/auth/*, account/AdminPanel, SecurityPanel
-frontend/src/server/documents.ts, courses.ts, search/*   uploads (R2 + D1 chunks + Vectorize), courses, search (MMR)
-frontend/src/lib/upload.ts       the browser reads the PDF (pdf.js) and sends the file and pages
-frontend/src/server/ai/*         models.ts (routes), run.ts (generate/stream + fallbacks), usage.ts (quotas, costs, cap)
-frontend/src/server/chat/*       chat planning (rewrite, retrieval, relevance, citations) and the tutor prompt
+src/server/*            the TypeScript backend (Phase 4): proxy.ts, env.ts (bindings), errors.ts, db/schema.ts
+src/app/api/*           its routes; [...path]/route.ts forwards the rest to Python; wrangler.jsonc, migrations/
+src/server/auth/*       Better Auth (index.ts), password.ts (PBKDF2), mailer.ts; context.ts = per-request auth + current user
+src/server/{account,admin,plans,invites,http,route}.ts   the account/admin/plan logic; route.ts wraps every route
+src/lib/auth/*          the browser side (authApi.ts, config.ts); components/auth/*, account/AdminPanel, SecurityPanel
+src/server/documents.ts, courses.ts, search/*   uploads (R2 + D1 chunks + Vectorize), courses, search (MMR)
+src/lib/upload.ts       the browser reads the PDF (pdf.js) and sends the file and pages
+src/server/ai/*         models.ts (routes), run.ts (generate/stream + fallbacks), usage.ts (quotas, costs, cap)
+src/server/chat/*       chat planning (rewrite, retrieval, relevance, citations) and the tutor prompt
 docs/archive/arena-v2.md, docs/pixel-sprites.md
 ```
 
@@ -810,3 +809,4 @@ Each stage ships a zip of the changed files plus a test checklist. Ready-to-past
 - **AI spend cap:** only the owner changes it (other admins see it, `can_edit: false`; a PUT is 403 `owner_only`). It is never off and never above `AI_DAILY_CAP_MAX_USD` (default $20); an old saved "off" now reads as the ceiling.
 - **Repo:** the Python-era docs moved to `docs/archive/`; `.wrangler/` is ignored at any depth; the old root `STAGE*_NOTES.md` are gone.
 - **Tests:** server tests migrate in one D1 batch; arena keys bind in a layout effect; 30 s test timeout; e2e uses 4 workers locally.
+- **Layout:** the app moved from `frontend/` to the repo root (git mv, history kept). Every command now runs in the project folder; CI has no working directory. `*.tsbuildinfo` is no longer tracked.

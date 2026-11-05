@@ -4,7 +4,7 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
 const SRC = join(__dirname, "../..");
-const ROOT = join(SRC, "../..");
+const ROOT = join(SRC, "..");
 
 function sources(dir: string): string[] {
   return readdirSync(dir).flatMap((name) => {
@@ -30,7 +30,7 @@ describe("the arena is React all the way down", () => {
   it("the legacy arena is gone: no Python backend, no old component, no /static rewrite", () => {
     expect(existsSync(join(ROOT, "backend"))).toBe(false);
     expect(existsSync(join(SRC, "components/ArenaView.tsx"))).toBe(false);
-    expect(readFileSync(join(ROOT, "frontend/next.config.ts"), "utf8")).not.toMatch(/\/static\/:path/);
+    expect(readFileSync(join(ROOT, "next.config.ts"), "utf8")).not.toMatch(/\/static\/:path/);
   });
 
   it("the old client-side battle state is gone from the frontend", () => {

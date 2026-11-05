@@ -1,6 +1,6 @@
 # Plans, quotas and usage (Phase 3, Stage 4a)
 
-> **Note (Stage 4.6):** written for the Python backend, which is gone. The rules still hold; the code is now under `frontend/src/server/`, and settings and admin tasks are in [deploy-cloudflare.md](../deploy-cloudflare.md) and the in-app Admin panel.
+> **Note (Stage 4.6):** written for the Python backend, which is gone. The rules still hold; the code is now under `src/server/`, and settings and admin tasks are in [deploy-cloudflare.md](../deploy-cloudflare.md) and the in-app Admin panel.
 
 Four plans, enforced on the server. Prices are in INR per month; a year costs 10 months.
 
