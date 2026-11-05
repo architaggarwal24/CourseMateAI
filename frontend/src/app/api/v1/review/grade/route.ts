@@ -5,6 +5,8 @@ import { api } from "@/server/route";
 import { record } from "@/server/study/mastery";
 import { needFeature } from "@/server/study/plan";
 import { grade, statsFor } from "@/server/study/review";
+import { onReviewGraded } from "@/server/game/hooks";
+import { playerOf } from "@/server/game/player";
 
 export const dynamic = "force-dynamic";
 
@@ -18,5 +20,7 @@ export const POST = api(async (req, ctx) => {
     reps: b.reps as number | null | undefined, durationMs: b.duration_ms as number | null | undefined,
     mastery: (hash, concept, correct) => record(ctx, u.id, hash, concept, correct, { source: "review" }),
   });
-  return { ok: true, item: out.item, mastery: out.mastery, stats: await statsFor(ctx, u), rewards: null };
+  const stats = await statsFor(ctx, u);
+  const rewards = await onReviewGraded(ctx, await playerOf(req, ctx, u), stats);
+  return { ok: true, item: out.item, mastery: out.mastery, stats: rewards ? await statsFor(ctx, u) : stats, rewards };
 });

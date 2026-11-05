@@ -17,6 +17,9 @@ import { gradeFirst } from "./review";
 import { flashcardSet, mergeQuestions, quizBatch, type QuizQuestion } from "./schemas";
 import { flashcardSystem, notesMessages, quizHuman, quizSystem } from "./prompts";
 import { cleanText, newId, questionKey, sameAnswer, stamp, validateTopic } from "./text";
+import { onFlashcards, onNotes, onQuizFinished, onQuizStarted } from "../game/hooks";
+
+const player = (u: CurrentUser) => ({ id: u.id, tz: u.row.timezone ?? null });
 
 export const QUESTION_TYPES = ["MCQ", "True/False", "Mixed"] as const;
 const BATCH_SIZE = 5;
@@ -121,6 +124,7 @@ export async function createQuiz(ctx: RequestContext, user: CurrentUser, body: B
     id, userId: user.id, sessionId: study.id, topic, questionType: type, questionsJson: JSON.stringify(stored),
     questionCount: stored.length, createdAt: stamp(),
   });
+  await onQuizStarted(ctx, player(user));
   return { mode: "quiz", quiz_id: id, content: { questions: stored.map(publicQuestion) }, sources: found.sources };
 }
 
@@ -169,7 +173,8 @@ export async function finishQuiz(ctx: RequestContext, user: CurrentUser, body: B
   const won = await ctx.db.update(quizzes).set({ finishedAt: stamp(), correctCount: correct, accuracy })
     .where(and(eq(quizzes.id, quiz.id), isNull(quizzes.finishedAt))).returning({ id: quizzes.id }).all();
   if (!won.length) return result(await ownQuiz(ctx, user.id, quiz.id), true);
-  return { ok: true, quiz_id: quiz.id, score: correct, total: quiz.questionCount, accuracy, already_finished: false, rewards: null };
+  const rewards = await onQuizFinished(ctx, player(user), quiz.id, accuracy);
+  return { ok: true, quiz_id: quiz.id, score: correct, total: quiz.questionCount, accuracy, already_finished: false, rewards };
 }
 
 // ── flashcards ───────────────────────────────────────────────────────────────────────────────────────────────
@@ -190,7 +195,7 @@ export async function makeFlashcards(ctx: RequestContext, user: CurrentUser, bod
     await cachePut(ctx, user.id, key, result);
   }
   await logActivity(ctx, user.id, study.id, "flashcards", "generate", { topic });
-  return { ...result, rewards: null };
+  return { ...result, rewards: await onFlashcards(ctx, player(user)) };
 }
 
 /** "I knew it" / "I didn't": counts for the concept; with front and back the card joins the review queue. */
@@ -230,5 +235,5 @@ export async function makeNotes(ctx: RequestContext, user: CurrentUser, body: Bo
     cached = { content: text.trim(), sources: found.sources };
     await cachePut(ctx, user.id, key, cached);
   }
-  return { mode: "notes", content: cached.content, sources: cached.sources, rewards: null };
+  return { mode: "notes", content: cached.content, sources: cached.sources, rewards: await onNotes(ctx, player(user)) };
 }

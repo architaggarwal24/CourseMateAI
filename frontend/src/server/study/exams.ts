@@ -7,7 +7,8 @@
 // The score report is a printable page in the app (Save as PDF), no longer a server-made PDF.
 import { and, count, desc, eq, isNotNull, sql } from "drizzle-orm";
 import type { CurrentUser, RequestContext } from "../context";
-import { conceptMastery, examAnswers, examQuestions, exams } from "../db/schema";
+import { conceptMastery, examAnswers, examQuestions, exams, user as userTable } from "../db/schema";
+import { onExamGraded } from "../game/hooks";
 import { HttpError } from "../http";
 import { requireFeature, tierFor } from "../plans";
 import { studyDocs } from "../documents";
@@ -239,7 +240,8 @@ export function breakdown(qs: { concept: string; difficulty: string; isCorrect: 
            weak_concepts: concepts.filter((c) => c.accuracy < 0.6).map((c) => c.concept as string).slice(0, 5) };
 }
 
-async function grade(ctx: RequestContext, userId: number, r: ExamRow, now: Date, auto: boolean): Promise<boolean> {
+/** Grade once; the reward (when anything was answered) comes with the grading request. */
+async function grade(ctx: RequestContext, userId: number, r: ExamRow, now: Date, auto: boolean): Promise<Awaited<ReturnType<typeof onExamGraded>> | false> {
   const qs = await questions(ctx, r.id);
   for (const q of qs) q.isCorrect = q.answer !== null && sameAnswer(q.answer, q.correctAnswer);
   const score = qs.filter((q) => q.isCorrect).length;
@@ -256,11 +258,13 @@ async function grade(ctx: RequestContext, userId: number, r: ExamRow, now: Date,
       source: "exam", now, question: { question: q.question, correct_answer: q.correctAnswer, explanation: q.explanation },
     });
   }
-  return true;
+  if (!qs.some((q) => q.answer !== null)) return null;
+  const tz = (await ctx.db.select({ tz: userTable.timezone }).from(userTable).where(eq(userTable.id, userId)).get())?.tz ?? null;
+  return onExamGraded(ctx, { id: userId, tz }, r.id, score / Math.max(1, qs.length), r.difficulty);
 }
 
 export async function submitExam(ctx: RequestContext, user: CurrentUser, id: string, now = new Date()) {
   const r = await row(ctx, user.id, id);
-  if (r.status === "active") await grade(ctx, user.id, r, now, overdue(r, now));
-  return { ...(await getExam(ctx, user.id, id, now)), rewards: null };
+  const rewards = r.status === "active" ? await grade(ctx, user.id, r, now, overdue(r, now)) : null;
+  return { ...(await getExam(ctx, user.id, id, now)), rewards: rewards || null };
 }

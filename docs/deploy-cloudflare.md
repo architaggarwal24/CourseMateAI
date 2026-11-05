@@ -15,7 +15,7 @@ Phase 4 moves the whole app onto Cloudflare and removes the Python backend. It h
 Until an area has moved, the Worker forwards its calls to the Python backend.
 
 ```
-browser ── https://coursemate.<you>.workers.dev (or your domain)
+browser ── https://coursemateai.<you>.workers.dev (or your domain)
               │  Cloudflare Worker: the Next.js app (OpenNext) + the routes already moved (src/app/api/…)
               │  bindings: D1 database (DB), R2 bucket (FILES)
               └─ every other /api call ──► BACKEND_URL (the Python backend on your PC, through a Cloudflare Tunnel)
@@ -42,8 +42,8 @@ Pushing to `main` deploys the app, once the tests pass (GitHub Actions, `.github
    npx wrangler r2 bucket create coursemate-files
    ```
 4. **Migrate the database:** `npm run db:migrate:remote`.
-5. **First deploy, by hand:** `npm run cf:deploy`. It prints the address, e.g. `https://coursemate.<you>.workers.dev`.
-6. **Settings:** in the Cloudflare dashboard, open Workers & Pages → `coursemate` → Settings → Variables and Secrets. Add:
+5. **First deploy, by hand:** `npm run cf:deploy`. It prints the address, e.g. `https://coursemateai.<you>.workers.dev`.
+6. **Settings:** in the Cloudflare dashboard, open Workers & Pages → `coursemateai` → Settings → Variables and Secrets. Add:
 
    | Name | Value |
    |---|---|
@@ -60,7 +60,7 @@ Pushing to `main` deploys the app, once the tests pass (GitHub Actions, `.github
 
 Sign-up, sign-in, email codes, two-step sign-in, Google, and the admin page all run on the Worker. They use Better Auth, with the code in `src/server/auth`.
 
-**Settings** (Cloudflare dashboard → `coursemate` → Settings → Variables and Secrets):
+**Settings** (Cloudflare dashboard → `coursemateai` → Settings → Variables and Secrets):
 
 | Name | Needed | What it does |
 |---|---|---|
@@ -75,7 +75,7 @@ Sign-up, sign-in, email codes, two-step sign-in, Google, and the admin page all 
 **Making yourself the owner:**
 1. Set `OWNER_EMAIL`.
 2. Sign up with that email.
-3. Verify the email. Without an email service, the code is in the Worker's log: run `npx wrangler tail` and look for `[coursemate-email]`, or use Workers & Pages → `coursemate` → Logs.
+3. Verify the email. Without an email service, the code is in the Worker's log: run `npx wrangler tail` and look for `[coursemate-email]`, or use Workers & Pages → `coursemateai` → Logs.
 4. **Account → Admin** appears.
 
 Sign up as the owner before anyone else can. Until the email is verified the account isn't the owner, so another person signing up with your address first gets nothing, but it would block your sign-up.
@@ -198,7 +198,9 @@ Quizzes, flashcards, notes, the history, the review queue, exams and the concept
 
 A deploy doesn't cut off people already using the app: requests that are already running finish on the old version.
 
-Don't also connect the repository under Workers Builds in the dashboard, or every push deploys twice.
+Don't also connect the repository under Workers Builds in the dashboard (Worker → Settings → Build): every push would deploy twice, and Workers Builds skips the tests and the D1 migrations. If it is connected, disconnect it there.
+
+**Renaming the Worker:** change `"name"` and the `WORKER_SELF_REFERENCE` `"service"` in `wrangler.jsonc` together, deploy (a new Worker is created), set its Variables and Secrets again (they belong to a Worker), then delete the old Worker. D1 and R2 aren't touched.
 
 ## The Python backend during the move
 
@@ -206,7 +208,7 @@ Your PC runs the backend only; the app itself is the Worker.
 
 1. `backend\.env`:
    - `PROXY_SECRET=<the same value as the Worker's>`
-   - `ALLOWED_ORIGIN=https://coursemate.<you>.workers.dev` (the Worker's address, or your domain once you add one)
+   - `ALLOWED_ORIGIN=https://coursemateai.<you>.workers.dev` (the Worker's address, or your domain once you add one)
    - `COOKIE_SECURE=true`
 2. **A tunnel hostname for the backend**, e.g. `legacy.example.com`:
    ```powershell

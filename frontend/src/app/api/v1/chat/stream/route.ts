@@ -1,7 +1,7 @@
 // The answer as Server-Sent Events: `token` {text} as it is written, then `sources` {mode, sources, citations,
 // blocked, needs_clarification, rewards}; a failure after the first token is an `error` event in the API's error
 // shape. Before the first token, failures are ordinary HTTP errors.
-import { answerMessages, blockedText, finalPayload, logAnswer, planChat } from "@/server/chat";
+import { afterAnswer, answerMessages, blockedText, finalPayload, planChat } from "@/server/chat";
 import { stream } from "@/server/ai/run";
 import { requireUser } from "@/server/context";
 import { rateLimit, readJson } from "@/server/http";
@@ -32,8 +32,7 @@ export const POST = api(async (req, ctx) => {
       try {
         let text = "";
         for await (const piece of answer.pieces) { text += piece; c.enqueue(frame("token", { text: piece })); }
-        c.enqueue(frame("sources", finalPayload(plan)));
-        await logAnswer(ctx, plan, text);
+        c.enqueue(frame("sources", finalPayload(plan, false, await afterAnswer(ctx, plan, text))));
       } catch {
         c.enqueue(frame("error", { error: { code: "ai_request_failed", message: "The answer stopped part-way. Please try again.", action: "retry", details: null } }));
       } finally {

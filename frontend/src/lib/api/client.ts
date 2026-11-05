@@ -41,7 +41,10 @@ const EXPECTED_CODES = new Set([
  * { data, error, response } so the caller decides what a 401 / 4xx means (login form,
  * "am I logged in?" probe, optional data, ...).
  */
-export const rawApi = createClient<V1Paths>({ baseUrl, credentials: "include", fetch: rawFetch });
+// The browser's time zone: the game's "day" (streaks, daily quests, caps) follows the player.
+const timeZone = (() => { try { return Intl.DateTimeFormat().resolvedOptions().timeZone || ""; } catch { return ""; } })();
+
+export const rawApi = createClient<V1Paths>({ baseUrl, credentials: "include", fetch: rawFetch, headers: timeZone ? { "x-timezone": timeZone } : {} });
 
 // ── Guarded client ────────────────────────────────────────────────────────────
 
@@ -104,7 +107,7 @@ async function guardedFetch(request: Request): Promise<Response> {
  * Typed client for app code: resolves with `data`, and on any HTTP error THROWS an ApiError
  * after applying the global behaviour (401 -> /login, a vanished document -> DOCUMENT_GONE_EVENT).
  */
-export const api = createClient<V1Paths>({ baseUrl, credentials: "include", fetch: guardedFetch });
+export const api = createClient<V1Paths>({ baseUrl, credentials: "include", fetch: guardedFetch, headers: timeZone ? { "x-timezone": timeZone } : {} });
 
 /** The global behaviour for a failed response (401 -> /login, a vanished document ...), then throws the ApiError. */
 export { failWith as throwForResponse };

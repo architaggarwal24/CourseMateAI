@@ -36,6 +36,13 @@
       "when": 1793856644228,
       "tag": "0004_study",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "6",
+      "when": 1793859007586,
+      "tag": "0005_game",
+      "breakpoints": true
     }
   ]
 }

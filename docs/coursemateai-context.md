@@ -496,7 +496,7 @@ Full plan: `docs/deploy-cloudflare.md`.
   - The concept map is built inside the POST request, with a lease in D1. `ConceptMapView` polls GET while the POST is open.
 - Providers take `json: true`: Gemini uses `responseMimeType`, OpenAI uses `response_format` `json_object`.
 - Chat logs its question and answer to the history.
-- **Not yet:** `rewards` is null everywhere until 4.5.
+- `rewards` became real in 4.5a.
 
 ---
 
@@ -748,3 +748,22 @@ Each stage ships a zip of the changed files plus a test checklist. Ready-to-past
 - Hugging Face Spaces Docker needs a paid plan: huggingface.co/docs/hub/en/spaces-overview
 - Hetzner 2026 price changes and availability: agentdeals.dev/vendor/hetzner, findstack.com/resources/hetzner-price-increase-2026, bitdoze.com/md/hetzner-cloud-review.md
 - PaaS comparison: findstack.com/resources/railway-vs-render-vs-fly-io
+
+### Phase 4, Stage 4.5a: progression on the Worker (5 Nov 2026)
+
+- **Code:** `src/server/game/*`, with migration `0005_game`. The content files moved to `src/server/game/content/*.json`, loaded by `content.ts`. It covers:
+  - `store.ts`: the reward ledger, daily caps, avatar, inventory, local days;
+  - `progression.ts`: award, streaks, daily quests, achievements, buffs, equipment bonuses;
+  - `items.ts`: ownership;
+  - `shop.ts`, `avatar.ts` (with profile, HUD and achievements), `kits.ts` (the champion progression part), `player.ts`;
+  - `hooks.ts`: what quiz, flashcards, notes, chat, review and exams pay.
+- **Ledger:** `recordRewardEvent` is one D1 batch. The INSERT happens only if funds suffice; the UPDATE is guarded by `changes() = 1`. The unique idempotency key means nothing is paid twice.
+- **Days:** each player's local date. The browser sends `x-timezone` on every API call (`lib/api/client.ts`), and the server stores it on the user when it changes.
+- **Routes:**
+  - `/profile`, `/hud`, `/achievements`;
+  - `/daily-quests`, `/daily-quests/claim`;
+  - `/rewards/award` (always 403);
+  - `/shop`, `/shop/{purchase,equip,unequip}`, `/items/use`;
+  - `/avatar`, `/avatar/update`, `/avatar/champion` (GET, PUT).
+- **Fixed on the way:** Python bumped the flashcards, notes, review and exam quests twice. Now they are bumped once, through `award`.
+- **The Worker is renamed `coursemateai`.** `wrangler-config.test.ts` checks that `WORKER_SELF_REFERENCE` matches the name.

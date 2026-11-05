@@ -1,0 +1,1202 @@
+{
+ "schema_version": 1,
+ "categories": [
+  {
+   "id": "headgear",
+   "unlock_level": 1,
+   "name": "Head Pieces",
+   "icon": "🎩",
+   "description": "Circlets, hoods, helms and crowns for your champion. Some grant Arena time, hints or XP."
+  },
+  {
+   "id": "armor",
+   "unlock_level": 1,
+   "name": "Outfits",
+   "icon": "🛡️",
+   "description": "Outfit colours for your champion. Expensive ones grant XP & coin bonuses and extra hearts."
+  },
+  {
+   "id": "weapon",
+   "unlock_level": 10,
+   "name": "Weapon Finishes",
+   "icon": "⚔️",
+   "description": "New finishes and rarity glows for your champion's own weapon. They add Arena damage."
+  },
+  {
+   "id": "pet",
+   "unlock_level": 20,
+   "name": "Pets",
+   "icon": "🐾",
+   "description": "Pixel companions that idle beside your champion. They strike in the Arena and grant bonuses."
+  },
+  {
+   "id": "potion",
+   "unlock_level": 5,
+   "name": "Potions",
+   "icon": "🧪",
+   "description": "Consumables — Arena heals, XP boosts, streak shields & quest resets"
+  },
+  {
+   "id": "title",
+   "unlock_level": 30,
+   "name": "Titles",
+   "icon": "🏆",
+   "description": "Prestige titles — rare ones grant small stat bonuses"
+  }
+ ],
+ "tiers": [
+  {
+   "id": "armor_fighting_gi",
+   "category": "armor",
+   "unlocks_at_level": 1,
+   "items": [
+    {
+     "id": "armor_gi_white",
+     "type": "armor",
+     "name": "Dojo White",
+     "description": "Your champion's outfit in clean dojo white with a black sash. A fighter's classic. Purely cosmetic.",
+     "price": 0,
+     "sprite": "🥋",
+     "level_required": 1
+    },
+    {
+     "id": "armor_gi_red",
+     "type": "armor",
+     "name": "Crimson Hakama",
+     "description": "Your champion's outfit in deep crimson with a pink sash. Pure power. Purely cosmetic.",
+     "price": 0,
+     "sprite": "🔴",
+     "level_required": 1
+    },
+    {
+     "id": "armor_gi_blue",
+     "type": "armor",
+     "name": "Azure Hakama",
+     "description": "Your champion's outfit in azure blue with a golden sash. Swift and precise. Purely cosmetic.",
+     "price": 0,
+     "sprite": "🔵",
+     "level_required": 1
+    }
+   ]
+  },
+  {
+   "id": "armor_starter",
+   "category": "armor",
+   "unlocks_at_level": 5,
+   "items": [
+    {
+     "id": "armor_shirt_basic",
+     "type": "armor",
+     "name": "Street Grey",
+     "description": "Your champion's outfit in soft street grey with a sky-blue trim. Lowkey, purely cosmetic.",
+     "price": 50,
+     "sprite": "👕",
+     "level_required": 5
+    },
+    {
+     "id": "armor_hoodie_gray",
+     "type": "armor",
+     "name": "Phantom Ash",
+     "description": "Your champion's outfit in shadowy ash tones. Lowkey but iconic.",
+     "price": 80,
+     "sprite": "🧥",
+     "level_required": 5
+    }
+   ]
+  },
+  {
+   "id": "armor_tier1",
+   "category": "armor",
+   "unlocks_at_level": 5,
+   "items": [
+    {
+     "id": "armor_robe_blue",
+     "type": "armor",
+     "name": "Azure Scholar",
+     "description": "Sapphire cloth with gold trim for your champion. +5% XP on all activities.",
+     "price": 250,
+     "sprite": "🥋",
+     "level_required": 6,
+     "bonus": {
+      "xp_pct": 0.05
+     },
+     "battle": {
+      "hp": 1
+     }
+    },
+    {
+     "id": "armor_jacket_cool",
+     "type": "armor",
+     "name": "Midnight Rider",
+     "description": "Jet-black cloth with a blood-red trim for your champion. +5% coins.",
+     "price": 300,
+     "sprite": "🧥",
+     "level_required": 6,
+     "bonus": {
+      "coin_pct": 0.05
+     },
+     "battle": {
+      "hp": 1
+     }
+    }
+   ]
+  },
+  {
+   "id": "armor_tier2",
+   "category": "armor",
+   "unlocks_at_level": 5,
+   "items": [
+    {
+     "id": "armor_wizard_purple",
+     "type": "armor",
+     "name": "Void Weaver",
+     "description": "Deep violet cloth with a cyan trim for your champion. +10% XP.",
+     "price": 800,
+     "sprite": "🧙",
+     "level_required": 10,
+     "bonus": {
+      "xp_pct": 0.1
+     },
+     "battle": {
+      "hp": 2
+     }
+    },
+    {
+     "id": "armor_knight_silver",
+     "type": "armor",
+     "name": "Titanfall Steel",
+     "description": "Silver plate over slate cloth: every champion gets steel pauldrons. +10% coins.",
+     "price": 900,
+     "sprite": "🛡️",
+     "level_required": 10,
+     "bonus": {
+      "coin_pct": 0.1
+     },
+     "battle": {
+      "hp": 3
+     }
+    }
+   ]
+  },
+  {
+   "id": "armor_tier3",
+   "category": "armor",
+   "unlocks_at_level": 5,
+   "items": [
+    {
+     "id": "armor_knight_gold",
+     "type": "armor",
+     "name": "Sol Emperor",
+     "description": "Golden plate over white and crimson for your champion. +15% XP, +10% coins.",
+     "price": 2500,
+     "sprite": "⚜️",
+     "level_required": 18,
+     "bonus": {
+      "xp_pct": 0.15,
+      "coin_pct": 0.1
+     },
+     "battle": {
+      "hp": 4
+     }
+    },
+    {
+     "id": "armor_dragon_scale",
+     "type": "armor",
+     "name": "Ignis Wyrmscale",
+     "description": "Crimson wyrm-scale plate with a glowing ember trim. +20% XP, +15% coins.",
+     "price": 4000,
+     "sprite": "🐉",
+     "level_required": 22,
+     "bonus": {
+      "xp_pct": 0.2,
+      "coin_pct": 0.15
+     },
+     "battle": {
+      "hp": 5
+     }
+    },
+    {
+     "id": "armor_legends_mantle",
+     "type": "armor",
+     "name": "Astral Conqueror",
+     "description": "Starlit indigo with pale-gold plate and a glowing cyan trim. +30% XP, +20% coins.",
+     "price": 8000,
+     "sprite": "✨",
+     "level_required": 28,
+     "bonus": {
+      "xp_pct": 0.3,
+      "coin_pct": 0.2
+     },
+     "battle": {
+      "hp": 6
+     }
+    }
+   ]
+  },
+  {
+   "id": "headgear_fighting",
+   "category": "headgear",
+   "unlocks_at_level": 1,
+   "items": [
+    {
+     "id": "hat_headband_red",
+     "type": "headgear",
+     "name": "Red Headband",
+     "description": "A red cloth headband whose tails fly behind your champion. Purely cosmetic.",
+     "price": 0,
+     "sprite": "🔴",
+     "level_required": 1
+    },
+    {
+     "id": "hat_headband_blue",
+     "type": "headgear",
+     "name": "Blue Headband",
+     "description": "A blue cloth headband whose tails fly behind your champion. Purely cosmetic.",
+     "price": 0,
+     "sprite": "🔵",
+     "level_required": 1
+    },
+    {
+     "id": "hat_headband_white",
+     "type": "headgear",
+     "name": "White Headband",
+     "description": "A white cloth headband whose tails fly behind your champion. Purely cosmetic.",
+     "price": 0,
+     "sprite": "⬜",
+     "level_required": 1
+    }
+   ]
+  },
+  {
+   "id": "headgear_starter",
+   "category": "headgear",
+   "unlocks_at_level": 7,
+   "items": [
+    {
+     "id": "hat_baseball_red",
+     "type": "headgear",
+     "name": "Crimson Hood",
+     "description": "A crimson hood drawn over your champion's head. Purely cosmetic.",
+     "price": 50,
+     "sprite": "🧢",
+     "level_required": 7
+    },
+    {
+     "id": "hat_beanie_blue",
+     "type": "headgear",
+     "name": "Frostwave Hood",
+     "description": "A pointed ice-blue hood. Purely cosmetic.",
+     "price": 50,
+     "sprite": "🎓",
+     "level_required": 7
+    }
+   ]
+  },
+  {
+   "id": "headgear_tier1",
+   "category": "headgear",
+   "unlocks_at_level": 7,
+   "items": [
+    {
+     "id": "hat_headphones",
+     "type": "headgear",
+     "name": "Neural Link Helm",
+     "description": "A sleek steel helm with a glowing cyan visor. +1 Arena hint charge.",
+     "price": 200,
+     "sprite": "🎧",
+     "level_required": 8,
+     "bonus": {
+      "arena_hints": 1
+     },
+     "battle": {
+      "time_sec": 3
+     }
+    },
+    {
+     "id": "hat_wizard",
+     "type": "headgear",
+     "name": "Archmage's Cowl",
+     "description": "A tall pointed violet cowl. +5% XP.",
+     "price": 300,
+     "sprite": "🎩",
+     "level_required": 9,
+     "bonus": {
+      "xp_pct": 0.05
+     },
+     "battle": {
+      "time_sec": 3
+     }
+    }
+   ]
+  },
+  {
+   "id": "headgear_tier2",
+   "category": "headgear",
+   "unlocks_at_level": 7,
+   "items": [
+    {
+     "id": "hat_crown_bronze",
+     "type": "headgear",
+     "name": "Verdant Crown",
+     "description": "A bronze crown set with a glowing green gem. +5% XP, +5% coins.",
+     "price": 500,
+     "sprite": "👑",
+     "level_required": 10,
+     "bonus": {
+      "xp_pct": 0.05,
+      "coin_pct": 0.05
+     },
+     "battle": {
+      "time_sec": 3
+     }
+    },
+    {
+     "id": "hat_ninja",
+     "type": "headgear",
+     "name": "Shadow Veil",
+     "description": "A black hood with a veil over the face. +10% XP.",
+     "price": 700,
+     "sprite": "🥷",
+     "level_required": 12,
+     "bonus": {
+      "xp_pct": 0.1
+     },
+     "battle": {
+      "time_sec": 4
+     }
+    }
+   ]
+  },
+  {
+   "id": "headgear_tier3",
+   "category": "headgear",
+   "unlocks_at_level": 7,
+   "items": [
+    {
+     "id": "hat_crown_silver",
+     "type": "headgear",
+     "name": "Glacial Crown",
+     "description": "A silver crown set with a glowing ice-blue gem. +10% XP, +5% coins.",
+     "price": 1000,
+     "sprite": "👑",
+     "level_required": 14,
+     "bonus": {
+      "xp_pct": 0.1,
+      "coin_pct": 0.05
+     },
+     "battle": {
+      "time_sec": 5
+     }
+    },
+    {
+     "id": "hat_samurai",
+     "type": "headgear",
+     "name": "Oni-Sealed War Helm",
+     "description": "A dark war helm with a crimson crest and pale oni horns. +10% coins, +1 Arena hint charge.",
+     "price": 1200,
+     "sprite": "⛩️",
+     "level_required": 15,
+     "bonus": {
+      "coin_pct": 0.1,
+      "arena_hints": 1
+     },
+     "battle": {
+      "time_sec": 6
+     }
+    },
+    {
+     "id": "hat_crown_gold",
+     "type": "headgear",
+     "name": "Solaris Crown",
+     "description": "A golden crown set with a glowing rose gem. +15% XP, +10% coins.",
+     "price": 2000,
+     "sprite": "👑",
+     "level_required": 18,
+     "bonus": {
+      "xp_pct": 0.15,
+      "coin_pct": 0.1
+     },
+     "battle": {
+      "time_sec": 8
+     }
+    }
+   ]
+  },
+  {
+   "id": "weapon_starter",
+   "category": "weapon",
+   "unlocks_at_level": 10,
+   "items": [
+    {
+     "id": "weapon_pencil",
+     "type": "weapon",
+     "name": "Graphite Finish",
+     "description": "Re-forges your champion's weapon in graphite with a pencil-yellow grip.",
+     "price": 100,
+     "sprite": "✏️",
+     "level_required": 10,
+     "battle": {
+      "damage_pct": 0.05
+     }
+    },
+    {
+     "id": "weapon_ruler",
+     "type": "weapon",
+     "name": "Ruled Steel",
+     "description": "Re-forges your champion's weapon in plain bright steel on an oak grip.",
+     "price": 120,
+     "sprite": "📏",
+     "level_required": 10,
+     "battle": {
+      "damage_pct": 0.05
+     }
+    }
+   ]
+  },
+  {
+   "id": "weapon_tier1",
+   "category": "weapon",
+   "unlocks_at_level": 10,
+   "items": [
+    {
+     "id": "weapon_sword_bronze",
+     "type": "weapon",
+     "name": "Dawnsteel",
+     "description": "Re-forges your champion's weapon in warm bronze. Glows blue (rare). +5% combo XP.",
+     "price": 400,
+     "sprite": "⚔️",
+     "level_required": 10,
+     "bonus": {
+      "combo_xp_pct": 0.05
+     },
+     "battle": {
+      "damage_pct": 0.1
+     }
+    },
+    {
+     "id": "weapon_bow",
+     "type": "weapon",
+     "name": "Ashwood",
+     "description": "Re-forges your champion's weapon in pale ash and grey wood. Glows blue (rare). +5% XP.",
+     "price": 500,
+     "sprite": "🏹",
+     "level_required": 11,
+     "bonus": {
+      "xp_pct": 0.05
+     },
+     "battle": {
+      "damage_pct": 0.12
+     }
+    },
+    {
+     "id": "weapon_staff_wood",
+     "type": "weapon",
+     "name": "Emberwood",
+     "description": "Re-forges your champion's weapon in ember-orange on dark wood. Glows blue (rare). +5% XP.",
+     "price": 450,
+     "sprite": "🪄",
+     "level_required": 11,
+     "bonus": {
+      "xp_pct": 0.05
+     },
+     "battle": {
+      "damage_pct": 0.12
+     }
+    }
+   ]
+  },
+  {
+   "id": "weapon_tier2",
+   "category": "weapon",
+   "unlocks_at_level": 10,
+   "items": [
+    {
+     "id": "weapon_sword_silver",
+     "type": "weapon",
+     "name": "Moonsteel",
+     "description": "Re-forges your champion's weapon in moon-pale steel on midnight blue. Glows blue (rare). +10% combo XP.",
+     "price": 900,
+     "sprite": "⚔️",
+     "level_required": 13,
+     "bonus": {
+      "combo_xp_pct": 0.1
+     },
+     "battle": {
+      "damage_pct": 0.16
+     }
+    },
+    {
+     "id": "weapon_hammer",
+     "type": "weapon",
+     "name": "Thundercrack Iron",
+     "description": "Re-forges your champion's weapon in dark iron with lightning-gold. Glows violet (epic). +8% XP.",
+     "price": 1000,
+     "sprite": "🔨",
+     "level_required": 14,
+     "bonus": {
+      "xp_pct": 0.08
+     },
+     "battle": {
+      "damage_pct": 0.18
+     }
+    },
+    {
+     "id": "weapon_staff_crystal",
+     "type": "weapon",
+     "name": "Aqua Prism",
+     "description": "Re-forges your champion's weapon in aqua crystal. Glows violet (epic). +10% XP.",
+     "price": 1100,
+     "sprite": "💎",
+     "level_required": 14,
+     "bonus": {
+      "xp_pct": 0.1
+     },
+     "battle": {
+      "damage_pct": 0.2
+     }
+    }
+   ]
+  },
+  {
+   "id": "weapon_tier3",
+   "category": "weapon",
+   "unlocks_at_level": 10,
+   "items": [
+    {
+     "id": "weapon_sword_excalibur",
+     "type": "weapon",
+     "name": "Excalibur Steel",
+     "description": "Re-forges your champion's weapon in white steel and gold. Glows violet (epic). +15% combo XP.",
+     "price": 2500,
+     "sprite": "✨",
+     "level_required": 18,
+     "bonus": {
+      "combo_xp_pct": 0.15
+     },
+     "battle": {
+      "damage_pct": 0.28
+     }
+    },
+    {
+     "id": "weapon_staff_legendary",
+     "type": "weapon",
+     "name": "Infernal Codex",
+     "description": "Re-forges your champion's weapon in hellfire orange. Glows gold (legendary). +15% XP.",
+     "price": 3000,
+     "sprite": "🌟",
+     "level_required": 20,
+     "bonus": {
+      "xp_pct": 0.15
+     },
+     "battle": {
+      "damage_pct": 0.3
+     }
+    }
+   ]
+  },
+  {
+   "id": "pet_starter",
+   "category": "pet",
+   "unlocks_at_level": 20,
+   "items": [
+    {
+     "id": "pet_cat_orange",
+     "type": "pet",
+     "name": "Pyra the Ember Cat",
+     "description": "A flame-furred tabby who naps on your notes. +5% XP.",
+     "price": 300,
+     "sprite": "🐱",
+     "level_required": 20,
+     "bonus": {
+      "xp_pct": 0.05
+     },
+     "battle": {
+      "strike": 4
+     }
+    },
+    {
+     "id": "pet_dog_brown",
+     "type": "pet",
+     "name": "Rex the Thunder Hound",
+     "description": "Loyal storm-furred hound who carries your bag. +5% coins.",
+     "price": 300,
+     "sprite": "🐶",
+     "level_required": 20,
+     "bonus": {
+      "coin_pct": 0.05
+     },
+     "battle": {
+      "strike": 4
+     }
+    },
+    {
+     "id": "pet_owl",
+     "type": "pet",
+     "name": "Athena the Celestial Owl",
+     "description": "Golden-eyed scholar owl that whispers answers. +8% XP and +1 arena hint.",
+     "price": 500,
+     "sprite": "🦉",
+     "level_required": 21,
+     "bonus": {
+      "xp_pct": 0.08,
+      "arena_hints": 1
+     },
+     "battle": {
+      "strike": 6
+     }
+    }
+   ]
+  },
+  {
+   "id": "pet_tier2",
+   "category": "pet",
+   "unlocks_at_level": 20,
+   "items": [
+    {
+     "id": "pet_panda",
+     "type": "pet",
+     "name": "Kai the Storm Panda",
+     "description": "A rare black-and-white panda crackling with static energy. +8% XP, +5% coins.",
+     "price": 700,
+     "sprite": "🐼",
+     "level_required": 21,
+     "bonus": {
+      "xp_pct": 0.08,
+      "coin_pct": 0.05
+     },
+     "battle": {
+      "strike": 6
+     }
+    },
+    {
+     "id": "pet_fox",
+     "type": "pet",
+     "name": "Zephyr the Void Fox",
+     "description": "A silver-tipped fox that phases through shadows. +10% XP, auto streak freeze every 14 days.",
+     "price": 900,
+     "sprite": "🦊",
+     "level_required": 22,
+     "bonus": {
+      "xp_pct": 0.1,
+      "streak_freeze_days": 14
+     },
+     "battle": {
+      "strike": 8
+     }
+    },
+    {
+     "id": "pet_unicorn",
+     "type": "pet",
+     "name": "Lumis the Starbound Unicorn",
+     "description": "A unicorn whose mane trails stardust. MOUNT. +12% XP and +8% coins.",
+     "price": 1500,
+     "sprite": "🦄",
+     "level_required": 23,
+     "bonus": {
+      "xp_pct": 0.12,
+      "coin_pct": 0.08
+     },
+     "battle": {
+      "strike": 10
+     }
+    },
+    {
+     "id": "pet_dragon_baby",
+     "type": "pet",
+     "name": "Ignis the Hatchling Dragon",
+     "description": "A tiny dragon who breathes XP bubbles. MOUNT. +10% XP, +10% coins. Streak freeze every 10 days.",
+     "price": 2000,
+     "sprite": "🐲",
+     "level_required": 24,
+     "bonus": {
+      "xp_pct": 0.1,
+      "coin_pct": 0.1,
+      "streak_freeze_days": 10
+     },
+     "battle": {
+      "strike": 12
+     }
+    }
+   ]
+  },
+  {
+   "id": "pet_tier3",
+   "category": "pet",
+   "unlocks_at_level": 20,
+   "items": [
+    {
+     "id": "pet_phoenix",
+     "type": "pet",
+     "name": "Solara the Reborn Phoenix",
+     "description": "A blazing firebird reborn from ash each dawn. MOUNT. +15% XP, +10% coins. Streak freeze every 7 days.",
+     "price": 3000,
+     "sprite": "🦅",
+     "level_required": 25,
+     "bonus": {
+      "xp_pct": 0.15,
+      "coin_pct": 0.1,
+      "streak_freeze_days": 7
+     },
+     "battle": {
+      "strike": 14
+     }
+    },
+    {
+     "id": "pet_lion_golden",
+     "type": "pet",
+     "name": "Aurum the Solar Lion",
+     "description": "Golden-maned lion whose roar echoes across the cosmos. MOUNT. +10% XP and +20% coins.",
+     "price": 4000,
+     "sprite": "🦁",
+     "level_required": 27,
+     "bonus": {
+      "xp_pct": 0.1,
+      "coin_pct": 0.2
+     },
+     "battle": {
+      "strike": 14
+     }
+    },
+    {
+     "id": "pet_dragon_ancient",
+     "type": "pet",
+     "name": "Erebus the Elder Dragon",
+     "description": "An ancient obsidian dragon older than memory itself. MOUNT. +25% XP, +20% coins. Streak freeze every 5 days.",
+     "price": 6000,
+     "sprite": "🐉",
+     "level_required": 30,
+     "bonus": {
+      "xp_pct": 0.25,
+      "coin_pct": 0.2,
+      "streak_freeze_days": 5
+     },
+     "battle": {
+      "strike": 20
+     }
+    }
+   ]
+  },
+  {
+   "id": "potions",
+   "category": "potion",
+   "unlocks_at_level": 5,
+   "items": [
+    {
+     "id": "potion_health_small",
+     "type": "potion",
+     "name": "Crimson Vial",
+     "arena_only": true,
+     "description": "Restore 1 heart mid-Arena battle. Use from the potion bar before you fall.",
+     "price": 80,
+     "sprite": "🧪",
+     "consumable": true,
+     "effect": "heal_1",
+     "level_required": 5
+    },
+    {
+     "id": "fifty_fifty",
+     "type": "potion",
+     "name": "Veil of Duality",
+     "arena_only": true,
+     "description": "Tear the veil between truth and deception — 2 wrong answers crumble to dust. Arena only.",
+     "price": 60,
+     "sprite": "⚖️",
+     "consumable": true,
+     "effect": "fifty_fifty",
+     "level_required": 5
+    },
+    {
+     "id": "potion_xp_boost",
+     "type": "potion",
+     "name": "Sage's Elixir",
+     "description": "+50% XP earned for 1 hour. The ancient taste of knowledge.",
+     "price": 150,
+     "sprite": "⚗️",
+     "consumable": true,
+     "effect": "xp_boost_1h",
+     "level_required": 7
+    },
+    {
+     "id": "potion_coin_boost",
+     "type": "potion",
+     "name": "Midas Tonic",
+     "description": "+50% coins earned for 1 hour. Everything you touch turns to gold.",
+     "price": 150,
+     "sprite": "💰",
+     "consumable": true,
+     "effect": "coin_boost_1h",
+     "level_required": 7
+    },
+    {
+     "id": "potion_streak_shield",
+     "type": "potion",
+     "name": "Temporal Shield Flask",
+     "description": "Grants 1 streak freeze token. Activates automatically if you miss a day — no action needed.",
+     "price": 250,
+     "sprite": "🛡️",
+     "consumable": true,
+     "effect": "streak_freeze",
+     "level_required": 9
+    },
+    {
+     "id": "potion_xp_boost_2h",
+     "type": "potion",
+     "name": "Grand Arcane Elixir",
+     "description": "+100% XP earned for 1 hour. Pure distilled brilliance.",
+     "price": 400,
+     "sprite": "🌟",
+     "consumable": true,
+     "effect": "xp_boost_2h",
+     "level_required": 12
+    },
+    {
+     "id": "potion_quest_reset",
+     "type": "potion",
+     "name": "Chrono Vortex Flask",
+     "description": "Reset your daily quests instantly. Bend time to your will.",
+     "price": 600,
+     "sprite": "⏳",
+     "consumable": true,
+     "effect": "reset_daily_quests",
+     "level_required": 15
+    }
+   ]
+  },
+  {
+   "id": "titles",
+   "category": "title",
+   "unlocks_at_level": 30,
+   "items": [
+    {
+     "id": "title_scholar",
+     "type": "title",
+     "name": "📚 The Scholar",
+     "description": "Earned by those who pursue knowledge relentlessly. Purely cosmetic.",
+     "price": 500,
+     "sprite": "📚",
+     "level_required": 30
+    },
+    {
+     "id": "title_quiz_master",
+     "type": "title",
+     "name": "🎯 Quiz Sovereign",
+     "description": "Master of every quiz format. +3% XP on all activities.",
+     "price": 1000,
+     "sprite": "🎯",
+     "level_required": 30,
+     "bonus": {
+      "xp_pct": 0.03
+     }
+    },
+    {
+     "id": "title_arena_champ",
+     "type": "title",
+     "name": "⚔️ Arena Overlord",
+     "description": "Undefeated in the arena. +5% XP and +5% coins.",
+     "price": 2000,
+     "sprite": "⚔️",
+     "level_required": 33,
+     "bonus": {
+      "xp_pct": 0.05,
+      "coin_pct": 0.05
+     }
+    },
+    {
+     "id": "title_the_eternal",
+     "type": "title",
+     "name": "♾️ The Undying",
+     "description": "Has outlasted civilisations. Their name echoes forever. +8% XP and +5% coins.",
+     "price": 4000,
+     "sprite": "♾️",
+     "level_required": 36,
+     "bonus": {
+      "xp_pct": 0.08,
+      "coin_pct": 0.05
+     }
+    },
+    {
+     "id": "title_dragon_slayer",
+     "type": "title",
+     "name": "🐉 Dragonbane",
+     "description": "Slayer of ancient wyrms. Fear follows this name. +10% XP, +5% coins.",
+     "price": 5000,
+     "sprite": "🐉",
+     "level_required": 38,
+     "bonus": {
+      "xp_pct": 0.1,
+      "coin_pct": 0.05
+     }
+    },
+    {
+     "id": "title_legend",
+     "type": "title",
+     "name": "👑 Living Legend",
+     "description": "The ultimate achievement. Songs are written about you. +12% XP, +10% coins, +2 Arena hints.",
+     "price": 10000,
+     "sprite": "👑",
+     "level_required": 40,
+     "bonus": {
+      "xp_pct": 0.12,
+      "coin_pct": 0.1,
+      "arena_hints": 2
+     }
+    }
+   ]
+  },
+  {
+   "id": "mastery_armor",
+   "category": "armor",
+   "unlocks_at_level": 1,
+   "items": [
+    {
+     "id": "mastery_kaien_outfit",
+     "type": "armor",
+     "name": "Ninth Page Crimson",
+     "description": "Kaien's ronin coat in ink and crimson. Mastery skin: unlocked at Kaien Lv 3, worn only by Kaien.",
+     "price": 0,
+     "sprite": "🛡️",
+     "rarity": "rare",
+     "mastery": {
+      "champion": "kaien",
+      "level": 3
+     }
+    },
+    {
+     "id": "mastery_asha_outfit",
+     "type": "armor",
+     "name": "Dawn Wall Bronze",
+     "description": "Asha's armour in burnished bronze and teal. Mastery skin: unlocked at Asha Lv 3, worn only by Asha.",
+     "price": 0,
+     "sprite": "🛡️",
+     "rarity": "rare",
+     "mastery": {
+      "champion": "asha",
+      "level": 3
+     }
+    },
+    {
+     "id": "mastery_brak_outfit",
+     "type": "armor",
+     "name": "Lower Stacks Iron",
+     "description": "Brak's gi in forge iron and ember orange. Mastery skin: unlocked at Brak Lv 3, worn only by Brak.",
+     "price": 0,
+     "sprite": "🛡️",
+     "rarity": "rare",
+     "mastery": {
+      "champion": "brak",
+      "level": 3
+     }
+    },
+    {
+     "id": "mastery_mira_outfit",
+     "type": "armor",
+     "name": "Starlit Robes",
+     "description": "Mira's robes, midnight blue with a starlit trim. Mastery skin: unlocked at Mira Lv 3, worn only by Mira.",
+     "price": 0,
+     "sprite": "🛡️",
+     "rarity": "rare",
+     "mastery": {
+      "champion": "mira",
+      "level": 3
+     }
+    },
+    {
+     "id": "mastery_vex_outfit",
+     "type": "armor",
+     "name": "Margin Shadow",
+     "description": "Vex's jacket in deep violet shadow. Mastery skin: unlocked at Vex Lv 3, worn only by Vex.",
+     "price": 0,
+     "sprite": "🛡️",
+     "rarity": "rare",
+     "mastery": {
+      "champion": "vex",
+      "level": 3
+     }
+    },
+    {
+     "id": "mastery_thorne_outfit",
+     "type": "armor",
+     "name": "Last Chapter Plate",
+     "description": "Thorne's plate in white enamel and gold. Mastery skin: unlocked at Thorne Lv 3, worn only by Thorne.",
+     "price": 0,
+     "sprite": "🛡️",
+     "rarity": "rare",
+     "mastery": {
+      "champion": "thorne",
+      "level": 3
+     }
+    }
+   ]
+  },
+  {
+   "id": "mastery_headgear",
+   "category": "headgear",
+   "unlocks_at_level": 1,
+   "items": [
+    {
+     "id": "mastery_kaien_head",
+     "type": "headgear",
+     "name": "Ronin's Ink Band",
+     "description": "A black headband with crimson tails. Mastery skin: unlocked at Kaien Lv 6, worn only by Kaien.",
+     "price": 0,
+     "sprite": "👑",
+     "rarity": "epic",
+     "mastery": {
+      "champion": "kaien",
+      "level": 6
+     }
+    },
+    {
+     "id": "mastery_asha_head",
+     "type": "headgear",
+     "name": "Sunrise Circlet",
+     "description": "A gold circlet set with a sunrise gem. Mastery skin: unlocked at Asha Lv 6, worn only by Asha.",
+     "price": 0,
+     "sprite": "👑",
+     "rarity": "epic",
+     "mastery": {
+      "champion": "asha",
+      "level": 6
+     }
+    },
+    {
+     "id": "mastery_brak_head",
+     "type": "headgear",
+     "name": "Bull Horns",
+     "description": "A pair of heavy bull horns. Mastery skin: unlocked at Brak Lv 6, worn only by Brak.",
+     "price": 0,
+     "sprite": "👑",
+     "rarity": "epic",
+     "mastery": {
+      "champion": "brak",
+      "level": 6
+     }
+    },
+    {
+     "id": "mastery_mira_head",
+     "type": "headgear",
+     "name": "Quiet Stacks Cowl",
+     "description": "A tall pointed cowl the colour of a night sky. Mastery skin: unlocked at Mira Lv 6, worn only by Mira.",
+     "price": 0,
+     "sprite": "👑",
+     "rarity": "epic",
+     "mastery": {
+      "champion": "mira",
+      "level": 6
+     }
+    },
+    {
+     "id": "mastery_vex_head",
+     "type": "headgear",
+     "name": "Shadow Mask",
+     "description": "A violet hood with a veil over the face. Mastery skin: unlocked at Vex Lv 6, worn only by Vex.",
+     "price": 0,
+     "sprite": "👑",
+     "rarity": "epic",
+     "mastery": {
+      "champion": "vex",
+      "level": 6
+     }
+    },
+    {
+     "id": "mastery_thorne_head",
+     "type": "headgear",
+     "name": "Crowned Helm",
+     "description": "A war helm with a golden crest. Mastery skin: unlocked at Thorne Lv 6, worn only by Thorne.",
+     "price": 0,
+     "sprite": "👑",
+     "rarity": "epic",
+     "mastery": {
+      "champion": "thorne",
+      "level": 6
+     }
+    }
+   ]
+  },
+  {
+   "id": "mastery_weapon",
+   "category": "weapon",
+   "unlocks_at_level": 1,
+   "items": [
+    {
+     "id": "mastery_kaien_weapon",
+     "type": "weapon",
+     "name": "Inkblade",
+     "description": "Kaien's katana in black steel with a crimson glow. Mastery skin: unlocked at Kaien Lv 10, worn only by Kaien.",
+     "price": 0,
+     "sprite": "⚔️",
+     "rarity": "legendary",
+     "mastery": {
+      "champion": "kaien",
+      "level": 10
+     }
+    },
+    {
+     "id": "mastery_asha_weapon",
+     "type": "weapon",
+     "name": "Daybreak Spear",
+     "description": "Asha's spear, white-gold with a sunrise glow. Mastery skin: unlocked at Asha Lv 10, worn only by Asha.",
+     "price": 0,
+     "sprite": "⚔️",
+     "rarity": "legendary",
+     "mastery": {
+      "champion": "asha",
+      "level": 10
+     }
+    },
+    {
+     "id": "mastery_brak_weapon",
+     "type": "weapon",
+     "name": "Furnace Knuckles",
+     "description": "Brak's gauntlets, glowing like a furnace. Mastery skin: unlocked at Brak Lv 10, worn only by Brak.",
+     "price": 0,
+     "sprite": "⚔️",
+     "rarity": "legendary",
+     "mastery": {
+      "champion": "brak",
+      "level": 10
+     }
+    },
+    {
+     "id": "mastery_mira_weapon",
+     "type": "weapon",
+     "name": "Codex Staff",
+     "description": "Mira's staff with a pale star-glow orb. Mastery skin: unlocked at Mira Lv 10, worn only by Mira.",
+     "price": 0,
+     "sprite": "⚔️",
+     "rarity": "legendary",
+     "mastery": {
+      "champion": "mira",
+      "level": 10
+     }
+    },
+    {
+     "id": "mastery_vex_weapon",
+     "type": "weapon",
+     "name": "Twilight Daggers",
+     "description": "Vex's daggers with a twilight-violet edge. Mastery skin: unlocked at Vex Lv 10, worn only by Vex.",
+     "price": 0,
+     "sprite": "⚔️",
+     "rarity": "legendary",
+     "mastery": {
+      "champion": "vex",
+      "level": 10
+     }
+    },
+    {
+     "id": "mastery_thorne_weapon",
+     "type": "weapon",
+     "name": "Epilogue Greatsword",
+     "description": "Thorne's greatsword with a golden glow. Mastery skin: unlocked at Thorne Lv 10, worn only by Thorne.",
+     "price": 0,
+     "sprite": "⚔️",
+     "rarity": "legendary",
+     "mastery": {
+      "champion": "thorne",
+      "level": 10
+     }
+    }
+   ]
+  }
+ ]
+}

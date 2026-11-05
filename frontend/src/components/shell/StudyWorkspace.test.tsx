@@ -91,9 +91,15 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-/** A tab's stub (the views are lazy-loaded: let the import finish first). */
+/** A tab's stub. The views are lazy-loaded, and that import is real I/O that fake timers can't hurry: on a busy
+ *  machine it takes longer than a few ticks. So wait in real time (setImmediate isn't faked), up to 10 s. */
+const realTick = () => new Promise<void>((resolve) => setImmediate(resolve));
 const tabView = async (name: string) => {
-  for (let i = 0; i < 5 && !screen.queryByTestId(`tab-${name}`); i++) await settle();
+  const until = performance.now() + 10_000;
+  while (!screen.queryByTestId(`tab-${name}`) && performance.now() < until) {
+    await settle();
+    await act(realTick);
+  }
   return screen.getByTestId(`tab-${name}`);
 };
 

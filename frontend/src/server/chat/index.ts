@@ -10,6 +10,7 @@ import { tierFor } from "../plans";
 import { searchDeps, searchPassages, type Passage } from "../search";
 import { generate, type Caller } from "../ai/run";
 import { logActivity } from "../study/core";
+import { onChatAnswered } from "../game/hooks";
 import { buildChatMessages } from "./prompts";
 import { standaloneQuestion, type Rewrite, type Turn } from "./rewrite";
 
@@ -99,6 +100,7 @@ export interface ChatPlan {
   rewrite: Rewrite;
   caller: Caller;
   sessionId: string;
+  tz: string | null;
 }
 
 export async function callerFor(ctx: RequestContext, user: CurrentUser): Promise<Caller> {
@@ -120,7 +122,7 @@ export async function planChat(ctx: RequestContext, user: CurrentUser, body: Rec
     async (messages) => (await generate(ctx, caller, "small", messages, { maxOutputTokens: 120, temperature: 0 })).text,
     { enabled: (process.env.QUERY_REWRITE ?? "true") !== "false", maxMessages: num(process.env.QUERY_REWRITE_TURNS, 6) });
   const found = toRetrieval(await searchPassages(ctx.db, deps, study.docs, rewrite.query, topK));
-  return { question, history, found, quality: assessRelevance(found), rewrite, caller, sessionId: study.id };
+  return { question, history, found, quality: assessRelevance(found), rewrite, caller, sessionId: study.id, tz: user.row.timezone ?? null };
 }
 
 /** The messages for the answer (when it isn't blocked). */
@@ -137,9 +139,15 @@ export async function logAnswer(ctx: RequestContext, plan: ChatPlan, answer: str
   await logActivity(ctx, plan.caller.id, plan.sessionId, "chat", "response", content);
 }
 
-export function finalPayload(plan: ChatPlan, blocked = false) {
+export function finalPayload(plan: ChatPlan, blocked = false, rewards: unknown = null) {
   return {
     mode: "chat", sources: blocked ? [] : plan.found.sources, citations: blocked ? [] : plan.found.citations,
-    blocked, needs_clarification: plan.quality.needs_clarification, rewards: null,
+    blocked, needs_clarification: plan.quality.needs_clarification, rewards,
   };
+}
+
+/** The answer joins the history, and a real question counts for quests and the chat bundle (its rewards). */
+export async function afterAnswer(ctx: RequestContext, plan: ChatPlan, answer: string) {
+  await logAnswer(ctx, plan, answer);
+  return onChatAnswered(ctx, { id: plan.caller.id, tz: plan.tz }, plan.question, plan.quality.needs_clarification);
 }

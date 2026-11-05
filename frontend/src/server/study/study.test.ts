@@ -167,7 +167,7 @@ describe("quizzes", () => {
     for (const qid of [2, 3]) await quizAnswer.POST(post(b, "/api/v1/quiz/answer", { quiz_id: q.quiz_id, question_id: qid, answer: "atp" }));
 
     const done = await json(await quizFinish.POST(post(b, "/api/v1/quiz/finish", { quiz_id: q.quiz_id })));
-    expect(done).toMatchObject({ score: 2, total: 3, already_finished: false, rewards: null });
+    expect(done).toMatchObject({ score: 2, total: 3, already_finished: false, rewards: { ok: true, action_type: "quiz_complete" } });
     expect((await json(await quizFinish.POST(post(b, "/api/v1/quiz/finish", { quiz_id: q.quiz_id })))).already_finished).toBe(true);
 
     const deck = await json(await reviewDeck.GET(b.request(`/api/v1/study/review-deck?session_id=${id}`)));
@@ -208,7 +208,7 @@ describe("flashcards, notes and history", () => {
     const id = await uploadPdf(b, "Bio.pdf", BIO);
     const body = { topic: "mitochondria ATP", session_id: id, num_cards: 5 };
     const deck = await json(await flashcards.POST(post(b, "/api/v1/flashcards", body)));
-    expect(deck).toMatchObject({ total: 2, topic: "mitochondria ATP", rewards: null });
+    expect(deck).toMatchObject({ total: 2, topic: "mitochondria ATP", rewards: { ok: true, action_type: "flashcard_complete" } });
     expect(deck.cards[0]).toMatchObject({ id: 1, front: "What makes ATP?", back: "Mitochondria", difficulty: "medium" });
     expect(prompts()[0]).toContain("Generate 8 flashcards");
     await flashcards.POST(post(b, "/api/v1/flashcards", body));
@@ -224,7 +224,7 @@ describe("flashcards, notes and history", () => {
     const id = await uploadPdf(b, "Bio.pdf", BIO);
     const body = { topic: "mitochondria ATP respiration", session_id: id, detail_level: "Normal (Simplified)" };
     const n1 = await json(await notes.POST(post(b, "/api/v1/notes", body)));
-    expect(n1).toMatchObject({ mode: "notes", content: expect.stringContaining("# Mitochondria"), rewards: null });
+    expect(n1).toMatchObject({ mode: "notes", content: expect.stringContaining("# Mitochondria"), rewards: { ok: true, action_type: "notes_generation" } });
     await notes.POST(post(b, "/api/v1/notes", body));
     expect(llm.calls).toHaveLength(1);
     await chat.POST(post(b, "/api/v1/chat", { question: "How do mitochondria make ATP?", session_id: id }));
@@ -293,7 +293,7 @@ describe("exams", () => {
     expect((await ans({ index: 2, answer: "Water" })).status).toBe(400);
 
     const graded = await json(await examSubmit.POST(post(b, `/api/v1/exams/${e.id}/submit`, {}), params({ id: e.id })));
-    expect(graded).toMatchObject({ status: "graded", rewards: null, result: { score: 1, total: 10, unanswered: 8 } });
+    expect(graded).toMatchObject({ status: "graded", rewards: { ok: true, action_type: "exam_complete" }, result: { score: 1, total: 10, unanswered: 8 } });
     expect(graded.questions[0]).toMatchObject({ correct_answer: "ATP", correct: true });
     expect(graded.result.concepts[0].accuracy).toBeLessThanOrEqual(graded.result.concepts.at(-1).accuracy);
     expect((await ans({ index: 3, answer: "ATP" })).status).toBe(409);

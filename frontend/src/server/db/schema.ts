@@ -364,3 +364,95 @@ export const conceptMaps = sqliteTable("concept_maps", {
   createdAt: text("created_at").notNull(),
   updatedAt: text("updated_at").notNull(),
 }, (t) => [primaryKey({ columns: [t.docHash, t.version] })]);
+
+// ── the game (Stage 4.5: src/server/game/*). XP, coins and level are a cache of the reward_events ledger and change
+//    only through it (recordRewardEvent). Days are the player's local dates (user.timezone). ───────────────────
+export const userProgress = sqliteTable("user_progress", {
+  userId: integer("user_id").primaryKey().references(() => user.id, { onDelete: "cascade" }),
+  totalXp: integer("total_xp").notNull().default(0),
+  currentLevel: integer("current_level").notNull().default(1),
+  coins: integer("coins").notNull().default(0),
+  streakDays: integer("streak_days").notNull().default(0),
+  lastActiveUtc: text("last_active_utc"),
+  streakFreezes: integer("streak_freezes").notNull().default(0),
+  totalArenaRounds: integer("total_arena_rounds").notNull().default(0),
+  totalBossesDefeated: integer("total_bosses_defeated").notNull().default(0),
+  totalQuizzesCompleted: integer("total_quizzes_completed").notNull().default(0),
+  totalChatQuestions: integer("total_chat_questions").notNull().default(0),
+  totalChatBundles: integer("total_chat_bundles").notNull().default(0),
+  totalNotesGenerated: integer("total_notes_generated").notNull().default(0),
+  totalFlashcardsStudied: integer("total_flashcards_studied").notNull().default(0),
+  bestQuizAccuracy: integer("best_quiz_accuracy").notNull().default(0),
+  nightmareBossesDefeated: integer("nightmare_bosses_defeated").notNull().default(0),
+  createdAt: text("created_at").notNull(),
+  updatedAt: text("updated_at").notNull(),
+});
+
+export const rewardEvents = sqliteTable("reward_events", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  userId: integer("user_id").notNull().references(() => user.id, { onDelete: "cascade" }),
+  kind: text("kind").notNull(),
+  xp: integer("xp").notNull().default(0),
+  coins: integer("coins").notNull().default(0),
+  sourceId: text("source_id"),
+  idempotencyKey: text("idempotency_key").notNull().unique(),
+  createdAt: text("created_at").notNull(),
+}, (t) => [index("reward_events_user_idx").on(t.userId, t.id)]);
+
+export const userAvatar = sqliteTable("user_avatar", {
+  userId: integer("user_id").primaryKey().references(() => user.id, { onDelete: "cascade" }),
+  equippedJson: text("equipped_json").notNull().default("{}"),
+  ownedJson: text("owned_json").notNull().default("[]"),
+  championId: text("champion_id"),
+  championSetAt: text("champion_set_at"),
+  createdAt: text("created_at").notNull(),
+  updatedAt: text("updated_at").notNull(),
+});
+
+export const championProgress = sqliteTable("champion_progress", {
+  userId: integer("user_id").notNull().references(() => user.id, { onDelete: "cascade" }),
+  championId: text("champion_id").notNull(),
+  xp: integer("xp").notNull().default(0),
+  level: integer("level").notNull().default(1),
+  battles: integer("battles").notNull().default(0),
+  wins: integer("wins").notNull().default(0),
+  updatedAt: text("updated_at").notNull(),
+}, (t) => [primaryKey({ columns: [t.userId, t.championId] })]);
+
+export const dailyActionCounts = sqliteTable("daily_action_counts", {
+  userId: integer("user_id").notNull().references(() => user.id, { onDelete: "cascade" }),
+  day: text("action_date").notNull(),
+  actionType: text("action_type").notNull(),
+  count: integer("count").notNull().default(0),
+  lastTs: text("last_ts"),
+}, (t) => [primaryKey({ columns: [t.userId, t.day, t.actionType] })]);
+
+export const dailyQuests = sqliteTable("daily_quests", {
+  userId: integer("user_id").notNull().references(() => user.id, { onDelete: "cascade" }),
+  day: text("quest_date").notNull(),
+  questType: text("quest_type").notNull(),
+  targetCount: integer("target_count").notNull(),
+  currentCount: integer("current_count").notNull().default(0),
+  rewardXp: integer("reward_xp").notNull(),
+  rewardCoins: integer("reward_coins").notNull(),
+  completed: integer("completed").notNull().default(0),
+  claimed: integer("claimed").notNull().default(0),
+}, (t) => [primaryKey({ columns: [t.userId, t.day, t.questType] })]);
+
+export const userAchievements = sqliteTable("user_achievements", {
+  userId: integer("user_id").notNull().references(() => user.id, { onDelete: "cascade" }),
+  achievementId: text("achievement_id").notNull(),
+  unlockedAt: text("unlocked_at").notNull(),
+}, (t) => [primaryKey({ columns: [t.userId, t.achievementId] })]);
+
+export const userInventory = sqliteTable("user_inventory", {
+  userId: integer("user_id").notNull().references(() => user.id, { onDelete: "cascade" }),
+  itemId: text("item_id").notNull(),
+  quantity: integer("quantity").notNull().default(1),
+}, (t) => [primaryKey({ columns: [t.userId, t.itemId] })]);
+
+export const userBuffs = sqliteTable("user_buffs", {
+  userId: integer("user_id").primaryKey().references(() => user.id, { onDelete: "cascade" }),
+  buffsJson: text("buffs_json").notNull().default("{}"),
+  updatedAt: text("updated_at").notNull(),
+});
