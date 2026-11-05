@@ -1,61 +1,33 @@
 // Cloudflare Workers settings for CourseMateAI (Phase 4; docs/deploy-cloudflare.md).
 // `npm run cf:deploy` (or the GitHub Action on main) builds the Next.js app with OpenNext and deploys it here.
 {
-	"$schema": "node_modules/wrangler/config-schema.json",
-	"name": "coursemate",
-	"main": ".open-next/worker.js",
-	"compatibility_date": "2026-10-01",
-	"compatibility_flags": [
-		"nodejs_compat"
-	],
-	"assets": {
-		"directory": ".open-next/assets",
-		"binding": "ASSETS"
-	},
-	"observability": {
-		"enabled": true
-	},
-	// Settings typed into the Cloudflare dashboard (BACKEND_URL, OWNER_EMAIL, ...) survive a deploy.
-	"keep_vars": true,
-	// OpenNext calls the Worker itself for some requests.
-	"services": [
-		{
-			"binding": "WORKER_SELF_REFERENCE",
-			"service": "coursemate"
-		}
-	],
-	// The database. `npx wrangler d1 create coursemate --location apac` prints the real id: paste it here.
-	"d1_databases": [
-		{
-			"binding": "DB",
-			"database_name": "coursemate",
-			"database_id": "00000000-0000-0000-0000-000000000000",
-			"migrations_dir": "migrations"
-		}
-	],
-	// Uploaded PDFs. `npx wrangler r2 bucket create coursemate-files`
-	"r2_buckets": [
-		{
-			"binding": "FILES",
-			"bucket_name": "coursemate-files"
-		}
-	],
-	// Embeddings (Stage 4.2): Workers AI, nothing to create.
-	"ai": {
-		"binding": "AI"
-	},
-	// Search (Stage 4.2):
-	//   npx wrangler vectorize create coursemate-chunks --dimensions=384 --metric=cosine
-	//   npx wrangler vectorize create-metadata-index coursemate-chunks --property-name=doc --type=string
-	"vectorize": [
-		{
-			"binding": "VECTORS",
-			"index_name": "coursemate-chunks"
-		},
-		{
-			"binding": "VECTORIZE",
-			"index_name": "coursemate-chunks",
-			"remote": true
-		}
-	]
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "coursemateai",
+  "main": ".open-next/worker.js",
+  "compatibility_date": "2026-10-01",
+  "compatibility_flags": ["nodejs_compat"],
+  "assets": { "directory": ".open-next/assets", "binding": "ASSETS" },
+  "observability": { "enabled": true },
+  // Settings typed into the Cloudflare dashboard (OWNER_EMAIL, LLM_FAST, ...) survive a deploy.
+  "keep_vars": true,
+  // OpenNext calls the Worker itself for some requests.
+  "services": [{ "binding": "WORKER_SELF_REFERENCE", "service": "coursemateai" }],
+
+  // The database (`npx wrangler d1 create coursemate --location apac`). The id is not a secret.
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "coursemate",
+      "database_id": "5ebf4a8b-272a-4031-a790-d77b32715450",
+      "migrations_dir": "migrations"
+    }
+  ],
+  // Uploaded PDFs. `npx wrangler r2 bucket create coursemate-files`
+  "r2_buckets": [{ "binding": "FILES", "bucket_name": "coursemate-files" }],
+  // Embeddings (Stage 4.2): Workers AI, nothing to create.
+  "ai": { "binding": "AI" },
+  // Search (Stage 4.2):
+  //   npx wrangler vectorize create coursemate-chunks --dimensions=384 --metric=cosine
+  //   npx wrangler vectorize create-metadata-index coursemate-chunks --property-name=doc --type=string
+  "vectorize": [{ "binding": "VECTORS", "index_name": "coursemate-chunks" }]
 }
