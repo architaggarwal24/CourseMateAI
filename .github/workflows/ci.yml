@@ -61,3 +61,50 @@ jobs:
       - run: npm run typecheck
       - run: npm test
       - run: npm run build
+
+  # Every push to main that passes both test jobs goes live on Cloudflare Workers (docs/deploy-cloudflare.md).
+  # Needs the repository secrets CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID; without them this job fails (red),
+  # so a push never looks deployed when it wasn't.
+  deploy:
+    needs: [backend, frontend]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    concurrency:
+      group: deploy-production
+      cancel-in-progress: false
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      WRANGLER_SEND_METRICS: "false"
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - name: Cloudflare is set up
+        id: ready
+        run: |
+          if [ -z "$CLOUDFLARE_API_TOKEN" ] || [ -z "$CLOUDFLARE_ACCOUNT_ID" ]; then
+            echo "::error::Not deployed: add the CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID repository secrets (docs/deploy-cloudflare.md)."
+            exit 1
+          elif grep -q '"database_id": "00000000-0000-0000-0000-000000000000"' wrangler.jsonc; then
+            echo "::error::wrangler.jsonc still has the placeholder D1 database_id: run 'npx wrangler d1 create coursemate --location apac' and paste the id."
+            exit 1
+          else
+            echo "go=true" >> "$GITHUB_OUTPUT"
+          fi
+      - uses: actions/setup-node@v4
+        if: steps.ready.outputs.go == 'true'
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - if: steps.ready.outputs.go == 'true'
+        run: npm ci
+      # Migrations first: they only ever add, so the version still serving keeps working while the new one uploads.
+      - name: Migrate the database
+        if: steps.ready.outputs.go == 'true'
+        run: npx wrangler d1 migrations apply DB --remote
+      - name: Build and deploy the Worker
+        if: steps.ready.outputs.go == 'true'
+        run: npx opennextjs-cloudflare build && npx opennextjs-cloudflare deploy

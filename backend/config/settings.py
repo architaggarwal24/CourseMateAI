@@ -59,6 +59,7 @@ class Settings:
     data_dir: Path
     database_path: Path        # the single SQLite file (data_dir/coursemate.db)
     database_url: str          # DATABASE_URL=postgresql://... switches to PostgreSQL (docs/postgres.md); "" = SQLite
+    proxy_secret: str          # PROXY_SECRET: the Cloudflare Worker in front proves itself with it ("" = no Worker)
     upload_dir: Path
     max_file_size: int
 
@@ -133,6 +134,14 @@ def _database_url(env: Mapping[str, str], problems: List[str]) -> str:
     return url
 
 
+def _proxy_secret(env: Mapping[str, str], problems: List[str]) -> str:
+    secret = (env.get("PROXY_SECRET") or "").strip()
+    if secret and len(secret) < 32:
+        problems.append("PROXY_SECRET must be at least 32 characters (the same value as the Worker's PROXY_SECRET).")
+        return ""
+    return secret
+
+
 def load_settings(env: Optional[Mapping[str, str]] = None) -> Settings:
     """Build and validate Settings. Pass `env` (a plain dict) to test without touching os.environ."""
     if env is None:
@@ -192,6 +201,8 @@ def load_settings(env: Optional[Mapping[str, str]] = None) -> Settings:
     if generation_cache_ttl < 0:
         problems.append(f"GENERATION_CACHE_TTL must be 0 (off) or more seconds, got {generation_cache_ttl}.")
 
+    database_url = _database_url(env, problems)
+    proxy_secret = _proxy_secret(env, problems)
     if problems:
         raise SettingsError(
             "Invalid configuration - fix the following in backend/.env (or your environment) and restart:\n"
@@ -212,7 +223,8 @@ def load_settings(env: Optional[Mapping[str, str]] = None) -> Settings:
         # Overridable so tests (and Docker volumes) never touch the real data directory.
         data_dir=data_dir,
         database_path=data_dir / "coursemate.db",
-        database_url=_database_url(env, problems),
+        database_url=database_url,
+        proxy_secret=proxy_secret,
         upload_dir=Path(env.get("COURSEMATE_UPLOAD_DIR", str(_BACKEND_DIR / "uploads"))),
         max_file_size=50 * 1024 * 1024,  # 50 MB
         session_expiry_hours=session_expiry_hours,

@@ -46,3 +46,8 @@ deploy/windows/cloudflared.yml
 deploy/vps/.env
 logs/
 backups/
+
+# Cloudflare (Phase 4)
+frontend/.open-next/
+frontend/.wrangler/
+frontend/.dev.vars

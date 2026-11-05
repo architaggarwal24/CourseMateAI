@@ -389,6 +389,54 @@ Full details: `docs/deploy-windows.md`, `docs/deploy-vps.md`, `docs/postgres.md`
 - **VPS:** `deploy/vps/docker-compose.yml` with Caddy (HTTPS), the backend, the frontend, and the optional `postgres` and `backup` profiles.
 - **PostgreSQL (optional):** `DATABASE_URL` switches the app. `database/pg.py` translates SQLite SQL; `migrations/postgres/` holds the baseline; `scripts/sqlite_to_postgres.py` copies the data. The whole suite passes on both databases.
 
+### Phase 4: everything on Cloudflare, no Python (decided 4 Nov 2026)
+
+The owner wants push-to-deploy on Cloudflare or Vercel with no server to run. Decisions:
+- **Cloudflare:** Workers via OpenNext, D1, R2, Vectorize, Workers AI (`bge-small-en-v1.5`), Queues, Durable Objects.
+- **A staged port:** each area is rewritten in TypeScript as Next route handlers. Until an area moves, the Worker forwards its calls to the Python backend.
+- **Better Auth**, with Cloudflare Email for verification, OTP and reset.
+- **A fresh start:** no data is migrated.
+- **`OWNER_EMAIL`:** that account is always the admin, with full access, and can grant any plan to any account. Every new account starts on Free.
+
+Stages:
+
+| Stage | Area |
+|---|---|
+| 4.0 | base |
+| 4.1 | auth + admin |
+| 4.2 | documents and search |
+| 4.3 | the AI layer |
+| 4.4 | study tools |
+| 4.5 | the game |
+| 4.6 | billing and launch |
+
+Full plan: `docs/deploy-cloudflare.md`.
+
+### Phase 4, Stage 4.0: the Cloudflare base (4 Nov 2026)
+
+- `frontend/wrangler.jsonc` (D1 `DB`, R2 `FILES`), `open-next.config.ts`, `drizzle.config.ts`, `migrations/` (D1), `src/server/*` (the TypeScript backend: config, env, errors, proxy, status, db).
+- `src/app/api/[...path]/route.ts` forwards whatever isn't moved yet to `BACKEND_URL`. This replaces the build-time rewrite: the address is now read at request time. It sends `PROXY_SECRET` and the client IP, which the backend's `middleware/client.py` trusts.
+- `GET /api/system/status` checks the database, storage and backend.
+- The CI `deploy` job (push to `main`): D1 migrations, OpenNext build, deploy.
+- `start.ps1 -BackendOnly` for the PC backend behind the Worker.
+
+### Phase 4, Stage 4.1: accounts and admin on the Worker (5 Nov 2026)
+
+- **Better Auth** on D1 (`src/server/auth`):
+  - email + password, hashed with PBKDF2 through Web Crypto to fit the free plan's CPU limit;
+  - a 6-digit email code to verify the email and to reset the password;
+  - two-step sign-in with an authenticator app (backup codes; an emailed code too);
+  - Google sign-in when its keys are set;
+  - usernames, roles and bans.
+- **Emails:** Cloudflare Email, then Resend, then the Worker log (`src/server/auth/mailer.ts`).
+- **The owner:** `OWNER_EMAIL`, once verified, is always an admin and on Archmage. Everyone else starts on Free.
+- **Plans and invite codes** are ported to TypeScript (`src/server/plans.ts`, `invites.ts`).
+- **Routes:** `/api/auth/*` (Better Auth); `/api/v1/auth/me|config|logout|check-username|update-profile|delete-account`; `/plans`, `/entitlements`, `/account/usage|redeem`; `/admin/users|invites`. These keep the paths and response shapes the UI already used.
+- **UI:**
+  - sign-up asks for the email code instead of an AI key;
+  - the login page adds Forgot password, two-step and Google;
+  - new pages Account → Security (`SecurityPanel`) and Account → Admin (`AdminPanel`).
+
 ---
 
 ## 5. Key file map
@@ -433,6 +481,11 @@ frontend/src/
 backend/database/pg.py           PostgreSQL adapter (SQLite SQL translated); migrate.py runs migrations/postgres/ for a URL
 backend/scripts/postgres_schema.py, sqlite_to_postgres.py   the PG baseline generator, the data copy
 deploy/windows/*                 PC + Cloudflare Tunnel scripts; deploy/vps/* Docker Compose + Caddy
+frontend/src/server/*            the TypeScript backend (Phase 4): proxy.ts, env.ts (bindings), errors.ts, db/schema.ts
+frontend/src/app/api/*           its routes; [...path]/route.ts forwards the rest to Python; wrangler.jsonc, migrations/
+frontend/src/server/auth/*       Better Auth (index.ts), password.ts (PBKDF2), mailer.ts; context.ts = per-request auth + current user
+frontend/src/server/{account,admin,plans,invites,http,route}.ts   the account/admin/plan logic; route.ts wraps every route
+frontend/src/lib/auth/*          the browser side (authApi.ts, config.ts); components/auth/*, account/AdminPanel, SecurityPanel
 docs/arena-v2.md, docs/pixel-sprites.md
 ```
 
@@ -464,7 +517,14 @@ Shop categories (`backend/content/shop.json`): armor (Outfits), headgear (Head P
 - **Deleting an account in tests:** `c.request("DELETE", "/auth/delete-account", json={"password": "correct-horse-1"})`.
 - **A new SQLite migration needs a PostgreSQL twin** in `migrations/postgres/` with the same number and name (`tests/test_postgres.py`). Write portable SQL in the code: `RETURNING id` (no `lastrowid`), no `rowid`, no `COLLATE NOCASE`, no SQLite date functions. Dates and timestamps are stored as ISO text on both.
 - **Testing on PostgreSQL:** `COURSEMATE_TEST_PG=postgresql://postgres@localhost:5432/postgres python -m pytest` runs the whole suite on a fresh database.
-- **Killing `next start` from a shell:** `pkill -f "next start"` can match the shell itself. Stop it by PID (`ps -eo pid,args`, look for `next-server`).
+- **Phase 4 server tests** start with `/** @vitest-environment node */` and use `localPlatform()` (a real local D1/R2 through wrangler). `@cloudflare/vitest-pool-workers` needs vitest 4, and we're on 5.
+- **Cloudflare types:** `cloudflare-env.d.ts` is generated with `--include-runtime=false`. The binding types come from `src/server/cf-bindings.d.ts`, because the global Workers runtime types clash with the DOM types.
+- **Remote-only bindings** (Workers AI, Vectorize) make `next dev` and `cf:preview` ask for a Cloudflare login. Add them only in the stage that uses them.
+- **A new Worker route** uses `api()` (`src/server/route.ts`): the same-site check, the context, errors in the API's shape. Use `requireUser` / `requireAdmin` from `src/server/context.ts`, and `rateLimit()` for anything that changes data.
+- **Ids are integers** (Better Auth `generateId: "serial"`), so later tables can use `INTEGER REFERENCES user(id)`.
+- **Server tests that sign people in** use `src/server/test/auth-helpers.ts`: `Browser`, a cookie jar, and `fakeMailer`, which reads the code. Set them up with `setEnvForTests`, `setMailerForTests` and `vi.stubEnv(SETTINGS)`.
+- **D1 migrations only add** (`migrations.test.ts`). Generate them with `npm run db:generate`; never write them by hand.
+- **Killing `next start` from a shell:** `pkill -f "next start"` can match the shell itself. Stop it by PID (`ps -eo pid,args`, look for `next-server`). The same goes for `wrangler dev` / `workerd`: kill the whole tree by PID (`ps -eo pid,ppid,args`).
 
 ---
 

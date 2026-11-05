@@ -7,18 +7,21 @@
   until the backend and frontend answer, prints the address, then returns; stop.ps1 stops everything.
   -Quick: a temporary https://*.trycloudflare.com address instead of your own hostname (no tunnel.ps1 needed;
   the address changes every start, and the frontend proxies /api itself).
+  -BackendOnly: only the backend (and Ollama) and the tunnel, for while the app itself runs on Cloudflare Workers
+  (Phase 4, docs/deploy-cloudflare.md): the Worker forwards what it doesn't answer yet to this PC.
 
 .EXAMPLE
   .\deploy\windows\start.ps1
   .\deploy\windows\start.ps1 -Quick
+  .\deploy\windows\start.ps1 -BackendOnly
 #>
-param([switch]$Quick, [switch]$NoTunnel)
+param([switch]$Quick, [switch]$NoTunnel, [switch]$BackendOnly)
 . "$PSScriptRoot\common.ps1"
 
 if (-not (Test-Path $VenvPy)) { Fail "Run .\deploy\windows\setup.ps1 first." }
 if (-not (Test-Path $EnvFile)) { Fail "backend\.env is missing: run .\deploy\windows\setup.ps1." }
 $server = Join-Path $Frontend ".next\standalone\server.js"
-if (-not (Test-Path $server)) { Fail "The frontend isn't built: run .\deploy\windows\build.ps1." }
+if (-not $BackendOnly -and -not (Test-Path $server)) { Fail "The frontend isn't built: run .\deploy\windows\build.ps1." }
 if ((Test-Path $PidFile)) { Warn "CourseMate may already be running (deploy\windows\.run\pids.json). Run stop.ps1 first if it isn't." }
 New-Item -ItemType Directory -Force -Path $RunDir, $LogDir | Out-Null
 $pids = @{}
@@ -51,17 +54,21 @@ if (-not (Wait-Http "http://127.0.0.1:8000/api/v1/health" 90)) { Fail "The backe
 Ok "backend answers on http://127.0.0.1:8000"
 
 # ── frontend (the standalone Next.js server) ───────────────────────────────────────────────────────────────
-Step "Frontend"
-Start-Bg "frontend" "node" @($server) (Split-Path $server) @{ PORT = "3000"; HOSTNAME = "127.0.0.1"; NODE_ENV = "production" }
-if (-not (Wait-Http "http://127.0.0.1:3000/login" 60)) { Fail "The frontend didn't start: see logs\frontend.log.err" }
-Ok "frontend answers on http://127.0.0.1:3000"
+if (-not $BackendOnly) {
+    Step "Frontend"
+    # BACKEND_URL: where the frontend forwards the /api calls it doesn't answer itself (read at start, not at build).
+    Start-Bg "frontend" "node" @($server) (Split-Path $server) @{ PORT = "3000"; HOSTNAME = "127.0.0.1"; NODE_ENV = "production"; BACKEND_URL = "http://127.0.0.1:8000" }
+    if (-not (Wait-Http "http://127.0.0.1:3000/login" 60)) { Fail "The frontend didn't start: see logs\frontend.log.err" }
+    Ok "frontend answers on http://127.0.0.1:3000"
+}
 
 # ── tunnel ─────────────────────────────────────────────────────────────────────────────────────────────────
 if (-not $NoTunnel) {
     Step "Cloudflare Tunnel"
     if (-not (Has "cloudflared")) { Fail "cloudflared not found:  winget install --id Cloudflare.cloudflared" }
     if ($Quick) {
-        Start-Bg "tunnel" "cloudflared" @("tunnel", "--no-autoupdate", "--url", "http://127.0.0.1:3000") $Root
+        $target = if ($BackendOnly) { "http://127.0.0.1:8000" } else { "http://127.0.0.1:3000" }
+        Start-Bg "tunnel" "cloudflared" @("tunnel", "--no-autoupdate", "--url", $target) $Root
         $url = $null
         foreach ($i in 1..40) {
             Start-Sleep -Milliseconds 750
@@ -74,7 +81,8 @@ if (-not $NoTunnel) {
         if (-not (Test-Path $TunnelCfg)) { Fail "No deploy\windows\cloudflared.yml: run .\deploy\windows\tunnel.ps1 -Hostname <yours> once (or start.ps1 -Quick)." }
         Start-Bg "tunnel" "cloudflared" @("tunnel", "--no-autoupdate", "--config", $TunnelCfg, "run") $Root
         $origin = Get-EnvValue "ALLOWED_ORIGIN"
-        Ok "public address: $origin"
+        if ($BackendOnly) { Ok "the backend is reachable through your tunnel hostname (the app: $origin)" }
+        else { Ok "public address: $origin" }
     }
 }
 

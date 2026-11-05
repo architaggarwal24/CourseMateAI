@@ -4,11 +4,20 @@ The backend usually sits behind something (the Next.js rewrite, nginx, a cloud l
 that proxy, not the user. The forwarded headers name the real client - but anyone can send them, so they are
 believed only when the peer is a proxy on this host or private network (TRUSTED_PROXY_NETWORKS), and the address is read from the RIGHT of
 X-Forwarded-For: the first hop that is not one of our own proxies. Whatever a client puts to the left is ignored.
+
+The Cloudflare Worker (Phase 4, docs/deploy-cloudflare.md) reaches us through a Cloudflare Tunnel, so the peer and
+the forwarded headers name the Worker. It proves itself with PROXY_SECRET (X-CoursemateAI-Proxy) and names the
+student in X-CoursemateAI-Client-IP. Without the secret those headers mean nothing.
 """
+import hmac
 import ipaddress
 from typing import Optional
 
 from fastapi import Request
+
+from config.settings import settings
+
+PROXY_SECRET = settings.proxy_secret
 
 # Where our own proxies live: this host, or a private network (docker-compose, nginx on the same machine, a cloud
 # load balancer inside the VPC). Nothing on a public address is ever believed.
@@ -33,10 +42,21 @@ def _peer(request: Request) -> str:
     return request.client.host if request.client else "unknown"
 
 
+def from_worker(request: Request) -> bool:
+    """True when the request came through our Cloudflare Worker (it sent the shared PROXY_SECRET)."""
+    sent = request.headers.get("x-coursemateai-proxy", "")
+    return bool(PROXY_SECRET) and bool(sent) and hmac.compare_digest(sent.encode(), PROXY_SECRET.encode())
+
+
 def client_ip(request: Request) -> str:
-    """The caller's address: the TCP peer, or - when the peer is a trusted proxy - the nearest address in
-    X-Forwarded-For that is not itself a trusted proxy."""
+    """The caller's address: the one our Worker names, else the TCP peer, or - when the peer is a trusted proxy -
+    the nearest address in X-Forwarded-For that is not itself a trusted proxy."""
     peer = _peer(request)
+    if from_worker(request):
+        named = request.headers.get("x-coursemateai-client-ip", "").strip()
+        if _ip(named) is not None:
+            return named
+        return peer
     if not _trusted(peer):
         return peer
     chain = [h.strip() for h in ",".join(request.headers.getlist("x-forwarded-for")).split(",") if h.strip()]
@@ -52,7 +72,7 @@ def request_is_https(request: Request) -> bool:
     """True when the user's browser talked https to us (directly, or to a trusted proxy that says so)."""
     if request.url.scheme == "https":
         return True
-    if not _trusted(_peer(request)):
+    if not (_trusted(_peer(request)) or from_worker(request)):
         return False
     protos = ",".join(request.headers.getlist("x-forwarded-proto")).lower().split(",")
     return any(p.strip() == "https" for p in protos)
