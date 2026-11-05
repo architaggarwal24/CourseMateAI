@@ -36,7 +36,7 @@ test("a mock exam from setup to results, keyboard first", async ({ page }, info)
 
   await expect(page.getByRole("heading", { name: "Exam results" })).toBeVisible();
   await expect(page.getByRole("rowheader", { name: "Osmosis" })).toBeVisible();
-  await expect(page.getByRole("link", { name: /PDF report/ })).toHaveAttribute("href", /\/api\/v1\/exams\/exam-1\/report\.pdf$/);
+  await expect(page.getByRole("button", { name: /Save as PDF/ })).toBeVisible();
   await expect(page.getByText("2 missed questions are now in your review queue", { exact: false })).toBeVisible();
   await axeClean(page, `${info.project.name}: exam results`);
 });

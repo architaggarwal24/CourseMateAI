@@ -1,7 +1,7 @@
 // The D1 (SQLite) schema of the TypeScript backend (Phase 4). Each stage adds the tables it moves over;
 // `npm run db:generate` turns a change here into the next file in migrations/.
 import { sql } from "drizzle-orm";
-import { index, integer, primaryKey, sqliteTable, text } from "drizzle-orm/sqlite-core";
+import { index, integer, primaryKey, real, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core";
 
 const nowMs = sql`(cast(unixepoch('subsecond') * 1000 as integer))`;
 const nowIso = sql`(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))`;
@@ -191,3 +191,176 @@ export const aiUsage = sqliteTable("ai_usage", {
   tokensOut: integer("tokens_out").notNull().default(0),
   costMicroUsd: integer("cost_micro_usd").notNull().default(0),
 }, (t) => [primaryKey({ columns: [t.day, t.provider, t.model, t.job] })]);
+
+// ── study tools (Stage 4.4: src/server/study/*). `doc_hash` names what was studied: a document's file hash, or
+//    "course:<id>" for a course as a whole, so re-uploading the same PDF keeps the history. ─────────────────────
+export const activityLog = sqliteTable("activity_log", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  userId: integer("user_id").notNull().references(() => user.id, { onDelete: "cascade" }),
+  sessionId: text("session_id").notNull(),
+  mode: text("mode").notNull(),
+  actionType: text("action_type").notNull(),
+  content: text("content"),
+  createdAt: text("created_at").notNull(),
+}, (t) => [index("activity_user_idx").on(t.userId, t.createdAt), index("activity_session_idx").on(t.sessionId)]);
+
+/** Generated quizzes, flashcard sets and notes, reused for the same request for a while (GENERATION_CACHE_DAYS). */
+export const generationCache = sqliteTable("generation_cache", {
+  key: text("key").primaryKey(),
+  userId: integer("user_id").notNull().references(() => user.id, { onDelete: "cascade" }),
+  value: text("value").notNull(),
+  expiresAt: text("expires_at").notNull(),
+}, (t) => [index("generation_cache_expiry_idx").on(t.expiresAt)]);
+
+export const quizzes = sqliteTable("quizzes", {
+  id: text("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => user.id, { onDelete: "cascade" }),
+  sessionId: text("session_id").notNull(),
+  topic: text("topic").notNull(),
+  questionType: text("question_type").notNull(),
+  questionsJson: text("questions_json").notNull(),
+  questionCount: integer("question_count").notNull(),
+  createdAt: text("created_at").notNull(),
+  finishedAt: text("finished_at"),
+  correctCount: integer("correct_count"),
+  accuracy: real("accuracy"),
+}, (t) => [index("quizzes_user_idx").on(t.userId)]);
+
+export const quizAnswers = sqliteTable("quiz_answers", {
+  quizId: text("quiz_id").notNull().references(() => quizzes.id, { onDelete: "cascade" }),
+  questionId: integer("question_id").notNull(),
+  answer: text("answer").notNull(),
+  correct: integer("correct", { mode: "boolean" }).notNull(),
+  answeredAt: text("answered_at").notNull(),
+}, (t) => [primaryKey({ columns: [t.quizId, t.questionId] })]);
+
+/** Every quiz question written for a user's document and topic; a later quiz takes ones they haven't had. */
+export const quizBank = sqliteTable("quiz_bank", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  userId: integer("user_id").notNull().references(() => user.id, { onDelete: "cascade" }),
+  docHash: text("doc_hash").notNull(),
+  topicKey: text("topic_key").notNull(),
+  questionType: text("question_type").notNull(),
+  textKey: text("text_key").notNull(),
+  questionJson: text("question_json").notNull(),
+  served: integer("served", { mode: "boolean" }).notNull().default(false),
+  createdAt: text("created_at").notNull(),
+}, (t) => [uniqueIndex("quiz_bank_unique").on(t.userId, t.docHash, t.topicKey, t.questionType, t.textKey)]);
+
+export const conceptMastery = sqliteTable("concept_mastery", {
+  userId: integer("user_id").notNull().references(() => user.id, { onDelete: "cascade" }),
+  docHash: text("doc_hash").notNull(),
+  conceptKey: text("concept_key").notNull(),
+  concept: text("concept").notNull(),
+  seen: integer("seen").notNull().default(0),
+  correct: integer("correct").notNull().default(0),
+  wrongStreak: integer("wrong_streak").notNull().default(0),
+  lastSeenAt: text("last_seen_at"),
+  lastWrongAt: text("last_wrong_at"),
+}, (t) => [primaryKey({ columns: [t.userId, t.docHash, t.conceptKey] })]);
+
+export const missedQuestions = sqliteTable("missed_questions", {
+  userId: integer("user_id").notNull().references(() => user.id, { onDelete: "cascade" }),
+  docHash: text("doc_hash").notNull(),
+  textKey: text("text_key").notNull(),
+  conceptKey: text("concept_key").notNull(),
+  concept: text("concept").notNull(),
+  source: text("source").notNull(),
+  question: text("question").notNull(),
+  correctAnswer: text("correct_answer").notNull(),
+  explanation: text("explanation"),
+  missedAt: text("missed_at").notNull(),
+}, (t) => [primaryKey({ columns: [t.userId, t.docHash, t.textKey] })]);
+
+/** The spaced-repetition queue (FSRS, ts-fsrs). state: 0 new, 1 learning, 2 review, 3 relearning. */
+export const reviewItems = sqliteTable("review_items", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  userId: integer("user_id").notNull().references(() => user.id, { onDelete: "cascade" }),
+  docHash: text("doc_hash").notNull(),
+  itemKey: text("item_key").notNull(),
+  source: text("source").notNull(),
+  concept: text("concept"),
+  conceptKey: text("concept_key"),
+  front: text("front").notNull(),
+  back: text("back").notNull(),
+  explanation: text("explanation"),
+  state: integer("state").notNull().default(0),
+  step: integer("step").notNull().default(0),
+  stability: real("stability").notNull().default(0),
+  difficulty: real("difficulty").notNull().default(0),
+  elapsedDays: integer("elapsed_days").notNull().default(0),
+  scheduledDays: integer("scheduled_days").notNull().default(0),
+  due: text("due").notNull(),
+  lastReview: text("last_review"),
+  reps: integer("reps").notNull().default(0),
+  lapses: integer("lapses").notNull().default(0),
+  createdAt: text("created_at").notNull(),
+  updatedAt: text("updated_at").notNull(),
+}, (t) => [uniqueIndex("review_items_unique").on(t.userId, t.docHash, t.itemKey), index("review_items_due_idx").on(t.userId, t.due)]);
+
+export const reviewLogs = sqliteTable("review_logs", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  userId: integer("user_id").notNull().references(() => user.id, { onDelete: "cascade" }),
+  itemId: integer("item_id").notNull().references(() => reviewItems.id, { onDelete: "cascade" }),
+  rating: integer("rating").notNull(),
+  wasNew: integer("was_new", { mode: "boolean" }).notNull(),
+  reviewedAt: text("reviewed_at").notNull(),
+  localDate: text("local_date").notNull(),
+  durationMs: integer("duration_ms"),
+}, (t) => [index("review_logs_day_idx").on(t.userId, t.localDate)]);
+
+export const exams = sqliteTable("exams", {
+  id: text("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => user.id, { onDelete: "cascade" }),
+  sessionId: text("session_id").notNull(),
+  docHash: text("doc_hash").notNull(),
+  docName: text("doc_name").notNull(),
+  length: integer("length").notNull(),
+  difficulty: text("difficulty").notNull(),
+  topicsJson: text("topics_json").notNull(),
+  timeLimitS: integer("time_limit_s").notNull(),
+  status: text("status", { enum: ["active", "graded"] }).notNull().default("active"),
+  startedAt: text("started_at").notNull(),
+  deadline: text("deadline").notNull(),
+  submittedAt: text("submitted_at"),
+  total: integer("total").notNull(),
+  score: integer("score"),
+  accuracy: real("accuracy"),
+  timeUsedS: integer("time_used_s"),
+  breakdownJson: text("breakdown_json"),
+  autoSubmitted: integer("auto_submitted", { mode: "boolean" }).notNull().default(false),
+}, (t) => [index("exams_user_idx").on(t.userId, t.status)]);
+
+export const examQuestions = sqliteTable("exam_questions", {
+  examId: text("exam_id").notNull().references(() => exams.id, { onDelete: "cascade" }),
+  idx: integer("idx").notNull(),
+  question: text("question").notNull(),
+  optionsJson: text("options_json").notNull(),
+  correctAnswer: text("correct_answer").notNull(),
+  explanation: text("explanation"),
+  concept: text("concept").notNull(),
+  difficulty: text("difficulty").notNull(),
+}, (t) => [primaryKey({ columns: [t.examId, t.idx] })]);
+
+export const examAnswers = sqliteTable("exam_answers", {
+  examId: text("exam_id").notNull().references(() => exams.id, { onDelete: "cascade" }),
+  idx: integer("idx").notNull(),
+  answer: text("answer"),
+  flagged: integer("flagged", { mode: "boolean" }).notNull().default(false),
+  correct: integer("correct", { mode: "boolean" }),
+  answeredAt: text("answered_at").notNull(),
+}, (t) => [primaryKey({ columns: [t.examId, t.idx] })]);
+
+/** One concept map per document content (file hash) and extractor version. `lease_until`: a build in progress. */
+export const conceptMaps = sqliteTable("concept_maps", {
+  docHash: text("doc_hash").notNull(),
+  version: integer("version").notNull(),
+  status: text("status", { enum: ["queued", "running", "ready", "failed"] }).notNull(),
+  stage: text("stage"),
+  error: text("error"),
+  dataJson: text("data_json"),
+  model: text("model"),
+  leaseUntil: text("lease_until"),
+  createdAt: text("created_at").notNull(),
+  updatedAt: text("updated_at").notNull(),
+}, (t) => [primaryKey({ columns: [t.docHash, t.version] })]);

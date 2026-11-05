@@ -23,7 +23,7 @@ export async function fetchConceptMap(scopeId: string): Promise<ConceptMap> {
   return data as unknown as ConceptMap;
 }
 
-/** Start the map of every document in the scope that has none yet (one AI pass each, cached). Returns at once. */
+/** Make the map of every document in the scope that has none yet (one AI pass each, cached). Answers when done. */
 export async function buildConceptMap(scopeId: string): Promise<ConceptMap> {
   const { data } = await api.POST("/concept-map", { body: { session_id: scopeId } });
   return data as unknown as ConceptMap;

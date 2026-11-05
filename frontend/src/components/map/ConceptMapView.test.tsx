@@ -61,6 +61,22 @@ describe("concept map", () => {
     expect(screen.getByRole("list", { name: "Legend" }).textContent).toContain("Not tried yet");
   }, 15000);
 
+  it("while the server makes the map inside the POST, the page polls GET and shows its progress line", async () => {
+    let finish!: () => void;
+    const log = { gets: 0 };
+    vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const method = (typeof input === "object" && "method" in input ? input.method : init?.method) ?? "GET";
+      if (method === "POST") { await new Promise<void>((r) => { finish = r; }); return json(200, READY); }
+      log.gets += 1;
+      return json(200, log.gets === 1 ? NONE : BUILDING);
+    }));
+    render(<ConceptMapView documentId="d1" />);
+    fireEvent.click(await screen.findByRole("button", { name: "Make the concept map" }));
+    expect(await screen.findByText("Mapping the concepts and how they connect…", undefined, { timeout: 4000 })).toBeTruthy();
+    finish();
+    expect(await screen.findByRole("group", { name: "Concept map: 4 concepts" }, { timeout: 4000 })).toBeTruthy();
+  }, 15000);
+
   it("moves between linked stars with the arrow keys and opens a concept's actions", async () => {
     server([READY]);
     render(<ConceptMapView documentId="d1" />);

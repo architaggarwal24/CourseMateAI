@@ -8,6 +8,8 @@
     "start": "next start",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
+    "test:quick": "vitest run --changed",
+    "check": "tsc --noEmit && vitest run",
     "gen:api": "python ../backend/scripts/export_openapi.py && openapi-typescript ../backend/openapi.json -o src/lib/api/generated/schema.d.ts --default-non-nullable false",
     "test:e2e": "playwright test",
     "cf:typegen": "wrangler types --env-interface CloudflareEnv --include-runtime=false cloudflare-env.d.ts",
@@ -46,6 +48,7 @@
     "remark-gfm": "^4.0.0",
     "remark-math": "^6.0.0",
     "tailwind-merge": "^3.7.0",
+    "ts-fsrs": "5.4.2",
     "uqr": "0.1.3",
     "uuid": "^14.0.3",
     "zustand": "^5.0.16"

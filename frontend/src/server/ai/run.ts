@@ -9,7 +9,11 @@ import { apiLlm, DEFAULT_MAX_OUTPUT } from "./providers";
 import { checkQuota, isCapped, recordCall } from "./usage";
 
 export interface ChatMessage { role: "system" | "user" | "assistant"; content: string }
-export interface CallOptions { maxOutputTokens?: number; temperature?: number; timeoutMs?: number }
+export interface CallOptions {
+  maxOutputTokens?: number; temperature?: number; timeoutMs?: number;
+  /** Ask for a JSON answer where the provider has a switch for it (Gemini, OpenAI). The prompt must ask too. */
+  json?: boolean;
+}
 export interface Caller { id: number; owner: boolean; tier: Tier }
 
 export interface Llm {

@@ -116,7 +116,10 @@ describe("ExamView: taking it", () => {
     expect(screen.getByText("Score").closest("div")!.textContent).toContain("0 / 3");
     expect(screen.getByRole("rowheader", { name: "ATP" })).toBeTruthy();
     expect(screen.getByText(/3 missed questions are now in your review queue/)).toBeTruthy();
-    expect(screen.getByRole("link", { name: /PDF report/ }).getAttribute("href")).toMatch(/\/api\/v1\/exams\/e1\/report\.pdf$/);
+    const print = vi.spyOn(window, "print").mockImplementation(() => {});
+    fireEvent.click(screen.getByRole("button", { name: /Save as PDF/ }));      // the browser's print: Save as PDF
+    expect(print).toHaveBeenCalledTimes(1);
+    expect(document.querySelector(".exam-results")!.getAttribute("data-print")).toBe("report");
     expect(screen.getByRole("link", { name: "Review them" }).getAttribute("href")).toBe("/study?tab=review&doc=d1");
     expect(screen.getByText("Because 0.")).toBeTruthy();
     expect(toasts.success).toHaveBeenCalledWith("Exam complete: +150 XP | +40 Coins", expect.anything());

@@ -471,6 +471,33 @@ Full plan: `docs/deploy-cloudflare.md`.
 - **Not yet:** `rewards` is null and history isn't logged; both come in 4.4 and 4.5.
 - **Admin → AI spend:** the cost per model, today's spend against the cap, and the routes.
 
+### Phase 4, Stage 4.4: the study tools on the Worker (5 Nov 2026)
+
+- **Code:** `src/server/study/*`, with migration `0004_study`. It covers:
+  - `text.ts`: keys, answer matching, tolerant JSON;
+  - `schemas.ts`: checks on the model's answers; a bad item is dropped;
+  - `prompts.ts`: ported word for word;
+  - `core.ts`: history, the generation cache, the topic gate, `generateData`, which retries an unusable answer once;
+  - `tools.ts`: quiz, flashcards, notes, flashcard review, review deck;
+  - `mastery.ts`, `review.ts` (FSRS via `ts-fsrs` 5.4.2), `exams.ts`, `conceptMap.ts`.
+- **Routes:**
+  - `/quiz`, `/quiz/answer`, `/quiz/finish`, `/flashcards`, `/notes`;
+  - `/study/flashcards/review`, `/study/review-deck`;
+  - `/history`, `/history/session/{id}`;
+  - `/review/{stats,queue,grade,cards,cards/{id}}`;
+  - `/exams`, `/exams/{options,active,{id},{id}/answers,{id}/submit}`;
+  - `/concept-map`.
+  - Course progress is now filled in from mastery, review cards and exams.
+- **Choices made:**
+  - The quiz bank is per user. A quiz asks for whole batches of 5 and banks the spares.
+  - Quizzes aren't cached (a repeat request gives new questions); flashcards and notes are cached for 7 days in D1.
+  - Review days are UTC.
+  - The exam PDF report became a print stylesheet plus a **Save as PDF** button (`window.print`); `/exams/{id}/report.pdf` is gone.
+  - The concept map is built inside the POST request, with a lease in D1. `ConceptMapView` polls GET while the POST is open.
+- Providers take `json: true`: Gemini uses `responseMimeType`, OpenAI uses `response_format` `json_object`.
+- Chat logs its question and answer to the history.
+- **Not yet:** `rewards` is null everywhere until 4.5.
+
 ---
 
 ## 5. Key file map

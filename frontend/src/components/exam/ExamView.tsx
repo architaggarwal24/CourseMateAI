@@ -10,7 +10,7 @@ import { useReview } from "@/hooks/useReview";
 import { ApiError } from "@/lib/api";
 import { ROUTES } from "@/lib/routes";
 import {
-  DIFFICULTY_LABEL, clock, examReportUrl, fetchActiveExam, fetchExam, fetchExamHistory, fetchExamOptions, startExam,
+  DIFFICULTY_LABEL, clock, fetchActiveExam, fetchExam, fetchExamHistory, fetchExamOptions, startExam,
   submitExam, type Exam, type ExamDifficulty, type ExamOptions, type ExamSummary,
 } from "@/lib/study/exam";
 import ExamRunner from "./ExamRunner";
@@ -22,7 +22,7 @@ const DEFAULT_SECONDS: Record<string, number> = { easy: 60, medium: 75, hard: 90
 /**
  * Exam mode (Phase 3 Stage 3A): a timed mock test written from the document. Choose length, difficulty and topics;
  * answer with no hints and no feedback; the server grades it once and returns a per-concept breakdown, every
- * answer with its explanation, and a PDF score report. Missed questions go to the review queue on their own.
+ * answer with its explanation, and a score report the browser prints or saves as a PDF. Missed questions go to the review queue on their own.
  */
 export default function ExamView({ documentId }: { documentId?: string }) {
   const refreshIfStale = useHUDStore((s) => s.refreshIfStale);
@@ -127,7 +127,7 @@ export default function ExamView({ documentId }: { documentId?: string }) {
   if (phase === "locked") {
     return frame(
       <UpgradeCard feature="Exam mode" plan={lockPlan}
-                   description="Timed mock tests written from your document, graded with a per-concept breakdown and a PDF score report. Every miss goes to your review queue.">
+                   description="Timed mock tests written from your document, graded with a per-concept breakdown and a score report you can save as a PDF. Every miss goes to your review queue.">
         <ButtonLink href={ROUTES.studyTab("quiz", undefined, documentId)} size="sm">Take a quiz instead</ButtonLink>
       </UpgradeCard>,
     );
@@ -237,14 +237,16 @@ function ExamResults({ exam, documentId, onNew }: { exam: Exam; documentId?: str
     <span className="exam-bar" aria-hidden="true"><span data-tone={acc >= 0.8 ? "good" : acc >= 0.6 ? "ok" : "low"} style={{ width: `${Math.round(acc * 100)}%` }} /></span>
   );
   return (
-    <section aria-labelledby="exam-results-title" className="exam-results">
+    <section aria-labelledby="exam-results-title" className="exam-results" data-print="report">
       <div className="exam-results__head">
         <div>
           <h3 id="exam-results-title">Exam results</h3>
           <p>{exam.doc_name} · {DIFFICULTY_LABEL[exam.difficulty as ExamDifficulty] ?? exam.difficulty}{r.auto_submitted ? " · handed in when the time ran out" : ""}</p>
         </div>
-        <div className="flex flex-wrap gap-2">
-          <a className="ui-btn ui-btn--secondary ui-btn--sm" href={examReportUrl(exam.id)} download><Download size={15} aria-hidden="true" />PDF report</a>
+        <div className="flex flex-wrap gap-2 exam-noprint">
+          <Button size="sm" onClick={() => window.print()} title="Print the report, or choose Save as PDF in the print dialog">
+            <Download size={15} aria-hidden="true" />Save as PDF
+          </Button>
           <Button size="sm" variant="primary" onClick={onNew}>New exam</Button>
         </div>
       </div>

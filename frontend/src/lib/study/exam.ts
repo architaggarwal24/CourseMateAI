@@ -1,5 +1,5 @@
 // Exam mode (backend routers/exams.py): a timed mock test from a document, graded on the server.
-import { API_BASE_URL, api } from "@/lib/api/client";
+import { api } from "@/lib/api/client";
 import type { components } from "@/lib/api/generated/schema";
 
 export type Exam = components["schemas"]["Exam"];
@@ -50,7 +50,6 @@ export async function submitExam(id: string) {
 }
 
 /** The PDF score report (a plain link: the browser downloads it with the login cookie). */
-export const examReportUrl = (id: string) => `${API_BASE_URL}/exams/${encodeURIComponent(id)}/report.pdf`;
 
 /** m:ss (or h:mm:ss) for the exam clock. */
 export function clock(seconds: number): string {

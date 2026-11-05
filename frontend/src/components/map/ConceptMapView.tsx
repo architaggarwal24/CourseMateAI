@@ -15,6 +15,7 @@ import "./map.css";
 
 export const POLL_MS = 1500;
 const SLOW_POLL_MS = 4000;
+const PEEK_MS = 600;
 const HEAT_TONE: Record<Heat, BadgeTone> = { new: "neutral", weak: "danger", learning: "warning", strong: "success" };
 const IMPORTANCE = [{ n: 3, label: "Central" }, { n: 2, label: "Important" }, { n: 1, label: "Supporting" }];
 
@@ -68,11 +69,14 @@ export default function ConceptMapView({ documentId }: { documentId?: string }) 
   const build = async () => {
     if (!documentId) return;
     setStarting(true);
+    // The server makes the map inside this request; meanwhile the page polls GET for its progress line.
+    const peek = setTimeout(() => void load(), PEEK_MS);
     try {
       setMap(await buildConceptMap(documentId));
     } catch (e) {
       toast.apiError(e, { onRetry: () => void build() });
     } finally {
+      clearTimeout(peek);
       setStarting(false);
     }
   };

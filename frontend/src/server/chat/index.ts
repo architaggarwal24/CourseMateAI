@@ -9,6 +9,7 @@ import { HttpError } from "../http";
 import { tierFor } from "../plans";
 import { searchDeps, searchPassages, type Passage } from "../search";
 import { generate, type Caller } from "../ai/run";
+import { logActivity } from "../study/core";
 import { buildChatMessages } from "./prompts";
 import { standaloneQuestion, type Rewrite, type Turn } from "./rewrite";
 
@@ -97,6 +98,7 @@ export interface ChatPlan {
   quality: ReturnType<typeof assessRelevance>;
   rewrite: Rewrite;
   caller: Caller;
+  sessionId: string;
 }
 
 export async function callerFor(ctx: RequestContext, user: CurrentUser): Promise<Caller> {
@@ -109,6 +111,8 @@ export async function planChat(ctx: RequestContext, user: CurrentUser, body: Rec
   const history = sanitizeHistory(body.history);
   const sessionId = typeof body.session_id === "string" ? body.session_id : "";
   const study = await studyDocs(ctx, user, sessionId);
+  // logged first, so the history reads question -> answer and keeps the question even if the answer fails
+  await logActivity(ctx, user.id, study.id, "chat", "query", { question });
   const deps = searchDeps(ctx.env);
   if (!deps) throw new HttpError(503, "search_unavailable", "Search isn't set up on this server yet (Workers AI and Vectorize).", "retry");
   const caller = await callerFor(ctx, user);
@@ -116,7 +120,7 @@ export async function planChat(ctx: RequestContext, user: CurrentUser, body: Rec
     async (messages) => (await generate(ctx, caller, "small", messages, { maxOutputTokens: 120, temperature: 0 })).text,
     { enabled: (process.env.QUERY_REWRITE ?? "true") !== "false", maxMessages: num(process.env.QUERY_REWRITE_TURNS, 6) });
   const found = toRetrieval(await searchPassages(ctx.db, deps, study.docs, rewrite.query, topK));
-  return { question, history, found, quality: assessRelevance(found), rewrite, caller };
+  return { question, history, found, quality: assessRelevance(found), rewrite, caller, sessionId: study.id };
 }
 
 /** The messages for the answer (when it isn't blocked). */
@@ -125,6 +129,12 @@ export function answerMessages(plan: ChatPlan) {
     ? `The following content was found:\n\n${numberedContext(plan.found)}\n\nIf relevant, explain it. Otherwise, ask the user to clarify.`
     : numberedContext(plan.found);
   return buildChatMessages(context, plan.question, plan.history);
+}
+
+/** The answer joins the history (blocked questions have no answer to log). */
+export async function logAnswer(ctx: RequestContext, plan: ChatPlan, answer: string) {
+  const content = plan.quality.needs_clarification ? { answer, needs_clarification: true } : { answer, sources: plan.found.sources.length };
+  await logActivity(ctx, plan.caller.id, plan.sessionId, "chat", "response", content);
 }
 
 export function finalPayload(plan: ChatPlan, blocked = false) {

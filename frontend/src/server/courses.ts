@@ -1,9 +1,9 @@
 // Courses on the Worker (Stage 4.2; the same rules as backend/services/course_service.py): a named group of the
 // user's documents, studied together. A course id stands wherever a document id does (GET /documents/{id} answers
 // with the course seen as one document). Deleting a course leaves its documents. Courses are a Sage feature.
-import { and, count, desc, eq, inArray } from "drizzle-orm";
+import { and, count, desc, eq, inArray, sql } from "drizzle-orm";
 import type { CurrentUser, RequestContext } from "./context";
-import { courseDocuments, courses, documents } from "./db/schema";
+import { conceptMastery, courseDocuments, courses, documents, exams, reviewItems } from "./db/schema";
 import { courseMembers } from "./documents";
 import { HttpError } from "./http";
 import { limits, nowIso, planLimit, requireFeature, tierFor } from "./plans";
@@ -110,18 +110,43 @@ export async function deleteCourse(ctx: RequestContext, user: CurrentUser, id: s
   await ctx.db.delete(courses).where(eq(courses.id, r.id));
 }
 
-/** How the course is going. Mastery, review cards and exams fill in as those move to the Worker (4.4, 4.5). */
+/** How the course is going, from stored data only: concept mastery over its documents (and what was studied on the
+ *  course as a whole), the review cards due, and the exams taken on it. */
 export async function courseProgress(ctx: RequestContext, user: CurrentUser, id: string) {
   await gate(ctx, user);
   const r = await row(ctx, user, id);
   const members = await courseMembers(ctx, r.id);
+  const hashes = [...members.map((m) => m.fileHash), `course:${r.id}`];
+  const concepts = await ctx.db.select({
+    key: conceptMastery.conceptKey, concept: sql<string>`MAX(${conceptMastery.concept})`, seen: sql<number>`SUM(${conceptMastery.seen})`,
+    correct: sql<number>`SUM(${conceptMastery.correct})`, streak: sql<number>`MAX(${conceptMastery.wrongStreak})`,
+  }).from(conceptMastery).where(and(eq(conceptMastery.userId, user.id), inArray(conceptMastery.docHash, hashes))).groupBy(conceptMastery.conceptKey).all();
+  const strong = concepts.filter((c) => c.seen >= 2 && c.correct / c.seen >= 0.8 && !c.streak).length;
+  const weak = concepts.filter((c) => c.seen > c.correct)
+    .sort((a, b) => (-(a.seen - a.correct) - 1.5 * a.streak) - (-(b.seen - b.correct) - 1.5 * b.streak) || a.concept.localeCompare(b.concept));
+  const t = new Date().toISOString().replace(/\.\d{3}Z$/, "Z");
+  const cards = await ctx.db.select({ total: count(), due: sql<number>`COALESCE(SUM(CASE WHEN ${reviewItems.due} <= ${t} AND ${reviewItems.reps} > 0 THEN 1 ELSE 0 END), 0)` })
+    .from(reviewItems).where(and(eq(reviewItems.userId, user.id), inArray(reviewItems.docHash, hashes))).get();
+  const taken = await ctx.db.select({ id: exams.id, accuracy: exams.accuracy, submitted_at: exams.submittedAt }).from(exams)
+    .where(and(eq(exams.userId, user.id), inArray(exams.docHash, hashes), eq(exams.status, "graded"))).orderBy(desc(exams.submittedAt)).limit(5).all();
+  const perDoc = [];
+  for (const m of members) {
+    const d = await ctx.db.select({ n: count(), seen: sql<number>`COALESCE(SUM(${conceptMastery.seen}), 0)`, correct: sql<number>`COALESCE(SUM(${conceptMastery.correct}), 0)` })
+      .from(conceptMastery).where(and(eq(conceptMastery.userId, user.id), eq(conceptMastery.docHash, m.fileHash))).get();
+    const seen = Number(d?.seen ?? 0);
+    perDoc.push({ id: m.id, filename: m.filename, concepts: Number(d?.n ?? 0), answered: seen,
+                  accuracy: seen ? Math.round((Number(d?.correct ?? 0) / seen) * 10_000) / 10_000 : null });
+  }
+  const answered = concepts.reduce((a, c) => a + Number(c.seen), 0);
+  const right = concepts.reduce((a, c) => a + Number(c.correct), 0);
   return {
-    course_id: r.id, mastery: 0,
-    concepts: { seen: 0, strong: 0, weak: 0, weakest: [] },
-    answers: { total: 0, correct: 0, accuracy: 0 },
-    review: { cards: 0, due: 0 },
-    exams: [],
-    documents: members.map((m) => ({ id: m.id, filename: m.filename, concepts: 0, answered: 0, accuracy: 0 })),
+    course_id: r.id,
+    concepts: { seen: concepts.length, strong, weak: weak.length, weakest: weak.slice(0, 5).map((c) => c.concept) },
+    answers: { total: answered, correct: right, accuracy: answered ? Math.round((right / answered) * 10_000) / 10_000 : null },
+    review: { cards: Number(cards?.total ?? 0), due: Number(cards?.due ?? 0) },
+    exams: taken,
+    documents: perDoc,
+    mastery: concepts.length ? Math.round((strong / concepts.length) * 10_000) / 10_000 : 0,
   };
 }
 

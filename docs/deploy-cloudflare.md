@@ -176,6 +176,18 @@ If a model fails, the next one in the line takes over. Workers AI is always the 
 
 **Check:** `/api/system/status` shows `ai.detail` as your fast model. Without any key it says Workers AI only.
 
+## Study tools (Stage 4.4)
+
+Quizzes, flashcards, notes, the history, the review queue, exams and the concept map run on the Worker. Nothing to set up: migration `0004_study` adds their tables on deploy.
+
+- **A topic must be in the document.** Quiz, flashcards and notes search it first; below `TOPIC_MIN_SIMILARITY` (default 0.40) the answer is "not covered in your PDF", with no AI call.
+- **Cached for a week:** the same flashcards or notes request (same document, topic and options) is answered from D1 for `GENERATION_CACHE_DAYS` days (default 7; 0 turns it off).
+- **Quizzes are never repeated.** A quiz asks the model for whole batches of 5. The spare questions go to the student's own question bank for that document and topic. The next quiz takes questions they haven't had from the bank, with no AI call, before writing new ones. Banks are per student, never shared.
+- **Review queue:** FSRS (`ts-fsrs`), one queue per student, 20 new cards a day (days are UTC).
+- **Exams:** written in parallel batches. The score report is the results page itself: **Save as PDF** opens the browser's print dialog and prints only the report.
+- **Concept map:** one AI pass per PDF (by file hash), reused by every course with that PDF. The map is made inside the *Make the concept map* request while the page polls for its progress line. If the tab closes mid-way, the build shows as stalled after about 6 minutes and can be started again.
+- XP, coins and quests (`rewards`) stay `null` until the game moves over in 4.5.
+
 ## Auto-deploy from GitHub
 
 1. Cloudflare dashboard → *My Profile* → API Tokens → *Create Token* → template **Edit Cloudflare Workers**. Make sure these *Account* permissions are on it (add any missing): *Workers Scripts → Edit*, *D1 → Edit*, *Workers R2 Storage → Edit*, *Vectorize → Edit*, *Workers AI → Read*. Account Resources: your account. Create it and copy the token (shown once).

@@ -83,3 +83,13 @@
   .exam-run__bar { top: calc(-1 * var(--space-6)); }
 }
 @media (prefers-reduced-motion: reduce) { .exam-writing__orb { animation: none; } }
+
+/* The score report: printing the results (or "Save as PDF" in the print dialog) shows only them, on white. */
+@media print {
+  body * { visibility: hidden; }
+  [data-print="report"], [data-print="report"] * { visibility: visible; }
+  [data-print="report"] { position: absolute; inset: 0 auto auto 0; width: 100%; padding: 0; color: #0f172a; background: #fff; }
+  [data-print="report"] .exam-noprint, [data-print="report"] .exam-next a { display: none; }
+  [data-print="report"] .exam-answers li { break-inside: avoid; }
+  [data-print="report"] .exam-table, [data-print="report"] .exam-tiles { break-inside: avoid; }
+}

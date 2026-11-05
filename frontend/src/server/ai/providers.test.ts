@@ -127,6 +127,20 @@ describe("claude", () => {
   });
 });
 
+describe("json mode", () => {
+  it("Gemini asks for application/json; OpenAI for a json_object; NVIDIA and Claude are asked by the prompt only", async () => {
+    const seen: Seen[] = [];
+    const ok = { candidates: [{ content: { parts: [{ text: "{}" }] } }], choices: [{ message: { content: "{}" } }], content: [{ type: "text", text: "{}" }] };
+    for (const t of [target("gemini", "g"), target("openai", "gpt-4o"), target("nvidia", "n"), target("claude", "c")]) {
+      await apiLlm(t, fakeFetch({ json: ok }, seen)).generate(msgs, { json: true });
+    }
+    expect(seen[0].body.generationConfig.responseMimeType).toBe("application/json");
+    expect(seen[1].body.response_format).toEqual({ type: "json_object" });
+    expect(seen[2].body.response_format).toBeUndefined();
+    expect(JSON.stringify(seen[3].body)).not.toContain("json_object");
+  });
+});
+
 describe("errors", () => {
   it("a non-2xx reply is a ProviderError with the status", async () => {
     const llm = apiLlm(target("gemini", "g"), fakeFetch({ status: 429, raw: "quota" }));

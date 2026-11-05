@@ -32,3 +32,8 @@ OWNER_EMAIL=
 # MODEL_PRICES_JSON={"gemini:gemini-3.5-flash-lite": [0.1, 0.4], "gemini:gemini-3.8-flash": [0.3, 2.5], "claude:*": [3, 15]}
 # The daily cap on the server's AI spend (US dollars; Admin -> AI spend changes it): default 2
 # AI_DAILY_CAP_USD=2
+
+# Study tools (Stage 4.4). Quiz / flashcards / notes: below this similarity the topic is "not in your PDF".
+# TOPIC_MIN_SIMILARITY=0.40
+# Days a generated flashcard set or notes are reused for the same request (0 = off)
+# GENERATION_CACHE_DAYS=7

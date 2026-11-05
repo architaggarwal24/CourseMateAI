@@ -66,7 +66,10 @@ function gemini(t: Target, fetchImpl: typeof fetch): Llm {
     return {
       ...(system ? { systemInstruction: { parts: [{ text: system }] } } : {}),
       contents: messages.filter((m) => m.role !== "system").map((m) => ({ role: m.role === "assistant" ? "model" : "user", parts: [{ text: m.content }] })),
-      generationConfig: { maxOutputTokens: o.maxOutputTokens ?? DEFAULT_MAX_OUTPUT, ...(o.temperature !== undefined ? { temperature: o.temperature } : {}) },
+      generationConfig: {
+        maxOutputTokens: o.maxOutputTokens ?? DEFAULT_MAX_OUTPUT, ...(o.temperature !== undefined ? { temperature: o.temperature } : {}),
+        ...(o.json ? { responseMimeType: "application/json" } : {}),
+      },
     };
   };
   const text = (j: any) => (j?.candidates?.[0]?.content?.parts ?? []).filter((p: any) => !p.thought && typeof p.text === "string").map((p: any) => p.text).join("");
@@ -102,6 +105,7 @@ function openaiCompatible(t: Target, fetchImpl: typeof fetch, baseUrl: string, n
     ...(newStyle ? { max_completion_tokens: o.maxOutputTokens ?? DEFAULT_MAX_OUTPUT } : { max_tokens: o.maxOutputTokens ?? DEFAULT_MAX_OUTPUT }),
     ...(o.temperature !== undefined && !reasoning ? { temperature: o.temperature } : {}),
     ...(stream ? { stream: true, stream_options: { include_usage: true } } : {}),
+    ...(o.json && newStyle ? { response_format: { type: "json_object" } } : {}),
   });
   return {
     async generate(messages, o) {
