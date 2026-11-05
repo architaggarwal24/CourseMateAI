@@ -96,4 +96,15 @@ describe("UX details", () => {
     expect(block(ui, ".ui-modal__handle")).toMatch(/min-height:\s*44px/);
     expect(block(ui, ".ui-modal__handle")).toMatch(/touch-action:\s*none/);
   });
+
+  it("tabs never shrink below their label (a 44px minimum on touch must not let them overlap)", () => {
+    expect(block(read("components/ui/ui.css"), ".ui-tab")).toMatch(/flex:\s*none/);
+  });
+
+  it("labels are never faded with opacity (it drops their contrast below AA on coloured buttons)", () => {
+    for (const [file, sel] of [["components/review/review.css", ".review-grade__when"], ["components/review/review.css", ".review-grade__key"],
+      ["components/arena/arena.css", ".arena-wait__secs"]] as const) {
+      expect(block(read(file), sel), sel).not.toMatch(/opacity/);
+    }
+  });
 });

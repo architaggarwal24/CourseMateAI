@@ -6,7 +6,7 @@ const res = (body: unknown, status: number, headers: Record<string, string> = {}
 
 afterEach(() => vi.unstubAllGlobals());
 
-describe("failureFrom: Better Auth's refusals in CourseMate's words", () => {
+describe("failureFrom: Better Auth's refusals in CourseMateAI's words", () => {
   it("names the field and says it plainly", async () => {
     expect(await failureFrom(res({ code: "USERNAME_IS_ALREADY_TAKEN", message: "Username is already taken. Please try another." }, 400)))
       .toMatchObject({ field: "username", message: "That username is already taken" });

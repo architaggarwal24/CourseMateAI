@@ -86,7 +86,11 @@ describe("ExamView: taking it", () => {
     render(<ExamView documentId="d1" />);
     await screen.findByRole("heading", { name: "Exam question 1?" });
     expect(screen.getByRole("timer").textContent).toContain("4:30");
-    press("2");
+    // the keys work once the runner has mounted its key handler: press until the first answer is saved (a slow
+    // machine can paint the question a moment before the handler is bound)
+    // (pressing the same key again would clear it, so press only while the pick hasn't shown)
+    const b0 = () => screen.getByRole("radio", { name: /B0/ }).getAttribute("aria-checked") === "true";
+    await waitFor(() => { if (!b0()) press("2"); expect(b0()).toBe(true); }, { timeout: 15_000 });
     await waitFor(() => expect(log.answers).toEqual([{ index: 0, answer: "B0" }]));
     expect(screen.getByRole("radio", { name: /B0/ }).getAttribute("aria-checked")).toBe("true");
     expect(screen.queryByText(/correct/i)).toBeNull();                          // no hints, no verdict

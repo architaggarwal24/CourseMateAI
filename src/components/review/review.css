@@ -3,12 +3,12 @@
   position: relative; width: 100%; min-height: 300px; cursor: pointer; user-select: none;
   display: flex; flex-direction: column; gap: var(--space-4);
   padding: var(--space-6) var(--space-6) var(--space-5); border-radius: var(--radius-xl);
-  background: var(--gradient-card), var(--glass-bg-strong);
+  background: var(--glass-bg-strong);
   border: 1px solid var(--glass-border-strong);
-  box-shadow: var(--glass-highlight), var(--shadow-lg);
+  box-shadow: var(--shadow-lg);
   outline-offset: 4px;
 }
-.review-card[data-revealed] { border-color: color-mix(in srgb, var(--color-accent-text) 40%, transparent); box-shadow: var(--glass-highlight), var(--shadow-lg), 0 0 60px -24px var(--glow-accent); }
+.review-card[data-revealed] { border-color: color-mix(in srgb, var(--color-accent-text) 40%, transparent); box-shadow: var(--shadow-lg); }
 .review-card__meta { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); font-size: 0.75rem; font-weight: 600; color: var(--color-muted); }
 .review-card__doc { margin-left: auto; max-width: 16rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 500; }
 .review-card__front { margin: var(--space-2) 0 0; font-size: 1.35rem; font-weight: 600; line-height: 1.5; letter-spacing: -0.015em; color: var(--color-text); }
@@ -27,14 +27,14 @@
 .review-grades { margin-top: var(--space-6); width: 100%; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--space-2); }
 .review-grade.ui-btn { position: relative; flex-direction: column; gap: 2px; height: auto; min-height: 3.6rem; padding: var(--space-2) var(--space-2); }
 .review-grade__label { font-weight: 700; }
-.review-grade__when { font-size: 0.72rem; font-weight: 600; opacity: 0.8; font-variant-numeric: tabular-nums; }
-.review-grade__key { position: absolute; top: 6px; right: 6px; font-size: 0.6rem; opacity: 0.7; }
+.review-grade__when { font-size: 0.72rem; font-weight: 500; font-variant-numeric: tabular-nums; }   /* full colour: a faded label fails contrast on the coloured buttons */
+.review-grade__key { position: absolute; top: 6px; right: 6px; font-size: 0.6rem; }
 
 .review-done { text-align: center; padding: var(--space-7) 0; }
 .review-done__icon {
   display: inline-grid; place-items: center; width: 3.5rem; height: 3.5rem; border-radius: 999px;
   color: var(--color-success-text); background: color-mix(in srgb, var(--color-success) 18%, transparent);
-  box-shadow: 0 0 30px -8px var(--glow-success);
+  box-shadow: none;
 }
 .review-done h3 { margin: var(--space-4) 0 var(--space-1); font-size: 1.6rem; font-weight: 700; letter-spacing: -0.03em; color: var(--color-text); }
 .review-done p { margin: 0; color: var(--color-muted); }

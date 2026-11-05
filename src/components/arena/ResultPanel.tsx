@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { BookOpen, Coins, Crown, Sparkles, Trophy } from "lucide-react";
+import { BookOpen, Coins, Crown, Sparkles, Trophy } from "@/components/icons";
 import ItemArt from "@/components/champion/ItemArt";
 import { useChampion } from "@/hooks/useChampion";
 import { useHeroStore } from "@/hooks/useHero";
@@ -106,7 +106,7 @@ export default function ResultPanel({ battle, rewards, retreated, bossName, onAg
               </li>
             ))}
           </ul>
-          <Link href={`${ROUTES.studyTab("flashcards")}&review=1`} className="ui-btn ui-btn--secondary ui-btn--sm fx-sheen">
+          <Link href={`${ROUTES.studyTab("flashcards")}&review=1`} className="ui-btn ui-btn--secondary ui-btn--sm">
             <BookOpen size={14} aria-hidden="true" />Review them as flashcards
           </Link>
         </section>

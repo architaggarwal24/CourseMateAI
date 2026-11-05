@@ -1,60 +1,130 @@
 "use client";
 
+import { Suspense, useEffect, useSyncExternalStore, type ReactNode } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { motion } from "motion/react";
-import { Search } from "lucide-react";
-import { areaOf } from "@/lib/routes";
+import { usePathname, useSearchParams } from "next/navigation";
+import { BookOpen, GraduationCap, PanelLeft, Repeat, ScrollText, Search, ShoppingBag, Sparkles, Swords, type IconType } from "@/components/icons";
 import UserMenu from "@/components/UserMenu";
-import { usePointerVars } from "@/components/fx/usePointerVars";
+import Logo from "@/components/brand/Logo";
 import { dueBadge, useReview } from "@/hooks/useReview";
-import { NAV_ITEMS } from "./nav-items";
+import { useCourses } from "@/hooks/useCourses";
+import { useShortcutLabel } from "@/hooks/useShortcutLabel";
+import { isSidebarCollapsed, SIDEBAR_EVENT, toggleSidebar } from "@/lib/sidebar";
+import { ROUTES } from "@/lib/routes";
 import ReviewBadge from "./ReviewBadge";
 import { openCommandPalette } from "./CommandPalette";
-import { useShortcutLabel } from "@/hooks/useShortcutLabel";
+
+const subscribe = (cb: () => void) => { window.addEventListener(SIDEBAR_EVENT, cb); return () => window.removeEventListener(SIDEBAR_EVENT, cb); };
+/** Collapsed or not (on <html data-sidebar>, set before first paint); the server renders it expanded. */
+export function useSidebarCollapsed(): boolean {
+  return useSyncExternalStore(subscribe, isSidebarCollapsed, () => false);
+}
+
+interface Item { label: string; href: string; Icon: IconType; current: boolean; extra?: ReactNode }
+
+function NavLink({ label, href, Icon, current, extra }: Item) {
+  return (
+    <Link href={href} aria-current={current ? "page" : undefined} className="side__link" data-tip={label}>
+      <Icon size={18} aria-hidden="true" className="side__icon" />
+      <span className="side__label">{label}</span>
+      {extra}
+    </Link>
+  );
+}
+
+function Group({ id, title, children }: { id: string; title: string; children: ReactNode }) {
+  return (
+    <div role="group" aria-labelledby={id} className="side__group">
+      <p id={id} className="side__heading">{title}</p>
+      {children}
+    </div>
+  );
+}
+
+const typing = (t: EventTarget | null) =>
+  t instanceof HTMLElement && (t.isContentEditable || ["INPUT", "TEXTAREA", "SELECT"].includes(t.tagName));
 
 /**
- * Desktop: a frosted rail down the left. Brand, a "Go to…" search (⌘K on a Mac, Ctrl+K elsewhere), the three areas (the active one rides a lit
- * sliding pill, the pointer casts a soft light over the rail; Study carries the review queue's due count), the
- * signed-in user pinned at the bottom. Hidden below md.
+ * The desktop sidebar (hidden below md; phones get BottomNav). Search (Ctrl K) on top, then three groups:
+ * Study (Study, Review with its due count, Mock exam), your Courses (when the plan has them) and Hero, and you at
+ * the bottom. It collapses to a 64px icon rail (the button beside the logo, or Ctrl+B): every link keeps its name
+ * for screen readers and shows it as a tooltip on hover and focus.
  */
 export default function NavSidebar() {
+  // The tab lives in the query string; while a page is prerendered there is none yet (useSearchParams suspends).
+  return <Suspense fallback={<Sidebar tab={null} doc={null} />}><WithQuery /></Suspense>;
+}
+function WithQuery() {
+  const params = useSearchParams();
+  return <Sidebar tab={params.get("tab")} doc={params.get("doc")} />;
+}
+
+function Sidebar({ tab, doc }: { tab: string | null; doc: string | null }) {
+  const pathname = usePathname();
+  const collapsed = useSidebarCollapsed();
   const paletteKey = useShortcutLabel(["mod", "K"]);
-  const area = areaOf(usePathname());
-  const pointer = usePointerVars<HTMLElement>();
+  const toggleKey = useShortcutLabel(["mod", "B"]);
   const due = useReview((s) => dueBadge(s.stats));
+  const { courses, locked } = useCourses();
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (!(e.ctrlKey || e.metaKey) || e.altKey || e.key.toLowerCase() !== "b" || typing(e.target)) return;
+      if (document.querySelector('[aria-modal="true"]')) return;
+      e.preventDefault();
+      toggleSidebar();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
+
+  const inStudy = pathname === ROUTES.study;
+  const inHero = pathname === ROUTES.hero;
+  const heroTab = tab ?? "quests";
+  const study: Item[] = [
+    { label: "Study", href: ROUTES.study, Icon: BookOpen, current: inStudy && tab !== "review" && tab !== "exam" && !(tab === "overview" && courses.some((c) => c.id === doc)) },
+    { label: "Review", href: ROUTES.studyTab("review"), Icon: Repeat, current: inStudy && tab === "review", extra: <ReviewBadge due={due} /> },
+    { label: "Mock exam", href: ROUTES.studyTab("exam"), Icon: GraduationCap, current: inStudy && tab === "exam" },
+  ];
+  const hero: Item[] = [
+    { label: "Arena", href: ROUTES.heroArena, Icon: Swords, current: inHero && heroTab === "arena" },
+    { label: "Quests", href: ROUTES.heroQuests, Icon: ScrollText, current: inHero && heroTab === "quests" },
+    { label: "Shop", href: ROUTES.heroShop, Icon: ShoppingBag, current: inHero && heroTab === "shop" },
+    { label: "Champion", href: ROUTES.heroChampion, Icon: Sparkles, current: inHero && heroTab === "champion" },
+  ];
+
   return (
-    <aside className="side fx-spotlight" ref={pointer}>
-      <div className="side__brand">
-        <div className="side__logo" aria-hidden="true">
-          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M4 19.5V6a2 2 0 0 1 2-2h11l3 3v12.5" /><path d="M8 4v6l2.5-1.5L13 10V4" /><path d="M4 19.5A1.5 1.5 0 0 0 5.5 21H20" />
-          </svg>
-        </div>
-        <div className="side__wordmark">
-          <span className="side__name">CourseMate</span>
-          <span className="side__tag">AI study companion</span>
-        </div>
+    <aside className="side" data-collapsed={collapsed || undefined}>
+      <div className="side__top">
+        <Link href={ROUTES.study} className="side__brand" aria-label="CourseMateAI, go to Study"><Logo size={24} /></Link>
+        <button type="button" className="side__toggle" onClick={toggleSidebar} aria-expanded={!collapsed}
+          aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"} title={`${collapsed ? "Expand" : "Collapse"} sidebar (${toggleKey})`}>
+          <PanelLeft size={18} aria-hidden="true" />
+        </button>
       </div>
 
-      <button type="button" className="side__search" onClick={openCommandPalette}>
-        <Search size={15} aria-hidden="true" />
-        <span>Go to…</span>
-        <kbd className="kbd">{paletteKey}</kbd>
+      <button type="button" className="side__search" onClick={openCommandPalette} data-tip={`Search (${paletteKey})`}>
+        <Search size={16} aria-hidden="true" />
+        <span className="side__label">Go to…</span>
+        <kbd className="kbd side__kbd">{paletteKey}</kbd>
       </button>
 
       <nav aria-label="Main" className="side__nav">
-        {NAV_ITEMS.map(({ id, label, href, Icon, blurb }) => (
-          <Link key={id} href={href} aria-current={area === id ? "page" : undefined} className="side__link">
-            {area === id && <motion.span layoutId="side-pill" className="side__pill" transition={{ type: "spring", stiffness: 420, damping: 38 }} />}
-            <span className="side__icon"><Icon size={18} aria-hidden="true" /></span>
-            <span className="side__text">
-              <span>{label}</span>
-              <span className="side__blurb">{blurb}</span>
-            </span>
-            {id === "study" && <ReviewBadge due={due} />}
-          </Link>
-        ))}
+        <Group id="side-study" title="Study">{study.map((i) => <NavLink key={i.label} {...i} />)}</Group>
+        {!locked && courses.length > 0 && (
+          <Group id="side-courses" title="Courses">
+            {courses.slice(0, 6).map((c) => (
+              <Link key={c.id} href={ROUTES.studyTab("overview", undefined, c.id)} className="side__link side__course"
+                aria-current={inStudy && doc === c.id ? "page" : undefined} data-tip={c.name}>
+                <span className="side__dot" aria-hidden="true" />
+                <span className="side__label">{c.name}</span>
+                <span className="side__meta" aria-hidden="true">{c.documents.length}</span>
+                <span className="sr-only">, {c.documents.length} {c.documents.length === 1 ? "PDF" : "PDFs"}</span>
+              </Link>
+            ))}
+          </Group>
+        )}
+        <Group id="side-hero" title="Hero">{hero.map((i) => <NavLink key={i.label} {...i} />)}</Group>
       </nav>
 
       <div className="side__foot">

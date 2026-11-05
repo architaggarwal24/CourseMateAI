@@ -1,0 +1,34 @@
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { cleanup, render, screen, within } from "@testing-library/react";
+
+const nav = vi.hoisted(() => ({ path: "/study", query: "tab=chat" }));
+vi.mock("next/navigation", () => ({ usePathname: () => nav.path, useSearchParams: () => new URLSearchParams(nav.query) }));
+
+import BottomNav from "./BottomNav";
+import { useReview } from "@/hooks/useReview";
+
+beforeEach(() => { nav.path = "/study"; nav.query = "tab=chat"; useReview.setState({ stats: { due: 3 } as never }); });
+afterEach(cleanup);
+
+describe("the phone bottom bar", () => {
+  it("has Study, Review (with the due count), Hero and Me, at the thumb", () => {
+    render(<BottomNav />);
+    const links = within(screen.getByRole("navigation", { name: "Main" })).getAllByRole("link");
+    expect(links.map((l) => l.textContent?.replace(/,.*$/, "").replace(/\d+$/, ""))).toEqual(["Study", "Review", "Hero", "Me"]);
+    expect(links[1].getAttribute("href")).toBe("/study?tab=review");
+    expect(links[1].textContent).toContain("3 cards to review");
+    expect(links[3].getAttribute("href")).toBe("/account");
+  });
+
+  it("marks the current one (Review is a Study tab, so it wins over Study there)", () => {
+    nav.query = "tab=review";
+    render(<BottomNav />);
+    const nav_ = screen.getByRole("navigation", { name: "Main" });
+    expect(within(nav_).getByRole("link", { name: /^Review/ }).getAttribute("aria-current")).toBe("page");
+    expect(within(nav_).getByRole("link", { name: /^Study/ }).getAttribute("aria-current")).toBeNull();
+    cleanup();
+    nav.path = "/account/settings"; nav.query = "";
+    render(<BottomNav />);
+    expect(screen.getByRole("link", { name: /^Me/ }).getAttribute("aria-current")).toBe("page");
+  });
+});

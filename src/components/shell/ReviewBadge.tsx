@@ -1,4 +1,4 @@
-/** The review queue's due count on the Study nav item. Says itself in words; hidden at zero. */
+/** The review queue's due count on the Review nav item. Says itself in words; hidden at zero. */
 export default function ReviewBadge({ due, compact = false }: { due: number; compact?: boolean }) {
   if (due <= 0) return null;
   const text = due > 99 ? "99+" : String(due);

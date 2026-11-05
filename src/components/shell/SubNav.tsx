@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useId, useRef, type MouseEvent } from "react";
+import { Fragment, useEffect, useId, useRef, type MouseEvent } from "react";
 import { motion } from "motion/react";
 import { cn } from "@/lib/utils";
 
@@ -15,6 +15,8 @@ export interface SubNavItem {
   mode?: "exact" | "prefix";
   /** When set, decides "current" itself (for tabs that differ by query string, not by path). */
   current?: boolean;
+  /** Tabs with the same group sit together under a small label (Learn, Practice): Hick's law, fewer things at a glance. */
+  group?: string;
   /** A count shown beside the label (e.g. cards due), with its meaning for screen readers. */
   badge?: { count: number; label: string };
 }
@@ -46,9 +48,10 @@ export default function SubNav({ label, items, className, onNavigate }: {
   }, [currentHref]);
   return (
     <nav ref={strip} aria-label={label} className={cn("ui-tabs__list shrink-0 px-4", className)}>
-      {items.map(item => (
+      {items.map((item, i) => (
+        <Fragment key={item.href}>
+        {item.group && item.group !== items[i - 1]?.group && <span className="ui-tabs__group" aria-hidden="true">{item.group}</span>}
         <Link
-          key={item.href}
           href={item.href}
           className="ui-tab"
           aria-current={isCurrent(pathname, item) ? "page" : undefined}
@@ -61,6 +64,7 @@ export default function SubNav({ label, items, className, onNavigate }: {
           )}
           {isCurrent(pathname, item) && <motion.span layoutId={`${barId}-bar`} className="ui-tab__bar" transition={{ type: "spring", stiffness: 520, damping: 40 }} aria-hidden="true" />}
         </Link>
+        </Fragment>
       ))}
     </nav>
   );

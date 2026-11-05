@@ -1,6 +1,7 @@
 import { test, expect } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 import { COURSE, DOCUMENT, DOCUMENT_2, mockApi } from "./fixtures/api";
+import { settle } from "./helpers";
 
 // Phase 3 Stage 3B: a course groups PDFs; the header's name switches between courses and documents, and a course
 // opens on its overview (progress, every tool over the whole course, its documents).
@@ -16,6 +17,7 @@ test("a course opens on its overview and every tool works on the whole course", 
   await expect(overview.getByText("40%")).toBeVisible();
   await expect(overview.getByRole("link", { name: "Ask the course" })).toHaveAttribute("href", `/study?tab=chat&doc=${COURSE.id}`);
   await page.screenshot({ path: `previews/stage-3b-course-${info.project.name}.png`, fullPage: false });
+  await settle(page);
   const axe = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21aa"]).analyze();
   expect(axe.violations.map((v) => v.id)).toEqual([]);
   expect(unanswered).toEqual([]);
@@ -29,6 +31,7 @@ test("the document name is a switcher between courses and documents", async ({ p
   const menu = page.getByRole("menu");
   await expect(menu.getByRole("menuitem", { name: /Life sciences/ })).toBeVisible();
   await expect(menu.getByRole("menuitem", { name: /Organic Chemistry\.pdf/ })).toBeVisible();
+  await settle(page);
   const axe = await new AxeBuilder({ page }).include("[role=menu]").analyze();
   expect(axe.violations.map((v) => v.id)).toEqual([]);
   await page.keyboard.press("ArrowDown");
@@ -46,6 +49,7 @@ test("Edit course opens the editor with the course's documents", async ({ page }
   const dialog = page.getByRole("dialog", { name: "Edit course" });
   await expect(dialog.getByLabel("Name")).toHaveValue("Life sciences");
   await expect(dialog.getByRole("checkbox", { name: /Cell Biology\.pdf/ })).toBeChecked();
+  await settle(page);
   const axe = await new AxeBuilder({ page }).include("[role=dialog]").analyze();
   expect(axe.violations.map((v) => v.id)).toEqual([]);
   await page.keyboard.press("Escape");

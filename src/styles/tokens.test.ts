@@ -24,10 +24,13 @@ function resolve(own: Record<string, string>, base: Record<string, string>): Rec
   };
   return Object.fromEntries([...Object.keys({ ...base, ...own })].map((k) => [k, get(k)]));
 }
-// --font-geist-* / --font-pixel are defined at runtime by next/font
-const study = resolve(declarations(/:root,\s*\[data-theme="study"\]/), { "--font-geist-sans": "Geist", "--font-geist-mono": "Geist Mono", "--font-pixel": "pixel-face" });
+// --font-onest / --font-bricolage / --font-geist-mono / --font-pixel are defined at runtime by next/font
+const FONTS = { "--font-onest": "Onest", "--font-bricolage": "Bricolage Grotesque", "--font-geist-mono": "Geist Mono", "--font-pixel": "pixel-face" };
+const studyOwn = declarations(/:root,\s*\[data-theme="study"\]/);
+const study = resolve(studyOwn, FONTS);
+const light = resolve(declarations(/:root\[data-mode="light"\],/), { ...FONTS, ...studyOwn });
 const play = resolve(declarations(/\[data-theme="play"\]/), study);
-const THEMES = { study, play } as const;
+const THEMES = { study, light, play } as const;
 
 // ── WCAG contrast ────────────────────────────────────────────────────────────
 const rgb = (hex: string) => [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16));
@@ -77,36 +80,52 @@ describe.each(Object.entries(THEMES))("%s theme meets WCAG AA", (_name, t) => {
   });
 });
 
-describe("the Study theme", () => {
-  it("has one accent: the legacy purple and gold highlights resolve to the same blue", () => {
-    for (const n of ["accent-alt", "highlight"]) {
-      expect(study[`--color-${n}`]).toBe(study["--color-accent"]);
-      expect(study[`--color-${n}-text`]).toBe(study["--color-accent-text"]);
+describe("the Study theme (Ink)", () => {
+  it("has one accent: the legacy purple and gold highlights resolve to the same blue, in both modes", () => {
+    for (const t of [study, light]) for (const n of ["accent-alt", "highlight"]) {
+      expect(t[`--color-${n}`]).toBe(t["--color-accent"]);
+      expect(t[`--color-${n}-text`]).toBe(t["--color-accent-text"]);
     }
   });
-  it("uses soft charcoal surfaces, not pure black", () => {
-    for (const s of SURFACES) expect(study[`--color-${s}`]).not.toMatch(/^#0+$/);
-    expect(lum(study["--color-surface"])).toBeGreaterThan(0.005);
+  it("is ink: a pure black page in dark, white in light, and a deep ink-blue accent", () => {
+    expect(study["--color-surface"]).toBe("#000000");
+    expect(light["--color-surface"]).toBe("#ffffff");
+    expect(study["--color-accent"]).toBe("#3550c8");
+    expect(light["--color-accent"]).toBe("#1f3aa8");
   });
-  it("labels use Inter (no pixel font) and reading text is capped at 72ch", () => {
+  it("sets Onest for text, Bricolage Grotesque for display, Geist Mono for code; no pixel font; 72ch reading width", () => {
+    expect(study["--font-sans"]).toMatch(/^Onest,/);
+    expect(study["--font-display"]).toMatch(/^Bricolage Grotesque,/);
+    expect(study["--font-mono"]).toMatch(/^Geist Mono,/);
     expect(study["--font-label"]).not.toMatch(/pixel/);
     expect(study["--measure"]).toBe("72ch");
-    expect(study["--line-height-body"]).toBe("1.6");
   });
-  it("keeps the arena scenery out of Study: the sky, floor and stars are Play-only", () => {
-    expect(study["--gradient-arena-sky"]).toBe("none");
-    expect(study["--gradient-arena-floor"]).toBe("none");
-    expect(study["--gradient-arena-stars"]).toBe("none");
-  });
-  it("glass is translucent paint, never a colour token (contrast is checked on the opaque --color-* values)", () => {
-    for (const k of ["--glass-bg", "--glass-bg-strong", "--glass-border"]) expect(study[k], k).toMatch(/^rgba\(/);
+  it("uses soft corners", () => {
+    expect(study["--radius-md"]).toBe("10px");
   });
 });
 
-describe("the Play theme", () => {
-  it("has gold and purple accents and the pixel label font", () => {
+describe("flat: no gradients, glass or glow", () => {
+  const tokens = [...code.matchAll(/(--[a-z0-9-]+)\s*:/g)].map((m) => m[1]);
+  it("the only gradient token left is the arena's star dots", () => {
+    expect([...new Set(tokens.filter((t) => t.startsWith("--gradient-")))]).toEqual(["--gradient-arena-stars"]);
+    expect(study["--gradient-arena-stars"]).toBe("none");
+  });
+  it.each(Object.entries(THEMES))("%s: panels are opaque, nothing blurs, glows are transparent", (_n, t) => {
+    expect(t["--glass-bg"]).toMatch(/^#[0-9a-f]{6}$/i);
+    expect(t["--glass-border"]).toMatch(/^#[0-9a-f]{6}$/i);
+    expect(t["--glass-blur"]).toBe("0px");
+    for (const k of ["--glow-accent", "--aurora-a", "--spotlight", "--sheen"]) expect(t[k], k).toBe("transparent");
+  });
+});
+
+describe("the Hero theme (darker Ink)", () => {
+  it("stays dark in light mode, keeps the ink-blue accent, and uses gold only as the highlight/reward", () => {
+    expect(code).toMatch(/\[data-theme="play"\] \{\s*color-scheme: dark;/);
+    expect(play["--color-surface"]).toBe("#000000");
+    expect(play["--color-accent"]).toBe(study["--color-accent"]);
+    expect(play["--color-highlight"]).toBe(play["--color-reward"]);
     expect(play["--color-highlight"]).not.toBe(play["--color-accent"]);
-    expect(play["--color-accent-alt"]).not.toBe(play["--color-accent"]);
     expect(play["--font-label"]).toMatch(/pixel/);
   });
   it("defines every token the Study theme does", () => {

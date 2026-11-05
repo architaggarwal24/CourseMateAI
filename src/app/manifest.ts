@@ -3,16 +3,16 @@ import type { MetadataRoute } from "next";
 // The installable app (Phase 3 Stage 4d): served at /manifest.webmanifest. public/sw.js makes it work offline-ish.
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "CourseMate AI",
-    short_name: "CourseMate",
+    name: "CourseMateAI",
+    short_name: "CourseMateAI",
     description: "Your PDFs as a study companion: chat, quizzes, flashcards, exams and a boss arena.",
     id: "/study",
     start_url: "/study",
     scope: "/",
     display: "standalone",
     orientation: "any",
-    background_color: "#101117",
-    theme_color: "#101117",
+    background_color: "#000000",
+    theme_color: "#000000",
     categories: ["education", "productivity"],
     icons: [
       { src: "/icons/icon-192.png", sizes: "192x192", type: "image/png", purpose: "any" },

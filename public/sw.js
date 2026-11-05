@@ -1,4 +1,4 @@
-/* CourseMate's service worker (Phase 3 Stage 4d; docs/security.md, "Installable app").
+/* CourseMateAI's service worker (Phase 3 Stage 4d; docs/security.md, "Installable app").
  *
  * Kept deliberately small: the app works online, this makes it installable, fast on repeat visits and polite
  * offline. Never touches /api (answers, documents and your account always come live from the server).

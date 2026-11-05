@@ -1,6 +1,6 @@
 "use client";
 
-import { Swords } from "lucide-react";
+import { Swords } from "@/components/icons";
 import { ButtonLink, Card } from "@/components/ui";
 import ActiveBuffsSidebar from "@/components/ActiveBuffsSidebar";
 import QuestPanel from "@/components/QuestPanel";

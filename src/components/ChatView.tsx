@@ -1,9 +1,9 @@
 "use client";
 
 import { useState, useRef, useEffect, useLayoutEffect, useCallback } from "react";
-import { ArrowDown, ArrowUp, Check, Copy, FileText, History, Lightbulb, ListChecks, MessageSquare, Plus, Sparkles, Trash2 } from "lucide-react";
+import { ArrowDown, ArrowUp, Check, Copy, FileText, History, Lightbulb, ListChecks, MessageSquare, Plus, Sparkles, Trash2 } from "@/components/icons";
 import { motion } from "motion/react";
-import { Spotlight, TextReveal } from "@/components/fx";
+import { TextReveal } from "@/components/fx";
 import HistoryPanel from "./HistoryPanel";
 import ChatMarkdown from "./chat/ChatMarkdown";
 import NotFoundCard from "./chat/NotFoundCard";
@@ -292,11 +292,11 @@ export default function ChatView({ documentId, restoreSessionId }: { documentId?
                       return (
                       <motion.div key={p} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
                                   transition={{ delay: 0.25 + i * 0.06, duration: 0.5, ease: [0.16, 1, 0.3, 1] }}>
-                        <Spotlight className="rounded-[var(--radius-lg)]">
+                        <div className="rounded-[var(--radius-lg)]">
                           <button onClick={() => void sendMessage(p)} className="study-prompt">
                             <PromptIcon size={16} aria-hidden="true" />{p}
                           </button>
-                        </Spotlight>
+                        </div>
                       </motion.div>
                       );
                     })}

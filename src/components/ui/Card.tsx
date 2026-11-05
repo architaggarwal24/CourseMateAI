@@ -2,7 +2,6 @@
 
 import type { HTMLAttributes, ReactNode } from "react";
 import { cn } from "@/lib/utils";
-import { usePointerVars } from "@/components/fx/usePointerVars";
 
 export interface CardProps extends Omit<HTMLAttributes<HTMLDivElement>, "title"> {
   /** A header band with this title. Without it the card is just a surface. */
@@ -15,21 +14,19 @@ export interface CardProps extends Omit<HTMLAttributes<HTMLDivElement>, "title">
   raised?: boolean;
   /** Padding of the content. With a title the body gets the default padding. */
   pad?: "none" | "sm" | "lg";
-  /** Lit by the pointer: a soft spotlight inside and a bright edge near the cursor. */
+  /** Responds to hover (its border lifts): for cards that are a link or a control. */
   interactive?: boolean;
 }
 
-/** A frosted-glass surface (see .ui-card in ui.css). */
+/** A flat panel with a thin border (see .ui-card in ui.css). */
 export default function Card({
   title, headingLevel = 2, tone = "default", surface = "elevated", raised, pad, interactive, className, children, ...rest
 }: CardProps) {
-  const pointer = usePointerVars<HTMLDivElement>();
   const Heading = `h${headingLevel}` as "h2" | "h3" | "h4";
   return (
     <div
-      ref={interactive ? pointer : undefined}
       className={cn(
-        "ui-card", surface === "inset" && "ui-card--inset", raised && "ui-card--raised", interactive && "fx-spotlight",
+        "ui-card", surface === "inset" && "ui-card--inset", raised && "ui-card--raised", interactive && "ui-card--interactive",
         tone !== "default" && `ui-card--${tone}`,
         !title && pad === "sm" && "ui-card--pad", !title && pad === "lg" && "ui-card--pad-lg",
         className,

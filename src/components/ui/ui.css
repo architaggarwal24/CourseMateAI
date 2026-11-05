@@ -1,7 +1,7 @@
 /* The UI kit's styles. Every colour, space, radius, shadow and duration comes from src/styles/tokens.css, so the same
- * markup is "graphite glass" in a Study scope and "arcane glass" in a play scope (<ThemeScope theme="play">) without
- * any per-theme code here. No raw colours and no gradient literals in this file: paint comes from the --gradient-*,
- * --glass-* and --glow-* tokens. Pointer-driven light (spotlight, sheen, ripple) lives in components/fx/fx.css.
+ * markup is Ink (light or dark) in a Study scope and the darker Ink in a Hero scope (<ThemeScope theme="play">)
+ * without any per-theme code here. Flat: no raw colours, no gradients, no blur, no glow. Press feedback (ripple,
+ * sparks) lives in components/fx/fx.css.
  *
  * Fills pair with --color-on-* text; accent text on a surface uses the -text variants (see tokens.css).
  */
@@ -17,7 +17,7 @@
   align-items: center;
   justify-content: center;
   gap: var(--space-2);
-  min-height: 2.5rem;
+  min-height: 2.25rem;
   padding: 0 var(--space-4);
   border: 1px solid transparent;
   border-radius: var(--radius-md);
@@ -36,56 +36,49 @@
     transform var(--motion-slow) var(--ease-spring), filter var(--motion-fast) var(--motion-ease);
 }
 .ui-btn > svg { flex: none; transition: transform var(--motion-slow) var(--ease-spring); }
-.ui-btn:hover:not(:disabled):not(.ui-btn--link) { --btn-lift: -1px; }
 .ui-btn:active:not(:disabled):not(.ui-btn--link) { --btn-lift: 0px; --btn-scale: 0.965; transition-duration: var(--motion-fast); }
-.ui-btn--sm { min-height: 2rem; padding: 0 var(--space-3); font-size: 0.8125rem; border-radius: var(--radius-sm); }
-.ui-btn--lg { min-height: 3rem; padding: 0 var(--space-5); font-size: 0.9375rem; border-radius: var(--radius-lg); }
-.ui-btn--icon { width: 2.5rem; padding: 0; }
-.ui-btn--icon.ui-btn--sm { width: 2rem; }
+.ui-btn--sm { min-height: 1.875rem; padding: 0 var(--space-3); font-size: 0.8125rem; border-radius: var(--radius-sm); }
+.ui-btn--lg { min-height: 2.75rem; padding: 0 var(--space-5); font-size: 0.9375rem; border-radius: var(--radius-lg); }
+.ui-btn--icon { width: 2.25rem; padding: 0; }
+.ui-btn--icon.ui-btn--sm { width: 1.875rem; }
 .ui-btn--block { display: flex; width: 100%; }
 
 .ui-btn--primary {
-  background: var(--gradient-accent), var(--color-accent);
+  background: var(--color-accent);
   color: var(--color-on-accent);
-  border-color: color-mix(in srgb, var(--color-accent-text) 35%, transparent);
-  box-shadow: var(--edge-light), 0 1px 0 color-mix(in srgb, var(--color-surface-sunken) 60%, transparent), 0 6px 20px -8px var(--glow-accent);
+  border-color: var(--color-accent);
 }
-.ui-btn--primary:hover:not(:disabled) { filter: brightness(1.08) saturate(1.05); box-shadow: var(--edge-light), var(--shadow-glow); }
+/* hover mixes a little of the text colour in: lighter on dark, darker on light */
+.ui-btn--primary:hover:not(:disabled) { background: color-mix(in srgb, var(--color-accent) 86%, var(--color-text)); }
 
 .ui-btn--secondary {
-  background: var(--glass-bg);
-  border-color: var(--glass-border-strong);
+  background: var(--color-elevated);
+  border-color: var(--color-border);
   color: var(--color-text);
-  box-shadow: var(--glass-highlight), var(--shadow-sm);
-  backdrop-filter: blur(var(--glass-blur));
-  -webkit-backdrop-filter: blur(var(--glass-blur));
 }
-.ui-btn--secondary:hover:not(:disabled) { background: var(--glass-bg-hover); border-color: color-mix(in srgb, var(--color-accent-text) 40%, var(--glass-border-strong)); }
+.ui-btn--secondary:hover:not(:disabled) { background: var(--color-elevated-hover); border-color: var(--color-border-strong); }
 .ui-btn--secondary[aria-pressed="true"] {
   border-color: var(--color-accent-text);
   color: var(--color-accent-text);
-  background: color-mix(in srgb, var(--color-accent) 16%, var(--glass-bg));
-  box-shadow: var(--glass-highlight), 0 0 0 3px color-mix(in srgb, var(--color-accent-text) 14%, transparent);
+  background: color-mix(in srgb, var(--color-accent) 12%, var(--color-elevated));
 }
 
 .ui-btn--danger {
   background: var(--color-danger);
   color: var(--color-on-danger);
-  border-color: color-mix(in srgb, var(--color-danger-text) 40%, transparent);
-  box-shadow: var(--edge-light), 0 6px 20px -8px var(--glow-danger);
+  border-color: var(--color-danger);
 }
-.ui-btn--danger:hover:not(:disabled) { filter: brightness(1.1); box-shadow: var(--edge-light), 0 8px 26px -6px var(--glow-danger); }
+.ui-btn--danger:hover:not(:disabled) { background: color-mix(in srgb, var(--color-danger) 86%, var(--color-text)); }
 
 .ui-btn--reward {
-  background: var(--gradient-reward), var(--color-reward);
+  background: var(--color-reward);
   color: var(--color-on-reward);
-  border-color: color-mix(in srgb, var(--color-reward) 60%, transparent);
-  box-shadow: var(--edge-light), 0 6px 22px -8px var(--glow-reward);
+  border-color: var(--color-reward);
 }
-.ui-btn--reward:hover:not(:disabled) { filter: brightness(1.06); box-shadow: var(--edge-light), 0 10px 30px -6px var(--glow-reward); }
+.ui-btn--reward:hover:not(:disabled) { background: color-mix(in srgb, var(--color-reward) 88%, var(--color-text)); }
 
 .ui-btn--ghost { background: transparent; color: var(--color-muted); }
-.ui-btn--ghost:hover:not(:disabled) { background: var(--glass-tint); color: var(--color-text); box-shadow: inset 0 0 0 1px var(--glass-border); }
+.ui-btn--ghost:hover:not(:disabled) { background: var(--glass-tint); color: var(--color-text); }
 .ui-btn--ghost[aria-pressed="true"] { color: var(--color-accent-text); background: color-mix(in srgb, var(--color-accent) 12%, transparent); }
 /* A ghost button that reads as an inline link ("Retry", "Add key", "Register"). */
 .ui-btn--link {
@@ -130,12 +123,11 @@
 .ui-control {
   display: block;
   width: 100%;
-  min-height: 2.75rem;
+  min-height: 2.375rem;
   padding: var(--space-2) var(--space-3);
-  background: color-mix(in srgb, var(--color-surface-sunken) 70%, transparent);
-  border: 1px solid var(--glass-border-strong);
+  background: var(--color-surface-sunken);
+  border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
-  box-shadow: inset 0 1px 2px color-mix(in srgb, var(--color-surface-sunken) 80%, transparent);
   color: var(--color-text);
   font-family: var(--font-sans);
   font-size: 0.9rem;
@@ -148,8 +140,7 @@
 .ui-control:focus-visible {
   border-color: var(--color-accent-text);
   outline-offset: 0;
-  background: color-mix(in srgb, var(--color-surface-sunken) 85%, transparent);
-  box-shadow: 0 0 0 4px color-mix(in srgb, var(--color-accent-text) 18%, transparent), 0 0 24px -6px var(--glow-accent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-accent-text) 22%, transparent);
 }
 .ui-control:disabled { opacity: 0.5; cursor: not-allowed; }
 .ui-control[aria-invalid="true"] { border-color: var(--color-danger-text); box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-danger-text) 14%, transparent); }
@@ -207,7 +198,7 @@ textarea.ui-control { min-height: 5rem; resize: vertical; line-height: var(--lin
     box-shadow var(--motion-slow) var(--ease-out-expo), transform var(--motion-slow) var(--ease-spring);
 }
 .ui-check__input:active:not(:disabled) { transform: scale(0.88); }
-.ui-check__input:checked { background: var(--gradient-accent), var(--color-accent); border-color: var(--color-accent); box-shadow: 0 0 14px -2px var(--glow-accent); }
+.ui-check__input:checked { background: var(--color-accent); border-color: var(--color-accent); box-shadow: none; }
 .ui-check__input:checked::after {
   content: "";
   position: absolute;
@@ -259,18 +250,18 @@ textarea.ui-control { min-height: 5rem; resize: vertical; line-height: var(--lin
 /* ── Card ────────────────────────────────────────────────────────────────────────────────────────────────────── */
 .ui-card {
   position: relative;
-  background: var(--gradient-card), var(--glass-bg);
+  background: var(--glass-bg);
   border: 1px solid var(--glass-border);
   border-radius: var(--radius-lg);
-  box-shadow: var(--glass-highlight), var(--glass-shadow);
-  backdrop-filter: blur(var(--glass-blur)) saturate(140%);
-  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(140%);
+  box-shadow: var(--glass-shadow);
   color: var(--color-text);
   overflow: hidden;
 }
-.ui-card--raised { box-shadow: var(--glass-highlight), var(--shadow-lg); }
-.ui-card--inset { background: color-mix(in srgb, var(--color-surface-sunken) 72%, transparent); box-shadow: inset 0 1px 2px color-mix(in srgb, var(--color-surface-sunken) 80%, transparent); backdrop-filter: none; }
-.ui-card--danger { border-color: color-mix(in srgb, var(--color-danger-text) 55%, transparent); box-shadow: var(--glass-highlight), 0 0 0 1px color-mix(in srgb, var(--color-danger-text) 12%, transparent), var(--glass-shadow); }
+.ui-card--raised { box-shadow: var(--shadow-lg); }
+.ui-card--inset { background: var(--color-surface-sunken); box-shadow: none; }
+.ui-card--interactive { transition: border-color var(--motion-fast) var(--motion-ease), background-color var(--motion-fast) var(--motion-ease); }
+.ui-card--interactive:hover { border-color: var(--color-border-strong); }
+.ui-card--danger { border-color: color-mix(in srgb, var(--color-danger-text) 55%, transparent); box-shadow: 0 0 0 1px color-mix(in srgb, var(--color-danger-text) 12%, transparent), var(--glass-shadow); }
 .ui-card--warning { border-color: color-mix(in srgb, var(--color-warning-text) 55%, transparent); }
 .ui-card--success { border-color: color-mix(in srgb, var(--color-success-text) 55%, transparent); }
 .ui-card--pad { padding: var(--space-3) var(--space-4); }
@@ -294,8 +285,6 @@ textarea.ui-control { min-height: 5rem; resize: vertical; line-height: var(--lin
   justify-content: center;
   padding: var(--space-4);
   background: var(--scrim);
-  backdrop-filter: blur(10px) saturate(120%);
-  -webkit-backdrop-filter: blur(10px) saturate(120%);
   animation: ui-fade var(--motion-slow) var(--motion-ease);
 }
 @keyframes ui-fade { from { opacity: 0; } to { opacity: 1; } }
@@ -310,12 +299,10 @@ textarea.ui-control { min-height: 5rem; resize: vertical; line-height: var(--lin
   max-height: calc(100vh - 2 * var(--space-4));
   overflow-y: auto;
   padding: var(--space-6) var(--space-5) var(--space-5);
-  background: var(--gradient-card), var(--glass-bg-strong);
+  background: var(--glass-bg-strong);
   border: 1px solid var(--glass-border-strong);
   border-radius: var(--radius-xl);
-  box-shadow: var(--glass-highlight), var(--shadow-lg);
-  backdrop-filter: blur(calc(var(--glass-blur) * 1.5)) saturate(150%);
-  -webkit-backdrop-filter: blur(calc(var(--glass-blur) * 1.5)) saturate(150%);
+  box-shadow: var(--shadow-lg);
   color: var(--color-text);
   font-family: var(--font-sans);
 }
@@ -346,6 +333,17 @@ textarea.ui-control { min-height: 5rem; resize: vertical; line-height: var(--lin
 .ui-modal__handle:hover .ui-modal__grip, .ui-modal__handle:focus-visible .ui-modal__grip { background: var(--color-muted); }
 .ui-modal--sheet .ui-modal__title { touch-action: none; }
 
+/* ── Segmented choice (Settings -> Theme) ────────────────────────────────────────────────────────────────────── */
+.theme-switch { display: inline-flex; gap: 2px; padding: 3px; border: 1px solid var(--color-border); border-radius: calc(var(--radius-md) + 3px); background: var(--color-surface-sunken); }
+.theme-switch__opt {
+  display: inline-flex; align-items: center; gap: var(--space-2); min-height: 2rem; padding: 0 var(--space-3);
+  border: 0; border-radius: var(--radius-md); background: none; color: var(--color-muted); font: 500 0.875rem var(--font-sans); cursor: pointer;
+  transition: background-color var(--motion-fast) var(--motion-ease), color var(--motion-fast) var(--motion-ease);
+}
+.theme-switch__opt:hover { color: var(--color-text); }
+.theme-switch__opt--on { background: var(--color-elevated); color: var(--color-text); box-shadow: 0 0 0 1px var(--color-border); }
+@media (pointer: coarse), (max-width: 767px) { .theme-switch__opt { min-height: 2.75rem; } }
+
 /* ── Tabs ────────────────────────────────────────────────────────────────────────────────────────────────────── *
  * A segmented glass track; the active tab sits on a sliding lit pill (a motion layout element). */
 .ui-tabs__list {
@@ -362,9 +360,14 @@ textarea.ui-control { min-height: 5rem; resize: vertical; line-height: var(--lin
   scrollbar-width: none;
 }
 .ui-tabs__list::-webkit-scrollbar { display: none; }
+/* a small label in front of a group of tabs (Learn, Practice); hidden on phones, where the strip scrolls */
+.ui-tabs__group { align-self: center; padding: 0 var(--space-1) 0 var(--space-3); font-size: 0.66rem; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--color-muted); white-space: nowrap; }
+.ui-tabs__group:first-child { padding-left: var(--space-2); }
+@media (max-width: 767px) { .ui-tabs__group { display: none; } }
 .ui-tab {
   position: relative;
   isolation: isolate;
+  flex: none;                 /* never squeezed below its label: the strip scrolls instead */
   min-height: 2.25rem;
   padding: 0 var(--space-4);
   background: transparent;
@@ -387,9 +390,9 @@ textarea.ui-control { min-height: 5rem; resize: vertical; line-height: var(--lin
   inset: 0;
   z-index: -1;
   border-radius: inherit;
-  background: var(--gradient-card), var(--glass-bg-hover);
+  background: var(--glass-bg-hover);
   border: 1px solid var(--glass-border-strong);
-  box-shadow: var(--glass-highlight), var(--shadow-sm), 0 0 18px -6px var(--glow-accent);
+  box-shadow: var(--shadow-sm);
 }
 /* A tab that is a link (route-based sub-navigation, see components/shell/SubNav.tsx). */
 a.ui-tab { display: inline-flex; align-items: center; text-decoration: none; }
@@ -422,12 +425,10 @@ a.ui-tab { display: inline-flex; align-items: center; text-decoration: none; }
   align-items: flex-start;
   gap: var(--space-3);
   padding: var(--space-3) var(--space-4) var(--space-3) var(--space-4);
-  background: var(--gradient-card), var(--glass-bg-strong);
+  background: var(--glass-bg-strong);
   border: 1px solid var(--glass-border-strong);
   border-radius: var(--radius-lg);
-  box-shadow: var(--glass-highlight), var(--shadow-lg);
-  backdrop-filter: blur(calc(var(--glass-blur) * 1.4)) saturate(150%);
-  -webkit-backdrop-filter: blur(calc(var(--glass-blur) * 1.4)) saturate(150%);
+  box-shadow: var(--shadow-lg);
   color: var(--color-text);
   font-family: var(--font-sans);
   font-size: 0.875rem;
@@ -480,7 +481,7 @@ a.ui-tab { display: inline-flex; align-items: center; text-decoration: none; }
 
 /* ── ErrorState (inline error: message + the one button its code calls for) ─────────────────────────────────────── */
 .ui-error__row { display: flex; align-items: flex-start; flex-wrap: wrap; gap: var(--space-3); }
-.ui-error__icon { flex: none; margin-top: 0.15rem; color: var(--color-danger-text); filter: drop-shadow(0 0 6px var(--glow-danger)); }
+.ui-error__icon { flex: none; margin-top: 0.15rem; color: var(--color-danger-text); filter: none; }
 .ui-error__message { flex: 1 1 14rem; min-width: 0; margin: 0; color: var(--color-text); font-size: 0.9375rem; line-height: var(--line-height-body); overflow-wrap: anywhere; }
 .ui-error__actions { flex: none; }
 .ui-error__wait { color: var(--color-muted); font-size: 0.8125rem; }
@@ -499,17 +500,16 @@ a.ui-tab { display: inline-flex; align-items: center; text-decoration: none; }
 /* ── Skeleton ────────────────────────────────────────────────────────────────────────────────────────────────── */
 .ui-skeleton {
   display: block;
-  background: var(--gradient-sheen), var(--color-elevated-hover);
-  background-size: 220% 100%, auto;
-  background-repeat: no-repeat;
+  background: var(--color-elevated-hover);
   border-radius: var(--radius-sm);
   /* Takes its place at once (nothing jumps when the content arrives) but only shows after 300 ms: a fast load never
      flashes a skeleton. */
   opacity: 0;
-  animation: ui-skeleton-show 1ms linear 300ms forwards, shimmer 1.8s linear 300ms infinite;
+  animation: ui-skeleton-show 1ms linear 300ms forwards, ui-skeleton-pulse 1.6s ease-in-out 300ms infinite;
 }
 .ui-skeleton--circle { border-radius: var(--radius-full); }
 @keyframes ui-skeleton-show { to { opacity: 1; } }
+@keyframes ui-skeleton-pulse { 50% { background-color: var(--color-border); } }
 @media (prefers-reduced-motion: reduce) { .ui-skeleton { animation: ui-skeleton-show 1ms linear 300ms forwards; } }
 
 /* ── EmptyState ──────────────────────────────────────────────────────────────────────────────────────────────── */
@@ -530,9 +530,9 @@ a.ui-tab { display: inline-flex; align-items: center; text-decoration: none; }
   margin-bottom: var(--space-2);
   border-radius: var(--radius-lg);
   color: var(--color-accent-text);
-  background: var(--gradient-card), var(--glass-bg);
+  background: var(--glass-bg);
   border: 1px solid var(--glass-border-strong);
-  box-shadow: var(--glass-highlight), 0 10px 30px -10px var(--glow-accent);
+  box-shadow: none;
   animation: float 6s ease-in-out infinite;
 }
 .ui-empty__title { margin: 0; color: var(--color-text); font-size: 1.05rem; font-weight: 600; letter-spacing: var(--heading-tracking); }
@@ -562,7 +562,7 @@ a.ui-tab { display: inline-flex; align-items: center; text-decoration: none; }
 .ui-badge--success { --badge-tone: var(--color-success-text); }
 .ui-badge--warning { --badge-tone: var(--color-warning-text); }
 .ui-badge--danger { --badge-tone: var(--color-danger-text); }
-.ui-badge--reward { --badge-tone: var(--color-reward); box-shadow: 0 0 12px -4px var(--glow-reward); }
+.ui-badge--reward { --badge-tone: var(--color-reward); box-shadow: none; }
 .ui-badge--common { --badge-tone: var(--color-rarity-common); }
 .ui-badge--rare { --badge-tone: var(--color-rarity-rare); }
 .ui-badge--epic { --badge-tone: var(--color-rarity-epic); }
@@ -581,9 +581,7 @@ a.ui-tab { display: inline-flex; align-items: center; text-decoration: none; }
   background: var(--glass-bg-strong);
   border: 1px solid var(--glass-border-strong);
   border-radius: var(--radius-sm);
-  box-shadow: var(--glass-highlight), var(--shadow-md);
-  backdrop-filter: blur(var(--glass-blur));
-  -webkit-backdrop-filter: blur(var(--glass-blur));
+  box-shadow: var(--shadow-md);
   color: var(--color-text);
   font-family: var(--font-sans);
   font-size: 0.78rem;
@@ -604,7 +602,7 @@ a.ui-tab { display: inline-flex; align-items: center; text-decoration: none; }
   .ui-btn:not(.ui-btn--link) { min-height: 2.75rem; }
   .ui-btn--icon, .ui-btn--icon.ui-btn--sm { width: 2.75rem; min-width: 2.75rem; }
   .ui-control { min-height: 2.75rem; }
-  .ui-tab { min-height: 2.75rem; }
+  .ui-tab { min-height: 2.75rem; min-width: 2.75rem; }
   .ui-check { min-height: 2.75rem; align-items: center; }
   .ui-input-wrap__trail { right: 0; }
   .ui-input-wrap .ui-control--trail { padding-right: 3rem; }
@@ -617,7 +615,7 @@ a.ui-tab { display: inline-flex; align-items: center; text-decoration: none; }
 
 /* ── Range slider ─────────────────────────────────────────────────────────────────────────────────────────────── */
 input[type="range"] { -webkit-appearance: none; appearance: none; height: 6px; border-radius: var(--radius-full); background: var(--color-border-strong); cursor: pointer; }
-input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 1.125rem; height: 1.125rem; border-radius: var(--radius-full); background: var(--color-accent-text); border: 3px solid var(--color-surface); box-shadow: 0 0 0 1px var(--color-accent-text), 0 0 14px var(--glow-accent); transition: transform var(--motion-slow) var(--ease-spring); }
+input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 1.125rem; height: 1.125rem; border-radius: var(--radius-full); background: var(--color-accent-text); border: 3px solid var(--color-surface); box-shadow: 0 0 0 1px var(--color-accent-text); transition: transform var(--motion-slow) var(--ease-spring); }
 input[type="range"]::-webkit-slider-thumb:hover { transform: scale(1.2); }
 input[type="range"]:active::-webkit-slider-thumb { transform: scale(0.95); }
 input[type="range"]::-moz-range-thumb { width: 0.75rem; height: 0.75rem; border-radius: var(--radius-full); background: var(--color-accent-text); border: 3px solid var(--color-surface); box-shadow: 0 0 0 1px var(--color-accent-text); }

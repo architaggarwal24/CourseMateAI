@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Lock, ShoppingBag, Eye, Check, Sparkles, Swords } from "lucide-react";
+import { Lock, ShoppingBag, Eye, Check, Sparkles, Swords } from "@/components/icons";
 import PixelSprite from "@/components/arena/pixel/PixelSprite";
 import { useChampionLook } from "@/components/champion/useChampionLook";
 import { Badge, Button, EmptyState } from "@/components/ui";

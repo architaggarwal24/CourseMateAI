@@ -24,10 +24,17 @@ export default defineConfig({
     baseURL,
     // The service worker would fetch pages itself, out of reach of the per-test API mocks: off, except in pwa.spec.ts.
     serviceWorkers: "block",
+    // Pinned, so the result is the same on every machine (otherwise the OS's light/dark and "show animations"
+    // settings leak in). Dark mode is checked by axe.spec.ts and the desktop-dark project.
+    colorScheme: "light",
+    reducedMotion: "no-preference",
     launchOptions: process.env.PW_CHROMIUM_PATH ? { executablePath: process.env.PW_CHROMIUM_PATH } : {},
   },
   projects: [
     { name: "desktop", use: { ...devices["Desktop Chrome"], viewport: { width: 1280, height: 800 } } },
+    // The flows with dialogs, toasts and the arena again in dark mode (the page sweep in axe.spec.ts does its own dark pass).
+    { name: "desktop-dark", testMatch: /(arena|courses|exam|plans|review|citations)\.spec\.ts$/,
+      use: { ...devices["Desktop Chrome"], viewport: { width: 1280, height: 800 }, colorScheme: "dark" } },
     // 360px wide, touch: what a small Android phone is. (Chromium engine for both, so one browser install is enough.)
     { name: "mobile-360", use: { ...devices["Pixel 5"], viewport: { width: 360, height: 740 } } },
   ],

@@ -1,13 +1,12 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { Lock } from "lucide-react";
+import { Lock } from "@/components/icons";
 import { Badge } from "@/components/ui";
 import GearChips from "@/components/champion/GearChips";
 import ItemArt from "@/components/champion/ItemArt";
 import { RARITY_LABEL, rarityClass, rarityOf } from "@/lib/rarity";
 import { cn } from "@/lib/utils";
-import { usePointerVars } from "@/components/fx/usePointerVars";
 import type { ShopItem } from "@/hooks/useHero";
 
 export interface ItemCardProps {
@@ -34,10 +33,8 @@ export interface ItemCardProps {
 export default function ItemCard({ item, equipped, previewed, locked, count, onPreview, meta, extra, children }: ItemCardProps) {
   const rarity = rarityOf(item);
   const sprite = <ItemArt itemId={item.id} size={88} rarity={rarity} />;
-  const pointer = usePointerVars<HTMLLIElement>();
   return (
-    <li ref={pointer} className={cn("hero-item fx-spotlight", rarityClass(rarity), equipped && "hero-item--equipped", previewed && "hero-item--preview", locked && "hero-item--locked")} data-rarity={rarity} data-item-id={item.id}>
-      {rarity === "legendary" && <span className="fx-ring" aria-hidden="true" />}
+    <li className={cn("hero-item", rarityClass(rarity), equipped && "hero-item--equipped", previewed && "hero-item--preview", locked && "hero-item--locked")} data-rarity={rarity} data-item-id={item.id}>
       <div className="hero-item__top">
         <Badge tone={rarity}>{RARITY_LABEL[rarity]}</Badge>
         {equipped && <Badge tone="success">Equipped</Badge>}

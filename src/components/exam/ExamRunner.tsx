@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { ArrowLeft, ArrowRight, Clock, Flag, Send } from "lucide-react";
+import { ArrowLeft, ArrowRight, Clock, Flag, Send } from "@/components/icons";
 import { Button, Modal, toast } from "@/components/ui";
 import { useCountdown } from "@/hooks/useCountdown";
 import { ApiError } from "@/lib/api";

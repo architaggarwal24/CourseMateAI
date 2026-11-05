@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { motion } from "motion/react";
 import {
   BedDouble, BookOpen, Coins, Crown, Flag, Gem, Heart, Map as MapIcon, Skull, Sparkles, Store, Swords, Target, Trophy,
-} from "lucide-react";
+} from "@/components/icons";
 import { Badge, Button, Modal } from "@/components/ui";
 import { toast } from "@/components/ui/Toast";
 import { ApiError } from "@/lib/api/errors";
@@ -263,7 +263,7 @@ function PendingChoice({ run, busy, onChoose }: { run: Run; busy: string | null;
           <h3 id="run-choice-title" className="run-choice__title"><Gem size={18} aria-hidden="true" />Choose a relic</h3>
           <div className="run-choice__grid">
             {p.relics.map((r) => (
-              <button key={r.id} type="button" className="run-card run-card--relic fx-beam" data-rarity={r.rarity} disabled={busy !== null} onClick={() => onChoose("take", r.id)}>
+              <button key={r.id} type="button" className="run-card run-card--relic" data-rarity={r.rarity} disabled={busy !== null} onClick={() => onChoose("take", r.id)}>
                 <Gem size={26} aria-hidden="true" /><b>{r.name}</b><span>{r.description}</span><Badge tone={r.rarity}>{r.rarity}</Badge>
               </button>
             ))}

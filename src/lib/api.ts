@@ -52,7 +52,7 @@ export async function uploadPDF(file: File, sessionId?: string): Promise<UploadR
       body: JSON.stringify({ filename: file.name, size: file.size, pages: read.pageCount, file_hash: read.hash, session_id: sessionId }),
     }));
   } catch {
-    throw new ApiError(0, { code: "network", message: "Couldn't reach CourseMate. Check your connection and try again.", action: "retry", details: null });
+    throw new ApiError(0, { code: "network", message: "Couldn't reach CourseMateAI. Check your connection and try again.", action: "retry", details: null });
   }
   let body: unknown = null;
   try { body = await res.json(); } catch { /* not JSON */ }

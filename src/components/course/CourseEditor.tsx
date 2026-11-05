@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { ArrowDown, ArrowUp, Trash2 } from "lucide-react";
+import { ArrowDown, ArrowUp, Trash2 } from "@/components/icons";
 import { Button, Checkbox, Input, Modal, Textarea, toast } from "@/components/ui";
 import { useCourses } from "@/hooks/useCourses";
 import type { DocumentInfo } from "@/lib/api";

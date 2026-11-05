@@ -18,6 +18,6 @@ describe("install the app", () => {
     expect(e.defaultPrevented).toBe(true);                                   // the app decides when to ask
     await act(async () => { fireEvent.click(screen.getByRole("button", { name: "Install app" })); });
     expect(prompt).toHaveBeenCalled();
-    expect(screen.getByText("CourseMate is installed on this device.")).toBeTruthy();
+    expect(screen.getByText("CourseMateAI is installed on this device.")).toBeTruthy();
   });
 });

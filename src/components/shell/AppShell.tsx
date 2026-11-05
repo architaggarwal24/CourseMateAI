@@ -7,7 +7,6 @@ import { useRevalidate } from "@/hooks/useRevalidate";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import ThemeScope from "@/components/ThemeScope";
-import { Aurora, Starfield } from "@/components/fx";
 import { areaOf } from "@/lib/routes";
 import NavSidebar from "./NavSidebar";
 import BottomNav from "./BottomNav";
@@ -15,8 +14,8 @@ import CommandPalette from "./CommandPalette";
 import "./shell.css";
 
 /**
- * The frame around Study, Hero and Account: a frosted sidebar on desktop, a floating dock on mobile, the screen in
- * between, over an ambient backdrop (aurora in Study; aurora + starfield in the Hero area's Play theme).
+ * The frame around Study, Hero and Account: the sectioned sidebar on desktop (it collapses to an icon rail), a tab
+ * bar along the bottom on phones, the screen in between.
  * It also keeps what the old home page kept for the whole session: the HUD refresh (and the review queue's due count).
  * ⌘K opens the command palette.
  */
@@ -41,10 +40,6 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <ThemeScope theme={play ? "play" : "study"}>
     <div className="app-shell" data-area={area ?? undefined}>
-      <div className="app-backdrop" aria-hidden="true">
-        <Aurora grid={!play} />
-        {play && <Starfield />}
-      </div>
       <NavSidebar />
       <main id="main-content" tabIndex={-1} className="app-main">
         {authLoading ? (

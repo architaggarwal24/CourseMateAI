@@ -1,5 +1,5 @@
 // The browser's side of accounts (Stage 4.1): Better Auth's endpoints under /api/auth, called with plain fetch, and
-// their refusals turned into a message (and the form field it belongs beside) in CourseMate's own words.
+// their refusals turned into a message (and the form field it belongs beside) in CourseMateAI's own words.
 
 export interface AuthFailure {
   message: string;
@@ -45,7 +45,7 @@ const MESSAGE_FOR_CODE: Record<string, string> = {
   TOO_MANY_ATTEMPTS_REQUEST_NEW_CODE: "Too many wrong codes. Ask for a new one.",
   OTP_HAS_EXPIRED: "That code has expired. Ask for a new one.",
   ACCOUNT_TEMPORARILY_LOCKED: "Too many wrong codes: two-step sign-in is locked for a few minutes.",
-  BANNED_USER: "This account has been suspended. Contact the CourseMate team if you think it's a mistake.",
+  BANNED_USER: "This account has been suspended. Contact the CourseMateAI team if you think it's a mistake.",
   INVALID_CODE: "That code isn't right. Check it and try again.",
   INVALID_TWO_FACTOR_CODE: "That code isn't right. Check it and try again.",
   INVALID_BACKUP_CODE: "That backup code isn't right, or it has been used.",
@@ -74,7 +74,7 @@ async function post<T = unknown>(path: string, body: unknown): Promise<{ ok: tru
       body: JSON.stringify(body ?? {}),
     });
   } catch {
-    return { ok: false, failure: { message: "Couldn't reach CourseMate. Check your connection and try again." } };
+    return { ok: false, failure: { message: "Couldn't reach CourseMateAI. Check your connection and try again." } };
   }
   if (!res.ok) return { ok: false, failure: await failureFrom(res) };
   let data: T;

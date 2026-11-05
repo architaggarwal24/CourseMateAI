@@ -183,7 +183,7 @@ describe("upgrading", () => {
     mode = "pay";
     fireEvent.click(within(sageCard()).getByRole("button", { name: "Upgrade to Sage" }));
     expect(await screen.findByRole("heading", { name: "Sage", level: 2 })).toBeTruthy();
-    expect(opened[1]).toMatchObject({ key: "rzp_test", subscription_id: "sub_1", name: "CourseMate", prefill: { email: "a@x.io" } });
+    expect(opened[1]).toMatchObject({ key: "rzp_test", subscription_id: "sub_1", name: "CourseMateAI", prefill: { email: "a@x.io" } });
     expect(log.verified).toEqual([{ razorpay_payment_id: "pay_9", razorpay_subscription_id: "sub_1", razorpay_signature: "sig" }]);
     delete (window as any).Razorpay;
   });

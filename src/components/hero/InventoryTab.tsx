@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Check, Package, ShoppingBag } from "lucide-react";
+import { Check, Package, ShoppingBag } from "@/components/icons";
 import PixelSprite from "@/components/arena/pixel/PixelSprite";
 import ItemArt from "@/components/champion/ItemArt";
 import { useChampionLook } from "@/components/champion/useChampionLook";

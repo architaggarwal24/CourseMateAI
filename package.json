@@ -21,6 +21,7 @@
   },
   "dependencies": {
     "@gsap/react": "^2.1.2",
+    "@heroicons/react": "^2.2.0",
     "@opennextjs/cloudflare": "1.20.13",
     "@phosphor-icons/react": "^2.1.10",
     "@sentry/browser": "^10.78.0",
@@ -73,9 +74,9 @@
   },
   "allowScripts": {
     "sharp@0.34.5": true,
-    "esbuild@0.18.20": true,
-    "esbuild@0.25.12": true,
     "esbuild@0.28.2": true,
+    "esbuild@0.25.12": true,
+    "esbuild@0.18.20": true,
     "workerd@1.20261023.1": true
   },
   "overrides": {

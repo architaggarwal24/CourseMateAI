@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Check, Eye, EyeOff } from "lucide-react";
+import { Check, Eye, EyeOff } from "@/components/icons";
 import { Button, Card, Input, toast } from "@/components/ui";
 import { useAuth } from "@/contexts/AuthContext";
 import { parseApiError, rawApi } from "@/lib/api";

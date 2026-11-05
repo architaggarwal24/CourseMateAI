@@ -1,7 +1,7 @@
 "use client";
 
 import { DropdownMenu } from "radix-ui";
-import { BookMarked, Check, ChevronsUpDown, FileText, FolderPlus, Lock } from "lucide-react";
+import { BookMarked, Check, ChevronsUpDown, FileText, FolderPlus, Lock } from "@/components/icons";
 import ThemeScope from "@/components/ThemeScope";
 import type { DocumentInfo } from "@/lib/api";
 import type { Course } from "@/lib/study/courses";

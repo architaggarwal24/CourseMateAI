@@ -1,6 +1,7 @@
 import { test, expect, type Page } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 import { mockApi } from "./fixtures/api";
+import { settle } from "./helpers";
 
 // The pixel champion is the avatar everywhere (Phase 3, Stage 1): picked in the Champion tab, saved on the account,
 // drawn in the Hero header, the sidebar menu, the shop and the inventory; old Avatar / Hero Forge links land here.
@@ -62,6 +63,7 @@ test("the champion's sprites are painted, and the Champion tab passes axe", asyn
     return n;
   })).toBeGreaterThan(400);
   // the same bar as e2e/axe.spec.ts: no serious or critical findings
+  await settle(page);
   const results = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa", "best-practice"]).analyze();
   const blocking = results.violations.filter((v) => v.impact === "serious" || v.impact === "critical");
   expect(blocking.map((v) => `${v.id}: ${v.nodes.map((n) => n.target).join(", ")}`)).toEqual([]);

@@ -2,7 +2,7 @@
 
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { motion } from "motion/react";
-import { Brain, ChevronRight, Flag, FlaskConical, Hourglass, Scissors, ShieldCheck, Zap } from "lucide-react";
+import { Brain, ChevronRight, Flag, FlaskConical, Hourglass, Scissors, ShieldCheck, Zap } from "@/components/icons";
 import GearChips from "@/components/champion/GearChips";
 import { Badge, Button, Modal } from "@/components/ui";
 import { type useArenaBattle } from "@/hooks/useArenaBattle";

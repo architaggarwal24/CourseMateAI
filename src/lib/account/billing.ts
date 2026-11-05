@@ -63,7 +63,7 @@ export async function payWithRazorpay(c: Checkout): Promise<RazorpaySuccess | nu
   const accent = getComputedStyle(document.documentElement).getPropertyValue("--color-accent").trim();
   return new Promise((resolve) => {
     const rzp = new Razorpay({
-      key: c.key_id, subscription_id: c.subscription_id, name: "CourseMate",
+      key: c.key_id, subscription_id: c.subscription_id, name: "CourseMateAI",
       description: `${c.tier_name}, ${c.period === "year" ? "yearly" : "monthly"}`,
       prefill: c.prefill, theme: accent ? { color: accent } : undefined,
       handler: (r: RazorpaySuccess) => resolve(r),

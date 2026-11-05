@@ -1,4 +1,4 @@
-import { FileText } from "lucide-react";
+import { FileText } from "@/components/icons";
 import { Button } from "@/components/ui";
 import { citationText, type Citation } from "@/lib/study/citations";
 

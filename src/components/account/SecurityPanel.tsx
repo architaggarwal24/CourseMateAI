@@ -4,7 +4,7 @@
 // an emailed code works as the second step too once emails go out).
 import { useState } from "react";
 import { encode } from "uqr";
-import { CheckCircle2, ShieldCheck } from "lucide-react";
+import { CheckCircle2, ShieldCheck } from "@/components/icons";
 import { Badge, Button, Card, Input, toast } from "@/components/ui";
 import VerifyEmailStep from "@/components/auth/VerifyEmailStep";
 import CodeField from "@/components/auth/CodeField";

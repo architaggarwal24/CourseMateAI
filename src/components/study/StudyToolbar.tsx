@@ -1,7 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { History, Plus } from "lucide-react";
+import { History, Plus } from "@/components/icons";
 import { Button } from "@/components/ui";
 
 interface Props {

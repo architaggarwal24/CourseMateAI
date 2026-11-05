@@ -47,7 +47,7 @@ export function assertSameOrigin(req: Request): void {
   if (req.method === "GET" || req.method === "HEAD") return;
   const origin = req.headers.get("origin");
   if (origin && origin !== new URL(req.url).origin) {
-    throw new HttpError(403, "bad_origin", "This request didn't come from CourseMate.");
+    throw new HttpError(403, "bad_origin", "This request didn't come from CourseMateAI.");
   }
 }
 

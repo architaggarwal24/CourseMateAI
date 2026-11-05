@@ -46,10 +46,8 @@
   /* --font-sans, --font-mono, --radius-* and --ease-* share Tailwind's names on purpose: the unlayered tokens
    * override Tailwind's defaults, so font-sans / rounded-lg / ... follow the theme. */
 
-  --animate-shimmer: shimmer 2.2s linear infinite;
-  --animate-aurora: aurora 22s ease-in-out infinite alternate;
+  --animate-shimmer: pulse-soft 1.6s ease-in-out infinite;
   --animate-float: float 6s ease-in-out infinite;
-  --animate-border-spin: border-spin 4s linear infinite;
 }
 
 /* The notch, rounded corners and home bar (the page runs under them: viewport-fit=cover in app/layout.tsx). Edges
@@ -80,6 +78,7 @@
     font-feature-settings: "ss01", "cv11";
   }
   h1, h2, h3 {
+    font-family: var(--font-display);
     letter-spacing: var(--heading-tracking);
   }
   /* Headings break into even lines; running text avoids a single word on its last line. */
@@ -97,7 +96,7 @@
     cursor: pointer;
   }
   ::selection {
-    background: var(--glow-accent);
+    background: color-mix(in srgb, var(--color-accent) 35%, transparent);
     color: var(--color-text);
   }
   /* Keyboard focus: a ring in the theme's focus colour (elements that style their own focus keep it). */
@@ -118,44 +117,28 @@
     font-variant-numeric: tabular-nums;
   }
 
-  /* Frosted glass. `.glass` is a panel; `.glass-strong` is for things that float (menus, modals, toasts). */
+  /* Panels (historic names): `.glass` is a flat card; `.glass-strong` is for things that float (menus, dialogs). */
   .glass {
-    background: var(--gradient-card), var(--glass-bg);
+    background: var(--glass-bg);
     border: 1px solid var(--glass-border);
-    box-shadow: var(--glass-highlight), var(--glass-shadow);
-    backdrop-filter: blur(var(--glass-blur)) saturate(140%);
-    -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(140%);
+    box-shadow: var(--glass-shadow);
   }
   .glass-strong {
-    background: var(--gradient-card), var(--glass-bg-strong);
+    background: var(--glass-bg-strong);
     border: 1px solid var(--glass-border-strong);
-    box-shadow: var(--glass-highlight), var(--shadow-lg);
-    backdrop-filter: blur(calc(var(--glass-blur) * 1.4)) saturate(150%);
-    -webkit-backdrop-filter: blur(calc(var(--glass-blur) * 1.4)) saturate(150%);
+    box-shadow: var(--shadow-lg);
   }
 
-  /* Headline text painted with a gradient. */
-  .text-gradient {
-    background: var(--gradient-text);
-    -webkit-background-clip: text;
-    background-clip: text;
-    color: transparent;
-  }
-  /* TextReveal animates words as transformed inline-blocks, which a parent's background-clip cannot paint through:
-   * each word carries the gradient itself. */
-  .text-gradient > [aria-hidden],
-  .text-gradient-accent > [aria-hidden] {
-    background: inherit;
-    -webkit-background-clip: text;
-    background-clip: text;
-    color: transparent;
-  }
-  .text-gradient-accent {
-    background: var(--gradient-text-accent);
-    -webkit-background-clip: text;
-    background-clip: text;
-    color: transparent;
-  }
+  /* Headline emphasis (historic names): plain ink, and the accent for the highlighted word. */
+  .text-gradient { color: var(--color-text); }
+  .text-gradient-accent { color: var(--color-accent-text); }
+
+  /* The CourseMateAI logo (components/brand/Logo.tsx): the mark in ink, its dot and "AI" in the accent. */
+  .brand { display: inline-flex; align-items: center; gap: calc(var(--brand-size, 28px) * 0.34); color: var(--color-text); line-height: 1; }
+  .brand-mark { flex: none; display: block; }
+  .brand-mark__dot { fill: var(--color-accent); }
+  .brand__word { font-family: var(--font-display); font-weight: 700; font-size: calc(var(--brand-size, 28px) * 0.74); letter-spacing: -0.035em; white-space: nowrap; }
+  .brand__ai { color: var(--color-accent-text); }
 
   /* Keyboard hint chip: <kbd class="kbd">K</kbd> */
   .kbd {
@@ -175,21 +158,11 @@
   }
 }
 
-@keyframes shimmer {
-  from { background-position: 200% 0; }
-  to { background-position: -200% 0; }
-}
-@keyframes aurora {
-  0% { transform: translate3d(0, 0, 0) rotate(0deg) scale(1); }
-  50% { transform: translate3d(4%, -3%, 0) rotate(8deg) scale(1.08); }
-  100% { transform: translate3d(-4%, 3%, 0) rotate(-6deg) scale(1.02); }
-}
+/* A soft pulse for "working on it" states (flat: opacity only). */
+@keyframes pulse-soft { 50% { opacity: 0.55; } }
 @keyframes float {
   0%, 100% { transform: translateY(0); }
   50% { transform: translateY(-6px); }
-}
-@keyframes border-spin {
-  to { --border-angle: 360deg; }
 }
 
 /* Skip link: first thing a keyboard user reaches; hidden until focused. */

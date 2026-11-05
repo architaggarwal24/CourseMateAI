@@ -2,9 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { motion } from "motion/react";
-import { Lock, Map as MapIcon, Swords, Target, Users } from "lucide-react";
+import { Lock, Map as MapIcon, Swords, Target, Users } from "@/components/icons";
 import { Badge } from "@/components/ui";
-import { TiltCard } from "@/components/fx";
 import { fetchActiveRun, fetchLeaderboard, fetchWeakConcepts } from "@/lib/arena/api";
 import { DIFFICULTY_LABEL, type LeaderboardEntry, type Run, type WeakConceptsResponse } from "@/lib/arena/types";
 import { Bestiary } from "./pixel/Bestiary";
@@ -54,14 +53,14 @@ export default function ArenaHub({ sessionId, onPick }: { sessionId: string; onP
       <ul className="arena-hub__modes">
         {modes.map((m, i) => (
           <motion.li key={m.id} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.07, type: "spring", stiffness: 260, damping: 24 }}>
-            <TiltCard className="arena-mode" data-tone={m.tone} max={7}>
+            <div className="arena-mode" data-tone={m.tone}>
               <button type="button" className="arena-mode__btn" onClick={() => onPick(m.id)} aria-describedby={`mode-${m.id}`}>
                 <span className="arena-mode__icon" aria-hidden="true"><m.Icon size={26} /></span>
                 <span className="arena-mode__title">{m.title}</span>
                 <span id={`mode-${m.id}`} className="arena-mode__blurb">{m.blurb}</span>
                 <Badge tone={m.locked ? "neutral" : m.id === "run" && run ? "reward" : "accent"}>{m.locked && <Lock size={10} aria-hidden="true" />}{m.chip}</Badge>
               </button>
-            </TiltCard>
+            </div>
           </motion.li>
         ))}
         <motion.li initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.21 }}>

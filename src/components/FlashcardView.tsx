@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useEffect, useRef } from "react";
 import { motion, useMotionValue, useTransform } from "motion/react";
-import { ChevronLeft, ChevronRight, RotateCcw, Shuffle, CheckCircle2, XCircle, Sparkles, Minus, Plus, Layers, Repeat } from "lucide-react";
+import { ChevronLeft, ChevronRight, RotateCcw, Shuffle, CheckCircle2, XCircle, Sparkles, Minus, Plus, Layers, Repeat } from "@/components/icons";
 import HistoryPanel from "./HistoryPanel";
 import StudyToolbar from "./study/StudyToolbar";
 import { Badge, Button, ButtonLink, Card, Input } from "@/components/ui";

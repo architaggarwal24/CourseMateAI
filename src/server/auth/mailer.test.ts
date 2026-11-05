@@ -7,10 +7,10 @@ const mail = codeMail("a@x.io", "123456", "email-verification");
 describe("createMailer", () => {
   it("uses Cloudflare Email when the binding and a sender are set", async () => {
     const send = vi.fn(async () => ({ messageId: "m1" }));
-    const m = createMailer({ EMAIL: { send }, EMAIL_FROM: "CourseMate <no-reply@study.example.com>" });
+    const m = createMailer({ EMAIL: { send }, EMAIL_FROM: "CourseMateAI <no-reply@study.example.com>" });
     expect([m.via, m.canSend]).toEqual(["cloudflare", true]);
     await m.send(mail);
-    expect(send).toHaveBeenCalledWith(expect.objectContaining({ to: "a@x.io", from: "CourseMate <no-reply@study.example.com>", subject: mail.subject }));
+    expect(send).toHaveBeenCalledWith(expect.objectContaining({ to: "a@x.io", from: "CourseMateAI <no-reply@study.example.com>", subject: mail.subject }));
   });
 
   it("falls back to Resend", async () => {
@@ -42,7 +42,7 @@ describe("createMailer", () => {
 describe("codeMail", () => {
   it("puts the code in the text and the html, and escapes", () => {
     const m = codeMail("a@x.io", "<9>", "forget-password");
-    expect(m.subject).toBe("Reset your CourseMate password");
+    expect(m.subject).toBe("Reset your CourseMateAI password");
     expect(m.text).toContain("<9>");
     expect(m.html).toContain("&lt;9&gt;");
   });

@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
-import { BookMarked, FileText, FileUp, Pencil, Upload } from "lucide-react";
+import { BookMarked, FileText, FileUp, Pencil, Upload } from "@/components/icons";
 import { Badge, Button, toast, type BadgeTone } from "@/components/ui";
 import type { DocumentUpload } from "@/hooks/useDocumentUpload";
 import type { DocumentInfo, DocumentStatus } from "@/lib/api";
@@ -109,7 +109,7 @@ export default function DocumentHeader({ doc, gone, loaded, upload, tabs, course
       {/* Drag overlay: a portal at the body root so it covers the whole screen */}
       {isPageDragging && typeof document !== "undefined" && createPortal(
         <div role="presentation" className="drop-overlay">
-          <div className="drop-overlay__card fx-beam">
+          <div className="drop-overlay__card">
             <FileUp size={40} className="drop-overlay__icon" aria-hidden="true" />
             <div className="text-xl font-semibold">Drop your PDF anywhere</div>
             <div className="text-sm text-fg-muted">Release to upload</div>

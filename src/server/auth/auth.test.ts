@@ -18,7 +18,7 @@ describe("sign-up and sign-in", () => {
     const b = new Browser();
     const r = await auth.handler(signUp(b, "Asha@Example.com"));
     expect(r.status).toBe(200);
-    expect(mail.sent[0]).toMatchObject({ to: "asha@example.com", subject: "Your CourseMate verification code" });
+    expect(mail.sent[0]).toMatchObject({ to: "asha@example.com", subject: "Your CourseMateAI verification code" });
 
     const before = await auth.handler(b.request("/api/auth/sign-in/email", { body: { email: "asha@example.com", password: "correct-horse-1" } }));
     expect(before.status).toBe(403);                                  // EMAIL_NOT_VERIFIED
@@ -101,7 +101,7 @@ describe("two-step sign-in", () => {
     const b = new Browser();
     b.keep(await auth.handler(signUp(b, "z@example.com", { username: "zed" })));
     const en = await json(await auth.handler(b.request("/api/auth/two-factor/enable", { body: { password: "correct-horse-1" } })));
-    expect(en.totpURI).toMatch(/^otpauth:\/\/totp\/CourseMate/);
+    expect(en.totpURI).toMatch(/^otpauth:\/\/totp\/CourseMateAI/);
     expect(en.backupCodes.length).toBeGreaterThan(5);
     const { createOTP } = await import("@better-auth/utils/otp");
     const { base32 } = await import("@better-auth/utils/base32");

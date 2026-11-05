@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useReducedMotionConfig } from "motion/react";
-import { ChevronDown, Crown, Lock, PawPrint, Shield, ShoppingBag, Sparkles, Swords, X, Zap } from "lucide-react";
+import { ChevronDown, Crown, Lock, PawPrint, Shield, ShoppingBag, Sparkles, Swords, X, Zap } from "@/components/icons";
 import { xpPct } from "@/components/arena/pixel/Roster";
 import { useChampion } from "@/hooks/useChampion";
 import PixelSprite from "@/components/arena/pixel/PixelSprite";

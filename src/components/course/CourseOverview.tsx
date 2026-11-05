@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { BookMarked, Brain, FileText, GraduationCap, Layers, MessageSquare, Repeat } from "lucide-react";
+import { BookMarked, Brain, FileText, GraduationCap, Layers, MessageSquare, Repeat } from "@/components/icons";
 import StudyToolbar from "@/components/study/StudyToolbar";
 import { Badge, Button, ButtonLink, Card, EmptyState, Skeleton, toast } from "@/components/ui";
 import { ROUTES, type StudyTab } from "@/lib/routes";

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useSyncExternalStore, type ReactNode } from "react";
-import { AlertCircle, CheckCircle2, Info, X } from "lucide-react";
+import { AlertCircle, CheckCircle2, Info, X } from "@/components/icons";
 import ThemeScope, { type Theme } from "@/components/ThemeScope";
 import { describeError, withoutActions, type ErrorActionKind } from "@/lib/errorActions";
 import Button from "./Button";

@@ -1,21 +1,23 @@
 import { test, expect } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 import { mockApi } from "./fixtures/api";
+import { settle } from "./helpers";
 
 // Phase 3 Stage 3A: the daily review. The nav carries the due count; the review is keyboard first (Space shows the
 // answer, 1-4 grade it) and swipeable on a phone; clearing the queue ends on "All caught up".
 
 async function axeClean(page: import("@playwright/test").Page, label: string) {
+  await settle(page);
   const results = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa", "best-practice"]).analyze();
   const blocking = results.violations.filter((v) => v.impact === "serious" || v.impact === "critical");
   expect(blocking.map((v) => `${v.id}: ${v.nodes.slice(0, 3).map((n) => n.target.join(" ")).join(", ")}`).join("\n"), `axe on ${label}`).toBe("");
 }
 
-test("the due count is on the Study nav and the Review tab, and the keyboard clears the queue", async ({ page }, info) => {
+test("the due count is on the Review nav item and the Review tab, and the keyboard clears the queue", async ({ page }, info) => {
   await mockApi(page);
   await page.goto("/study?tab=chat&doc=doc-1");
   const nav = page.getByRole("navigation", { name: "Main" }).filter({ visible: true }).first();
-  await expect(nav.getByRole("link", { name: /Study/ })).toContainText("2 cards to review");
+  await expect(nav.getByRole("link", { name: /Review/ })).toContainText("2 cards to review");
   const tabs = page.getByRole("navigation", { name: "Study tools" });
   await expect(tabs.getByRole("link", { name: /Review/ })).toContainText("2 cards due");
 

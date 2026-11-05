@@ -1,6 +1,7 @@
 import { test, expect } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 import { PLANS, mockApi } from "./fixtures/api";
+import { settle } from "./helpers";
 
 // Phase 3 Stage 4a: Account -> Plan & usage, and the "See plans" way out of a plan limit.
 
@@ -11,6 +12,7 @@ test("the plan, its meters and the plans to compare", async ({ page }, info) => 
   await expect(page.getByRole("progressbar", { name: "AI calls today" })).toHaveAttribute("aria-valuetext", "126 of 150");
   await expect(page.getByText("₹299")).toBeVisible();
   await page.screenshot({ path: `previews/stage-4a-usage-${info.project.name}.png`, fullPage: true });
+  await settle(page);
   const axe = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21aa"]).analyze();
   expect(axe.violations.map((v) => `${v.id}: ${v.nodes.map((n) => n.target).join(" ")}`)).toEqual([]);
   expect(unanswered).toEqual([]);
@@ -49,6 +51,7 @@ test("upgrading with the test payment provider", async ({ page }) => {
   await sage.getByRole("button", { name: "Upgrade to Sage" }).click();
   const dialog = page.getByRole("dialog", { name: "Test payment" });
   await expect(dialog).toBeVisible();
+  await settle(page);
   const axe = await new AxeBuilder({ page }).include("[role=dialog]").analyze();
   expect(axe.violations.map((v) => v.id)).toEqual([]);
   await dialog.getByRole("button", { name: /Pay ₹299 \(test\)/ }).click();

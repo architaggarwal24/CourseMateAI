@@ -1,7 +1,7 @@
 "use client";
 
 import { forwardRef, type ButtonHTMLAttributes, type PointerEvent } from "react";
-import { Loader2 } from "lucide-react";
+import { Loader2 } from "@/components/icons";
 import { cn } from "@/lib/utils";
 import { ripple, sparkBurst } from "@/components/fx/motion";
 
@@ -23,7 +23,7 @@ export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 }
 
 /**
- * The kit's button. Reactive by default: it lifts on hover, a sheen sweeps across solid variants, it squashes on
+ * The kit's button. Reactive by default: it lifts on hover, it squashes on
  * press (spring), and a ripple spreads from the exact point pressed. All of it is CSS/DOM only (no re-render) and
  * all of it switches off under reduced motion.
  * type defaults to "button" so a Button inside a form never submits it by accident.
@@ -33,7 +33,6 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button(
     disabled, children, onPointerDown, onClick, ...rest },
   ref,
 ) {
-  const solid = variant === "primary" || variant === "danger" || variant === "reward" || variant === "secondary";
   const burst = sparks ?? variant === "reward";
   return (
     <button
@@ -43,7 +42,7 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button(
       aria-busy={loading || undefined}
       aria-pressed={pressed}
       className={cn(
-        "ui-btn", `ui-btn--${variant}`, solid && "fx-sheen",
+        "ui-btn", `ui-btn--${variant}`,
         size === "sm" && "ui-btn--sm", size === "lg" && "ui-btn--lg", icon && "ui-btn--icon", block && "ui-btn--block",
         className,
       )}

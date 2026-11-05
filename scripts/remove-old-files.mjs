@@ -61,6 +61,13 @@ const OLD = [
   // The app moved from frontend/ to the repo root (git mv); what git doesn't track stays behind in frontend/
   "frontend/.dockerignore",
   "frontend/tsconfig.tsbuildinfo",
+  // Redesign Stage 1 (Ink): flat surfaces, Onest + Bricolage Grotesque; the ambient effects and Geist Sans are gone
+  "src/fonts/Geist-Variable.woff2",
+  "src/components/fx/Aurora.tsx",
+  "src/components/fx/Starfield.tsx",
+  "src/components/fx/Spotlight.tsx",
+  "src/components/fx/TiltCard.tsx",
+  "src/components/fx/usePointerVars.ts",
 ];
 
 for (const rel of OLD) {

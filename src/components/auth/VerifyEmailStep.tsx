@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { MailCheck } from "lucide-react";
+import { MailCheck } from "@/components/icons";
 import { Button, Card } from "@/components/ui";
 import { sendVerificationCode, verifyEmail } from "@/lib/auth/authApi";
 import CodeField from "./CodeField";

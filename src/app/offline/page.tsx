@@ -1,4 +1,4 @@
-import { WifiOff } from "lucide-react";
+import { WifiOff } from "@/components/icons";
 
 export const metadata = { title: "Offline · CourseMateAI" };
 
@@ -9,7 +9,7 @@ export default function OfflinePage() {
       <div className="offline__card">
         <span className="offline__icon" aria-hidden="true"><WifiOff size={28} /></span>
         <h1>You&apos;re offline</h1>
-        <p>CourseMate needs a connection for your documents and AI answers. Reconnect and this page will work again.</p>
+        <p>CourseMateAI needs a connection for your documents and AI answers. Reconnect and this page will work again.</p>
         <a className="ui-btn ui-btn--primary" href="/study">Try again</a>
       </div>
     </main>

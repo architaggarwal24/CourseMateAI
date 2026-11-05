@@ -1,29 +1,42 @@
 "use client";
 
+import { Suspense } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { motion } from "motion/react";
-import { areaOf } from "@/lib/routes";
+import { usePathname, useSearchParams } from "next/navigation";
+import { BookOpen, Repeat, Swords, UserCircle, type IconType } from "@/components/icons";
+import { areaOf, ROUTES } from "@/lib/routes";
 import { dueBadge, useReview } from "@/hooks/useReview";
-import { NAV_ITEMS } from "./nav-items";
 import ReviewBadge from "./ReviewBadge";
 
-/** Mobile: the same three areas as a floating glass dock along the bottom. Hidden from md up. */
+/**
+ * Phones (hidden from md up): a flat tab bar along the bottom, where the thumb is. Study, Review (with the due
+ * count), Hero and Me. It pads itself clear of the home bar.
+ */
 export default function BottomNav() {
+  return <Suspense fallback={<Bar tab={null} />}><WithQuery /></Suspense>;
+}
+function WithQuery() {
+  return <Bar tab={useSearchParams().get("tab")} />;
+}
+
+function Bar({ tab }: { tab: string | null }) {
   const area = areaOf(usePathname());
   const due = useReview((s) => dueBadge(s.stats));
+  const items: { label: string; href: string; Icon: IconType; current: boolean; badge?: boolean }[] = [
+    { label: "Study", href: ROUTES.study, Icon: BookOpen, current: area === "study" && tab !== "review" },
+    { label: "Review", href: ROUTES.studyTab("review"), Icon: Repeat, current: area === "study" && tab === "review", badge: true },
+    { label: "Hero", href: ROUTES.hero, Icon: Swords, current: area === "hero" },
+    { label: "Me", href: ROUTES.account, Icon: UserCircle, current: area === "account" },
+  ];
   return (
-    <nav aria-label="Main" className="bottom" style={{ paddingBottom: "max(env(safe-area-inset-bottom), 0.5rem)" }}>
-      <div className="bottom__dock">
-        {NAV_ITEMS.map(({ id, label, href, Icon }) => (
-          <Link key={id} href={href} aria-current={area === id ? "page" : undefined} className="bottom__link">
-            {area === id && <motion.span layoutId="bottom-dot" className="bottom__dot" transition={{ type: "spring", stiffness: 420, damping: 34 }} />}
-            <Icon size={20} aria-hidden="true" />
-            <span>{label}</span>
-            {id === "study" && <ReviewBadge due={due} compact />}
-          </Link>
-        ))}
-      </div>
+    <nav aria-label="Main" className="bottom">
+      {items.map(({ label, href, Icon, current, badge }) => (
+        <Link key={label} href={href} aria-current={current ? "page" : undefined} className="bottom__link">
+          <Icon size={22} aria-hidden="true" />
+          <span>{label}</span>
+          {badge && <ReviewBadge due={due} compact />}
+        </Link>
+      ))}
     </nav>
   );
 }

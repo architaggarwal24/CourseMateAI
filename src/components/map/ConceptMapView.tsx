@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Brain, Layers, List, Network, RefreshCw, Sparkles, Swords, X } from "lucide-react";
+import { Brain, Layers, List, Network, RefreshCw, Sparkles, Swords, X } from "@/components/icons";
 import StudyToolbar from "@/components/study/StudyToolbar";
 import UpgradeCard from "@/components/study/UpgradeCard";
 import { Badge, Button, ButtonLink, EmptyState, Skeleton, toast, type BadgeTone } from "@/components/ui";

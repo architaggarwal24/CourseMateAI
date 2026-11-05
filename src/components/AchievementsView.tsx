@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Trophy, Lock, Star, Zap, Flame, Swords, TrendingUp, Shield } from "lucide-react";
+import { Trophy, Lock, Star, Zap, Flame, Swords, TrendingUp, Shield } from "@/components/icons";
 import { fetchAchievements } from "@/lib/api";
 import { useHUDStore } from "@/hooks/useHUD";
 import { Badge } from "@/components/ui";
@@ -83,7 +83,7 @@ export default function AchievementsView() {
   return (
     <div className="flex flex-col h-full bg-canvas overflow-hidden">
       {/* ── Header ── */}
-      <div className="px-6 py-5 border-b border-line-subtle bg-sunken/50 backdrop-blur-sm flex-shrink-0">
+      <div className="px-6 py-5 border-b border-line-subtle bg-sunken/50 flex-shrink-0">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-3">
             <div className="p-2 rounded-lg bg-accent-gold/10 border border-ink-gold/20">

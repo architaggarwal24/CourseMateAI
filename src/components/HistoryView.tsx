@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { Clock, Trash2, Search, X, RotateCcw, ChevronRight } from "lucide-react";
+import { Clock, Trash2, Search, X, RotateCcw, ChevronRight } from "@/components/icons";
 import { Button, EmptyState, Input, Tabs } from "@/components/ui";
 import { loadMetadata, loadSession, deleteSession } from "@/lib/sessions";
 import { SessionMeta } from "@/types";

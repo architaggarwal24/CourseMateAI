@@ -1,6 +1,6 @@
 "use client";
 
-import { Coins, Flame, ShieldPlus, X } from "lucide-react";
+import { Coins, Flame, ShieldPlus, X } from "@/components/icons";
 import { motion } from "motion/react";
 import ChampionAvatar from "@/components/champion/ChampionAvatar";
 import { useChampionLook } from "@/components/champion/useChampionLook";
@@ -50,7 +50,7 @@ export default function HeroHeader() {
           <span data-testid="hero-xp">{xpInto.toLocaleString()} / {xpToNext.toLocaleString()}</span>
         </div>
         <div className="hero-header__bar" role="progressbar" aria-label="XP to next level" aria-valuemin={0} aria-valuemax={100} aria-valuenow={pct}>
-          <span style={{ width: `${pct}%` }}><i className="hero-header__shine" aria-hidden="true" /></span>
+          <span style={{ width: `${pct}%` }} />
         </div>
       </div>
 

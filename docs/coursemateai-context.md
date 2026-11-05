@@ -591,6 +591,8 @@ Shop categories (`backend/content/shop.json`): armor (Outfits), headgear (Head P
 - **Workers AI and Vectorize can't run locally:** tests use `setSearchForTests({ embedder: fakeEmbedder(), vectors: fakeVectors() })`. Unit tests that upload mock `@/lib/upload` (pdf.js doesn't run in jsdom); `e2e/upload.spec.ts` runs the real reader.
 - **AI in tests:** `setLlmFactoryForTests(fakeLlms({...}).factory)` (`src/server/test/ai-fakes.ts`). Scripts are keyed `"provider:model"`; use `"*"` for any model.
 - **A new AI job** calls `generate(ctx, caller, "small" | "strong", messages)` or `stream(...)` from `src/server/ai/run.ts`. Quotas, fallbacks, metering and the cap come with it. Get `caller` from `callerFor(ctx, user)`.
+- **Browser tests are pinned** to light mode and normal motion (`playwright.config.ts`), so the OS's dark mode or "show animations" setting can't change the result; the `desktop-dark` project reruns the dialog, toast and arena flows in dark. Call `settle(page)` (`e2e/helpers.ts`) before any axe scan: it waits for CSS, Web and motion/react animations, because a half-faded panel reads as low contrast.
+- **Never fade text with `opacity`:** it drops the contrast below AA (on coloured buttons especially). Use a muted colour token instead.
 - **D1 migrations only add** (`migrations.test.ts`). Generate them with `npm run db:generate`; never write them by hand.
 - **Killing `next start` from a shell:** `pkill -f "next start"` can match the shell itself. Stop it by PID (`ps -eo pid,args`, look for `next-server`). The same goes for `wrangler dev` / `workerd`: kill the whole tree by PID (`ps -eo pid,ppid,args`).
 
@@ -811,6 +813,34 @@ Each stage ships a zip of the changed files plus a test checklist. Ready-to-past
 - **Repo:** the Python-era docs moved to `docs/archive/`; `.wrangler/` is ignored at any depth; the old root `STAGE*_NOTES.md` are gone.
 - **Tests:** server tests migrate in one D1 batch; arena keys bind in a layout effect; 30 s test timeout; e2e uses 4 workers locally.
 - **Layout:** the app moved from `frontend/` to the repo root (git mv, history kept). Every command now runs in the project folder; CI has no working directory. `*.tsbuildinfo` is no longer tracked.
+
+### Redesign, Stage 1: Ink foundation (5 Nov 2026)
+
+- **Look:** "Ink". Flat surfaces, thin borders, one deep ink-blue accent (dark `#3550C8` fill / `#8A9DF2` text; light `#1F3AA8`). No gradients, glass, blur, glow or aurora (`src/styles/flat.test.ts` fails the build if one comes back; the arena's star dots are the one exception).
+- **Modes:** System / Light / Dark in Settings -> Appearance and the Ctrl K menu (`src/lib/theme.ts`). It shows as `data-mode` on `<html>`, set before first paint. Hero (`[data-theme="play"]`) is the darker Ink: always dark, ink blue accent, gold only for coins and rewards, pixel font for short labels.
+- **Type:** Onest (interface and reading), Bricolage Grotesque (h1-h3 and big numbers, `--font-display`), Geist Mono (code, keys). All self-hosted in `src/fonts/`.
+- **Shape and density:** soft corners (8/10/12/16px), compact spacing and control heights (44px stays the minimum on touch).
+- **Name:** CourseMateAI everywhere (titles, manifest, emails, the 2FA issuer, messages).
+- **Retired:** Aurora, Starfield, Spotlight, TiltCard and the pointer-light, sheen and border-beam effects.
+- **Accessibility:** axe runs in light and dark (dark at desktop width).
+
+### Redesign, Stage 2: the logo (6 Nov 2026)
+
+- **Mark:** "Companion C": a C with a dot in its opening (`src/components/brand/Logo.tsx`; `MARK` holds the geometry). `<Logo />` is the mark plus "CourseMate" in ink and "AI" in the accent, read as one name ("CourseMateAI").
+- **Files:** `node scripts/brand-assets.mjs` draws `src/app/icon.svg` (theme-aware favicon), `public/favicon.ico` (16/32/48), the app and maskable icons, `src/app/apple-icon.png` and `src/app/opengraph-image.png` (link previews) from the same numbers. Re-run it after changing the mark.
+
+### Redesign, Stage 3: the shell (6 Nov 2026)
+
+- **Sidebar** (`components/shell/NavSidebar.tsx`): logo and collapse button, "Go to…" (Ctrl K), then groups Study (Study, Review with the due count, Mock exam), Courses (up to six, when the plan has them) and Hero (Arena, Quests, Shop, Champion), you at the bottom.
+- **Collapse:** to a 64px icon rail with the button or Ctrl+B (not while typing). State on `<html data-sidebar>` (set before first paint by `SIDEBAR_SCRIPT`, `src/lib/sidebar.ts`) and in localStorage `cmai_sidebar`; without a choice, screens under 1280px start collapsed. Rail links keep their names (visually hidden) and show `data-tip` tooltips on hover and focus.
+- **Phones:** a flat tab bar (`BottomNav`): Study, Review (due count), Hero, Me. The due count moved from Study to Review everywhere.
+- **Study tabs** are grouped: Learn (Chat, Notes, Map) then Practice (Quiz, Flashcards, Review, Exam); `SubNav` items take a `group`. Group labels hide on phones.
+- **Query-string tabs** (`?tab=`) are read through `useSearchParams` inside a Suspense boundary, so prerendered pages still build.
+
+### Redesign, Stage 4: Heroicons (6 Nov 2026)
+
+- **One icon module:** `src/components/icons.tsx`. Heroicons outline (`@heroicons/react/24/outline`) for everything it has; Lucide at the same 1.5px line only for what Heroicons lacks (game icons, the spinner, a few others). Exports keep the old names (`BookOpen`, `Swords`...), take `size`, and are `aria-hidden` unless given an `aria-label`. At 16px and below the line is 2px so small icons stay crisp.
+- **Rule:** screens import icons from `@/components/icons`, never from a pack (`icons.test.tsx` fails otherwise). To change an icon, change one line there. `IconType` replaces `LucideIcon`.
 
 ### UX details pass (5 Nov 2026)
 

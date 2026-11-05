@@ -2,9 +2,9 @@
 
 // Dev-only (see pageExtensions in next.config.ts): every UI-kit component, once per theme scope.
 import { useRef, useState } from "react";
-import { Inbox, Search } from "lucide-react";
+import { Inbox, Search } from "@/components/icons";
 import ThemeScope, { type Theme } from "@/components/ThemeScope";
-import { AnimatedNumber, Aurora, Magnetic, Spotlight, Starfield, TextReveal, TiltCard } from "@/components/fx";
+import { AnimatedNumber, Magnetic, TextReveal } from "@/components/fx";
 import {
   Badge, Button, Card, Checkbox, EmptyState, Input, Modal, Select, Skeleton, Tabs, Textarea, Tooltip, toast,
   type BadgeTone,
@@ -23,17 +23,14 @@ function Showcase({ theme }: { theme: Theme }) {
     <ThemeScope theme={theme}>
       <section
         aria-label={`${theme} theme`}
-        style={{ background: "var(--gradient-page), var(--color-surface)", color: "var(--color-text)", padding: "var(--space-5)" }}
+        style={{ background: "var(--color-surface)", color: "var(--color-text)", padding: "var(--space-5)" }}
         className="space-y-6 relative isolate overflow-hidden"
       >
-        <div className="absolute inset-0 -z-10" aria-hidden="true"><Aurora />{theme === "play" && <Starfield />}</div>
-        <TextReveal as="h2" className="text-3xl font-bold text-gradient" text={theme === "study" ? "Study — graphite glass" : "Play — arcane glass"} />
+        <TextReveal as="h2" className="text-3xl font-bold text-gradient" text={theme === "study" ? "Study: Ink" : "Hero: darker Ink"} />
 
         <Card title="Effects">
           <div className="grid gap-4 md:grid-cols-3">
-            <Card interactive pad="lg"><p className="font-semibold">Spotlight card</p><p className="text-fg-muted text-sm">Move the pointer over me.</p></Card>
-            <TiltCard className="ui-card ui-card--pad-lg"><p className="font-semibold">Tilt card</p><p className="text-fg-muted text-sm">3D tilt + glare.</p></TiltCard>
-            <Spotlight className="ui-card ui-card--pad-lg fx-beam"><p className="font-semibold">Border beam</p><p className="text-fg-muted text-sm">A light runs round the edge.</p></Spotlight>
+            <Card interactive pad="lg"><p className="font-semibold">Interactive card</p><p className="text-fg-muted text-sm">Its border lifts on hover.</p></Card>
           </div>
           <div className="flex flex-wrap items-center gap-4">
             <Magnetic><Button variant="primary" size="lg">Magnetic primary</Button></Magnetic>

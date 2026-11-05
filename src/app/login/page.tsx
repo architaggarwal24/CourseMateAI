@@ -3,9 +3,9 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRouter } from 'next/navigation';
-import { Brain, Eye, EyeOff, Layers, MessageSquare, Sparkles, Swords, Trophy, Zap } from 'lucide-react';
+import { Brain, Eye, EyeOff, Layers, MessageSquare, Sparkles, Swords, Trophy, Zap } from '@/components/icons';
 import { motion } from 'motion/react';
-import { Aurora, Magnetic, TextReveal, TiltCard } from '@/components/fx';
+import { Magnetic, TextReveal } from '@/components/fx';
 import './login.css';
 import SignupFlow from '@/components/auth/SignupFlow';
 import GoogleButton from '@/components/auth/GoogleButton';
@@ -15,6 +15,7 @@ import VerifyEmailStep from '@/components/auth/VerifyEmailStep';
 import { Button, Card, Input } from '@/components/ui';
 import { fetchAuthConfig } from '@/lib/auth/config';
 import { ROUTES } from '@/lib/routes';
+import Logo from '@/components/brand/Logo';
 
 /** What the card shows: the log-in form, or one of the steps that can follow it. */
 type Mode = 'login' | 'register' | 'two-factor' | 'verify' | 'forgot';
@@ -79,14 +80,10 @@ export default function LoginPage() {
 
   return (
     <main id="main-content" tabIndex={-1} className="login outline-none">
-      <div className="login__backdrop" aria-hidden="true"><Aurora /></div>
 
       {/* Left: what CourseMateAI is, shown rather than told (wide screens only) */}
       <section className="login__showcase" aria-label="About CourseMateAI">
-        <div className="login__brand">
-          <span className="login__logo" aria-hidden="true"><Sparkles size={20} /></span>
-          <span className="login__brandname">CourseMateAI</span>
-        </div>
+        <div className="login__brand"><Logo size={30} /></div>
 
         <div className="login__pitch">
           <motion.p className="login__eyebrow" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }}>
@@ -111,18 +108,18 @@ export default function LoginPage() {
 
         {/* floating previews of the product */}
         <div className="login__previews" aria-hidden="true">
-          <TiltCard className="login__preview login__preview--chat" max={10}>
+          <div className="login__preview login__preview--chat">
             <span className="login__bubble login__bubble--you">What does the mitochondrion do?</span>
             <span className="login__bubble login__bubble--ai"><Sparkles size={12} /> It makes most of the cell&apos;s ATP…</span>
-          </TiltCard>
-          <TiltCard className="login__preview login__preview--quiz" max={10}>
+          </div>
+          <div className="login__preview login__preview--quiz">
             <span className="login__preview-label"><Layers size={12} /> Quiz · 3 of 5</span>
             <span className="login__opt login__opt--ok">Mitochondria</span>
             <span className="login__opt">Golgi apparatus</span>
-          </TiltCard>
-          <TiltCard className="login__preview login__preview--xp" max={12}>
+          </div>
+          <div className="login__preview login__preview--xp">
             <Trophy size={16} /> <strong>+45 XP</strong> <span>Level 7</span>
-          </TiltCard>
+          </div>
         </div>
       </section>
 
@@ -131,8 +128,7 @@ export default function LoginPage() {
         <motion.div className="login__card" initial={{ opacity: 0, y: 18, scale: 0.98 }} animate={{ opacity: 1, y: 0, scale: 1 }}
                     transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}>
           <div className="login__card-head">
-            <span className="login__logo login__logo--sm" aria-hidden="true"><Sparkles size={16} /></span>
-            <h1 className="login__title">CourseMateAI</h1>
+            <h1 className="login__title"><Logo size={24} /></h1>
           </div>
           <h2 className="login__welcome">{isRegister ? 'Create Account' : 'Welcome Back'}</h2>
           <p className="login__sub">{isRegister ? 'A few details and you are in.' : 'Log in to pick up where you left off.'}</p>

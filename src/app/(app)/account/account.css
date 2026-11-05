@@ -5,14 +5,13 @@
   padding: var(--space-6);
   border: 1px solid var(--glass-border-strong);
   border-radius: var(--radius-xl);
-  background: var(--gradient-page), var(--gradient-card), color-mix(in srgb, var(--color-surface-sunken) 50%, transparent);
-  box-shadow: var(--glass-highlight), var(--shadow-md);
+  background: color-mix(in srgb, var(--color-surface-sunken) 50%, transparent);
+  box-shadow: var(--shadow-md);
 }
 .profile-hero__id { display: flex; align-items: center; gap: var(--space-5); }
 .profile-hero__ring {
   display: grid; place-items: center; flex: none; width: 96px; height: 96px; border-radius: 50%;
-  background: conic-gradient(from 210deg, var(--color-accent-text), var(--color-accent), var(--color-reward), var(--color-accent-text));
-  box-shadow: 0 0 40px -6px var(--glow-accent);
+  background: var(--color-accent);
   padding: 4px;
 }
 .profile-hero__ring > * { border-radius: 50%; background: var(--color-surface-sunken); }
@@ -20,14 +19,14 @@
 .profile-hero__name { margin: 0; font-size: 1.6rem; font-weight: 700; letter-spacing: -0.03em; }
 .profile-hero__handle { margin: 0; color: var(--color-muted); font-size: 0.9rem; }
 .profile-hero__xp { width: min(22rem, 100%); height: 6px; margin-top: var(--space-3); border-radius: var(--radius-full); background: var(--color-border); overflow: hidden; }
-.profile-hero__xp > span { display: block; height: 100%; border-radius: inherit; background: var(--gradient-xp); box-shadow: 0 0 12px var(--glow-accent); transition: width 1s var(--ease-out-expo); }
+.profile-hero__xp > span { display: block; height: 100%; border-radius: inherit; background: var(--color-accent); transition: width 1s var(--ease-out-expo); }
 .profile-hero__xptext { margin: 0.35rem 0 0; font-family: var(--font-mono); font-size: 0.72rem; color: var(--color-muted); }
 .profile-hero__stats { display: grid; grid-template-columns: repeat(2, 1fr); gap: var(--space-3); margin: 0; }
 @media (min-width: 640px) { .profile-hero__stats { grid-template-columns: repeat(4, 1fr); } }
 .profile-stat {
   --tone: var(--color-accent-text);
   padding: var(--space-3) var(--space-4); border-radius: var(--radius-lg);
-  border: 1px solid var(--glass-border); background: var(--gradient-card), var(--glass-tint);
+  border: 1px solid var(--glass-border); background: var(--glass-tint);
 }
 .profile-stat[data-tone="reward"] { --tone: var(--color-reward); }
 .profile-stat[data-tone="warning"] { --tone: var(--color-warning-text); }

@@ -59,4 +59,15 @@ describe("the command menu", () => {
     expect(nav.push).toHaveBeenCalledWith("/account/admin");
     auth.user = { user_id: 1, is_admin: false };
   });
+
+  it("switches between light and dark from anywhere", () => {
+    document.documentElement.dataset.mode = "dark";
+    render(<CommandPalette />);
+    open();
+    fireEvent.click(screen.getByText("Switch to light mode"));
+    expect(document.documentElement.dataset.mode).toBe("light");
+    open();
+    expect(screen.getByText("Switch to dark mode")).toBeTruthy();
+    localStorage.clear();
+  });
 });

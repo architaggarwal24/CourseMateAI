@@ -1,4 +1,4 @@
-import { Sparkles } from "lucide-react";
+import { Sparkles } from "@/components/icons";
 import { Button } from "@/components/ui";
 import type { KitHud } from "@/lib/arena/types";
 

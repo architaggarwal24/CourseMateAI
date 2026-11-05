@@ -6,8 +6,8 @@ import { describe, expect, it } from "vitest";
 const src = (p: string) => fileURLToPath(new URL(`../${p}`, import.meta.url));
 
 // The Study screens: chat, quiz, flashcards, notes, history, settings, login, profile and the shell around them.
-// Study is "graphite glass": it may use the glass utilities and the --gradient-* tokens, but paint (gradient literals,
-// raw colours) lives in styles/tokens.css only, and the pixel font never appears.
+// Study is Ink: flat panels from the kit and the .glass utilities (historic name), paint (raw colours) lives in
+// styles/tokens.css only, and the pixel font never appears.
 const STUDY_FILES = [
   "components/ChatView.tsx", "components/QuizView.tsx", "components/FlashcardView.tsx", "components/NotesView.tsx",
   "components/HistoryView.tsx", "components/HistoryPanel.tsx", "components/SessionList.tsx", "components/FileUploader.tsx", "components/shell/DocumentHeader.tsx",

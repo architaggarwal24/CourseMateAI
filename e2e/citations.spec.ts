@@ -3,6 +3,7 @@ import { join } from "node:path";
 import { test, expect } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 import { mockApi } from "./fixtures/api";
+import { settle } from "./helpers";
 
 // Phase 3 Stage 3B: a chat answer cites its passages as [n]; a citation opens the PDF beside the chat at its page,
 // drawn by pdf.js, with the passage highlighted.
@@ -42,6 +43,7 @@ test("a citation opens the PDF at its page with the passage highlighted", async 
   });
   expect(painted).toBeGreaterThan(200);                                               // pdf.js drew the text
   if (process.env.SHOT_DIR) { await page.waitForTimeout(500); await page.screenshot({ path: `${process.env.SHOT_DIR}/cite-${info.project.name}.png` }); }
+  await settle(page);
   const results = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa", "best-practice"]).analyze();
   expect(results.violations.filter((v) => v.impact === "serious" || v.impact === "critical").map((v) => `${v.id}: ${v.nodes.slice(0, 3).map((n) => n.target.join(" ")).join(", ")}`), `${info.project.name}: viewer axe`).toEqual([]);
   await page.keyboard.press("Escape");

@@ -1,4 +1,4 @@
-import { SearchX } from "lucide-react";
+import { SearchX } from "@/components/icons";
 import { Button } from "@/components/ui";
 
 const GENERAL_SUGGESTIONS = ["Summarize the key concepts", "What are the main topics covered?"];

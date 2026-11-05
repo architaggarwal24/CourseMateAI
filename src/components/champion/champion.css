@@ -4,9 +4,7 @@
 .champ-avatar__face {
   display: grid; place-items: center; overflow: hidden; flex: none;
   width: var(--champ-size, 48px); height: var(--champ-size, 48px); border-radius: var(--radius-full, 9999px);
-  background:
-    radial-gradient(circle at 50% 35%, color-mix(in srgb, var(--hero-accent, var(--color-accent)) 28%, transparent), transparent 70%),
-    var(--color-surface-sunken);
+  background: color-mix(in srgb, var(--hero-accent, var(--color-accent)) 16%, var(--color-surface-sunken));
 }
 .champ-avatar__sprite { width: 100%; height: 100%; }
 /* the pet sits at the frame's lower right, a little outside it */

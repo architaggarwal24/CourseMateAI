@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useHUDStore } from "@/hooks/useHUD";
 import { purchaseItem, equipItem } from "@/lib/api";
 import { toast } from "@/components/ui/Toast";
-import { ShoppingBag, Check, Lock, Zap } from "lucide-react";
+import { ShoppingBag, Check, Lock, Zap } from "@/components/icons";
 
 // Timed buff countdown — arena consumables are never shown here
 function BuffTimer({ effect, data }: { effect: string; data: any }) {

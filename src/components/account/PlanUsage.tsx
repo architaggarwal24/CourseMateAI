@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Check, CreditCard, FileText, KeyRound, Sparkles, Ticket, Trash2 } from "lucide-react";
+import { Check, CreditCard, FileText, KeyRound, Sparkles, Ticket, Trash2 } from "@/components/icons";
 import { Badge, Button, Card, Input, Modal, Skeleton, toast } from "@/components/ui";
 import { undoable } from "@/lib/undo";
 import { ApiError } from "@/lib/api";

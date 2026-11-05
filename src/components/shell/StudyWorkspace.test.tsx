@@ -202,11 +202,11 @@ describe("Study workspace: the tab lives in the URL", () => {
     }
   });
 
-  it("tab links are plain URLs that keep the document and drop a reopened session", async () => {
+  it("tab links are plain URLs that keep the document and drop a reopened session, grouped Learn then Practice", async () => {
     server([doc("ready")]);
     await open("tab=chat&doc=d1&session=s9");
     const hrefs = screen.getAllByRole("link").map((a) => a.getAttribute("href"));
-    expect(hrefs).toEqual(["/study?tab=chat&doc=d1", "/study?tab=quiz&doc=d1", "/study?tab=notes&doc=d1", "/study?tab=flashcards&doc=d1", "/study?tab=map&doc=d1", "/study?tab=review&doc=d1", "/study?tab=exam&doc=d1"]);
+    expect(hrefs).toEqual(["/study?tab=chat&doc=d1", "/study?tab=notes&doc=d1", "/study?tab=map&doc=d1", "/study?tab=quiz&doc=d1", "/study?tab=flashcards&doc=d1", "/study?tab=review&doc=d1", "/study?tab=exam&doc=d1"]);
     expect(screen.getByRole("link", { name: "Chat" }).getAttribute("aria-current")).toBe("page");
     expect(screen.getByRole("link", { name: "Quiz" }).getAttribute("aria-current")).toBeNull();
     expect((await tabView("chat")).textContent).toBe("chat|d1|s9");   // history reopens the saved session

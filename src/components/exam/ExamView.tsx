@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { CheckCircle2, Download, GraduationCap, Plus, Repeat, X, XCircle } from "lucide-react";
+import { CheckCircle2, Download, GraduationCap, Plus, Repeat, X, XCircle } from "@/components/icons";
 import StudyToolbar from "@/components/study/StudyToolbar";
 import UpgradeCard from "@/components/study/UpgradeCard";
 import { Badge, Button, ButtonLink, Card, EmptyState, Input, Skeleton, toast } from "@/components/ui";

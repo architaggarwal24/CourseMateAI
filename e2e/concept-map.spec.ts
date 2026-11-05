@@ -1,6 +1,7 @@
 import { test, expect } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 import { mockApi } from "./fixtures/api";
+import { settle } from "./helpers";
 
 // Phase 3 Stage 3B: the concept map tab - a constellation coloured by mastery, keyboard-navigable, with a list view.
 
@@ -23,6 +24,7 @@ test("the concept map draws the constellation and a star opens its actions", asy
   const panel = page.getByRole("region", { name: "ATP" });
   await expect(panel.getByRole("link", { name: "Summon its boss" })).toHaveAttribute("href", "/hero?tab=arena&doc=doc-1&topic=ATP");
   await page.screenshot({ path: `previews/stage-3b-map-${info.project.name}.png` });
+  await settle(page);
   const axe = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21aa"]).analyze();
   expect(axe.violations.map((v) => `${v.id}: ${v.nodes.map((n) => n.target).join(" ")}`)).toEqual([]);
   expect(unanswered).toEqual([]);

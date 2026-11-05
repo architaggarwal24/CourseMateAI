@@ -2,7 +2,7 @@
 
 import { useEffect, useLayoutEffect, useRef } from "react";
 import { motion } from "motion/react";
-import { Feather, Hammer, Lock, ShieldHalf, Sword } from "lucide-react";
+import { Feather, Hammer, Lock, ShieldHalf, Sword } from "@/components/icons";
 import { MOVES, MOVE_INFO, type Battle, type Move } from "@/lib/arena/types";
 import { shortcutBlocked } from "@/lib/keys";
 import Intent from "./Intent";
@@ -55,7 +55,7 @@ export default function MovePicker({ battle, onPick, disabled }: { battle: Battl
           return (
             <motion.li key={m} initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }}
                        transition={{ delay: i * 0.05, type: "spring", stiffness: 380, damping: 28 }}>
-              <button type="button" className="arena-move fx-sheen" data-move={m} data-locked={locked.has(m) || undefined} disabled={disabled || !ok}
+              <button type="button" className="arena-move" data-move={m} data-locked={locked.has(m) || undefined} disabled={disabled || !ok}
                       aria-keyshortcuts={info.key} onClick={() => onPick(m)}
                       aria-describedby={`arena-move-${m}`}>
                 <span className="arena-move__icon" aria-hidden="true">{locked.has(m) ? <Lock size={20} /> : <Icon size={20} />}</span>

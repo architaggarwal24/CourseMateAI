@@ -93,7 +93,7 @@ export function authOptions(d1: D1Database, settings: AuthSettings, { origin, ma
   }
 
   return {
-    appName: "CourseMate",
+    appName: "CourseMateAI",
     baseURL,
     basePath: "/api/auth",
     secret: secretFrom(settings),
@@ -183,7 +183,7 @@ export function authOptions(d1: D1Database, settings: AuthSettings, { origin, ma
         sendVerificationOTP: async ({ email, otp, type }) => mail.send(codeMail(email, otp, type)),
       }),
       twoFactor({
-        issuer: "CourseMate",
+        issuer: "CourseMateAI",
         otpOptions: { sendOTP: async ({ user, otp }) => mail.send(codeMail(user.email, otp, "two-factor")) },
       }),
       admin({ defaultRole: "user", adminRoles: ["admin"] }),

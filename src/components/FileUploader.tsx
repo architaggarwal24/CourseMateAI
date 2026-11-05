@@ -2,7 +2,7 @@
 
 import { useState, useRef, useCallback, useEffect } from "react";
 import { createPortal } from "react-dom";
-import { Upload, FileText, CheckCircle, Loader2, AlertCircle, RefreshCw } from "lucide-react";
+import { Upload, FileText, CheckCircle, Loader2, AlertCircle, RefreshCw } from "@/components/icons";
 import { toast } from "@/components/ui/Toast";
 import { Button } from "@/components/ui";
 import { useAuth } from "@/contexts/AuthContext";

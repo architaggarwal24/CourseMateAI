@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Eye, EyeOff, KeyRound } from "lucide-react";
+import { Eye, EyeOff, KeyRound } from "@/components/icons";
 import { Button, Card, Input } from "@/components/ui";
 import { requestPasswordReset, resetPassword } from "@/lib/auth/authApi";
 import CodeField from "./CodeField";

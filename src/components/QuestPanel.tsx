@@ -3,7 +3,7 @@
 import { useEffect } from "react";
 import { useHUDStore } from "@/hooks/useHUD";
 import { useHeroStore } from "@/hooks/useHero";
-import { CheckCircle2, Circle, Sparkles } from "lucide-react";
+import { CheckCircle2, Circle, Sparkles } from "@/components/icons";
 
 export default function QuestPanel() {
   const quests = useHUDStore((s) => s.quests);

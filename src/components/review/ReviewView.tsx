@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { motion, useMotionValue, useTransform } from "motion/react";
-import { CalendarClock, CheckCircle2, FileText, Layers, Repeat, Trash2 } from "lucide-react";
+import { CalendarClock, CheckCircle2, FileText, Layers, Repeat, Trash2 } from "@/components/icons";
 import StudyToolbar from "@/components/study/StudyToolbar";
 import UpgradeCard from "@/components/study/UpgradeCard";
 import { Badge, Button, ButtonLink, Card, EmptyState, Skeleton, toast } from "@/components/ui";

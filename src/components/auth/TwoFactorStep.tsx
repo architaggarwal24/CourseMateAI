@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { ShieldCheck } from "lucide-react";
+import { ShieldCheck } from "@/components/icons";
 import { Button, Checkbox } from "@/components/ui";
 import { sendTwoFactorCode, verifyTwoFactor, type TwoFactorMethod } from "@/lib/auth/authApi";
 import CodeField from "./CodeField";

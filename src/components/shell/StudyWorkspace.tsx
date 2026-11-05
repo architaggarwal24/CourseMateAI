@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import dynamic from "next/dynamic";
 import { useRouter, useSearchParams } from "next/navigation";
-import { FileX } from "lucide-react";
+import { FileX } from "@/components/icons";
 import { Button, EmptyState } from "@/components/ui";
 import { DOCUMENT_GONE_EVENT } from "@/lib/api/client";
 import { useDocumentUpload } from "@/hooks/useDocumentUpload";
@@ -14,7 +14,7 @@ import { useRevalidate } from "@/hooks/useRevalidate";
 import type { Course } from "@/lib/study/courses";
 import LibraryMenu from "@/components/course/LibraryMenu";
 import "@/components/course/course.css";
-import { DEFAULT_STUDY_TAB, ROUTES, STUDY_TABS, isStudyTab, type StudyTab } from "@/lib/routes";
+import { DEFAULT_STUDY_TAB, ROUTES, isStudyTab, type StudyTab } from "@/lib/routes";
 import DocumentHeader from "./DocumentHeader";
 import SubNav from "./SubNav";
 import "@/components/study/study.css";
@@ -32,8 +32,9 @@ const CourseEditor = dynamic(() => import("@/components/course/CourseEditor"), {
 const LABELS: Record<StudyTab, string> = {
   chat: "Chat", quiz: "Quiz", notes: "Notes", flashcards: "Flashcards", map: "Map", review: "Review", exam: "Exam", overview: "Overview",
 };
-/** The tabs over one document, and over a course (its page first). */
-const DOCUMENT_TABS = STUDY_TABS.filter((t) => t !== "overview");
+/** The tabs over one document in two groups (read and explore, then test yourself), and over a course (its page first). */
+const GROUP: Partial<Record<StudyTab, string>> = { overview: "Course", chat: "Learn", notes: "Learn", map: "Learn", quiz: "Practice", flashcards: "Practice", review: "Practice", exam: "Practice" };
+const DOCUMENT_TABS: StudyTab[] = ["chat", "notes", "map", "quiz", "flashcards", "review", "exam"];
 const COURSE_TABS: StudyTab[] = ["overview", ...DOCUMENT_TABS];
 
 /**
@@ -105,6 +106,7 @@ export default function StudyWorkspace() {
   const items = (course ? COURSE_TABS : DOCUMENT_TABS).map((t) => ({
     href: ROUTES.studyTab(t, undefined, documentId),
     label: LABELS[t],
+    group: GROUP[t],
     current: t === tab,
     ...(t === "review" && due ? { badge: { count: due, label: `${due} ${due === 1 ? "card" : "cards"} due` } } : {}),
   }));

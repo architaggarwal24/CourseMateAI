@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { ArrowRight, CheckCircle2, XCircle } from "lucide-react";
+import { ArrowRight, CheckCircle2, XCircle } from "@/components/icons";
 import { motion } from "motion/react";
 import { Button, Card } from "@/components/ui";
 import type { QuizFeedback, QuizQuestion } from "@/types";

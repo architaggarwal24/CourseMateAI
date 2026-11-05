@@ -1,6 +1,6 @@
 "use client";
 
-import { LogOut, UserCircle } from "lucide-react";
+import { LogOut, UserCircle } from "@/components/icons";
 import { Button } from "@/components/ui";
 import { useAuth } from "@/contexts/AuthContext";
 import { ROUTES } from "@/lib/routes";

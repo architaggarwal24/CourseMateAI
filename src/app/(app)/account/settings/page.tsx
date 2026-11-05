@@ -7,12 +7,13 @@ import {
   User, Lock, Trash2, Loader2, Save,
   Eye, EyeOff, CheckCircle2, XCircle,
   Type, Zap, Database, Download, AlertTriangle,
-} from "lucide-react";
+} from "@/components/icons";
 import { Button, Card, Checkbox, Input } from "@/components/ui";
 import { toast } from "@/components/ui/Toast";
 import { parseApiError, rawApi } from "@/lib/api";
 import { loadMetadata, deleteSession } from "@/lib/sessions";
 import InstallApp from "@/components/pwa/InstallApp";
+import ThemeSwitch from "@/components/account/ThemeSwitch";
 import { ROUTES } from "@/lib/routes";
 
 
@@ -300,11 +301,15 @@ export default function SettingsPage() {
         <Section title="AI">
           <Card surface="inset" pad="sm" className="flex items-center gap-2">
             <CheckCircle2 size={16} className="text-ink-green shrink-0" aria-hidden="true" />
-            <span className="text-sm text-fg">CourseMate&apos;s AI is included in your plan: nothing to set up. See what you&apos;ve used in Plan &amp; usage.</span>
+            <span className="text-sm text-fg">CourseMateAI&apos;s AI is included in your plan: nothing to set up. See what you&apos;ve used in Plan &amp; usage.</span>
           </Card>
         </Section>
 
         <Section title="Appearance">
+          <FieldRow label="Theme" hint="System follows your device's light or dark setting. Changes apply at once.">
+            <div className="mt-1"><ThemeSwitch /></div>
+          </FieldRow>
+
           <FieldRow label="Font Size">
             <div className="flex gap-2 mt-1">
               {(["normal", "large"] as const).map(size => (

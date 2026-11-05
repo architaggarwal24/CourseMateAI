@@ -1,6 +1,7 @@
 import { test, expect, type Page, type Route } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 import { mockApi } from "./fixtures/api";
+import { settle } from "./helpers";
 
 // A whole battle in a real browser, against a small stand-in for the battle API (same contract as src/server/game/arena.ts;
 // the server's own tests cover the rules). Win, lose and retreat, keyboard answering, the sprites actually painted,
@@ -70,6 +71,11 @@ async function battleServer(page: Page) {
 }
 
 async function axeClean(page: Page, label: string) {
+  // On a phone the item bar can sit half under the tab bar until you scroll; axe counts a half-scrolled button as
+  // obscured, so bring it into view first, as a player would.
+  const items = page.locator(".arena-items");
+  if (await items.count()) await items.first().scrollIntoViewIfNeeded();
+  await settle(page);
   const results = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa", "best-practice"]).analyze();
   const blocking = results.violations.filter((v) => v.impact === "serious" || v.impact === "critical");
   expect(blocking.map((v) => `${v.id}: ${v.nodes.slice(0, 3).map((n) => n.target.join(" ")).join(", ")}`).join("\n"), `axe on ${label}`).toBe("");

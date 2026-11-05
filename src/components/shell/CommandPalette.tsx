@@ -6,15 +6,16 @@ import { Command } from "cmdk";
 import { Dialog } from "radix-ui";
 import {
   Backpack, BookOpen, Brain, CornerDownLeft, FileText, Gauge, GraduationCap, History, Layers, LogOut, MessageSquare,
-  Network, ScrollText, Repeat, Search, Settings, Shield, ShieldCheck, ShoppingBag, Swords, Trophy, User, UserCircle,
-} from "lucide-react";
+  Network, ScrollText, Repeat, Search, Settings, Shield, ShieldCheck, ShoppingBag, SunMoon, Swords, Trophy, User, UserCircle,
+} from "@/components/icons";
 import ThemeScope from "@/components/ThemeScope";
 import { useAuth } from "@/contexts/AuthContext";
 import { useShortcutLabel } from "@/hooks/useShortcutLabel";
 import { ROUTES } from "@/lib/routes";
+import { toggleMode } from "@/lib/theme";
 
 /** A page to go to (`href`), or an action to run (`run`). */
-interface Entry { id: string; label: string; hint?: string; href?: string; run?: "logout"; icon: ReactNode; keywords?: string[]; adminOnly?: boolean }
+interface Entry { id: string; label: string; hint?: string; href?: string; run?: "logout" | "theme"; icon: ReactNode; keywords?: string[]; adminOnly?: boolean }
 
 const GROUPS: { heading: string; items: Entry[] }[] = [
   {
@@ -54,6 +55,7 @@ const GROUPS: { heading: string; items: Entry[] }[] = [
   {
     heading: "Actions",
     items: [
+      { id: "theme", label: "Switch to light mode", run: "theme", icon: <SunMoon size={16} />, keywords: ["theme", "dark", "light", "mode", "appearance"] },
       { id: "logout", label: "Log out", run: "logout", icon: <LogOut size={16} />, keywords: ["log out", "logout", "exit"] },
     ],
   },
@@ -88,11 +90,17 @@ export default function CommandPalette() {
     return () => { window.removeEventListener("keydown", onKey); window.removeEventListener("cmai:command-palette", onOpen); };
   }, []);
 
+  // Read when the menu opens: what the switch would change to.
+  const [lightNow, setLightNow] = useState(false);
+  useEffect(() => { if (open) setLightNow(document.documentElement.dataset.mode === "light"); }, [open]);
+  const labelOf = (it: Entry) => (it.run === "theme" ? `Switch to ${lightNow ? "dark" : "light"} mode` : it.label);
+
   const go = (href: string) => { setOpen(false); router.push(href); };
   const choose = (it: Entry) => {
     if (it.href) { go(it.href); return; }
     setOpen(false);
     if (it.run === "logout") void logout();                             // (the same as the account menu's Log out)
+    if (it.run === "theme") toggleMode();
   };
 
   return (
@@ -113,9 +121,9 @@ export default function CommandPalette() {
                 {GROUPS.map((g) => (
                   <Command.Group key={g.heading} heading={g.heading} className="cmdk-group">
                     {g.items.filter((it) => !it.adminOnly || isAdmin).map((it) => (
-                      <Command.Item key={it.id} value={`${it.label} ${g.heading}`} keywords={it.keywords} onSelect={() => choose(it)} className="cmdk-item">
+                      <Command.Item key={it.id} value={`${labelOf(it)} ${g.heading}`} keywords={it.keywords} onSelect={() => choose(it)} className="cmdk-item">
                         <span className="cmdk-item__icon" aria-hidden="true">{it.icon}</span>
-                        <span className="cmdk-item__label">{it.label}</span>
+                        <span className="cmdk-item__label">{labelOf(it)}</span>
                         {it.hint && <span className="cmdk-item__hint">{it.hint}</span>}
                         <CornerDownLeft size={14} className="cmdk-item__enter" aria-hidden="true" />
                       </Command.Item>

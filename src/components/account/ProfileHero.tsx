@@ -1,9 +1,9 @@
 "use client";
 
 import { useEffect } from "react";
-import { Coins, Flame, Sparkles, Trophy } from "lucide-react";
+import { Coins, Flame, Sparkles, Trophy } from "@/components/icons";
 import ChampionAvatar from "@/components/champion/ChampionAvatar";
-import { AnimatedNumber, TiltCard } from "@/components/fx";
+import { AnimatedNumber } from "@/components/fx";
 import { useChampion } from "@/hooks/useChampion";
 import { useHUDStore } from "@/hooks/useHUD";
 import { useHeroStore } from "@/hooks/useHero";
@@ -50,10 +50,10 @@ export default function ProfileHero({ name, handle }: { name: string; handle?: s
       </div>
       <dl className="profile-hero__stats">
         {stats.map((s) => (
-          <TiltCard key={s.label} className="profile-stat" data-tone={s.tone} max={6}>
+          <div key={s.label} className="profile-stat" data-tone={s.tone}>
             <dt className="profile-stat__label"><span aria-hidden="true">{s.icon}</span>{s.label}</dt>
             <dd className="profile-stat__value"><AnimatedNumber value={s.value} /></dd>
-          </TiltCard>
+          </div>
         ))}
       </dl>
     </section>

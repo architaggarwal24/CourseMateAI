@@ -2,7 +2,7 @@
 import { useState, useRef, useEffect } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { Download, RefreshCw, Sparkles, FileText, Zap, Brain, NotebookPen } from "lucide-react";
+import { Download, RefreshCw, Sparkles, FileText, Zap, Brain, NotebookPen } from "@/components/icons";
 import HistoryPanel from "./HistoryPanel";
 import StudyToolbar from "./study/StudyToolbar";
 import { Button, Input, Select, Tabs } from "@/components/ui";

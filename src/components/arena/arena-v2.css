@@ -6,14 +6,12 @@
 
 /* ── Glass for the existing arena panels ─────────────────────────────────────────────────────────────────────── */
 .arena-hud, .arena-question, .arena-verdict, .arena-summon__panel, .arena-summon__hero, .arena-result, .arena-moves {
-  background: var(--gradient-card), var(--glass-bg);
+  background: var(--glass-bg);
   border-color: var(--glass-border-strong);
-  box-shadow: var(--glass-highlight), var(--glass-shadow);
-  backdrop-filter: blur(var(--glass-blur)) saturate(140%);
-  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(140%);
+  box-shadow: var(--glass-shadow);
 }
-.arena-stage { border-color: var(--glass-border-strong); box-shadow: var(--glass-highlight), var(--shadow-lg); }
-.arena--battle[data-rage="true"] .arena-hud { box-shadow: var(--glass-highlight), var(--glass-shadow), 0 0 50px -16px var(--glow-danger); }
+.arena-stage { border-color: var(--glass-border-strong); box-shadow: var(--shadow-lg); }
+.arena--battle[data-rage="true"] .arena-hud { box-shadow: var(--glass-shadow); }
 
 /* a hit shakes the stage */
 .arena-stage[data-hit="true"] { animation: arena-shake 420ms var(--ease-out-expo); }
@@ -28,16 +26,16 @@
 /* the 3D core sits between the sky and the actors */
 .arena-core3d { position: absolute; inset: 0 0 18% 20%; z-index: 0; pointer-events: none; opacity: 0.75; mix-blend-mode: screen; animation: ui-fade 1.2s var(--motion-ease); }
 
-/* the boss glows in its intent's colour while it winds up */
+/* the boss gets a hard pixel outline in its intent's colour while it winds up (a sprite outline, not a glow) */
 .arena-actor--boss[data-intent] .arena-actor__body { transition: filter var(--motion-slow) var(--motion-ease); }
-.arena-actor--boss[data-intent="heavy"] .arena-actor__body { filter: drop-shadow(0 0 16px var(--glow-danger)); }
-.arena-actor--boss[data-intent="shield"] .arena-actor__body { filter: drop-shadow(0 0 16px var(--glow-accent)); }
-.arena-actor--boss[data-intent="heal"] .arena-actor__body { filter: drop-shadow(0 0 16px var(--glow-success)); }
-.arena-actor--boss[data-intent="drain"] .arena-actor__body { filter: drop-shadow(0 0 16px var(--color-accent-alt-text)); }
+.arena-actor--boss[data-intent="heavy"] .arena-actor__body { filter: drop-shadow(2px 0 0 var(--color-danger-text)) drop-shadow(-2px 0 0 var(--color-danger-text)) drop-shadow(0 2px 0 var(--color-danger-text)) drop-shadow(0 -2px 0 var(--color-danger-text)); }
+.arena-actor--boss[data-intent="shield"] .arena-actor__body { filter: drop-shadow(2px 0 0 var(--color-accent-text)) drop-shadow(-2px 0 0 var(--color-accent-text)) drop-shadow(0 2px 0 var(--color-accent-text)) drop-shadow(0 -2px 0 var(--color-accent-text)); }
+.arena-actor--boss[data-intent="heal"] .arena-actor__body { filter: drop-shadow(2px 0 0 var(--color-success-text)) drop-shadow(-2px 0 0 var(--color-success-text)) drop-shadow(0 2px 0 var(--color-success-text)) drop-shadow(0 -2px 0 var(--color-success-text)); }
+.arena-actor--boss[data-intent="drain"] .arena-actor__body { filter: drop-shadow(2px 0 0 var(--color-accent-alt-text)) drop-shadow(-2px 0 0 var(--color-accent-alt-text)) drop-shadow(0 2px 0 var(--color-accent-alt-text)) drop-shadow(0 -2px 0 var(--color-accent-alt-text)); }
 
 /* the verdict keeps the answers readable: the right one green, a wrong pick red (they are disabled, not dimmed) */
 .arena-option[data-state]:disabled { opacity: 1; filter: none; }
-.arena-option[data-state="correct"]:disabled { box-shadow: 0 0 24px -8px var(--glow-success); }
+.arena-option[data-state="correct"]:disabled { box-shadow: inset 0 0 0 2px var(--color-success-text); }
 
 /* new floater kinds */
 .arena-floater[data-kind="block"] { color: var(--color-accent-text); }
@@ -47,7 +45,7 @@
 .arena-floater[data-kind="focus"] { color: var(--color-highlight-text); bottom: 64%; }
 
 /* ── Boss HP shield + intent ─────────────────────────────────────────────────────────────────────────────────── */
-.arena-bar__shield { background: var(--gradient-sheen), color-mix(in srgb, var(--color-accent-text) 75%, transparent); background-size: 200% 100%, auto; animation: shimmer 1.8s linear infinite; }
+.arena-bar__shield { background: color-mix(in srgb, var(--color-accent-text) 75%, transparent); animation: pulse-soft 1.8s ease-in-out infinite; }
 .arena-stat__shield { display: inline-flex; align-items: center; gap: 3px; margin-left: var(--space-2); color: var(--color-accent-text); font-family: var(--font-label); font-size: 0.75rem; }
 
 .arena-intent {
@@ -101,7 +99,7 @@
 }
 .arena-ult[data-compact="true"] .arena-ult__bar { width: 4.5rem; height: 0.4rem; }
 .arena-ult__bar > span { display: block; height: 100%; background: var(--color-reward); transition: width var(--motion-slow, 400ms) var(--ease-out-expo, ease-out); }
-.arena-ult[data-ready="true"] .arena-ult__bar { border-color: var(--color-reward); box-shadow: 0 0 14px -4px var(--glow-reward); animation: arena-throb 1.6s ease-in-out infinite; --tone: var(--color-reward); }
+.arena-ult[data-ready="true"] .arena-ult__bar { border-color: var(--color-reward); box-shadow: none; animation: arena-throb 1.6s ease-in-out infinite; --tone: var(--color-reward); }
 
 /* ── Focus pips ──────────────────────────────────────────────────────────────────────────────────────────────── */
 .arena-focus { display: inline-flex; gap: 4px; }
@@ -110,7 +108,7 @@
   border: 1px solid var(--color-border-strong); background: color-mix(in srgb, var(--color-surface-sunken) 80%, transparent);
   transition: background-color var(--motion-base) var(--motion-ease), box-shadow var(--motion-slow) var(--ease-out-expo), transform var(--motion-slow) var(--ease-spring);
 }
-.arena-focus__pip[data-on="true"] { background: var(--color-highlight); border-color: var(--color-highlight-text); box-shadow: 0 0 10px var(--glow-reward); transform: rotate(45deg) scale(1.1); }
+.arena-focus__pip[data-on="true"] { background: var(--color-highlight); border-color: var(--color-highlight-text); box-shadow: none; transform: rotate(45deg) scale(1.1); }
 
 /* ── Move picker ─────────────────────────────────────────────────────────────────────────────────────────────── */
 .arena-moves { display: grid; gap: var(--space-3); padding: var(--space-4); border: 1px solid; border-radius: var(--radius-lg); }
@@ -124,7 +122,7 @@
   column-gap: var(--space-3); row-gap: 2px; align-items: center;
   width: 100%; height: 100%; padding: var(--space-3); text-align: left;
   border: 1px solid var(--glass-border-strong); border-radius: var(--radius-md);
-  background: var(--gradient-card), var(--glass-tint); color: var(--color-text); font-family: var(--font-sans); cursor: pointer;
+  background: var(--glass-tint); color: var(--color-text); font-family: var(--font-sans); cursor: pointer;
   transition: transform var(--motion-slow) var(--ease-spring), border-color var(--motion-base) var(--motion-ease), box-shadow var(--motion-slow) var(--ease-out-expo);
 }
 .arena-move[data-move="jab"] { --tone: var(--color-success-text); }
@@ -143,7 +141,7 @@
 /* ── Spells, waiting, verdict auto-advance ───────────────────────────────────────────────────────────────────── */
 .arena-spells { display: flex; flex-wrap: wrap; gap: var(--space-2); padding-top: var(--space-2); border-top: 1px solid var(--glass-border); }
 .arena-wait { display: flex; align-items: center; justify-content: center; gap: var(--space-3); padding: var(--space-6) var(--space-4); color: var(--color-muted); }
-.arena-wait__orb { width: 1.1rem; height: 1.1rem; border-radius: 50%; background: var(--gradient-accent), var(--color-accent); box-shadow: 0 0 18px var(--glow-accent); animation: app-orb 1.2s ease-in-out infinite; }
+.arena-wait__orb { width: 1.1rem; height: 1.1rem; border-radius: 50%; background: var(--color-accent); box-shadow: none; animation: app-orb 1.2s ease-in-out infinite; }
 .arena-verdict { border-width: 1px; border-left-width: 1px; position: relative; overflow: hidden; }
 .arena-verdict::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: var(--verdict-tone, var(--color-border)); box-shadow: 0 0 16px var(--verdict-tone, transparent); }
 .arena-verdict[data-correct="true"] { --verdict-tone: var(--color-success-text); }
@@ -164,13 +162,13 @@
   --tone: var(--color-accent-text);
   height: 100%; border-radius: var(--radius-xl);
   border: 1px solid color-mix(in srgb, var(--tone) 35%, var(--glass-border));
-  background: var(--gradient-card), var(--glass-bg);
-  box-shadow: var(--glass-highlight), var(--glass-shadow);
+  background: var(--glass-bg);
+  box-shadow: var(--glass-shadow);
   transition: box-shadow var(--motion-slow) var(--ease-out-expo), border-color var(--motion-base) var(--motion-ease);
 }
 .arena-mode[data-tone="epic"] { --tone: var(--color-rarity-epic); }
 .arena-mode[data-tone="reward"] { --tone: var(--color-reward); }
-.arena-mode:hover { border-color: var(--tone); box-shadow: var(--glass-highlight), var(--glass-shadow), 0 20px 60px -24px var(--tone); }
+.arena-mode:hover { border-color: var(--tone); box-shadow: var(--glass-shadow), 0 20px 60px -24px var(--tone); }
 .arena-mode__btn {
   display: grid; justify-items: start; align-content: start; gap: var(--space-2);
   width: 100%; height: 100%; padding: var(--space-5); text-align: left;
@@ -185,7 +183,7 @@
 .arena-mode:hover .arena-mode__icon { transform: translateY(-3px) rotate(-6deg) scale(1.06); }
 .arena-mode__title { font-size: 1.2rem; font-weight: 800; letter-spacing: -0.02em; }
 .arena-mode__blurb { color: var(--color-muted); font-size: 0.85rem; line-height: 1.5; margin-bottom: var(--space-2); }
-.arena-mode--soon { --tone: var(--color-muted); opacity: 0.7; border-style: dashed; }
+.arena-mode--soon { --tone: var(--color-muted); color: var(--color-muted); border-style: dashed; }
 .arena-mode--soon .arena-mode__btn { cursor: default; }
 .arena-hub__board { padding: var(--space-3); border-radius: var(--radius-lg); }
 
@@ -211,7 +209,7 @@
 /* ── Expedition ──────────────────────────────────────────────────────────────────────────────────────────────── */
 .run { max-width: 76rem; }
 .run-start { display: grid; justify-items: center; gap: var(--space-3); padding: var(--space-7) var(--space-5); text-align: center; border-radius: var(--radius-xl); }
-.run-start__icon { display: grid; place-items: center; width: 4rem; height: 4rem; border-radius: 20px; color: var(--color-reward); background: color-mix(in srgb, var(--color-reward) 14%, transparent); border: 1px solid color-mix(in srgb, var(--color-reward) 45%, transparent); box-shadow: 0 14px 40px -12px var(--glow-reward); animation: float 6s ease-in-out infinite; }
+.run-start__icon { display: grid; place-items: center; width: 4rem; height: 4rem; border-radius: 20px; color: var(--color-reward); background: color-mix(in srgb, var(--color-reward) 14%, transparent); border: 1px solid color-mix(in srgb, var(--color-reward) 45%, transparent); box-shadow: none; animation: float 6s ease-in-out infinite; }
 .run-start__diffs { display: flex; flex-wrap: wrap; justify-content: center; gap: var(--space-2); }
 
 .run-bar { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-3) var(--space-5); padding: var(--space-3) var(--space-4); border-radius: var(--radius-lg); }
@@ -228,10 +226,10 @@
 .run-relic[data-rarity="epic"], .run-card[data-rarity="epic"] { --tone: var(--color-rarity-epic); }
 .run-relic[data-rarity="legendary"], .run-card[data-rarity="legendary"] { --tone: var(--color-rarity-legendary); }
 
-.run-map { position: relative; height: clamp(18rem, 42vw, 26rem); border-radius: var(--radius-xl); overflow: hidden; background: var(--gradient-arena-sky), var(--color-surface-sunken); }
+.run-map { position: relative; height: clamp(18rem, 42vw, 26rem); border-radius: var(--radius-xl); overflow: hidden; background: var(--color-surface-sunken); }
 .run-map__edges { position: absolute; inset: 6% 4%; width: 92%; height: 88%; }
 .run-map__edge { fill: none; stroke: var(--color-border-strong); stroke-width: 2; stroke-dasharray: 4 6; opacity: 0.7; }
-.run-map__edge[data-walked="true"] { stroke: var(--color-highlight-text); stroke-dasharray: none; opacity: 1; filter: drop-shadow(0 0 4px var(--glow-reward)); }
+.run-map__edge[data-walked="true"] { stroke: var(--color-highlight-text); stroke-dasharray: none; opacity: 1; filter: none; }
 .run-map__edge[data-open="true"] { stroke: var(--color-accent-text); opacity: 1; animation: run-dash 1s linear infinite; }
 @keyframes run-dash { to { stroke-dashoffset: -20; } }
 .run-map__nodes { position: absolute; inset: 6% 4%; margin: 0; padding: 0; list-style: none; }
@@ -241,7 +239,7 @@
   display: grid; place-items: center; width: 2.9rem; height: 2.9rem; border-radius: 50%;
   border: 2px solid color-mix(in srgb, var(--tone) 55%, transparent);
   background: var(--glass-bg-strong); color: var(--tone);
-  box-shadow: var(--glass-highlight), var(--shadow-md);
+  box-shadow: var(--shadow-md);
   cursor: pointer;
   transition: transform var(--motion-slow) var(--ease-spring), box-shadow var(--motion-slow) var(--ease-out-expo);
 }
@@ -250,10 +248,10 @@
 .run-node__btn[data-kind="rest"] { --tone: var(--color-success-text); }
 .run-node__btn[data-kind="shop"], .run-node__btn[data-kind="treasure"] { --tone: var(--color-reward); }
 .run-node__btn[data-kind="boss"] { width: 3.8rem; height: 3.8rem; }
-.run-node__btn[data-state="open"] { box-shadow: var(--glass-highlight), 0 0 0 4px color-mix(in srgb, var(--tone) 20%, transparent), 0 0 28px -4px var(--tone); animation: run-beckon 1.6s ease-in-out infinite; }
+.run-node__btn[data-state="open"] { box-shadow: 0 0 0 4px color-mix(in srgb, var(--tone) 20%, transparent), 0 0 28px -4px var(--tone); animation: run-beckon 1.6s ease-in-out infinite; }
 .run-node__btn[data-state="open"]:hover { transform: scale(1.15); animation: none; }
-.run-node__btn[data-state="current"] { background: color-mix(in srgb, var(--tone) 25%, var(--glass-bg-strong)); border-color: var(--color-highlight-text); box-shadow: 0 0 0 3px var(--color-highlight-text), 0 0 30px -4px var(--glow-reward); }
-.run-node__btn[data-state="visited"] { opacity: 0.6; }
+.run-node__btn[data-state="current"] { background: color-mix(in srgb, var(--tone) 25%, var(--glass-bg-strong)); border-color: var(--color-highlight-text); box-shadow: 0 0 0 3px var(--color-highlight-text); }
+.run-node__btn[data-state="visited"] { color: var(--color-muted); filter: grayscale(0.7); }
 .run-node__btn[data-state="locked"] { opacity: 0.4; cursor: not-allowed; }
 .run-node__btn:disabled { cursor: default; }
 .run-node__label { position: absolute; top: calc(100% + 4px); left: 50%; transform: translateX(-50%); font-size: 0.65rem; font-weight: 600; color: var(--color-muted); white-space: nowrap; text-shadow: 0 1px 3px var(--color-surface-sunken); }
@@ -267,7 +265,7 @@
   --tone: var(--color-accent-text);
   display: grid; justify-items: start; gap: var(--space-1); padding: var(--space-4); text-align: left;
   border: 1px solid color-mix(in srgb, var(--tone) 40%, var(--glass-border)); border-radius: var(--radius-lg);
-  background: var(--gradient-card), var(--glass-tint); color: var(--color-text); font-family: var(--font-sans); cursor: pointer;
+  background: var(--glass-tint); color: var(--color-text); font-family: var(--font-sans); cursor: pointer;
   transition: transform var(--motion-slow) var(--ease-spring), box-shadow var(--motion-slow) var(--ease-out-expo);
 }
 .run-card svg { color: var(--tone); }
@@ -276,7 +274,7 @@
 .run-card:disabled { opacity: 0.45; cursor: not-allowed; }
 .run-card__price { display: inline-flex; align-items: center; gap: 4px; color: var(--color-reward) !important; font-weight: 700; }
 .run-over { display: grid; justify-items: center; gap: var(--space-3); padding: var(--space-5); border-radius: var(--radius-xl); text-align: center; }
-.run-over[data-outcome="won"] { box-shadow: var(--glass-highlight), 0 0 60px -20px var(--glow-reward); }
+.run-over[data-outcome="won"] { box-shadow: none; }
 
 @media (max-width: 640px) {
   .run-node__btn { width: 2.3rem; height: 2.3rem; }

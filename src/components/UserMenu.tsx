@@ -3,7 +3,7 @@
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { DropdownMenu } from "radix-ui";
-import { ChevronsUpDown, LogIn, LogOut, Settings, Sparkles, User } from "lucide-react";
+import { ChevronsUpDown, LogIn, LogOut, Settings, Sparkles, User } from "@/components/icons";
 import { useAuth } from "@/contexts/AuthContext";
 import { useHUDStore } from "@/hooks/useHUD";
 import ChampionAvatar from "@/components/champion/ChampionAvatar";

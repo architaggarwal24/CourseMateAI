@@ -1,6 +1,6 @@
 "use client";
 
-import { CheckCircle2, MinusCircle, XCircle } from "lucide-react";
+import { CheckCircle2, MinusCircle, XCircle } from "@/components/icons";
 import { Button } from "@/components/ui";
 import { AnimatedNumber } from "@/components/fx";
 import type { QuizFeedback, QuizQuestion } from "@/types";

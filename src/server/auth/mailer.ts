@@ -56,11 +56,11 @@ export function createMailer(env: MailerEnv, fetchImpl: typeof fetch = fetch, lo
 }
 
 const SUBJECTS: Record<CodePurpose, string> = {
-  "email-verification": "Your CourseMate verification code",
-  "forget-password": "Reset your CourseMate password",
-  "change-email": "Confirm your new CourseMate email",
-  "two-factor": "Your CourseMate sign-in code",
-  "sign-in": "Your CourseMate sign-in code",
+  "email-verification": "Your CourseMateAI verification code",
+  "forget-password": "Reset your CourseMateAI password",
+  "change-email": "Confirm your new CourseMateAI email",
+  "two-factor": "Your CourseMateAI sign-in code",
+  "sign-in": "Your CourseMateAI sign-in code",
 };
 const WHY: Record<CodePurpose, string> = {
   "email-verification": "to confirm this is your email",
@@ -77,10 +77,10 @@ function escapeHtml(s: string): string {
 /** The email that carries a one-time code. */
 export function codeMail(to: string, code: string, purpose: CodePurpose): Mail {
   const why = WHY[purpose];
-  const text = `Your code is ${code}. Enter it in CourseMate ${why}. It expires in 10 minutes. If you didn't ask for it, ignore this email.`;
+  const text = `Your code is ${code}. Enter it in CourseMateAI ${why}. It expires in 10 minutes. If you didn't ask for it, ignore this email.`;
   const html =
     `<div style="font-family:system-ui,sans-serif;max-width:480px;margin:auto;padding:24px;color:#111">` +
-    `<p>Enter this code in CourseMate ${escapeHtml(why)}:</p>` +
+    `<p>Enter this code in CourseMateAI ${escapeHtml(why)}:</p>` +
     `<p style="font-size:32px;font-weight:700;letter-spacing:6px;margin:16px 0">${escapeHtml(code)}</p>` +
     `<p style="color:#555">It expires in 10 minutes. If you didn't ask for it, you can ignore this email.</p></div>`;
   return { to, subject: SUBJECTS[purpose], text, html };

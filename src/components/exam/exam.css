@@ -18,7 +18,7 @@
 .exam-writing { text-align: center; padding: var(--space-7) 0; }
 .exam-writing__orb {
   display: block; width: 3.25rem; height: 3.25rem; margin: 0 auto; border-radius: 50%;
-  background: var(--gradient-accent), var(--color-accent); box-shadow: 0 0 40px var(--glow-accent);
+  background: var(--color-accent); box-shadow: none;
   animation: exam-orb 1.6s ease-in-out infinite;
 }
 @keyframes exam-orb { 0%, 100% { transform: scale(0.85); opacity: 0.7; } 50% { transform: scale(1); opacity: 1; } }
@@ -31,7 +31,7 @@
   position: sticky; top: calc(-1 * var(--space-6)); z-index: 2;
   display: flex; align-items: center; gap: var(--space-3); justify-content: space-between;
   padding: var(--space-2) var(--space-3); border-radius: var(--radius-lg);
-  background: var(--gradient-card), var(--glass-bg-strong); border: 1px solid var(--glass-border-strong); box-shadow: var(--glass-highlight);
+  background: var(--glass-bg-strong); border: 1px solid var(--glass-border-strong); box-shadow: none;
 }
 .exam-clock { display: inline-flex; align-items: center; gap: var(--space-2); font-size: 1.05rem; font-weight: 700; font-variant-numeric: tabular-nums; color: var(--color-text); }
 .exam-clock[data-low] { color: var(--color-warning-text); }

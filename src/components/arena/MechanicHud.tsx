@@ -1,4 +1,4 @@
-import { Lock } from "lucide-react";
+import { Lock } from "@/components/icons";
 import type { MechanicHud as Mech } from "@/lib/arena/types";
 
 /**

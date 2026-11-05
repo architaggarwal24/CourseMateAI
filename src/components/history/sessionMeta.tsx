@@ -1,4 +1,4 @@
-import { HelpCircle, Layers, MessageSquare, FileText } from "lucide-react";
+import { HelpCircle, Layers, MessageSquare, FileText } from "@/components/icons";
 import type { ReactNode } from "react";
 
 /** The four kinds of saved study session: one icon and one label each (the same everywhere history is listed). */

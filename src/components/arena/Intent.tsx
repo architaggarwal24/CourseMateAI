@@ -1,6 +1,6 @@
 import {
   ChevronsRight, CircleHelp, Crosshair, Droplets, Gem, Hammer, HandGrab, HeartPulse, Mountain, Shield, Sparkles, Star, Sword, Zap,
-} from "lucide-react";
+} from "@/components/icons";
 import { DAMAGING_INTENTS, type Intent as IntentT, type IntentKind } from "@/lib/arena/types";
 
 const ICON: Record<IntentKind, typeof Sword> = {

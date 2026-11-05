@@ -43,7 +43,7 @@ button .pixel-canvas, [role="radio"] .pixel-canvas { pointer-events: none; }
 .px-hero-card {
   position: relative; display: grid; gap: 0.15rem; justify-items: center; text-align: center; cursor: pointer;
   padding: var(--space-3) var(--space-2) var(--space-4); border-radius: var(--radius-md);
-  background: linear-gradient(180deg, color-mix(in oklab, var(--hero-accent) 14%, transparent), transparent 70%), var(--color-elevated);
+  background: var(--color-elevated); border-top: 3px solid var(--hero-accent);
   border: 1px solid var(--color-border); color: var(--color-text);
   transition: transform var(--motion-fast) ease, border-color var(--motion-fast) ease, box-shadow var(--motion-fast) ease;
 }
@@ -67,7 +67,7 @@ button .pixel-canvas, [role="radio"] .pixel-canvas { pointer-events: none; }
 .px-bestiary__grid { list-style: none; padding: 0; margin: var(--space-3) 0 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(11rem, 1fr)); gap: var(--space-3); }
 .px-beast {
   display: grid; gap: 0.15rem; padding: var(--space-3); border-radius: var(--radius-md);
-  background: radial-gradient(120% 80% at 50% 100%, color-mix(in oklab, var(--beast-accent) 22%, transparent), transparent 70%), var(--color-elevated);
+  background: color-mix(in oklab, var(--beast-accent) 10%, var(--color-elevated));
   border: 1px solid var(--color-border);
 }
 .px-beast__stage { height: 8rem; }
@@ -91,7 +91,7 @@ button .pixel-canvas, [role="radio"] .pixel-canvas { pointer-events: none; }
 .ff-hud__bossinfo { display: grid; gap: var(--space-1); min-width: 0; flex: 1; }
 .ff-hud__portrait {
   flex: none; width: 3.5rem; height: 3.5rem; display: block; position: relative;
-  background: radial-gradient(circle at 50% 70%, color-mix(in oklab, var(--hero-accent) 35%, transparent), var(--color-surface-sunken) 75%);
+  background: color-mix(in oklab, var(--hero-accent) 18%, var(--color-surface-sunken));
   border: 2px solid var(--hero-accent); border-radius: 3px;
   box-shadow: 2px 2px 0 rgba(0, 0, 0, 0.55), inset 0 0 0 1px rgba(0, 0, 0, 0.6);
   overflow: hidden;

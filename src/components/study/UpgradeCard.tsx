@@ -1,4 +1,4 @@
-import { Lock, Sparkles } from "lucide-react";
+import { Lock, Sparkles } from "@/components/icons";
 import { Badge, ButtonLink } from "@/components/ui";
 import { ROUTES } from "@/lib/routes";
 

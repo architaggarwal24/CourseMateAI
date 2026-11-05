@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { ArrowLeft, Flame, Skull, Swords, Target, Trophy } from "lucide-react";
+import { ArrowLeft, Flame, Skull, Swords, Target, Trophy } from "@/components/icons";
 import GearChips from "@/components/champion/GearChips";
 import PixelSprite from "./pixel/PixelSprite";
 import { useFighter, useFighterPet } from "./pixel/useFighter";

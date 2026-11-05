@@ -13,7 +13,7 @@
 
 /* ── Persistent header ───────────────────────────────────────────────────────────────────────────────────────── */
 /* the Hero area's panel: the Study workspace's glass, tinted for Play (see components/study/study.css .ws) */
-.ws--play { box-shadow: var(--glass-highlight), var(--glass-shadow), 0 0 80px -40px var(--glow-accent); }
+.ws--play { box-shadow: var(--glass-shadow); }
 .hero-tabs { margin: var(--space-3) var(--space-4) 0; }
 
 .hero-header {
@@ -34,7 +34,7 @@
 }
 .hero-header__avatar .champ-avatar__face {
   border: 2px solid var(--color-accent-alt-text);
-  background: var(--gradient-arena-sky), var(--color-surface);
+  background: var(--color-surface);
   box-shadow: var(--shadow-glow);
 }
 .hero-header__avatar:hover { transform: scale(1.06) rotate(-3deg); }
@@ -43,11 +43,9 @@
 .hero-header__xp { flex: 1 1 12rem; min-width: 10rem; max-width: 26rem; }
 .hero-header__xp-label { display: flex; justify-content: space-between; gap: var(--space-2); margin-bottom: var(--space-1); color: var(--color-text-secondary); font-size: 0.75rem; }
 .hero-header__bar { height: 0.75rem; overflow: hidden; border: 1px solid var(--color-border-strong); border-radius: var(--radius-full); background: var(--color-surface-sunken); }
-.hero-header__bar > span { position: relative; overflow: hidden; display: block; height: 100%; border-radius: var(--radius-full); background: var(--gradient-xp), var(--color-accent-text); box-shadow: 0 0 12px color-mix(in srgb, var(--color-accent) 70%, transparent); transition: width var(--motion-slow) var(--motion-ease); }
-/* a sweep of light running along the XP bar */
-.hero-header__shine { position: absolute; inset: 0; background: var(--gradient-sheen); background-size: 200% 100%; animation: shimmer 2.6s linear infinite; }
-.hero-header__stat { display: inline-flex; align-items: center; gap: var(--space-2); padding: var(--space-1) var(--space-3); border: 1px solid var(--glass-border-strong); border-radius: var(--radius-full); background: var(--glass-tint); box-shadow: var(--glass-highlight); color: var(--color-text); font-size: 0.8rem; white-space: nowrap; }
-.hero-header__coins { color: var(--color-reward); box-shadow: var(--glass-highlight), 0 0 18px -6px var(--glow-reward); }
+.hero-header__bar > span { position: relative; overflow: hidden; display: block; height: 100%; border-radius: var(--radius-full); background: var(--color-accent-text); transition: width var(--motion-slow) var(--motion-ease); }
+.hero-header__stat { display: inline-flex; align-items: center; gap: var(--space-2); padding: var(--space-1) var(--space-3); border: 1px solid var(--glass-border-strong); border-radius: var(--radius-full); background: var(--glass-tint); box-shadow: none; color: var(--color-text); font-size: 0.8rem; white-space: nowrap; }
+.hero-header__coins { color: var(--color-reward); box-shadow: none; }
 .hero-header__streak { color: var(--color-warning-text); }
 .hero-header__streak:not([data-idle="true"]) svg { filter: drop-shadow(0 0 6px var(--color-warning-text)); animation: hero-flicker 1.6s ease-in-out infinite; }
 @keyframes hero-flicker { 0%, 100% { transform: scale(1) rotate(0); } 40% { transform: scale(1.12) rotate(-4deg); } 70% { transform: scale(0.96) rotate(3deg); } }
@@ -75,12 +73,12 @@
   --spotlight-border: color-mix(in srgb, var(--rarity) 80%, transparent);
   border: 1px solid color-mix(in srgb, var(--rarity, var(--color-border)) 40%, var(--glass-border));
   border-radius: var(--radius-lg);
-  background: var(--gradient-card), var(--glass-bg);
+  background: var(--glass-bg);
   /* the rarity stripe along the top edge is an inset shadow (::before / ::after belong to the pointer spotlight) */
-  box-shadow: inset 0 3px 0 -1px var(--rarity, transparent), var(--glass-highlight), var(--shadow-sm);
+  box-shadow: inset 0 3px 0 -1px var(--rarity, transparent), var(--shadow-sm);
   transition: transform var(--motion-slow) var(--ease-spring), box-shadow var(--motion-slow) var(--ease-out-expo), border-color var(--motion-base) var(--motion-ease);
 }
-.hero-item:hover { transform: translateY(-4px); border-color: var(--rarity, var(--color-border-strong)); box-shadow: inset 0 3px 0 -1px var(--rarity, transparent), var(--edge-light), var(--shadow-md), 0 0 24px color-mix(in srgb, var(--rarity, transparent) 22%, transparent); }
+.hero-item:hover { transform: translateY(-4px); border-color: var(--rarity, var(--color-border-strong)); box-shadow: inset 0 3px 0 -1px var(--rarity, transparent), var(--shadow-md), 0 0 24px color-mix(in srgb, var(--rarity, transparent) 22%, transparent); }
 .hero-item--preview { outline: 2px solid var(--color-accent-alt-text); outline-offset: 2px; }
 .hero-item--equipped { background: color-mix(in srgb, var(--color-success) 8%, var(--color-elevated)); }
 .hero-item--locked { border-style: dashed; }
@@ -124,7 +122,7 @@ button.hero-item__sprite:hover { border-color: var(--color-accent-alt-text); }
 .hero-stage + .hero-label, .hero-stage ~ .hero-label { margin-top: var(--space-5); }
 .hero-label { margin: 0 0 var(--space-2); color: var(--color-text-secondary); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.04em; }
 .hero-stage__sprite { width: min(100%, 13rem); height: auto; max-height: 13rem; object-fit: contain; object-position: 50% 100%; }
-.hero-stage { display: flex; justify-content: center; padding: var(--space-4) var(--space-3) var(--space-2); border: 1px solid var(--color-border-subtle); border-radius: var(--radius-lg); background: var(--gradient-arena-sky), var(--color-surface-sunken); box-shadow: var(--edge-light); }
+.hero-stage { display: flex; justify-content: center; padding: var(--space-4) var(--space-3) var(--space-2); border: 1px solid var(--color-border-subtle); border-radius: var(--radius-lg); background: var(--color-surface-sunken); box-shadow: none; }
 
 .hero-cat {
   display: flex;
@@ -155,9 +153,9 @@ button.hero-item__sprite:hover { border-color: var(--color-accent-alt-text); }
 /* Quests */
 .quest-list { display: grid; gap: var(--space-3); margin: 0; padding: 0; list-style: none; }
 .quest-empty { padding: var(--space-6); text-align: center; color: var(--color-muted); font-size: 0.875rem; }
-.quest { display: grid; gap: var(--space-3); padding: var(--space-4); border: 1px solid var(--glass-border); border-radius: var(--radius-lg); background: var(--gradient-card), var(--glass-bg); box-shadow: var(--glass-highlight); transition: border-color var(--motion-fast) var(--motion-ease), background-color var(--motion-fast) var(--motion-ease); }
-.quest[data-state="ready"] { border-color: var(--color-highlight-text); background: var(--gradient-card), color-mix(in srgb, var(--color-highlight) 9%, var(--glass-bg)); box-shadow: var(--glass-highlight), 0 0 34px -10px var(--glow-reward); animation: quest-ready 2.4s ease-in-out infinite; }
-@keyframes quest-ready { 0%, 100% { box-shadow: var(--glass-highlight), 0 0 24px -12px var(--glow-reward); } 50% { box-shadow: var(--glass-highlight), 0 0 40px -6px var(--glow-reward); } }
+.quest { display: grid; gap: var(--space-3); padding: var(--space-4); border: 1px solid var(--glass-border); border-radius: var(--radius-lg); background: var(--glass-bg); box-shadow: none; transition: border-color var(--motion-fast) var(--motion-ease), background-color var(--motion-fast) var(--motion-ease); }
+.quest[data-state="ready"] { border-color: var(--color-highlight-text); background: color-mix(in srgb, var(--color-highlight) 9%, var(--glass-bg)); box-shadow: none; animation: quest-ready 2.4s ease-in-out infinite; }
+@keyframes quest-ready { 50% { border-color: var(--color-reward); } }
 .quest[data-state="claimed"] { border-color: color-mix(in srgb, var(--color-success-text) 40%, var(--color-border)); }
 .quest__head { display: flex; align-items: flex-start; gap: var(--space-3); }
 .quest__mark { flex: none; margin-top: 0.125rem; color: var(--color-muted); }
@@ -168,11 +166,11 @@ button.hero-item__sprite:hover { border-color: var(--color-accent-alt-text); }
 .quest__reward { margin: 0.125rem 0 0; color: var(--color-muted); font-size: 0.8125rem; }
 .quest__count { flex: none; color: var(--color-text-secondary); font-size: 0.75rem; }
 .quest__bar { height: 0.5rem; overflow: hidden; border-radius: var(--radius-full); background: var(--color-surface-sunken); }
-.quest__bar > div { height: 100%; border-radius: var(--radius-full); background: var(--gradient-xp), var(--color-accent); box-shadow: 0 0 10px var(--glow-accent); transition: width 900ms var(--ease-out-expo); }
+.quest__bar > div { height: 100%; border-radius: var(--radius-full); background: var(--color-accent); box-shadow: none; transition: width 900ms var(--ease-out-expo); }
 .quest[data-state="claimed"] .quest__bar > div { background: var(--color-success); }
 .quest__claim, .quest__done { display: flex; align-items: center; justify-content: center; gap: var(--space-2); min-height: 2.5rem; border-radius: var(--radius-md); font-size: 0.875rem; font-weight: 700; }
-.quest__claim { width: 100%; border: 0; background: var(--gradient-reward), var(--color-reward); color: var(--color-on-reward); cursor: pointer; transition: transform var(--motion-fast) var(--motion-ease), filter var(--motion-fast) var(--motion-ease); }
-.quest__claim:hover { filter: brightness(1.06); transform: translateY(-1px); box-shadow: 0 8px 26px -8px var(--glow-reward); }
+.quest__claim { width: 100%; border: 0; background: var(--color-reward); color: var(--color-on-reward); cursor: pointer; transition: transform var(--motion-fast) var(--motion-ease), filter var(--motion-fast) var(--motion-ease); }
+.quest__claim:hover { filter: brightness(1.06); transform: translateY(-1px); box-shadow: none; }
 .quest__claim:active { transform: scale(0.97); }
 .quest__claim[data-busy="true"] { cursor: default; opacity: 0.7; }
 .quest__done { border: 1px solid color-mix(in srgb, var(--color-success-text) 40%, transparent); color: var(--color-success-text); }

@@ -66,7 +66,7 @@ async function call<T>(path: string, init: { method?: string; body?: unknown; he
       body: init.body !== undefined ? JSON.stringify(init.body) : undefined,
     });
   } catch {
-    throw new ApiError(0, { code: "network", message: "Couldn't reach CourseMate. Check your connection.", action: "retry", details: null });
+    throw new ApiError(0, { code: "network", message: "Couldn't reach CourseMateAI. Check your connection.", action: "retry", details: null });
   }
   let body: unknown = null;
   try { body = await res.json(); } catch { /* empty */ }

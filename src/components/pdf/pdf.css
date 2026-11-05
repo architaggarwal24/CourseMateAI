@@ -1,7 +1,7 @@
 /* The side-by-side PDF viewer (components/pdf/PdfViewer.tsx). Study theme, tokens only. */
 .pdf-panel {
   display: flex; flex-direction: column; min-height: 0; height: 100%;
-  background: var(--gradient-card), var(--glass-bg-strong);
+  background: var(--glass-bg-strong);
   border-left: 1px solid var(--glass-border-strong);
 }
 .pdf-panel__head { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--space-2); padding: var(--space-3) var(--space-4); border-bottom: 1px solid var(--glass-border); }

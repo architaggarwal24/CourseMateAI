@@ -17,7 +17,7 @@ beforeEach(() => {
     const body = init.body ? JSON.parse(String(init.body)) : {};
     if (url === "/api/auth/two-factor/enable") {
       return body.password === "correct-horse-1"
-        ? json({ totpURI: "otpauth://totp/CourseMate:a%40x.io?secret=JBSWY3DPEHPK3PXP&issuer=CourseMate", backupCodes: ["aaaaa-bbbbb", "ccccc-ddddd"] })
+        ? json({ totpURI: "otpauth://totp/CourseMateAI:a%40x.io?secret=JBSWY3DPEHPK3PXP&issuer=CourseMateAI", backupCodes: ["aaaaa-bbbbb", "ccccc-ddddd"] })
         : json({ code: "INVALID_PASSWORD", message: "x" }, 400);
     }
     if (url === "/api/auth/two-factor/verify-totp") return body.code === "123456" ? json({ token: "t" }) : json({ code: "INVALID_CODE", message: "x" }, 401);

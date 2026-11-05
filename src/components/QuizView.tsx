@@ -1,6 +1,6 @@
 "use client";
 import { useState, useEffect, useCallback } from "react";
-import { HelpCircle, Brain, Zap, Target, TrendingUp, History, Plus, Minus, ListChecks } from "lucide-react";
+import { HelpCircle, Brain, Zap, Target, TrendingUp, History, Plus, Minus, ListChecks } from "@/components/icons";
 import HistoryPanel from "./HistoryPanel";
 import QuizQuestionView from "./quiz/QuizQuestionView";
 import QuizReview from "./quiz/QuizReview";

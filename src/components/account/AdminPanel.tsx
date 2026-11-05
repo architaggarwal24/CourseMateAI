@@ -3,7 +3,7 @@
 // Account -> Admin (Stage 4.1): find any account and give it any plan, for some days or for good; ban and unban;
 // make admins (the owner only); invite codes that grant a plan. Server rules: src/server/admin.ts.
 import { useCallback, useEffect, useState } from "react";
-import { Ban, Crown, Search, ShieldCheck, Sparkles, Ticket, UserCog } from "lucide-react";
+import { Ban, Crown, Search, ShieldCheck, Sparkles, Ticket, UserCog } from "@/components/icons";
 import { Badge, Button, Card, EmptyState, Input, Modal, Select, Skeleton, toast } from "@/components/ui";
 import { useAuth } from "@/contexts/AuthContext";
 import { adminApi, shortDate, TIER_OPTIONS, usd, type AdminUser, type AiReport, type Invite, type Tier } from "@/lib/admin/adminApi";
@@ -344,7 +344,7 @@ function AiSpend() {
 export default function AdminPanel() {
   const { user } = useAuth();
   if (!user?.is_admin) {
-    return <div className="max-w-5xl mx-auto px-6 py-6"><EmptyState title="Admins only" description="This page is for the CourseMate team." /></div>;
+    return <div className="max-w-5xl mx-auto px-6 py-6"><EmptyState title="Admins only" description="This page is for the CourseMateAI team." /></div>;
   }
   return (
     <div className="max-w-5xl mx-auto px-6 py-6 space-y-6">
