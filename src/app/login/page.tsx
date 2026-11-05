@@ -44,7 +44,7 @@ export default function LoginPage() {
 
   async function signedIn() {
     await refresh();
-    router.push(ROUTES.study);
+    router.push(ROUTES.today);
   }
 
   const handleChange = (e: React.FormEvent<HTMLInputElement>) => {
@@ -59,7 +59,7 @@ export default function LoginPage() {
     setNotice('');
     try {
       const result = await login(formData.email, formData.password);
-      if (result.status === 'signed-in') router.push(ROUTES.study);
+      if (result.status === 'signed-in') router.push(ROUTES.today);
       else if (result.status === 'two-factor') setMode('two-factor');
       else if (result.status === 'verify-email') setMode('verify');
       else setError(result.failure.message);
@@ -141,7 +141,7 @@ export default function LoginPage() {
           )}
 
           {mode === 'register' ? (
-            <SignupFlow onDone={() => router.push(ROUTES.study)} />
+            <SignupFlow onDone={() => router.push(ROUTES.today)} />
           ) : mode === 'two-factor' ? (
             <TwoFactorStep onDone={signedIn} onCancel={backToLogin} />
           ) : mode === 'verify' ? (

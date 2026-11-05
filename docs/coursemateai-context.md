@@ -842,6 +842,13 @@ Each stage ships a zip of the changed files plus a test checklist. Ready-to-past
 - **One icon module:** `src/components/icons.tsx`. Heroicons outline (`@heroicons/react/24/outline`) for everything it has; Lucide at the same 1.5px line only for what Heroicons lacks (game icons, the spinner, a few others). Exports keep the old names (`BookOpen`, `Swords`...), take `size`, and are `aria-hidden` unless given an `aria-label`. At 16px and below the line is 2px so small icons stay crisp.
 - **Rule:** screens import icons from `@/components/icons`, never from a pack (`icons.test.tsx` fails otherwise). To change an icon, change one line there. `IconType` replaces `LucideIcon`.
 
+### Redesign, Stage 5: Today (6 Nov 2026)
+
+- **`/today` is the landing page** (`/` redirects there; signing in goes there; the installed app starts there). `components/today/TodayView.tsx`, numbers in `src/lib/today.ts`.
+- **Cards:** Review (the one accent-filled card while cards are due: due count, "5 of 12 done today", minutes left, Start review; All caught up, or See plans when locked), Continue (the last saved session in this browser, else the latest PDF, else Upload), Streak, Daily quests (n of 3), Hero (level, XP, coins, Enter the arena), Your PDFs (latest four) and Add a PDF (uploads, then opens it in Study).
+- **Data:** only what the app already loads (review stats, HUD, documents, local sessions); no new API and no AI call. A visitor who isn't signed in is sent to log in.
+- **Nav:** Today is first in the sidebar's Study group, in the phone bar and in Ctrl K; the logo links to it.
+
 ### UX details pass (5 Nov 2026)
 
 - **Skeletons** show only after 300 ms (`.ui-skeleton` waits, also under reduced motion).

@@ -11,13 +11,14 @@ beforeEach(() => { nav.path = "/study"; nav.query = "tab=chat"; useReview.setSta
 afterEach(cleanup);
 
 describe("the phone bottom bar", () => {
-  it("has Study, Review (with the due count), Hero and Me, at the thumb", () => {
+  it("has Today, Study, Review (with the due count), Hero and Me, at the thumb", () => {
     render(<BottomNav />);
     const links = within(screen.getByRole("navigation", { name: "Main" })).getAllByRole("link");
-    expect(links.map((l) => l.textContent?.replace(/,.*$/, "").replace(/\d+$/, ""))).toEqual(["Study", "Review", "Hero", "Me"]);
-    expect(links[1].getAttribute("href")).toBe("/study?tab=review");
-    expect(links[1].textContent).toContain("3 cards to review");
-    expect(links[3].getAttribute("href")).toBe("/account");
+    expect(links.map((l) => l.textContent?.replace(/,.*$/, "").replace(/\d+$/, ""))).toEqual(["Today", "Study", "Review", "Hero", "Me"]);
+    expect(links[0].getAttribute("href")).toBe("/today");
+    expect(links[2].getAttribute("href")).toBe("/study?tab=review");
+    expect(links[2].textContent).toContain("3 cards to review");
+    expect(links[4].getAttribute("href")).toBe("/account");
   });
 
   it("marks the current one (Review is a Study tab, so it wins over Study there)", () => {

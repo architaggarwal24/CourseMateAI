@@ -9,6 +9,7 @@ export const PAGES: PageCase[] = [
   { name: "refunds", path: "/legal/refunds", auth: false, ready: "role=heading[name='Cancellation & Refund Policy']" },
   { name: "signup step 1", path: "/login", auth: false, ready: "role=heading[name='Your account']", before: "register" },
   { name: "signup: verify email", path: "/login", auth: false, ready: "role=heading[name='Verify your email']", before: "register-step-2" },
+  { name: "today", path: "/today", auth: true, ready: "role=region[name='Review']" },
   { name: "study: chat", path: "/study?tab=chat&doc=doc-1", auth: true, ready: "role=log" },
   { name: "study: quiz", path: "/study?tab=quiz&doc=doc-1", auth: true, ready: "role=heading[name=/quiz/i]" },
   { name: "study: notes", path: "/study?tab=notes&doc=doc-1", auth: true, ready: "role=heading[name=/notes/i]" },

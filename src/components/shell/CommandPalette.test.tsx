@@ -35,6 +35,7 @@ describe("the command menu", () => {
     open();
     expect(screen.getByRole("dialog")).toBeTruthy();
     expect(screen.getByText("Concept map")).toBeTruthy();
+    expect(screen.getByText("Today")).toBeTruthy();
     expect(screen.getByText("Plan & usage")).toBeTruthy();
     expect(screen.queryByText("Admin")).toBeNull();                    // admins only
     expect(screen.queryByText(/API key/)).toBeNull();                  // the server holds the keys now

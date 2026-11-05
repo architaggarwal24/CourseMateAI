@@ -39,6 +39,10 @@ describe("routes", () => {
     for (const { from } of LEGACY_REDIRECTS) expect(served).not.toContain(from);
   });
 
+  it("the site's root opens Today", () => {
+    expect(LEGACY_REDIRECTS.find((r) => r.from === "/")?.to).toBe("/today");
+  });
+
   it("no redirect lands on another redirect", () => {
     const froms = new Set(LEGACY_REDIRECTS.map(r => r.from));
     for (const { to } of LEGACY_REDIRECTS) expect(froms.has(to)).toBe(false);

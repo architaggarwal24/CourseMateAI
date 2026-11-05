@@ -3,7 +3,7 @@
 import { Suspense, useEffect, useSyncExternalStore, type ReactNode } from "react";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
-import { BookOpen, GraduationCap, PanelLeft, Repeat, ScrollText, Search, ShoppingBag, Sparkles, Swords, type IconType } from "@/components/icons";
+import { BookOpen, GraduationCap, Home, PanelLeft, Repeat, ScrollText, Search, ShoppingBag, Sparkles, Swords, type IconType } from "@/components/icons";
 import UserMenu from "@/components/UserMenu";
 import Logo from "@/components/brand/Logo";
 import { dueBadge, useReview } from "@/hooks/useReview";
@@ -46,7 +46,7 @@ const typing = (t: EventTarget | null) =>
 
 /**
  * The desktop sidebar (hidden below md; phones get BottomNav). Search (Ctrl K) on top, then three groups:
- * Study (Study, Review with its due count, Mock exam), your Courses (when the plan has them) and Hero, and you at
+ * Study (Today, Study, Review with its due count, Mock exam), your Courses (when the plan has them) and Hero, and you at
  * the bottom. It collapses to a 64px icon rail (the button beside the logo, or Ctrl+B): every link keeps its name
  * for screen readers and shows it as a tooltip on hover and focus.
  */
@@ -82,6 +82,7 @@ function Sidebar({ tab, doc }: { tab: string | null; doc: string | null }) {
   const inHero = pathname === ROUTES.hero;
   const heroTab = tab ?? "quests";
   const study: Item[] = [
+    { label: "Today", href: ROUTES.today, Icon: Home, current: pathname === ROUTES.today },
     { label: "Study", href: ROUTES.study, Icon: BookOpen, current: inStudy && tab !== "review" && tab !== "exam" && !(tab === "overview" && courses.some((c) => c.id === doc)) },
     { label: "Review", href: ROUTES.studyTab("review"), Icon: Repeat, current: inStudy && tab === "review", extra: <ReviewBadge due={due} /> },
     { label: "Mock exam", href: ROUTES.studyTab("exam"), Icon: GraduationCap, current: inStudy && tab === "exam" },
@@ -96,7 +97,7 @@ function Sidebar({ tab, doc }: { tab: string | null; doc: string | null }) {
   return (
     <aside className="side" data-collapsed={collapsed || undefined}>
       <div className="side__top">
-        <Link href={ROUTES.study} className="side__brand" aria-label="CourseMateAI, go to Study"><Logo size={24} /></Link>
+        <Link href={ROUTES.today} className="side__brand" aria-label="CourseMateAI, go to Today"><Logo size={24} /></Link>
         <button type="button" className="side__toggle" onClick={toggleSidebar} aria-expanded={!collapsed}
           aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"} title={`${collapsed ? "Expand" : "Collapse"} sidebar (${toggleKey})`}>
           <PanelLeft size={18} aria-hidden="true" />

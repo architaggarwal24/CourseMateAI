@@ -1,0 +1,50 @@
+/* Today (components/today/TodayView.tsx): a bento of flat cards. One card, the next thing to do, is filled with the
+ * accent; the rest are quiet. Six columns on wide screens, two on tablets, one on phones. */
+.today { flex: 1; min-height: 0; overflow-y: auto; padding: var(--space-6) var(--space-6) var(--space-7); }
+.today > * { max-width: 72rem; margin-inline: auto; }
+@media (max-width: 767px) { .today { padding: var(--space-5) var(--space-4) var(--space-6); } }
+
+.today__hello { display: grid; gap: var(--space-1); margin-bottom: var(--space-5); }
+.today__hello h1 { margin: 0; font-size: clamp(1.6rem, 1.2rem + 1.4vw, 2.2rem); font-weight: 700; line-height: 1.15; }
+.today__hello p { margin: 0; color: var(--color-text-secondary); font-size: 1rem; }
+
+.today__grid { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: var(--space-3); }
+.today-tile { grid-column: span 2; display: flex; flex-direction: column; gap: var(--space-2); min-width: 0;
+  padding: var(--space-4); border: 1px solid var(--color-border); border-radius: var(--radius-lg); background: var(--color-elevated); }
+.today-tile--wide { grid-column: span 3; }
+@media (max-width: 1023px) { .today__grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .today-tile, .today-tile--wide { grid-column: span 1; } }
+@media (max-width: 639px) { .today__grid { grid-template-columns: minmax(0, 1fr); } }
+
+.today-tile__title { display: flex; align-items: center; gap: var(--space-2); margin: 0 0 var(--space-1);
+  font-family: var(--font-sans); font-size: 0.8125rem; font-weight: 600; color: var(--color-muted); letter-spacing: 0; }
+.today-tile__title span { display: inline-flex; }
+.today-big { display: block; margin: 0; font-family: var(--font-display); font-size: 1.6rem; font-weight: 700; line-height: 1.15; color: var(--color-text); }
+.today-big .num, .today-tile__meta.num, .num { font-variant-numeric: tabular-nums; }
+.today-big--done { display: flex; align-items: center; gap: var(--space-2); color: var(--color-success-text); }
+.today-tile__lead { margin: 0; font-weight: 600; color: var(--color-text); overflow-wrap: anywhere; }
+.today-tile__text { margin: 0; color: var(--color-text-secondary); font-size: 0.9rem; line-height: var(--line-height-body); }
+.today-tile__meta { display: flex; align-items: center; gap: var(--space-1); margin: 0; color: var(--color-muted); font-size: 0.85rem; }
+.today-tile__cta { align-self: flex-start; margin-top: auto; }
+.today-tile__link { display: inline-flex; align-items: center; gap: var(--space-1); margin-top: auto; padding-top: var(--space-1);
+  align-self: flex-start; color: var(--color-accent-text); font-size: 0.875rem; font-weight: 600; text-decoration: none; min-height: 2.75rem; }
+.today-tile__link:hover { text-decoration: underline; text-underline-offset: 3px; }
+
+.today-bar { height: 0.5rem; border-radius: var(--radius-full); background: var(--color-surface-sunken); overflow: hidden; }
+.today-bar > span { display: block; height: 100%; border-radius: inherit; background: var(--color-accent); transition: width var(--motion-slow) var(--ease-out-expo); }
+
+/* the one filled card (Von Restorff): the next thing to do */
+.today-tile[data-emphasis] { background: var(--color-accent); border-color: var(--color-accent); color: var(--color-on-accent); }
+.today-tile[data-emphasis] .today-tile__title,
+.today-tile[data-emphasis] .today-tile__meta,
+.today-tile[data-emphasis] .today-big { color: var(--color-on-accent); }
+.today-tile[data-emphasis] .today-bar { background: color-mix(in srgb, var(--color-on-accent) 22%, var(--color-accent)); }
+.today-tile[data-emphasis] .today-bar > span { background: var(--color-on-accent); }
+.today-tile__cta--on-accent { background: var(--color-on-accent); color: var(--color-accent); border-color: var(--color-on-accent); }
+.today-tile__cta--on-accent:hover:not(:disabled) { background: color-mix(in srgb, var(--color-on-accent) 88%, var(--color-accent)); }
+
+.today-list { display: grid; margin: 0; padding: 0; list-style: none; }
+.today-list li + li { border-top: 1px solid var(--color-border-subtle); }
+.today-list__item { display: flex; align-items: center; gap: var(--space-3); min-height: 2.75rem; color: var(--color-text); text-decoration: none; border-radius: var(--radius-sm); }
+.today-list__item:hover .today-list__name { text-decoration: underline; text-underline-offset: 3px; }
+.today-list__item svg { flex: none; color: var(--color-muted); }
+.today-list__name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

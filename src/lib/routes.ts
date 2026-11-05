@@ -15,6 +15,8 @@ export const LEGACY_HERO_TABS: Readonly<Record<string, HeroTab>> = { avatar: "ch
 
 export const ROUTES = {
   login: "/login",
+  /** The landing page: what to do today (due reviews, where you left off, streak, quests, your PDFs). */
+  today: "/today",
   study: "/study",
   /** /study?tab=<tab>. `session` reopens a saved chat/quiz/notes/flashcards session; `doc` is the active document. */
   studyTab: (tab: StudyTab, sessionId?: string, documentId?: string) =>
@@ -57,7 +59,7 @@ export function isStudyTab(value: string | undefined): value is StudyTab {
 
 /** Old URLs and the place each one now lives. Wired into next.config.ts (redirects keep the query string). */
 export const LEGACY_REDIRECTS: ReadonlyArray<{ from: string; to: string }> = [
-  { from: "/", to: ROUTES.study },
+  { from: "/", to: ROUTES.today },
   { from: "/shop", to: ROUTES.heroShop },
   { from: "/inventory", to: ROUTES.heroInventory },
   { from: "/avatar", to: ROUTES.heroChampion },

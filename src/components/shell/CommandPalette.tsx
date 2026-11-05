@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { Command } from "cmdk";
 import { Dialog } from "radix-ui";
 import {
-  Backpack, BookOpen, Brain, CornerDownLeft, FileText, Gauge, GraduationCap, History, Layers, LogOut, MessageSquare,
+  Backpack, BookOpen, Brain, CornerDownLeft, FileText, Gauge, GraduationCap, History, Home, Layers, LogOut, MessageSquare,
   Network, ScrollText, Repeat, Search, Settings, Shield, ShieldCheck, ShoppingBag, SunMoon, Swords, Trophy, User, UserCircle,
 } from "@/components/icons";
 import ThemeScope from "@/components/ThemeScope";
@@ -21,6 +21,7 @@ const GROUPS: { heading: string; items: Entry[] }[] = [
   {
     heading: "Study",
     items: [
+      { id: "today", label: "Today", hint: "Due reviews, where you left off", href: ROUTES.today, icon: <Home size={16} />, keywords: ["home", "dashboard", "start"] },
       { id: "chat", label: "Chat with your document", href: ROUTES.studyTab("chat"), icon: <MessageSquare size={16} />, keywords: ["ask", "pdf"] },
       { id: "quiz", label: "Generate a quiz", href: ROUTES.studyTab("quiz"), icon: <Brain size={16} />, keywords: ["mcq", "test"] },
       { id: "notes", label: "Study notes", href: ROUTES.studyTab("notes"), icon: <FileText size={16} /> },

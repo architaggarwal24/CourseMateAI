@@ -50,6 +50,7 @@ import {
   FireIcon as HFire,
   FlagIcon as HFlag,
   FolderPlusIcon as HFolderPlus,
+  HomeIcon as HHome,
   HandRaisedIcon as HHandRaised,
   HeartIcon as HHeart,
   InboxIcon as HInbox,
@@ -190,6 +191,7 @@ export const FlaskConical = hero(HBeaker, "FlaskConical");
 export const FolderPlus = hero(HFolderPlus, "FolderPlus");
 export const GraduationCap = hero(HAcademicCap, "GraduationCap");
 export const HandGrab = hero(HHandRaised, "HandGrab");
+export const Home = hero(HHome, "Home");
 export const Heart = hero(HHeart, "Heart");
 export const HelpCircle = hero(HQuestionMarkCircle, "HelpCircle");
 export const Inbox = hero(HInbox, "Inbox");

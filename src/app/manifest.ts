@@ -7,7 +7,7 @@ export default function manifest(): MetadataRoute.Manifest {
     short_name: "CourseMateAI",
     description: "Your PDFs as a study companion: chat, quizzes, flashcards, exams and a boss arena.",
     id: "/study",
-    start_url: "/study",
+    start_url: "/today",
     scope: "/",
     display: "standalone",
     orientation: "any",
@@ -20,6 +20,7 @@ export default function manifest(): MetadataRoute.Manifest {
       { src: "/icons/maskable-512.png", sizes: "512x512", type: "image/png", purpose: "maskable" },
     ],
     shortcuts: [
+      { name: "Today", url: "/today", icons: [{ src: "/icons/icon-192.png", sizes: "192x192" }] },
       { name: "Study", url: "/study", icons: [{ src: "/icons/icon-192.png", sizes: "192x192" }] },
       { name: "Daily review", url: "/study?tab=review", icons: [{ src: "/icons/icon-192.png", sizes: "192x192" }] },
       { name: "Arena", url: "/hero?tab=arena", icons: [{ src: "/icons/icon-192.png", sizes: "192x192" }] },

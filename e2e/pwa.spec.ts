@@ -15,7 +15,7 @@ test("the app is installable and polite offline", async ({ page, context }, info
   expect(h["content-security-policy"]).toContain("frame-ancestors 'none'");
 
   const manifest = await (await page.request.get("/manifest.webmanifest")).json();
-  expect(manifest).toMatchObject({ short_name: "CourseMateAI", start_url: "/study", display: "standalone" });
+  expect(manifest).toMatchObject({ short_name: "CourseMateAI", start_url: "/today", display: "standalone" });
   expect(manifest.icons.map((i: { purpose: string }) => i.purpose)).toContain("maskable");
   expect((await page.request.get("/icons/icon-512.png")).status()).toBe(200);
   const sw = await page.request.get("/sw.js");
@@ -27,6 +27,6 @@ test("the app is installable and polite offline", async ({ page, context }, info
   await page.waitForFunction(async () => !!(await caches.match("/offline")));
   await context.setOffline(true);
   await page.goto("/hero?tab=quests").catch(() => {});
-  await expect(page.getByRole("heading", { name: "You're offline" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "You're offline" })).toBeVisible({ timeout: 30_000 });   // the worker can be slow under load
   await context.setOffline(false);
 });

@@ -16,17 +16,19 @@ export function useDocumentUpload(documentId: string | undefined) {
   const [uploading, setUploading] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const upload = useCallback(async (file: File) => {
-    if (!user) { toast.error("Please login first to upload PDFs"); return; }
-    if (file.type !== "application/pdf") { toast.error("Please upload a PDF file"); return; }
-    if (file.size > MAX_PDF_BYTES) { toast.error("File too large. Maximum size is 50MB"); return; }
+  const upload = useCallback(async (file: File): Promise<Awaited<ReturnType<typeof uploadDocument>> | undefined> => {
+    if (!user) { toast.error("Please login first to upload PDFs"); return undefined; }
+    if (file.type !== "application/pdf") { toast.error("Please upload a PDF file"); return undefined; }
+    if (file.size > MAX_PDF_BYTES) { toast.error("File too large. Maximum size is 50MB"); return undefined; }
 
     setUploading(true);
     try {
       const document = await uploadDocument(documentId, file);
       if (document.status === "ready") toast.success(`✅ ${document.filename} ready!`);   // same file as before: reused
+      return document;
     } catch (error) {
       toast.apiError(error, { onRetry: () => upload(file) });
+      return undefined;
     } finally {
       setUploading(false);
       if (inputRef.current) inputRef.current.value = "";

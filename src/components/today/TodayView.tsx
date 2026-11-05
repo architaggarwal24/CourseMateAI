@@ -1,0 +1,163 @@
+"use client";
+
+import { useEffect, useMemo, useState, type ReactNode } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { ArrowRight, BookOpen, CheckCircle, Coins, FileText, Flame, Repeat, ScrollText, Swords, Upload } from "@/components/icons";
+import { useAuth } from "@/contexts/AuthContext";
+import { useReview } from "@/hooks/useReview";
+import { useHUDStore } from "@/hooks/useHUD";
+import { useDocuments } from "@/hooks/useSessions";
+import { useDocumentUpload } from "@/hooks/useDocumentUpload";
+import { loadMetadata } from "@/lib/sessions";
+import { greeting, lastSession, reviewProgress, todaySummary, type LastSession } from "@/lib/today";
+import { ROUTES, type StudyTab } from "@/lib/routes";
+import { cn } from "@/lib/utils";
+import "./today.css";
+
+/** A card on the Today grid: a labelled region (Law of Common Region), one of them filled with the accent. */
+function Tile({ id, title, icon, emphasis, className, children }: {
+  id: string; title: string; icon: ReactNode; emphasis?: boolean; className?: string; children: ReactNode;
+}) {
+  return (
+    <section aria-labelledby={id} className={cn("today-tile", className)} data-emphasis={emphasis || undefined}>
+      <h2 id={id} className="today-tile__title"><span aria-hidden="true">{icon}</span>{title}</h2>
+      {children}
+    </section>
+  );
+}
+
+function Bar({ pct, label }: { pct: number; label: string }) {
+  return (
+    <div className="today-bar" role="progressbar" aria-label={label} aria-valuemin={0} aria-valuemax={100} aria-valuenow={pct}>
+      <span style={{ width: `${pct}%` }} />
+    </div>
+  );
+}
+
+const firstName = (u: { full_name?: unknown; username?: unknown } | null) =>
+  String(u?.full_name || u?.username || "").trim().split(/\s+/)[0] || "there";
+
+/**
+ * Today: the landing page. The next thing to do comes first and is the one card filled with the accent (the review,
+ * with how far through today's cards you are); then where you left off, the streak, the day's quests, your hero, and
+ * your PDFs. Everything comes from data the app already loads; nothing here costs an AI call.
+ */
+export default function TodayView() {
+  const { user, loading } = useAuth();
+  const router = useRouter();
+  const stats = useReview((s) => s.stats);
+  const { level, coins, xpInto, xpToNext, streakDays, streakFreezes, quests } = useHUDStore();
+  const { list: pdfs } = useDocuments();
+  const upload = useDocumentUpload(undefined);
+  const [session, setSession] = useState<LastSession | null>(null);
+
+  useEffect(() => { if (!loading && !user) router.replace(ROUTES.login); }, [loading, user, router]);
+  // Saved sessions live in this browser (localStorage): read after mount so the server render matches.
+  useEffect(() => { setSession(lastSession(loadMetadata())); }, []);
+
+  const review = reviewProgress(stats);
+  const questList = (quests ?? []) as { completed?: boolean | number }[];
+  const questsDone = questList.filter((q) => q.completed === true || q.completed === 1).length;
+  const questsLeft = questList.length - questsDone;
+  const now = useMemo(() => new Date(), []);
+  const xpPct = xpToNext > 0 ? Math.min(100, Math.round((xpInto / xpToNext) * 100)) : 0;
+
+  const continueHref = session
+    ? ROUTES.studyTab(session.type as StudyTab, session.id)
+    : pdfs[0] ? ROUTES.studyTab("chat", undefined, pdfs[0].id) : null;
+
+  return (
+    <div className="today">
+      <header className="today__hello">
+        <h1>{greeting(now)}, {firstName(user)}</h1>
+        <p>{todaySummary({ due: review.locked ? 0 : review.due, questsLeft })}</p>
+      </header>
+
+      <div className="today__grid">
+        <Tile id="today-review" title="Review" icon={<Repeat size={18} />} emphasis={!review.locked && review.due > 0} className="today-tile--wide">
+          {review.locked ? (
+            <>
+              <p className="today-tile__text">Spaced review brings back what you got wrong, just before you forget it.</p>
+              <Link href={ROUTES.accountUsage} className="ui-btn ui-btn--secondary today-tile__cta">See plans<ArrowRight size={16} /></Link>
+            </>
+          ) : review.due > 0 ? (
+            <>
+              <p className="today-big"><span className="num">{review.due}</span> {review.due === 1 ? "card" : "cards"} due</p>
+              <Bar pct={review.pct} label="Today's review" />
+              <p className="today-tile__meta num">{review.done} of {review.total} done today · about {review.minutes} min left</p>
+              <Link href={ROUTES.studyTab("review")} className="ui-btn today-tile__cta today-tile__cta--on-accent">Start review</Link>
+            </>
+          ) : (
+            <>
+              <p className="today-big today-big--done"><CheckCircle size={26} />All caught up</p>
+              <p className="today-tile__meta num">{review.done > 0 ? `${review.done} cards reviewed today.` : "Nothing is due. Cards come back here as they are due."}</p>
+            </>
+          )}
+        </Tile>
+
+        <Tile id="today-continue" title="Continue" icon={<BookOpen size={18} />} className="today-tile--wide">
+          {continueHref ? (
+            <>
+              <p className="today-tile__lead">{session ? `${session.label} · ${session.title ?? "your document"}` : pdfs[0]?.filename}</p>
+              <p className="today-tile__text">{session ? session.preview || "Pick up where you stopped." : "Ask it anything, or make a quiz from it."}</p>
+              <Link href={continueHref} className="ui-btn ui-btn--primary today-tile__cta">Continue<ArrowRight size={16} /></Link>
+            </>
+          ) : (
+            <>
+              <p className="today-tile__text">Upload a PDF to start: chat with it, quiz yourself, and make flashcards.</p>
+              <button type="button" className="ui-btn ui-btn--primary today-tile__cta" onClick={upload.pick}><Upload size={16} />Upload a PDF</button>
+            </>
+          )}
+        </Tile>
+
+        <Tile id="today-streak" title="Streak" icon={<Flame size={18} />}>
+          <p className="today-big"><span className="num">{streakDays}</span>-day streak</p>
+          <p className="today-tile__meta">{streakFreezes > 0 ? `${streakFreezes} streak ${streakFreezes === 1 ? "freeze" : "freezes"} saved` : "Study once a day to keep it."}</p>
+        </Tile>
+
+        <Tile id="today-quests" title="Daily quests" icon={<ScrollText size={18} />}>
+          <p className="today-big"><span className="num">{questsDone}</span> of {questList.length} done</p>
+          <Bar pct={questList.length ? Math.round((questsDone / questList.length) * 100) : 0} label="Daily quests" />
+          <Link href={ROUTES.heroQuests} className="today-tile__link">See quests<ArrowRight size={16} /></Link>
+        </Tile>
+
+        <Tile id="today-hero" title="Hero" icon={<Swords size={18} />}>
+          <p className="today-big">Lv <span className="num">{level}</span></p>
+          <Bar pct={xpPct} label="XP to the next level" />
+          <p className="today-tile__meta num"><Coins size={16} /> {coins.toLocaleString("en-IN")} coins</p>
+          <Link href={ROUTES.heroArena} className="today-tile__link">Enter the arena<ArrowRight size={16} /></Link>
+        </Tile>
+
+        <Tile id="today-pdfs" title="Your PDFs" icon={<FileText size={18} />} className="today-tile--wide">
+          {pdfs.length ? (
+            <ul className="today-list">
+              {pdfs.slice(0, 4).map((d) => (
+                <li key={d.id}>
+                  <Link href={ROUTES.studyTab("chat", undefined, d.id)} className="today-list__item">
+                    <FileText size={16} /><span className="today-list__name">{d.filename}</span>
+                    <ArrowRight size={16} className="today-list__go" />
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          ) : <p className="today-tile__text">Your PDFs show up here once you upload one.</p>}
+        </Tile>
+
+        <Tile id="today-add" title="Add" icon={<Upload size={18} />} className="today-tile--wide">
+          <p className="today-tile__text">Drop in lecture notes, a textbook chapter or past papers. It is ready to study in about a minute.</p>
+          <button type="button" className="ui-btn ui-btn--secondary today-tile__cta" onClick={upload.pick} disabled={upload.uploading} aria-busy={upload.uploading || undefined}>
+            <Upload size={16} />{upload.uploading ? "Uploading…" : "Add a PDF"}
+          </button>
+          <input ref={upload.inputRef} type="file" accept=".pdf" className="hidden" aria-label="Choose a PDF"
+            onChange={async (e) => {
+              const file = e.currentTarget.files?.[0];
+              if (!file) return;
+              const doc = await upload.upload(file);
+              if (doc) router.push(ROUTES.studyTab("chat", undefined, doc.id));
+            }} />
+        </Tile>
+      </div>
+    </div>
+  );
+}

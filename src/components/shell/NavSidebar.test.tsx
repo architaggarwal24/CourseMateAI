@@ -28,8 +28,9 @@ const main = () => screen.getByRole("navigation", { name: "Main" });
 const link = (name: RegExp) => within(main()).getByRole("link", { name });
 
 describe("the sidebar", () => {
-  it("groups the app: Study (with Review and Mock exam), your Courses, and Hero", () => {
+  it("groups the app: Study (Today first, with Review and Mock exam), your Courses, and Hero", () => {
     render(<NavSidebar />);
+    expect(within(within(main()).getByRole("group", { name: "Study" })).getAllByRole("link")[0].getAttribute("href")).toBe("/today");
     for (const g of ["Study", "Courses", "Hero"]) expect(within(main()).getByRole("group", { name: g })).toBeTruthy();
     expect(link(/^Review/).getAttribute("href")).toBe("/study?tab=review");
     expect(link(/^Review/).textContent).toContain("7 cards to review");          // the due count lives on Review
@@ -51,6 +52,11 @@ describe("the sidebar", () => {
     nav.path = "/hero"; nav.query = "tab=shop";
     render(<NavSidebar />);
     expect(link(/^Shop/).getAttribute("aria-current")).toBe("page");
+    cleanup();
+    nav.path = "/today"; nav.query = "";
+    render(<NavSidebar />);
+    expect(link(/^Today/).getAttribute("aria-current")).toBe("page");
+    expect(link(/^Study/).getAttribute("aria-current")).toBeNull();
     cleanup();
     nav.path = "/study"; nav.query = "tab=overview&doc=course-1";
     render(<NavSidebar />);
