@@ -43,6 +43,13 @@
       "when": 1793859007586,
       "tag": "0005_game",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "6",
+      "when": 1793859878204,
+      "tag": "0006_arena",
+      "breakpoints": true
     }
   ]
 }

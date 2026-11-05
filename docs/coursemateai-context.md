@@ -767,3 +767,26 @@ Each stage ships a zip of the changed files plus a test checklist. Ready-to-past
   - `/avatar`, `/avatar/update`, `/avatar/champion` (GET, PUT).
 - **Fixed on the way:** Python bumped the flashcards, notes, review and exam quests twice. Now they are bumped once, through `award`.
 - **The Worker is renamed `coursemateai`.** `wrangler-config.test.ts` checks that `WORKER_SELF_REFERENCE` matches the name.
+
+### Phase 4, Stage 4.5b: the arena on the Worker (5 Nov 2026)
+
+- **Code:** `src/server/game/*`, with migration `0006_arena`:
+  - `arena.ts`: battles. Port of `arena_service.py`. The server decides every fight.
+  - `mechanics.ts`: the 13 creature mechanics.
+  - `kits.ts`: the champions' passives and ultimates, plus champion XP.
+  - `boss.ts`: intents, hits, taunts.
+  - `bestiary.ts`: the creatures, picked by topic words or a SHA-1 of the topic.
+  - `arenaAi.ts` and `arenaPrompts.ts`: battle questions in batches of 6, boss flavour (a small job), expedition acts.
+  - `expedition.ts`: the roguelite runs, with seeded maps (xmur3/mulberry32-style PRNG), relics, shop, rest and relic offers.
+  - `arenaApi.ts`: the route logic.
+- **No transactions on D1:** every "exactly once" step is a compare-and-set:
+  - a question goes issued → answered;
+  - a battle goes active → won/lost;
+  - a run goes active → ended;
+  - the ultimate and spells CAS on `updated_at`.
+- **Question pool:** an empty pool is filled inline. Top-ups and phase 2 run in the background (`env.background` → `ctx.waitUntil`). Tests use `trackBackgroundForTests` and `settleBackground`.
+- **Routes:**
+  - `/arena/battles`, `/arena/battles/active`;
+  - `/arena/battles/{id}` and `/{id}/{question,answer,items,spells,ultimate,forfeit}`;
+  - `/arena/leaderboard` (everyone, by username), `/arena/weak-concepts`;
+  - `/arena/runs`, `/arena/runs/{active,leaderboard}`, `/arena/runs/{id}` and `/{id}/{travel,choose,abandon}`.

@@ -186,7 +186,14 @@ Quizzes, flashcards, notes, the history, the review queue, exams and the concept
 - **Review queue:** FSRS (`ts-fsrs`), one queue per student, 20 new cards a day (days are UTC).
 - **Exams:** written in parallel batches. The score report is the results page itself: **Save as PDF** opens the browser's print dialog and prints only the report.
 - **Concept map:** one AI pass per PDF (by file hash), reused by every course with that PDF. The map is made inside the *Make the concept map* request while the page polls for its progress line. If the tab closes mid-way, the build shows as stalled after about 6 minutes and can be started again.
-- XP, coins and quests (`rewards`) stay `null` until the game moves over in 4.5.
+
+## The game (Stage 4.5)
+
+XP, coins, levels, streaks, daily quests, achievements, the shop, potions, champions, the arena (battles, Nemesis, leaderboards) and Expeditions all run on the Worker. Migrations `0005_game` and `0006_arena` add their tables on deploy. Nothing to set up.
+
+- **A player's day** (streaks, daily quests, daily caps) is their own local date: the browser sends its time zone with every request.
+- **The game's numbers** (prices, rewards, quests, achievements, levels, relics) are in `frontend/src/server/game/content/*.json`. Change a number there, push, and the game changes.
+- **Arena questions** come from your strong model in batches of 6. The boss's topic lines come from a small job (Workers AI on most plans). Each batch counts as one AI call on the student's plan.
 
 ## Auto-deploy from GitHub
 
