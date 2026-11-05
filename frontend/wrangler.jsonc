@@ -2,7 +2,7 @@
 // `npm run cf:deploy` (or the GitHub Action on main) builds the Next.js app with OpenNext and deploys it here.
 {
 	"$schema": "node_modules/wrangler/config-schema.json",
-	"name": "coursemate",
+	"name": "coursemateai",
 	"main": ".open-next/worker.js",
 	"compatibility_date": "2026-10-01",
 	"compatibility_flags": [
@@ -21,7 +21,7 @@
 	"services": [
 		{
 			"binding": "WORKER_SELF_REFERENCE",
-			"service": "coursemate"
+			"service": "coursemateai"
 		}
 	],
 	// The database. `npx wrangler d1 create coursemate --location apac` prints the real id: paste it here.

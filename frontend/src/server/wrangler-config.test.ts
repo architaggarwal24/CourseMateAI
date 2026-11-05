@@ -11,7 +11,9 @@ type D1Entry = { binding: string; database_id?: string; migrations_dir?: string 
 type R2Entry = { binding: string; bucket_name?: string };
 
 describe("wrangler.jsonc", () => {
-  const raw = unstable_readConfig({ config: CONFIG }) as unknown as { d1_databases?: D1Entry[]; r2_buckets?: R2Entry[] };
+  const raw = unstable_readConfig({ config: CONFIG }) as unknown as {
+    name?: string; d1_databases?: D1Entry[]; r2_buckets?: R2Entry[]; services?: { binding: string; service: string }[];
+  };
   const config = { d1_databases: raw.d1_databases ?? [], r2_buckets: raw.r2_buckets ?? [] };
 
   it("has the D1 database as DB, with its migrations folder", () => {
@@ -29,5 +31,10 @@ describe("wrangler.jsonc", () => {
     const buckets = config.r2_buckets.map((b) => b.bucket_name);
     expect(new Set(ids).size, "two D1 bindings point at one database: keep only DB").toBe(ids.length);
     expect(new Set(buckets).size, "two R2 bindings point at one bucket: keep only FILES").toBe(buckets.length);
+  });
+
+  it("WORKER_SELF_REFERENCE points at this Worker's own name (rename both together)", () => {
+    const self = (raw.services ?? []).find((x) => x.binding === "WORKER_SELF_REFERENCE");
+    expect(self?.service, `"services" WORKER_SELF_REFERENCE must name "${raw.name}"`).toBe(raw.name);
   });
 });
