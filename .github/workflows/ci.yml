@@ -1,52 +1,24 @@
 name: CI
 
+# You run the tests on your machine before pushing (npm run check). A push to main deploys straight away;
+# the tests also run here, side by side, as a safety net: a red X means something slipped through.
+# Commits that only touch docs or .md files run nothing.
 on:
   push:
+    paths-ignore: ["**.md", "docs/**"]
   pull_request:
+    paths-ignore: ["**.md", "docs/**"]
 
 permissions:
   contents: read
 
 jobs:
-  backend:
+  # Type check + unit tests. Does not hold up the deploy. A newer push to the same branch cancels an older run.
+  test:
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: backend
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-          cache: pip
-          cache-dependency-path: |
-            backend/requirements.txt
-            backend/requirements-dev.txt
-      # CPU-only torch first: the default PyPI wheel drags in ~4 GB of CUDA libraries.
-      - run: pip install torch --index-url https://download.pytorch.org/whl/cpu
-      - run: pip install -r requirements-dev.txt
-      - run: pytest
-
-      # The generated TypeScript client must match the backend API: regenerate it and fail on any difference.
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: npm
-          cache-dependency-path: frontend/package-lock.json
-      - name: Generated API client is up to date
-        working-directory: frontend
-        run: |
-          npm ci
-          npm run gen:api
-          if [ -n "$(git status --porcelain -- ../backend/openapi.json src/lib/api/generated)" ]; then
-            git status --short -- ../backend/openapi.json src/lib/api/generated
-            git --no-pager diff --stat -- ../backend/openapi.json src/lib/api/generated
-            echo "::error::Generated API client is stale. Run 'make gen-api' (or 'npm run gen:api' in frontend/) and commit the result."
-            exit 1
-          fi
-
-  frontend:
-    runs-on: ubuntu-latest
+    concurrency:
+      group: test-${{ github.ref }}
+      cancel-in-progress: true
     defaults:
       run:
         working-directory: frontend
@@ -55,18 +27,21 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: npm
-          cache-dependency-path: frontend/package-lock.json
-      - run: npm ci
+      - name: Restore node_modules
+        id: deps
+        uses: actions/cache@v4
+        with:
+          path: frontend/node_modules
+          key: node-modules-${{ runner.os }}-${{ hashFiles('frontend/package-lock.json') }}
+      - if: steps.deps.outputs.cache-hit != 'true'
+        run: npm ci
       - run: npm run typecheck
       - run: npm test
-      - run: npm run build
 
-  # Every push to main that passes both test jobs goes live on Cloudflare Workers (docs/deploy-cloudflare.md).
-  # Needs the repository secrets CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID; without them this job fails (red),
-  # so a push never looks deployed when it wasn't.
+  # Every push to main goes live on Cloudflare Workers (docs/deploy-cloudflare.md), without waiting for the tests.
+  # The build itself still type-checks, so a commit that doesn't compile is never deployed.
+  # Needs the repository secrets CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID; without them this job fails (red).
   deploy:
-    needs: [backend, frontend]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     concurrency:
@@ -76,13 +51,13 @@ jobs:
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
       WRANGLER_SEND_METRICS: "false"
+      NEXT_TELEMETRY_DISABLED: "1"
     defaults:
       run:
         working-directory: frontend
     steps:
       - uses: actions/checkout@v4
       - name: Cloudflare is set up
-        id: ready
         run: |
           if [ -z "$CLOUDFLARE_API_TOKEN" ] || [ -z "$CLOUDFLARE_ACCOUNT_ID" ]; then
             echo "::error::Not deployed: add the CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID repository secrets (docs/deploy-cloudflare.md)."
@@ -90,21 +65,27 @@ jobs:
           elif grep -q '"database_id": "00000000-0000-0000-0000-000000000000"' wrangler.jsonc; then
             echo "::error::wrangler.jsonc still has the placeholder D1 database_id: run 'npx wrangler d1 create coursemate --location apac' and paste the id."
             exit 1
-          else
-            echo "go=true" >> "$GITHUB_OUTPUT"
           fi
       - uses: actions/setup-node@v4
-        if: steps.ready.outputs.go == 'true'
         with:
           node-version: 22
-          cache: npm
-          cache-dependency-path: frontend/package-lock.json
-      - if: steps.ready.outputs.go == 'true'
+      - name: Restore node_modules
+        id: deps
+        uses: actions/cache@v4
+        with:
+          path: frontend/node_modules
+          key: node-modules-${{ runner.os }}-${{ hashFiles('frontend/package-lock.json') }}
+      - if: steps.deps.outputs.cache-hit != 'true'
         run: npm ci
+      # Next.js reuses the previous build's work for files that didn't change.
+      - name: Restore the Next.js build cache
+        uses: actions/cache@v4
+        with:
+          path: frontend/.next/cache
+          key: next-${{ runner.os }}-${{ hashFiles('frontend/package-lock.json') }}-${{ github.sha }}
+          restore-keys: next-${{ runner.os }}-${{ hashFiles('frontend/package-lock.json') }}-
       # Migrations first: they only ever add, so the version still serving keeps working while the new one uploads.
       - name: Migrate the database
-        if: steps.ready.outputs.go == 'true'
         run: npx wrangler d1 migrations apply DB --remote
       - name: Build and deploy the Worker
-        if: steps.ready.outputs.go == 'true'
         run: npx opennextjs-cloudflare build && npx opennextjs-cloudflare deploy

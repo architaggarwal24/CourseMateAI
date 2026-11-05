@@ -13,7 +13,7 @@ const STUDY_FILES = [
   "components/HistoryView.tsx", "components/HistoryPanel.tsx", "components/SessionList.tsx", "components/FileUploader.tsx", "components/shell/DocumentHeader.tsx",
   "components/UserMenu.tsx", "components/shell/AppShell.tsx", "components/shell/NavSidebar.tsx",
   "components/shell/BottomNav.tsx", "components/shell/StudyWorkspace.tsx", "components/shell/AccountNav.tsx",
-  "components/ProviderPicker.tsx", "components/Providers.tsx",
+  "components/Providers.tsx",
   "components/chat/ChatMarkdown.tsx", "components/chat/SourceChips.tsx", "components/chat/NotFoundCard.tsx",
   "components/quiz/QuizQuestionView.tsx", "components/quiz/QuizReview.tsx",
   "components/study/StudyToolbar.tsx", "components/history/sessionMeta.tsx",

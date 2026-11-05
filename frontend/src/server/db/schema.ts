@@ -169,3 +169,25 @@ export const courseDocuments = sqliteTable("course_documents", {
   position: integer("position").notNull(),
   addedAt: text("added_at").notNull(),
 }, (t) => [primaryKey({ columns: [t.courseId, t.documentId] }), index("course_documents_doc_idx").on(t.documentId)]);
+
+// ── AI use (Stage 4.3: src/server/ai). Per user per UTC day (the plan's quotas, Plan & usage), and per model per
+//    day (costs, the global daily spend cap). Cost in millionths of a US dollar. ────────────────────────────────
+export const usageDaily = sqliteTable("usage_daily", {
+  userId: integer("user_id").notNull().references(() => user.id, { onDelete: "cascade" }),
+  day: text("day").notNull(),
+  aiCalls: integer("ai_calls").notNull().default(0),
+  tokensIn: integer("tokens_in").notNull().default(0),
+  tokensOut: integer("tokens_out").notNull().default(0),
+}, (t) => [primaryKey({ columns: [t.userId, t.day] })]);
+
+export const aiUsage = sqliteTable("ai_usage", {
+  day: text("day").notNull(),
+  provider: text("provider").notNull(),
+  model: text("model").notNull(),
+  job: text("job").notNull(),
+  calls: integer("calls").notNull().default(0),
+  fallbacks: integer("fallbacks").notNull().default(0),
+  tokensIn: integer("tokens_in").notNull().default(0),
+  tokensOut: integer("tokens_out").notNull().default(0),
+  costMicroUsd: integer("cost_micro_usd").notNull().default(0),
+}, (t) => [primaryKey({ columns: [t.day, t.provider, t.model, t.job] })]);

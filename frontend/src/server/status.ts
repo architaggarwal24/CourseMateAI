@@ -1,3 +1,4 @@
+import { slotTarget } from "./ai/models";
 // GET /api/system/status: is everything the Worker needs wired up? Only yes/no answers, nothing secret.
 export interface PartStatus { ok: boolean; detail?: string }
 export interface SystemStatus {
@@ -7,6 +8,8 @@ export interface SystemStatus {
   storage?: PartStatus;
   /** Search: Workers AI (AI) and Vectorize (VECTORS) bound. */
   search?: PartStatus;
+  /** The server's AI: at least one API model (LLM_FAST + its key); Workers AI alone also works. */
+  ai?: PartStatus;
   /** Accounts: BETTER_AUTH_SECRET set (and OWNER_EMAIL, so there is an admin). */
   accounts?: PartStatus;
   backend: { configured: boolean; ok: boolean };
@@ -40,6 +43,12 @@ export function checkAccounts(settings: Record<string, string | undefined>): Par
   return { ok: true };
 }
 
+export function checkAi(settings: Record<string, string | undefined>): PartStatus {
+  const api = slotTarget("fast", settings) ?? slotTarget("strong", settings) ?? slotTarget("premium", settings);
+  return api ? { ok: true, detail: `${api.provider}:${api.model}` }
+    : { ok: true, detail: "Workers AI only: set LLM_FAST (e.g. gemini:gemini-3.5-flash-lite) and its key for better answers" };
+}
+
 export async function systemStatus(
   env: Bindings | null,
   { backendUrl, fetchImpl = fetch, settings = process.env }: { backendUrl: string; fetchImpl?: typeof fetch; settings?: Record<string, string | undefined> },
@@ -49,8 +58,9 @@ export async function systemStatus(
   const database = await checkDatabase(env.DB);
   const storage: PartStatus = env.FILES ? { ok: true } : { ok: false, detail: "no R2 binding named FILES" };
   const accounts = checkAccounts(settings);
+  const ai = checkAi(settings);
   const search: PartStatus = env.AI && env.VECTORS ? { ok: true }
     : { ok: false, detail: "bind Workers AI (AI) and the Vectorize index (VECTORS): see docs/deploy-cloudflare.md" };
   // The backend is on its way out, so it doesn't decide whether the Worker is healthy.
-  return { ok: database.ok && storage.ok && accounts.ok && search.ok, runtime: "cloudflare", database, storage, search, accounts, backend };
+  return { ok: database.ok && storage.ok && accounts.ok && search.ok, runtime: "cloudflare", database, storage, search, ai, accounts, backend };
 }

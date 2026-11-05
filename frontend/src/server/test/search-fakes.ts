@@ -2,7 +2,7 @@
 // embedding (texts sharing words point the same way) and an in-memory index with Vectorize's `doc` filter.
 import type { Embedder, VectorIndex, VectorMatch } from "../search";
 
-const DIM = 64;
+const DIM = 512;
 
 function hashWord(w: string): number {
   let h = 2166136261;

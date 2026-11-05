@@ -40,6 +40,17 @@ export interface Invite {
   usable: boolean;
 }
 
+export interface AiReport {
+  days: number;
+  today_usd: number;
+  cap_usd: number | null;
+  capped: boolean;
+  total_usd: number;
+  models: { provider: string; model: string; calls: number; fallbacks: number; tokens_in: number; tokens_out: number; cost_usd: number; priced: boolean }[];
+  by_day: { day: string; usd: number }[];
+  routes: Record<Tier, { small: string[]; strong: string[] }>;
+}
+
 async function call<T>(path: string, init: { method?: string; body?: unknown } = {}): Promise<T> {
   let res: Response;
   try {
@@ -69,6 +80,8 @@ export const adminApi = {
   invites: () => call<{ invites: Invite[] }>("/invites"),
   createInvite: (b: { tier: Tier; days: number | null; max_uses: number; code?: string; note?: string; valid_days: number | null }) =>
     call<Invite>("/invites", { body: b }),
+  ai: () => call<AiReport>("/ai"),
+  setCap: (usd: number | null) => call<AiReport>("/ai", { method: "PUT", body: { cap_usd: usd } }),
   revokeInvite: (code: string) => call<{ ok: true }>(`/invites/${encodeURIComponent(code)}`, { method: "DELETE" }),
 };
 
@@ -78,3 +91,5 @@ export function shortDate(iso: string | null): string {
   const d = new Date(iso);
   return Number.isNaN(d.getTime()) ? "" : d.toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
 }
+
+export const usd = (n: number) => (n < 0.01 && n > 0 ? `$${n.toFixed(4)}` : `$${n.toFixed(2)}`);

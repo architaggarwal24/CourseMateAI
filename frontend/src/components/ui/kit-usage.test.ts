@@ -10,7 +10,7 @@ const read = (p: string) => readFileSync(`${root}${p}`, "utf8");
 const MIGRATED = [
   "app/login/page.tsx", "app/(app)/account/settings/page.tsx", "app/(app)/account/page.tsx",
   "components/hero/HeroArea.tsx", "components/hero/HeroHeader.tsx",
-  "components/ProviderPicker.tsx", "components/ErrorBoundary.tsx",
+  "components/ErrorBoundary.tsx",
 ];
 
 function walk(dir: string, out: string[] = []) {

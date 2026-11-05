@@ -6,20 +6,14 @@ import { useRouter } from "next/navigation";
 import {
   User, Lock, Trash2, Loader2, Save,
   Eye, EyeOff, CheckCircle2, XCircle,
-  Type, Zap, Database, Download, AlertTriangle, Key,
+  Type, Zap, Database, Download, AlertTriangle,
 } from "lucide-react";
 import { Button, Card, Checkbox, Input } from "@/components/ui";
 import { toast } from "@/components/ui/Toast";
-import { parseApiError, rawApi, type ApiKeyInfo } from "@/lib/api";
+import { parseApiError, rawApi } from "@/lib/api";
 import { loadMetadata, deleteSession } from "@/lib/sessions";
-import ProviderPicker from "@/components/ProviderPicker";
 import InstallApp from "@/components/pwa/InstallApp";
-import { fetchPlans, switchToServerAi } from "@/lib/account/plans";
 import { ROUTES } from "@/lib/routes";
-import {
-  emptyLLMForm, formForProvider, llmPayload, useProviders, validateLLMForm,
-  type LLMForm,
-} from "@/lib/llmProviders";
 
 
 const NETWORK_SAVE_MESSAGE = "Couldn't reach the server, so nothing was saved. Check your connection and try again.";
@@ -43,7 +37,7 @@ function applyAppearance(prefs: { fontSize: string; reduceAnimations: boolean })
 
 // ── Section wrapper ───────────────────────────────────────────────────────────
 const slug = (t: string) => t.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
-const SECTIONS = ["Account", "AI Provider", "Appearance", "App", "Data & Privacy", "Danger Zone"];
+const SECTIONS = ["Account", "AI", "Appearance", "App", "Data & Privacy", "Danger Zone"];
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return <Card id={slug(title)} title={title} interactive className="settings-section">{children}</Card>;
 }
@@ -70,13 +64,6 @@ function RevealButton({ shown, onToggle, label }: { shown: boolean; onToggle: ()
 export default function SettingsPage() {
   const { user, logout, loading: authLoading } = useAuth();
   const router = useRouter();
-
-  // ── API Key state ─────────────────────────────────────────────────────────
-  const { providers, loading: providersLoading, error: providersError, reload: reloadProviders } = useProviders();
-  const [llm, setLlm] = useState<LLMForm>(emptyLLMForm);
-  const [apiKeyInfo, setApiKeyInfo] = useState<ApiKeyInfo | null>(null);
-  const [apiKeyLoading, setApiKeyLoading] = useState(false);
-  const [showApiKeyInput, setShowApiKeyInput] = useState(false);
 
   const [form, setForm] = useState({
     fullName: "", username: "", email: "",
@@ -234,66 +221,7 @@ export default function SettingsPage() {
     setExporting(false);
   };
 
-  useEffect(() => {
-    rawApi.GET("/auth/api-key")
-      .then(({ data }) => { if (data) setApiKeyInfo(data); })
-      .catch(() => {});
-    fetchPlans().then((p) => setManagedAi(p.managed_ai)).catch(() => {});
-  }, []);
 
-  // The server has its own AI: an account can run on it (its plan's quotas) instead of a key of its own.
-  const [managedAi, setManagedAi] = useState(false);
-  const [switching, setSwitching] = useState(false);
-  async function handleUseServerAi() {
-    setSwitching(true);
-    try {
-      await switchToServerAi();
-      setApiKeyInfo({ has_key: false, provider: null });
-      setShowApiKeyInput(false);
-      toast.success("Now using CourseMate's AI");
-    } catch (e) { toast.apiError(e, { onRetry: handleUseServerAi }); }
-    setSwitching(false);
-  }
-
-  const selectedSettingsProvider = providers.find(p => p.id === llm.provider);
-
-  // Open the editor pre-filled with the current provider (or the first one for new/legacy accounts).
-  function openProviderEditor() {
-    const current = providers.find(p => p.id === apiKeyInfo?.provider) ?? providers[0];
-    if (current) {
-      const base = formForProvider(current);
-      const savedModel = apiKeyInfo?.provider === current.id ? apiKeyInfo?.model : null;
-      const isCurated = !!savedModel && current.models.some(m => m.id === savedModel);
-      setLlm({
-        ...base,
-        model: savedModel || base.model,
-        custom: savedModel ? !isCurated : base.custom,
-        baseUrl: (apiKeyInfo?.provider === current.id && apiKeyInfo?.base_url) || base.baseUrl,
-      });
-    }
-    setShowApiKeyInput(true);
-  }
-
-  async function handleSaveApiKey() {
-    const problem = validateLLMForm(llm, selectedSettingsProvider);
-    if (problem || !selectedSettingsProvider) { toast.error(problem || "Choose a provider"); return; }
-    setApiKeyLoading(true);
-    try {
-      const { data, error, response } = await rawApi.PUT("/auth/api-key", {
-        body: llmPayload(llm, selectedSettingsProvider),
-      });
-      if (response.ok && data?.success) {
-        toast.success("AI provider updated!");
-        const fresh = await rawApi.GET("/auth/api-key").then(({ data }) => data).catch(() => null);
-        setApiKeyInfo(fresh ?? { has_key: true, provider: llm.provider });
-        setLlm(f => ({ ...f, apiKey: "" }));
-        setShowApiKeyInput(false);
-      } else {
-        toast.apiError(parseApiError(response.status, error), { without: ["settings"] });
-      }
-    } catch (e) { toast.apiError(e, { onRetry: handleSaveApiKey }); }
-    setApiKeyLoading(false);
-  }
 
   if (authLoading) return (
     <div className="flex h-full min-h-[50vh] items-center justify-center">
@@ -368,68 +296,12 @@ export default function SettingsPage() {
           </form>
         </Section>
 
-        {/* ── AI PROVIDER ──────────────────────────────────────────────────── */}
-        <Section title="AI Provider">
-          <FieldRow label="Your API Key" hint="Your key is encrypted and never shared. Used for all AI features.">
-            {apiKeyInfo?.has_key ? (
-              <div className="flex items-center gap-3">
-                <Card surface="inset" pad="sm" className="flex-1 flex items-center gap-2 min-w-0">
-                  <CheckCircle2 size={16} className="text-ink-green shrink-0" />
-                  <span className="text-sm text-fg font-medium">{apiKeyInfo.provider_label || apiKeyInfo.provider}</span>
-                  {apiKeyInfo.model && <span className="text-xs text-fg-muted font-mono truncate">{apiKeyInfo.model}</span>}
-                  <span className="text-xs text-fg-muted ml-auto shrink-0">saved</span>
-                </Card>
-                <Button onClick={() => (showApiKeyInput ? setShowApiKeyInput(false) : openProviderEditor())}>
-                  Change
-                </Button>
-                {managedAi && (
-                  <Button variant="ghost" loading={switching} onClick={() => void handleUseServerAi()}>Use CourseMate&apos;s AI</Button>
-                )}
-              </div>
-            ) : managedAi ? (
-              <Card surface="inset" pad="sm" className="flex items-center gap-2">
-                <CheckCircle2 size={16} className="text-ink-green shrink-0" />
-                <span className="text-sm text-fg">Using CourseMate&apos;s AI, included in your plan.</span>
-                <Button variant="link" className="ml-auto text-xs" onClick={openProviderEditor}>Use my own key</Button>
-              </Card>
-            ) : (
-              <Card tone="danger" pad="sm" className="flex items-center gap-2">
-                <span className="text-sm text-ink-red">⚠ No API key set — AI features are unavailable</span>
-                <Button variant="link" className="ml-auto text-xs" onClick={openProviderEditor}>Add key</Button>
-              </Card>
-            )}
-
-            {apiKeyInfo?.has_key && apiKeyInfo.provider_supported === false && (
-              <Card tone="warning" pad="sm" className="mt-3 flex items-start gap-2 text-sm">
-                <AlertTriangle size={16} className="text-ink-gold shrink-0 mt-0.5" />
-                <div className="text-fg">
-                  Your saved provider (<span className="font-mono">{apiKeyInfo.provider}</span>) is no longer supported,
-                  so AI features are paused.{" "}
-                  <Button variant="link" onClick={openProviderEditor}>Choose a new provider</Button>
-                </div>
-              </Card>
-            )}
-
-            {showApiKeyInput && (
-              <Card surface="inset" pad="lg" className="mt-3 space-y-3">
-                <ProviderPicker
-                  providers={providers}
-                  loading={providersLoading}
-                  error={providersError}
-                  onRetry={reloadProviders}
-                  value={llm}
-                  onChange={setLlm}
-                  onInset
-                />
-                <div className="flex items-center gap-2">
-                  <Button variant="primary" className="ml-auto" onClick={handleSaveApiKey}
-                    loading={apiKeyLoading} disabled={!!validateLLMForm(llm, selectedSettingsProvider)}>
-                    {apiKeyLoading ? "Checking..." : <><Key size={14} /> Save</>}
-                  </Button>
-                </div>
-              </Card>
-            )}
-          </FieldRow>
+        {/* ── AI ─────────────────────────────────────────────────────────────── */}
+        <Section title="AI">
+          <Card surface="inset" pad="sm" className="flex items-center gap-2">
+            <CheckCircle2 size={16} className="text-ink-green shrink-0" aria-hidden="true" />
+            <span className="text-sm text-fg">CourseMate&apos;s AI is included in your plan: nothing to set up. See what you&apos;ve used in Plan &amp; usage.</span>
+          </Card>
         </Section>
 
         <Section title="Appearance">

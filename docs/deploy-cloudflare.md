@@ -145,13 +145,44 @@ Create the metadata index before uploading anything: vectors added earlier can't
 
 A deleted document frees its share.
 
+## AI (Stage 4.3)
+
+Every AI call is the server's: students can't add keys of their own. Each call counts against the student's plan: calls a day and tokens a month.
+
+**Models** (dashboard → Variables and Secrets):
+
+| Setting | What it is | Example |
+|---|---|---|
+| `LLM_FAST` | a cheap API model | `gemini:gemini-3.5-flash-lite` |
+| `LLM_STRONG` | for questions and answers (default: `LLM_FAST`) | `gemini:gemini-3.8-flash` |
+| `LLM_PREMIUM` | the strongest, for Archmage (default: `LLM_STRONG`) | `claude:claude-sonnet-5-5` |
+| `GOOGLE_API_KEY` / `ANTHROPIC_API_KEY` / `OPENAI_API_KEY` / `NVIDIA_API_KEY` (Secrets) | the key for each provider you use | |
+| `WORKERS_AI_MODEL` | small jobs (follow-up rewrites, boss lines) on Workers AI | default `@cf/meta/llama-3.1-8b-instruct-fp8` |
+
+**Who gets what:**
+
+| Plan | Questions | Small jobs |
+|---|---|---|
+| Apprentice | fast, then strong | Workers AI, then fast |
+| Scholar, Sage | strong, then fast | Workers AI, then fast |
+| Archmage | premium, then strong, then fast | fast, then Workers AI |
+
+If a model fails, the next one in the line takes over. Workers AI is always the last resort. `MODEL_ROUTES_JSON` overrides any of this.
+
+**Costs and the cap:**
+- Set real prices in `MODEL_PRICES_JSON`, in US dollars per 1M tokens, e.g. `{"gemini:gemini-3.8-flash": [0.3, 2.5], "claude:*": [3, 15]}`. A model without a price is counted at `[1, 4]` and shown as *estimated* in Admin.
+- **Admin → AI spend** shows today's spend, the last 30 days by model, and which model answers what.
+- It also sets the **daily cap** (default $2, about ₹170). Once the day's spend reaches the cap, every call goes to Workers AI until midnight UTC: answers get simpler, but the app never stops.
+
+**Check:** `/api/system/status` shows `ai.detail` as your fast model. Without any key it says Workers AI only.
+
 ## Auto-deploy from GitHub
 
-1. Cloudflare dashboard → *My Profile* → API Tokens → *Create Token* → template **Edit Cloudflare Workers**. Add the permission *Account → D1 → Edit*, then create it.
+1. Cloudflare dashboard → *My Profile* → API Tokens → *Create Token* → template **Edit Cloudflare Workers**. Make sure these *Account* permissions are on it (add any missing): *Workers Scripts → Edit*, *D1 → Edit*, *Workers R2 Storage → Edit*, *Vectorize → Edit*, *Workers AI → Read*. Account Resources: your account. Create it and copy the token (shown once).
 2. In GitHub: repository → Settings → Secrets and variables → Actions → *New repository secret*:
    - `CLOUDFLARE_API_TOKEN`: the token;
-   - `CLOUDFLARE_ACCOUNT_ID`: shown on the Workers & Pages overview page.
-3. Push to `main`. The **deploy** job runs after the backend and frontend tests pass. It migrates D1, builds with OpenNext and deploys. Without the two secrets it only prints a warning.
+   - `CLOUDFLARE_ACCOUNT_ID`: the long hex id in the dashboard URL (`dash.cloudflare.com/<account id>/...`), or run `npx wrangler whoami`.
+3. Push to `main`. The **deploy** job runs after the backend and frontend tests pass. It migrates D1, builds with OpenNext and deploys. Without the two secrets the deploy job fails (red X) and says which secret is missing. After adding them, open the latest run → *Re-run all jobs*.
 
 A deploy doesn't cut off people already using the app: requests that are already running finish on the old version.
 

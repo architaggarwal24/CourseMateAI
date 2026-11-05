@@ -36,11 +36,6 @@ export async function deleteDocument(id: string): Promise<void> {
   await api.DELETE("/documents/{document_id}", { params: { path: { document_id: id } } });
 }
 
-/** Go back to the server's own AI (forget the user's provider key). */
-export async function switchToServerAi(): Promise<void> {
-  await api.DELETE("/auth/api-key");
-}
-
 const inr = new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 });
 export const formatInr = (n: number) => inr.format(n);
 const compact = new Intl.NumberFormat("en-US", { notation: "compact", maximumFractionDigits: 1 });

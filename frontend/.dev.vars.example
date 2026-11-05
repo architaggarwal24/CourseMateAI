@@ -18,3 +18,17 @@ OWNER_EMAIL=
 # RESEND_API_KEY=
 # PBKDF2 work for passwords: 20000 fits the free plan's CPU limit; raise to 100000 on Workers Paid.
 # PASSWORD_HASH_ITERATIONS=20000
+
+# The server's AI (Stage 4.3; docs/deploy-cloudflare.md "AI"). provider:model, providers gemini | openai | claude | nvidia.
+# LLM_FAST=gemini:gemini-3.5-flash-lite
+# LLM_STRONG=gemini:gemini-3.8-flash
+# LLM_PREMIUM=claude:claude-sonnet-5-5
+# GOOGLE_API_KEY=
+# ANTHROPIC_API_KEY=
+# OPENAI_API_KEY=
+# Small jobs on Workers AI (default @cf/meta/llama-3.1-8b-instruct-fp8)
+# WORKERS_AI_MODEL=
+# US dollars per 1M tokens [in, out], from the providers' pricing pages; unpriced models are estimated at [1, 4]
+# MODEL_PRICES_JSON={"gemini:gemini-3.5-flash-lite": [0.1, 0.4], "gemini:gemini-3.8-flash": [0.3, 2.5], "claude:*": [3, 15]}
+# The daily cap on the server's AI spend (US dollars; Admin -> AI spend changes it): default 2
+# AI_DAILY_CAP_USD=2

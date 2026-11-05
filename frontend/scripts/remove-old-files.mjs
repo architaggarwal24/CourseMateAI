@@ -33,6 +33,10 @@ const OLD = [
   "src/components/hero/ForgeTab.tsx",
   "src/hooks/useArenaHero.ts",             // -> hooks/useChampion.ts (saved on the account)
   "src/app/dev/avatar",
+  // Phase 4 / Stage 4.3: the server's AI only - no keys of one's own any more
+  "src/components/ProviderPicker.tsx",
+  "src/components/ProviderPicker.test.tsx",
+  "src/lib/llmProviders.ts",
 ];
 
 for (const rel of OLD) {

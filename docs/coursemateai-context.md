@@ -449,6 +449,28 @@ Full plan: `docs/deploy-cloudflare.md`.
 - **Deleting** a document or an account clears R2 and Vectorize too.
 - An upload left unfinished becomes `failed` after 15 minutes.
 
+### Phase 4, Stage 4.3: the AI layer and chat on the Worker (5 Nov 2026)
+
+- **The server's AI only.** Users can't bring their own keys: the AI Provider settings are gone, and `ProviderPicker` / `llmProviders` were deleted and added to `remove-old-files.mjs`.
+- **Models:** `src/server/ai/models.ts` holds the slots and routes per plan and job:
+  - `small` is Workers AI (llama-3.1-8b fp8);
+  - `fast`, `strong` and `premium` come from `LLM_*` + a provider key;
+  - `MODEL_ROUTES_JSON` overrides the routes.
+- **Calls:** `ai/run.ts` `generate()` / `stream()`, through small hand-written HTTPS clients in `ai/providers.ts` (Gemini, OpenAI, Anthropic, NVIDIA NIM; no SDK, which keeps the Worker at about 2.5 MB gzip, under the free plan's 3 MB):
+  - checks the quota first;
+  - falls back in order (for a stream, only before the first word);
+  - meters every call.
+- **Usage and costs:** `ai/usage.ts`, with D1 tables `usage_daily` and `ai_usage`.
+  - Prices come from `MODEL_PRICES_JSON`; an unpriced model is estimated at [1, 4].
+  - The daily spend cap is $2 by default, kept in app_settings `ai_daily_cap_usd`. Over it, only Workers AI answers.
+- **Chat:** `src/server/chat/*`, with `/chat` and `/chat/stream` (SSE, the same events as before):
+  - a follow-up is rewritten into a standalone question (a small job);
+  - search, then de-duplication, then numbered citations with the page;
+  - the relevance gates (block at 0.30, clarify at 0.45);
+  - answers use the ported tutor prompt.
+- **Not yet:** `rewards` is null and history isn't logged; both come in 4.4 and 4.5.
+- **Admin → AI spend:** the cost per model, today's spend against the cap, and the routes.
+
 ---
 
 ## 5. Key file map
@@ -500,6 +522,8 @@ frontend/src/server/{account,admin,plans,invites,http,route}.ts   the account/ad
 frontend/src/lib/auth/*          the browser side (authApi.ts, config.ts); components/auth/*, account/AdminPanel, SecurityPanel
 frontend/src/server/documents.ts, courses.ts, search/*   uploads (R2 + D1 chunks + Vectorize), courses, search (MMR)
 frontend/src/lib/upload.ts       the browser reads the PDF (pdf.js) and sends the file and pages
+frontend/src/server/ai/*         models.ts (routes), run.ts (generate/stream + fallbacks), usage.ts (quotas, costs, cap)
+frontend/src/server/chat/*       chat planning (rewrite, retrieval, relevance, citations) and the tutor prompt
 docs/arena-v2.md, docs/pixel-sprites.md
 ```
 
@@ -538,6 +562,8 @@ Shop categories (`backend/content/shop.json`): armor (Outfits), headgear (Head P
 - **Ids are integers** (Better Auth `generateId: "serial"`), so later tables can use `INTEGER REFERENCES user(id)`.
 - **Server tests that sign people in** use `src/server/test/auth-helpers.ts`: `Browser`, a cookie jar, and `fakeMailer`, which reads the code. Set them up with `setEnvForTests`, `setMailerForTests` and `vi.stubEnv(SETTINGS)`.
 - **Workers AI and Vectorize can't run locally:** tests use `setSearchForTests({ embedder: fakeEmbedder(), vectors: fakeVectors() })`. Unit tests that upload mock `@/lib/upload` (pdf.js doesn't run in jsdom); `e2e/upload.spec.ts` runs the real reader.
+- **AI in tests:** `setLlmFactoryForTests(fakeLlms({...}).factory)` (`src/server/test/ai-fakes.ts`). Scripts are keyed `"provider:model"`; use `"*"` for any model.
+- **A new AI job** calls `generate(ctx, caller, "small" | "strong", messages)` or `stream(...)` from `src/server/ai/run.ts`. Quotas, fallbacks, metering and the cap come with it. Get `caller` from `callerFor(ctx, user)`.
 - **D1 migrations only add** (`migrations.test.ts`). Generate them with `npm run db:generate`; never write them by hand.
 - **Killing `next start` from a shell:** `pkill -f "next start"` can match the shell itself. Stop it by PID (`ps -eo pid,args`, look for `next-server`). The same goes for `wrangler dev` / `workerd`: kill the whole tree by PID (`ps -eo pid,ppid,args`).
 

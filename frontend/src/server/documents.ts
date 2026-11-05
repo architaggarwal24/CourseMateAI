@@ -323,3 +323,30 @@ export async function documentCount(ctx: RequestContext, userId: number): Promis
   return (await ctx.db.select({ n: count() }).from(documents).where(eq(documents.userId, userId)).get())?.n ?? 0;
 }
 
+
+/**
+ * What a study tool works on for `id`: one ready document, or a course's ready documents (a Sage feature).
+ * `hash` names the content (the document's file hash, or "course:<id>") for caches and mastery.
+ */
+export async function studyDocs(ctx: RequestContext, user: CurrentUser, id: string) {
+  const row = await ctx.db.select().from(documents).where(eq(documents.id, id)).get();
+  if (row) {
+    if (row.userId !== user.id) throw notFound();
+    const settled = await settleStale(ctx, row);
+    if (settled.status !== "ready") {
+      throw new HttpError(409, "document_not_ready", settled.status === "failed"
+        ? (settled.error || "This document couldn't be processed. Upload it again.")
+        : "This document is still being processed. Try again when it's ready.", settled.status === "failed" ? "reupload" : "retry");
+    }
+    await ctx.db.update(documents).set({ lastUsedAt: nowIso() }).where(eq(documents.id, id));
+    return { kind: "document" as const, id, name: row.filename, hash: row.fileHash, docs: [{ id, name: row.filename }] };
+  }
+  const course = await ctx.db.select().from(courses).where(eq(courses.id, id)).get();
+  if (!course || course.userId !== user.id) throw notFound();
+  requireFeature(await tierFor(ctx.db, user), "courses");
+  const ready = (await courseMembers(ctx, id)).filter((m) => m.status === "ready");
+  if (!ready.length) {
+    throw new HttpError(409, "course_empty", "This course has no ready documents yet. Add a PDF to it, or wait for its documents to finish.");
+  }
+  return { kind: "course" as const, id, name: course.name, hash: `course:${id}`, docs: ready.map((m) => ({ id: m.id, name: m.filename })) };
+}

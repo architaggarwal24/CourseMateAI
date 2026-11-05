@@ -11,7 +11,6 @@ import { ApiError, parseApiError } from "./api/errors";
 type QuestionType = components["schemas"]["QuizRequest"]["question_type"];
 
 /** GET /auth/api-key: which AI provider the account has saved (never the key itself). */
-export type ApiKeyInfo = components["schemas"]["ApiKeyInfoResponse"];
 
 /** One uploaded PDF as the server sees it (the server is the only source of truth for documents). */
 export type DocumentInfo = components["schemas"]["DocumentOut"];

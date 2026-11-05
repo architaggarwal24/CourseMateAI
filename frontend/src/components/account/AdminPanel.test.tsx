@@ -12,6 +12,9 @@ const STUDENT = {
   user_id: 7, email: "s@example.com", username: "stud", full_name: "Stu Dent", email_verified: true, role: "user", is_owner: false,
   banned: false, ban_reason: null, ban_expires: null, created_at: "2026-11-01T00:00:00Z", tier: "apprentice", tier_name: "Apprentice", plan: null,
 };
+const AI = { days: 30, today_usd: 0.42, cap_usd: 2, capped: false, total_usd: 3.1, by_day: [],
+  models: [{ provider: "gemini", model: "flash", calls: 12, fallbacks: 0, tokens_in: 9000, tokens_out: 3000, cost_usd: 0.42, priced: false }],
+  routes: { apprentice: { small: ["workers-ai:x"], strong: ["gemini:flash"] }, scholar: { small: [], strong: [] }, sage: { small: [], strong: [] }, archmage: { small: [], strong: [] } } };
 const json = (b: unknown, status = 200) => new Response(JSON.stringify(b), { status, headers: { "content-type": "application/json" } });
 const sent: { method: string; path: string; body: unknown }[] = [];
 
@@ -28,6 +31,8 @@ beforeEach(() => {
       return json({ ...STUDENT, tier: body.tier, tier_name: "Sage", plan: { tier: body.tier, source: "admin", expires_at: "2026-12-05T00:00:00Z", started_at: "x" } });
     }
     if (u.pathname === "/api/v1/admin/invites" && method === "GET") return json({ invites: [] });
+    if (u.pathname === "/api/v1/admin/ai" && method === "GET") return json(AI);
+    if (u.pathname === "/api/v1/admin/ai" && method === "PUT") return json({ ...AI, cap_usd: body.cap_usd });
     if (u.pathname === "/api/v1/admin/invites" && method === "POST") return json({ code: "SAGE-ABCD2345", tier: "sage", tier_name: "Sage", days: 30, max_uses: 10, uses: 0, usable: true });
     return json({ error: { code: "x", message: "unexpected" } }, 500);
   }));
@@ -37,6 +42,18 @@ afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
 const flush = () => act(async () => { await new Promise((r) => setTimeout(r, 0)); });
 
 describe("AdminPanel", () => {
+  it("shows the AI spend and saves a new daily cap", async () => {
+    auth.user = { user_id: 1, email: "o@x.io", is_admin: true, is_owner: true };
+    render(<AdminPanel />);
+    await flush();
+    expect(screen.getByText("$0.42", { selector: "b" })).toBeTruthy();
+    expect(screen.getByText(/estimated/)).toBeTruthy();
+    fireEvent.change(screen.getByLabelText("Daily cap (US $)"), { target: { value: "5" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save cap" }));
+    await flush();
+    expect(sent.find((c) => c.method === "PUT" && c.path === "/api/v1/admin/ai")?.body).toEqual({ cap_usd: 5 });
+  });
+
   it("is for admins only", () => {
     auth.user = { user_id: 1, email: "x@x.io", is_admin: false };
     render(<AdminPanel />);

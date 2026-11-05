@@ -129,7 +129,7 @@ function nextMonth(now: Date): string {
 }
 
 /** GET /account/usage. The meters fill in as documents (4.2) and AI calls (4.3) move to the Worker. */
-export async function usageSummary(db: Db, who: PlanHolder, used: { ai_calls_day?: number; tokens_month?: number; documents?: number; courses?: number } = {}, now: Date = new Date()) {
+export async function usageSummary(db: Db, who: PlanHolder, used: { ai_calls_day?: number; tokens_month?: number; documents?: number; courses?: number; history?: { day: string; ai_calls: number; tokens: number }[] } = {}, now: Date = new Date()) {
   const tier = await tierFor(db, who, now);
   const row = who.owner ? null : await planRow(db, who.id, now);
   return {
@@ -138,9 +138,9 @@ export async function usageSummary(db: Db, who: PlanHolder, used: { ai_calls_day
     expires_at: row?.expiresAt ?? null,
     limits: limits(tier),
     used: { ai_calls_day: used.ai_calls_day ?? 0, tokens_month: used.tokens_month ?? 0, documents: used.documents ?? 0, courses: used.courses ?? 0 },
-    own_key: { active: false, exempt: true, calls_today: 0, tokens_month: 0 },
+    own_key: { active: false, exempt: false, calls_today: 0, tokens_month: 0 },
     resets: { ai_calls_day: nextDay(now), tokens_month: nextMonth(now) },
-    history: [] as { day: string; ai_calls: number; tokens: number }[],
+    history: used.history ?? [],
   };
 }
 

@@ -3,10 +3,10 @@
 // Account -> Admin (Stage 4.1): find any account and give it any plan, for some days or for good; ban and unban;
 // make admins (the owner only); invite codes that grant a plan. Server rules: src/server/admin.ts.
 import { useCallback, useEffect, useState } from "react";
-import { Ban, Crown, Search, ShieldCheck, Ticket, UserCog } from "lucide-react";
+import { Ban, Crown, Search, ShieldCheck, Sparkles, Ticket, UserCog } from "lucide-react";
 import { Badge, Button, Card, EmptyState, Input, Modal, Select, Skeleton, toast } from "@/components/ui";
 import { useAuth } from "@/contexts/AuthContext";
-import { adminApi, shortDate, TIER_OPTIONS, type AdminUser, type Invite, type Tier } from "@/lib/admin/adminApi";
+import { adminApi, shortDate, TIER_OPTIONS, usd, type AdminUser, type AiReport, type Invite, type Tier } from "@/lib/admin/adminApi";
 
 const PAGE = 25;
 
@@ -269,6 +269,73 @@ function Invites() {
   );
 }
 
+function AiSpend() {
+  const [report, setReport] = useState<AiReport | null>(null);
+  const [cap, setCap] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  const load = useCallback(async () => {
+    try {
+      const r = await adminApi.ai();
+      setReport(r);
+      setCap(r.cap_usd === null ? "" : String(r.cap_usd));
+    } catch (e) { toast.apiError(e); }
+  }, []);
+  useEffect(() => { void load(); }, [load]);
+
+  async function save(e: React.FormEvent) {
+    e.preventDefault();
+    const t = cap.trim();
+    const n = t === "" ? null : Number(t);
+    if (n !== null && (!Number.isFinite(n) || n < 0)) { toast.error("The cap is a number of US dollars, or empty for no cap"); return; }
+    setBusy(true);
+    try {
+      const r = await adminApi.setCap(n);
+      setReport(r);
+      toast.success(n === null ? "No daily cap" : `Daily cap: ${usd(n)}`);
+    } catch (err) { toast.apiError(err); } finally { setBusy(false); }
+  }
+
+  return (
+    <Card title={<span className="inline-flex items-center gap-2"><Sparkles size={16} aria-hidden="true" />AI spend</span>} className="settings-section">
+      {!report ? <Skeleton className="h-16" /> : (
+        <div className="space-y-4">
+          <p className="text-sm text-fg">
+            Today: <b>{usd(report.today_usd)}</b>{report.cap_usd !== null && <> of a {usd(report.cap_usd)} cap</>}
+            {" · "}last {report.days} days: <b>{usd(report.total_usd)}</b>
+            {report.capped && <> {" "}<Badge tone="warning">Cap reached: everyone is on Workers AI until midnight UTC</Badge></>}
+          </p>
+          <form onSubmit={save} className="flex flex-wrap items-end gap-2">
+            <Input label="Daily cap (US $)" inputMode="decimal" value={cap} hint="Empty = no cap" wrapperClassName="w-44"
+              onChange={(e) => setCap(e.currentTarget.value)} />
+            <Button type="submit" loading={busy}>Save cap</Button>
+          </form>
+          {report.models.length > 0 && (
+            <ul className="divide-y divide-line list-none p-0 m-0" aria-label="Cost per model">
+              {report.models.map((m) => (
+                <li key={`${m.provider}:${m.model}`} className="flex flex-wrap items-center gap-3 py-2 text-sm">
+                  <span className="font-mono text-fg min-w-0 flex-1 truncate">{m.provider}:{m.model}</span>
+                  <span className="text-fg-muted">{m.calls} calls · {(m.tokens_in + m.tokens_out).toLocaleString("en-IN")} tokens</span>
+                  <span className="text-fg">{usd(m.cost_usd)}</span>
+                  {!m.priced && <Badge tone="warning">estimated: set MODEL_PRICES_JSON</Badge>}
+                </li>
+              ))}
+            </ul>
+          )}
+          <details className="text-sm text-fg-2">
+            <summary className="flex min-h-11 cursor-pointer items-center text-fg">Which model answers what</summary>
+            <ul className="mt-2 list-none p-0 space-y-1 font-mono text-xs">
+              {(Object.keys(report.routes) as Tier[]).map((t) => (
+                <li key={t}>{t}: questions → {report.routes[t].strong.join(" → ") || "none"}; small jobs → {report.routes[t].small.join(" → ") || "none"}</li>
+              ))}
+            </ul>
+          </details>
+        </div>
+      )}
+    </Card>
+  );
+}
+
 export default function AdminPanel() {
   const { user } = useAuth();
   if (!user?.is_admin) {
@@ -281,6 +348,7 @@ export default function AdminPanel() {
         <p className="text-sm text-fg-muted">Accounts, plans and invite codes</p>
       </div>
       <Users isOwnerActor={!!user.is_owner} />
+      <AiSpend />
       <Invites />
     </div>
   );
