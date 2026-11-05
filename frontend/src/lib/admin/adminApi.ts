@@ -43,7 +43,11 @@ export interface Invite {
 export interface AiReport {
   days: number;
   today_usd: number;
-  cap_usd: number | null;
+  cap_usd: number;
+  /** The hard ceiling (AI_DAILY_CAP_MAX_USD); the cap is never off. */
+  cap_max_usd: number;
+  /** Only the owner changes the cap. */
+  can_edit: boolean;
   capped: boolean;
   total_usd: number;
   models: { provider: string; model: string; calls: number; fallbacks: number; tokens_in: number; tokens_out: number; cost_usd: number; priced: boolean }[];
@@ -81,7 +85,7 @@ export const adminApi = {
   createInvite: (b: { tier: Tier; days: number | null; max_uses: number; code?: string; note?: string; valid_days: number | null }) =>
     call<Invite>("/invites", { body: b }),
   ai: () => call<AiReport>("/ai"),
-  setCap: (usd: number | null) => call<AiReport>("/ai", { method: "PUT", body: { cap_usd: usd } }),
+  setCap: (usd: number) => call<AiReport>("/ai", { method: "PUT", body: { cap_usd: usd } }),
   revokeInvite: (code: string) => call<{ ok: true }>(`/invites/${encodeURIComponent(code)}`, { method: "DELETE" }),
 };
 

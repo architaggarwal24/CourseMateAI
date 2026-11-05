@@ -27,6 +27,6 @@ backups/
 
 # Cloudflare (Phase 4)
 frontend/.open-next/
-frontend/.wrangler/
+.wrangler/
 frontend/.dev.vars
 frontend/previews/

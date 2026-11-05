@@ -26,8 +26,10 @@ OWNER_EMAIL=
 # WORKERS_AI_MODEL=
 # US dollars per 1M tokens [in, out], from the providers' pricing pages; unpriced models are estimated at [1, 4]
 # MODEL_PRICES_JSON={"gemini:gemini-3.5-flash-lite": [0.1, 0.4], "gemini:gemini-3.8-flash": [0.3, 2.5], "claude:*": [3, 15]}
-# The daily cap on the server's AI spend (US dollars; Admin -> AI spend changes it): default 2
+# The daily cap on the server's AI spend (US dollars; the owner changes it in Admin -> AI spend): default 2
 # AI_DAILY_CAP_USD=2
+# The hard ceiling on that cap; nobody can set the cap above it (or off) from the app: default 20
+# AI_DAILY_CAP_MAX_USD=20
 
 # Study tools (Stage 4.4). Quiz / flashcards / notes: below this similarity the topic is "not in your PDF".
 # TOPIC_MIN_SIMILARITY=0.40

@@ -1,4 +1,4 @@
-// Error monitoring with Sentry (Phase 3 Stage 4d; docs/security.md). Off unless NEXT_PUBLIC_SENTRY_DSN is set at
+// Error monitoring with Sentry (Phase 3 Stage 4d; docs/archive/security.md). Off unless NEXT_PUBLIC_SENTRY_DSN is set at
 // build time. Nothing personal or secret is sent: no cookies, request headers or query strings, no user email or IP,
 // and anything that looks like a provider key, a Razorpay key or a Fernet token is replaced with [redacted].
 import type { ErrorEvent, EventHint } from "@sentry/browser";

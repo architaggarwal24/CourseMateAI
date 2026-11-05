@@ -36,7 +36,7 @@ CourseMateAI turns your study documents into an interactive learning experience.
 | **Notes** | AI-generated structured study notes at Normal or Exam-Ready detail level |
 | **Arena** | Tactical boss battles, a Nemesis built from your mistakes, and a roguelite Expedition through your PDF |
 
-### ⚔️ Battle Arena (v2 — see [docs/arena-v2.md](docs/arena-v2.md))
+### ⚔️ Battle Arena (v2 — see [docs/archive/arena-v2.md](docs/archive/arena-v2.md))
 
 - **Pixel fighting-game stage** — pick one of six original champions and face one of 13 mythic creatures (Hydra,
   Minotaur, Fenrir, Kitsune, Sphinx, Kraken…) on its home stage, side-view with dashes, sparks, KO and banners.
@@ -83,7 +83,7 @@ CourseMateAI turns your study documents into an interactive learning experience.
 ```
 CourseMateAI/
 ├── .github/workflows/ci.yml     # type check, tests, build; pushes to main deploy to Cloudflare
-├── docs/                        # deploy-cloudflare.md, payments.md, plans.md, security.md, …
+├── docs/                        # deploy-cloudflare.md, payments.md, coursemateai-context.md; archive/ = Python-era notes
 └── frontend/                    # the whole app: Next.js 16 on a Cloudflare Worker (OpenNext)
     ├── migrations/              # D1 (SQLite) migrations, applied on every deploy
     ├── wrangler.jsonc           # the Worker and its bindings: D1, R2, Workers AI, Vectorize
@@ -124,7 +124,7 @@ The server holds the AI keys; students never enter one. Three slots, each `provi
 | `LLM_STRONG` | quizzes, exams, arena questions | `gemini:gemini-3.8-flash` |
 | `LLM_PREMIUM` | top plans | `claude:claude-sonnet-5-5` |
 
-Providers: Gemini, OpenAI, Claude, NVIDIA. With no keys at all, Workers AI answers. A daily dollar cap (Admin → AI spend) stops runaway costs. Details: [docs/deploy-cloudflare.md](docs/deploy-cloudflare.md) "AI" and [docs/model-routing.md](docs/model-routing.md).
+Providers: Gemini, OpenAI, Claude, NVIDIA. With no keys at all, Workers AI answers. A daily dollar cap (Admin → AI spend, owner only, at most `AI_DAILY_CAP_MAX_USD`) stops runaway costs. Details: [docs/deploy-cloudflare.md](docs/deploy-cloudflare.md) "AI" and [docs/archive/model-routing.md](docs/archive/model-routing.md).
 
 ---
 

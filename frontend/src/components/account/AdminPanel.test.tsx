@@ -12,7 +12,7 @@ const STUDENT = {
   user_id: 7, email: "s@example.com", username: "stud", full_name: "Stu Dent", email_verified: true, role: "user", is_owner: false,
   banned: false, ban_reason: null, ban_expires: null, created_at: "2026-11-01T00:00:00Z", tier: "apprentice", tier_name: "Apprentice", plan: null,
 };
-const AI = { days: 30, today_usd: 0.42, cap_usd: 2, capped: false, total_usd: 3.1, by_day: [],
+const AI = { days: 30, today_usd: 0.42, cap_usd: 2, cap_max_usd: 20, can_edit: true, capped: false, total_usd: 3.1, by_day: [],
   models: [{ provider: "gemini", model: "flash", calls: 12, fallbacks: 0, tokens_in: 9000, tokens_out: 3000, cost_usd: 0.42, priced: false }],
   routes: { apprentice: { small: ["workers-ai:x"], strong: ["gemini:flash"] }, scholar: { small: [], strong: [] }, sage: { small: [], strong: [] }, archmage: { small: [], strong: [] } } };
 const json = (b: unknown, status = 200) => new Response(JSON.stringify(b), { status, headers: { "content-type": "application/json" } });
@@ -52,6 +52,31 @@ describe("AdminPanel", () => {
     fireEvent.click(screen.getByRole("button", { name: "Save cap" }));
     await flush();
     expect(sent.find((c) => c.method === "PUT" && c.path === "/api/v1/admin/ai")?.body).toEqual({ cap_usd: 5 });
+  });
+
+  it("the cap can't go above the ceiling or be emptied; another admin only sees it", async () => {
+    auth.user = { user_id: 1, email: "o@x.io", is_admin: true, is_owner: true };
+    render(<AdminPanel />);
+    await flush();
+    expect(screen.getByText(/up to \$20\.00/)).toBeTruthy();
+    for (const value of ["25", ""]) {
+      fireEvent.change(screen.getByLabelText("Daily cap (US $)"), { target: { value } });
+      fireEvent.click(screen.getByRole("button", { name: "Save cap" }));
+      await flush();
+    }
+    expect(sent.some((c) => c.method === "PUT" && c.path === "/api/v1/admin/ai")).toBe(false);
+    expect(toasts.error).toHaveBeenCalledTimes(2);
+    cleanup();
+
+    AI.can_edit = false;
+    try {
+      auth.user = { user_id: 2, email: "h@x.io", is_admin: true, is_owner: false };
+      render(<AdminPanel />);
+      await flush();
+      expect(screen.getByText(/\$2\.00 cap/)).toBeTruthy();
+      expect(screen.queryByLabelText("Daily cap (US $)")).toBeNull();
+      expect(screen.getByText(/Only the owner changes the cap/)).toBeTruthy();
+    } finally { AI.can_edit = true; }
   });
 
   it("is for admins only", () => {

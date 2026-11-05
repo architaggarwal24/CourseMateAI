@@ -52,6 +52,12 @@ const OLD = [
   "../docs/deploy-vps.md",
   "../docs/deploy-windows.md",
   "../docs/postgres.md",
+  // After 4.6: old Phase 2 notes at the root (the Python-era docs moved to docs/archive/ with git mv)
+  "../STAGE1_NOTES.md",
+  "../STAGE2_NOTES.md",
+  "../STAGE3_NOTES.md",
+  "../STAGE4_NOTES.md",
+  "../STAGE5_NOTES.md",
 ];
 
 for (const rel of OLD) {

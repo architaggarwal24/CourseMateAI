@@ -1,4 +1,4 @@
-// Plans, usage and invite codes (backend routers/account.py; docs/plans.md).
+// Plans, usage and invite codes (backend routers/account.py; docs/archive/plans.md).
 import { api } from "@/lib/api/client";
 import type { components } from "@/lib/api/generated/schema";
 

@@ -2,7 +2,8 @@
 //   MODEL_PRICES_JSON={"gemini:gemini-3.8-flash": [0.3, 2.5], "claude:*": [3, 15]}   US dollars per 1M tokens (in, out)
 // Workers AI counts 0 (the free daily allowance). An API model without a price is counted at ESTIMATE (and shown
 // as estimated in Admin), so the cap still protects you until you set its real price.
-// The cap: app_settings "ai_daily_cap_usd" (set in Admin) or AI_DAILY_CAP_USD (default 2); empty/"off" = no cap.
+// The cap: app_settings "ai_daily_cap_usd" (set in Admin by the owner) or AI_DAILY_CAP_USD (default 2). It is never off and
+// never above AI_DAILY_CAP_MAX_USD (default 20), which only a dashboard change raises.
 // Once the day's API spend reaches it, everyone's calls go to Workers AI until midnight UTC.
 import { and, eq, gte, like, sql } from "drizzle-orm";
 import type { Db } from "../db";
@@ -13,6 +14,7 @@ import type { Job, Target } from "./models";
 export const ESTIMATE: [number, number] = [1, 4];
 export const DEFAULT_CAP_USD = 2;
 export const CAP_KEY = "ai_daily_cap_usd";
+export const DEFAULT_CAP_CEILING_USD = 20;
 
 type Env = Record<string, string | undefined>;
 
@@ -107,17 +109,24 @@ export async function checkQuota(db: Db, who: { id: number; owner: boolean; tier
   }
 }
 
-/** The cap in US dollars, or null for none. */
-export async function capUsd(db: Db, env: Env = process.env): Promise<number | null> {
-  const row = await db.select().from(appSettings).where(eq(appSettings.key, CAP_KEY)).get();
-  const raw = (row?.value ?? env.AI_DAILY_CAP_USD ?? String(DEFAULT_CAP_USD)).trim().toLowerCase();
-  if (!raw || raw === "off" || raw === "none") return null;
-  const n = Number(raw);
-  return Number.isFinite(n) && n >= 0 ? n : DEFAULT_CAP_USD;
+/** The hard ceiling on the daily cap: AI_DAILY_CAP_MAX_USD (US dollars), default 20. */
+export function capCeilingUsd(env: Env = process.env): number {
+  const n = Number((env.AI_DAILY_CAP_MAX_USD ?? "").trim() || NaN);
+  return Number.isFinite(n) && n > 0 ? n : DEFAULT_CAP_CEILING_USD;
 }
 
-export async function setCapUsd(db: Db, usd: number | null): Promise<void> {
-  const value = usd === null ? "off" : String(usd);
+/** The cap in US dollars: never off, never above the ceiling (an old "off" now means the ceiling). */
+export async function capUsd(db: Db, env: Env = process.env): Promise<number> {
+  const ceiling = capCeilingUsd(env);
+  const row = await db.select().from(appSettings).where(eq(appSettings.key, CAP_KEY)).get();
+  const raw = (row?.value ?? env.AI_DAILY_CAP_USD ?? String(DEFAULT_CAP_USD)).trim().toLowerCase();
+  if (!raw || raw === "off" || raw === "none") return ceiling;
+  const n = Number(raw);
+  return Math.min(Number.isFinite(n) && n >= 0 ? n : DEFAULT_CAP_USD, ceiling);
+}
+
+export async function setCapUsd(db: Db, usd: number): Promise<void> {
+  const value = String(usd);
   await db.insert(appSettings).values({ key: CAP_KEY, value, updatedAt: nowIso() })
     .onConflictDoUpdate({ target: appSettings.key, set: { value, updatedAt: nowIso() } });
 }
@@ -129,8 +138,7 @@ export async function spendToday(db: Db, now = new Date()): Promise<number> {
 }
 
 export async function isCapped(db: Db, now = new Date()): Promise<boolean> {
-  const cap = await capUsd(db);
-  return cap !== null && (await spendToday(db, now)) >= cap;
+  return (await spendToday(db, now)) >= (await capUsd(db));
 }
 
 /** Admin -> AI: spend, the cap, per model and per day. */
@@ -150,6 +158,7 @@ export async function costReport(db: Db, days = 30, now = new Date()) {
     days,
     today_usd: await spendToday(db, now),
     cap_usd: await capUsd(db),
+    cap_max_usd: capCeilingUsd(),
     capped: await isCapped(db, now),
     total_usd: [...byDay.values()].reduce((a, b) => a + b, 0),
     models: [...byModel.values()].sort((a, b) => b.cost_usd - a.cost_usd),

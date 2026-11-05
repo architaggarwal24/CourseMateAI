@@ -2,11 +2,12 @@
 // The AI layer (Stage 4.3): routes per plan and job, fallbacks, metering, quotas, costs and the spend cap.
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { getDb, type Db } from "../db";
+import { appSettings } from "../db/schema";
 import { localPlatform, type LocalPlatform } from "../test/platform";
 import { AI_ENV, fakeLlms } from "../test/ai-fakes";
 import { parseSpec, route, slotTarget } from "./models";
 import { generate, setLlmFactoryForTests, stream } from "./run";
-import { capUsd, costMicroUsd, costReport, price, setCapUsd, spendToday, usedThisMonth, usedToday } from "./usage";
+import { CAP_KEY, capCeilingUsd, capUsd, costMicroUsd, costReport, price, setCapUsd, spendToday, usedThisMonth, usedToday } from "./usage";
 
 let p: LocalPlatform;
 let db: Db;
@@ -104,7 +105,17 @@ describe("calling a model", () => {
     expect(await spendToday(db)).toBeGreaterThan(0.00001);
     const r = await generate(ctx(), { ...free, id: 2 }, "strong", [{ role: "user", content: "hi" }]);
     expect(r.target.provider).toBe("workers-ai");
-    await setCapUsd(db, null);
-    expect(await capUsd(db)).toBeNull();
+  });
+
+  it("the cap is never off and never above the hard ceiling (AI_DAILY_CAP_MAX_USD, default 20)", async () => {
+    await db.insert(appSettings).values({ key: CAP_KEY, value: "off", updatedAt: "x" })
+      .onConflictDoUpdate({ target: appSettings.key, set: { value: "off" } });
+    expect(await capUsd(db)).toBe(20);                                   // an old "no cap" now means the ceiling
+    await setCapUsd(db, 50);
+    expect(await capUsd(db)).toBe(20);
+    expect(await capUsd(db, { AI_DAILY_CAP_MAX_USD: "100" })).toBe(50);   // raised on purpose, in the dashboard
+    expect(await capUsd(db, { AI_DAILY_CAP_USD: "off" })).toBe(20);       // the saved value wins, still under the ceiling
+    expect(capCeilingUsd({})).toBe(20);
+    expect(capCeilingUsd({ AI_DAILY_CAP_MAX_USD: "nonsense" })).toBe(20);
   });
 });

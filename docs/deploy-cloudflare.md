@@ -171,6 +171,7 @@ If a model fails, the next one in the line takes over. Workers AI is always the 
 - Set real prices in `MODEL_PRICES_JSON`, in US dollars per 1M tokens, e.g. `{"gemini:gemini-3.8-flash": [0.3, 2.5], "claude:*": [3, 15]}`. A model without a price is counted at `[1, 4]` and shown as *estimated* in Admin.
 - **Admin → AI spend** shows today's spend, the last 30 days by model, and which model answers what.
 - It also sets the **daily cap** (default $2, about ₹170). Once the day's spend reaches the cap, every call goes to Workers AI until midnight UTC: answers get simpler, but the app never stops.
+- Only the owner changes the cap, and never above **`AI_DAILY_CAP_MAX_USD`** (default $20; there is no "off"). Other admins see it but can't change it. To go higher, raise `AI_DAILY_CAP_MAX_USD` in the dashboard on purpose.
 
 **Check:** `/api/system/status` shows `ai.detail` as your fast model. Without any key it says Workers AI only.
 

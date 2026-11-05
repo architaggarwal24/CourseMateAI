@@ -278,7 +278,7 @@ function AiSpend() {
     try {
       const r = await adminApi.ai();
       setReport(r);
-      setCap(r.cap_usd === null ? "" : String(r.cap_usd));
+      setCap(String(r.cap_usd));
     } catch (e) { toast.apiError(e); }
   }, []);
   useEffect(() => { void load(); }, [load]);
@@ -286,13 +286,14 @@ function AiSpend() {
   async function save(e: React.FormEvent) {
     e.preventDefault();
     const t = cap.trim();
-    const n = t === "" ? null : Number(t);
-    if (n !== null && (!Number.isFinite(n) || n < 0)) { toast.error("The cap is a number of US dollars, or empty for no cap"); return; }
+    const n = Number(t);
+    const max = report?.cap_max_usd ?? 20;
+    if (t === "" || !Number.isFinite(n) || n < 0 || n > max) { toast.error(`The cap is a number of US dollars, from 0 up to ${usd(max)}`); return; }
     setBusy(true);
     try {
       const r = await adminApi.setCap(n);
       setReport(r);
-      toast.success(n === null ? "No daily cap" : `Daily cap: ${usd(n)}`);
+      toast.success(`Daily cap: ${usd(n)}`);
     } catch (err) { toast.apiError(err); } finally { setBusy(false); }
   }
 
@@ -301,15 +302,19 @@ function AiSpend() {
       {!report ? <Skeleton className="h-16" /> : (
         <div className="space-y-4">
           <p className="text-sm text-fg">
-            Today: <b>{usd(report.today_usd)}</b>{report.cap_usd !== null && <> of a {usd(report.cap_usd)} cap</>}
+            Today: <b>{usd(report.today_usd)}</b> of a {usd(report.cap_usd)} cap
             {" · "}last {report.days} days: <b>{usd(report.total_usd)}</b>
             {report.capped && <> {" "}<Badge tone="warning">Cap reached: everyone is on Workers AI until midnight UTC</Badge></>}
           </p>
-          <form onSubmit={save} className="flex flex-wrap items-end gap-2">
-            <Input label="Daily cap (US $)" inputMode="decimal" value={cap} hint="Empty = no cap" wrapperClassName="w-44"
-              onChange={(e) => setCap(e.currentTarget.value)} />
-            <Button type="submit" loading={busy}>Save cap</Button>
-          </form>
+          {report.can_edit ? (
+            <form onSubmit={save} className="flex flex-wrap items-end gap-2">
+              <Input label="Daily cap (US $)" inputMode="decimal" value={cap} hint={`0 up to ${usd(report.cap_max_usd)}`} wrapperClassName="w-44"
+                onChange={(e) => setCap(e.currentTarget.value)} />
+              <Button type="submit" loading={busy}>Save cap</Button>
+            </form>
+          ) : (
+            <p className="text-sm text-fg-muted">Only the owner changes the cap (up to {usd(report.cap_max_usd)} a day).</p>
+          )}
           {report.models.length > 0 && (
             <ul className="divide-y divide-line list-none p-0 m-0" aria-label="Cost per model">
               {report.models.map((m) => (

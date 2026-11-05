@@ -5,6 +5,8 @@ import * as chat from "@/app/api/v1/chat/route";
 import * as chatStream from "@/app/api/v1/chat/stream/route";
 import * as usage from "@/app/api/v1/account/usage/route";
 import * as adminAi from "@/app/api/v1/admin/ai/route";
+import * as adminRole from "@/app/api/v1/admin/users/[id]/role/route";
+import * as me from "@/app/api/v1/auth/me/route";
 import { setMailerForTests } from "../context";
 import { setEnvForTests } from "../env";
 import { setSearchForTests } from "../search";
@@ -13,7 +15,7 @@ import { fakeMailer, json, SETTINGS } from "../test/auth-helpers";
 import { localPlatform, type LocalPlatform } from "../test/platform";
 import { fakeEmbedder, fakeVectors } from "../test/search-fakes";
 import { AI_ENV, fakeLlms } from "../test/ai-fakes";
-import { person, sseEvents, uploadPdf } from "../test/flows";
+import { params, person, sseEvents, uploadPdf } from "../test/flows";
 import { isSelfContained, standaloneQuestion } from "./rewrite";
 import { toRetrieval } from "./index";
 
@@ -118,11 +120,31 @@ describe("Admin -> AI", () => {
     const r = await json(await adminAi.GET(owner.request("/api/v1/admin/ai")));
     expect(r).toMatchObject({ cap_usd: 2, capped: false, models: [{ provider: "claude", model: "sonnet", calls: 1 }] });
     expect(r.routes.apprentice.strong[0]).toBe("gemini:flash-lite");
+    expect(r).toMatchObject({ cap_max_usd: 20, can_edit: true });
     const set = await json(await adminAi.PUT(owner.request("/api/v1/admin/ai", { method: "PUT", body: { cap_usd: 5 } })));
     expect(set.cap_usd).toBe(5);
     expect((await adminAi.PUT(owner.request("/api/v1/admin/ai", { method: "PUT", body: { cap_usd: -1 } }))).status).toBe(400);
     const student = await person(mail, "s@example.com", "student");
     expect((await adminAi.GET(student.request("/api/v1/admin/ai"))).status).toBe(403);
+  });
+
+  it("only the owner changes the cap, never above the hard ceiling and never off", async () => {
+    const owner = await person(mail, "owner@example.com", "boss");
+    for (const cap_usd of [25, null, 10_000]) {
+      const res = await adminAi.PUT(owner.request("/api/v1/admin/ai", { method: "PUT", body: { cap_usd } }));
+      expect(res.status, String(cap_usd)).toBe(400);
+      expect((await json(res)).error.code).toBe("invalid_cap");
+    }
+    expect((await json(await adminAi.PUT(owner.request("/api/v1/admin/ai", { method: "PUT", body: { cap_usd: 20 } })))).cap_usd).toBe(20);
+
+    const helper = await person(mail, "helper@example.com", "helper");
+    const hid = (await json(await me.GET(helper.request("/api/v1/auth/me")))).user_id;
+    await adminRole.PUT(owner.request(`/api/v1/admin/users/${hid}/role`, { method: "PUT", body: { role: "admin" } }), params({ id: String(hid) }));
+    const seen = await json(await adminAi.GET(helper.request("/api/v1/admin/ai")));
+    expect(seen).toMatchObject({ cap_usd: 20, can_edit: false });
+    const res = await adminAi.PUT(helper.request("/api/v1/admin/ai", { method: "PUT", body: { cap_usd: 1 } }));
+    expect(res.status).toBe(403);
+    expect((await json(res)).error.code).toBe("owner_only");
   });
 });
 

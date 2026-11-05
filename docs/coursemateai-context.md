@@ -118,7 +118,7 @@ An AI study companion with an RPG game layer.
 - **Study scrolls.** Missed questions become review flashcards (`/study/review-deck`, `/study/flashcards/review`).
 - Weekly global leaderboard plus per-topic boards.
 - The server grades answers, keeps the clock and pays rewards exactly once.
-- Migration `0007_arena_v2.sql`. Spec: `docs/arena-v2.md`.
+- Migration `0007_arena_v2.sql`. Spec: `docs/archive/arena-v2.md`.
 
 **Stage 4: arena and hero UI.** Hub, summon, battle, result, run map and hero area screens.
 
@@ -280,7 +280,7 @@ Decisions (owner): keep every shop item id, price, bonus and owner and give them
 
 ### Phase 3, Stage 2: every fight plays differently (4 Nov 2026)
 
-Owner decisions: build the proposed 13 mechanics; a separate ultimate meter that fills from right answers (+25 each, +10 at combo 3+, cap 100); 3 mastery skins per champion at Lv 3, 6 and 10; the LLM writes the Sphinx riddles; the ultimate key is **U**. The full rules and numbers are in `docs/arena-v2.md` §8.
+Owner decisions: build the proposed 13 mechanics; a separate ultimate meter that fills from right answers (+25 each, +10 at combo 3+, cap 100); 3 mastery skins per champion at Lv 3, 6 and 10; the LLM writes the Sphinx riddles; the ultimate key is **U**. The full rules and numbers are in `docs/archive/arena-v2.md` §8.
 
 - **2a: creature mechanics** (`core_brains/mechanics.py`): one `Mechanic` per creature, with `prepare()` / `settle()` around the usual damage. Scheduled special intents: grab, riddle, illusion, charge, aim/throw, hoard, stunned. A locked move gets 409 `move_locked`, and Insight on a riddle gets 409 `riddle_no_insight`. `tests/test_arena_balance.py` is a seeded bot that keeps each creature close to a plain boss.
 - **2b: champion kits and levels** (`core_brains/kits.py`, migration `0009_champion_progress`):
@@ -305,7 +305,7 @@ Owner decisions:
 - The PDF report is built on the server with reportlab, which is now a runtime dependency.
 - Entitlement stub: `DEFAULT_TIER`, default archmage.
 
-Full rules: `docs/study-power.md`.
+Full rules: `docs/archive/study-power.md`.
 
 - **3A-a: review queue backend**
   - Migration `0010_study_power` (review_items, review_logs, the exam tables, missed_questions rebuilt to allow `exam`; existing study scrolls became cards).
@@ -326,7 +326,7 @@ Full rules: `docs/study-power.md`.
 
 ### Phase 3, Stage 3B: courses, citations, concept map (4 Nov 2026)
 
-Owner decisions: a constellation-style map; pdf.js for the viewer; PDFs are kept and documents in a course don't expire; courses, the concept map and the PDF viewer are Sage features (page labels stay free); `DEFAULT_TIER` stays archmage. Full rules: `docs/study-power.md` sections 5-8.
+Owner decisions: a constellation-style map; pdf.js for the viewer; PDFs are kept and documents in a course don't expire; courses, the concept map and the PDF viewer are Sage features (page labels stay free); `DEFAULT_TIER` stays archmage. Full rules: `docs/archive/study-power.md` sections 5-8.
 
 - **3B-a/b: backend.** Migration `0011_courses_and_maps`; `rag/multi_index.py`; course ids as scopes; kept PDFs and `GET /documents/{id}/file`; numbered citations in chat; `services/course_service.py`, `routers/courses.py`; `core_brains/concept_brain.py`, `services/concept_map_service.py`, `routers/concept_maps.py`.
 - **3B-c: citations and the PDF viewer.** `components/pdf/PdfViewer.tsx`, `CitationList`, `[n]` markers in `ChatMarkdown`; `e2e/citations.spec.ts`.
@@ -340,7 +340,7 @@ Owner decisions:
 - Testers join through invite codes that grant a plan.
 - Calls on a user's own key are outside the AI quotas.
 
-Full rules: `docs/plans.md`.
+Full rules: `docs/archive/plans.md`.
 
 - Migration `0012_plans_and_usage` (user_plans, usage_daily, invite_codes, invite_redemptions).
 - `entitlements.PLANS` and limits; `tier_for` reads user_plans.
@@ -352,7 +352,7 @@ Full rules: `docs/plans.md`.
 
 ### Phase 3, Stage 4b: model routing, quiz bank, costs (4 Nov 2026)
 
-Owner decision: local models for small jobs, API models for strong ones, falling back when local is down or slow. Full rules: `docs/model-routing.md`.
+Owner decision: local models for small jobs, API models for strong ones, falling back when local is down or slow. Full rules: `docs/archive/model-routing.md`.
 
 - `core_brains/model_router.py`: jobs (small / strong), slots (fast / strong / premium / local), routes per plan, `MODEL_ROUTES_JSON`.
 - `llm_connection`: `request_targets` and routed calls with fallbacks; trusted server clients (local Ollama or LAN).
@@ -373,7 +373,7 @@ Full rules and the Razorpay setup steps: `docs/payments.md`.
 
 ### Phase 3, Stage 4d: hardening (4 Nov 2026)
 
-Full details: `docs/security.md`.
+Full details: `docs/archive/security.md`.
 
 - **Security pass:** changing the email and deleting the account need the password; a per-account login throttle; provider error text is redacted; `ALLOWED_ORIGIN=*` is refused; security headers on the API and the pages.
 - **Rate limits:** every mutating route has a limit (enforced by `tests/test_security.py`).
@@ -551,7 +551,7 @@ frontend/src/server/documents.ts, courses.ts, search/*   uploads (R2 + D1 chunks
 frontend/src/lib/upload.ts       the browser reads the PDF (pdf.js) and sends the file and pages
 frontend/src/server/ai/*         models.ts (routes), run.ts (generate/stream + fallbacks), usage.ts (quotas, costs, cap)
 frontend/src/server/chat/*       chat planning (rewrite, retrieval, relevance, citations) and the tutor prompt
-docs/arena-v2.md, docs/pixel-sprites.md
+docs/archive/arena-v2.md, docs/pixel-sprites.md
 ```
 
 Shop categories (`backend/content/shop.json`): armor (Outfits), headgear (Head Pieces), weapon (Weapon Finishes), pet, potion, title. Armor, headgear, weapon and pet items are champion skins, and they also carry arena gear bonuses. A new wearable needs a recipe in `skins.ts` (or `pets.ts`); `skins.test.ts` fails until it has one.
@@ -804,3 +804,9 @@ Each stage ships a zip of the changed files plus a test checklist. Ready-to-past
   - `lib/api/generated/schema.d.ts` is kept by hand now. `lib/api/schema.test.ts` checks every path in it has a Worker route (seven retired paths listed).
   - Tests that read Python files (bestiary, mechanic events, the shop) read the TypeScript ports instead.
   - CI has one test job; deploy needs only it.
+
+### After 4.6: tidy-up and the owner-only spend cap (5 Nov 2026)
+
+- **AI spend cap:** only the owner changes it (other admins see it, `can_edit: false`; a PUT is 403 `owner_only`). It is never off and never above `AI_DAILY_CAP_MAX_USD` (default $20); an old saved "off" now reads as the ceiling.
+- **Repo:** the Python-era docs moved to `docs/archive/`; `.wrangler/` is ignored at any depth; the old root `STAGE*_NOTES.md` are gone.
+- **Tests:** server tests migrate in one D1 batch; arena keys bind in a layout effect; 30 s test timeout; e2e uses 4 workers locally.
