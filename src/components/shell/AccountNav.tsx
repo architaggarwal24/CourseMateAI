@@ -24,7 +24,7 @@ export default function AccountNav() {
         <span className="ws-doc__icon" aria-hidden="true"><UserCircle size={17} /></span>
         <div className="min-w-0">
           <span className="ws-doc__name">Account</span>
-          <span className="ws-doc__meta">Profile, plan, settings and history</span>
+          <span className="ws-doc__meta"><span className="truncate min-w-0">Profile, plan, settings and history</span></span>
         </div>
       </div>
       <div className="ws-top__tabs"><SubNav label="Account" items={user?.is_admin ? [...ITEMS, ADMIN_ITEM] : ITEMS} className="!px-[3px]" /></div>

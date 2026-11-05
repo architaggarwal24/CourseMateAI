@@ -30,6 +30,28 @@ describe("flat Ink surfaces", () => {
   it.each(ALL.map((f) => [f.file, f.text]))("%s blurs nothing behind it", (_file, text) => {
     expect(text).not.toMatch(/backdrop-filter|\bbackdrop-blur/);
   });
+  // A blurred shadow in a colour is a glow. Rings (no blur) and plain dark shadows are fine; the pixel arena scene
+  // (pixel.css, the moon) keeps its own.
+  const COLOURED = /var\(--(?:tone|color-(?:accent|reward|highlight|rarity|danger|success|warning))/;
+  const layers = (value: string) => {
+    const out: string[] = []; let depth = 0, cur = "";
+    for (const ch of value) {
+      if (ch === "(") depth++; else if (ch === ")") depth--;
+      if (ch === "," && depth === 0) { out.push(cur.trim()); cur = ""; } else cur += ch;
+    }
+    return [...out, cur.trim()];
+  };
+  const glows = (css: string) => [
+    ...[...css.matchAll(/(?:box|text)-shadow:\s*([^;}]+)/g)].flatMap(([, v]) => layers(v)),
+    ...[...css.matchAll(/drop-shadow\(((?:[^()]|\([^()]*(?:\([^()]*\))?[^()]*\))*)\)/g)].map(([, v]) => v.trim()),
+  ].filter((l) => {
+    const lengths = l.replace(/^inset\s+/, "").replace(/\b(?:color-mix|var|rgba?)\([\s\S]*$/, "").trim().split(/\s+/).map(parseFloat);
+    return COLOURED.test(l) && lengths.length >= 3 && lengths[2] > 0;
+  });
+  it.each(ALL.filter((f) => f.file.endsWith(".css") && !f.file.endsWith("pixel.css")).map((f) => [f.file, f.text]))("%s has no coloured glows", (_file, text) => {
+    // the scene itself (the moon, a raging boss) may glow; the HUD and screens around it may not
+    expect(glows((text as string).replace(/[^{}]*\.arena-(?:stage__moon|actor__body) \{[^}]*\}/g, ""))).toEqual([]);
+  });
   it("text is never painted with a gradient", () => {
     const globals = ALL.find((f) => f.file.endsWith("globals.css"))!.text;
     expect(globals).not.toMatch(/background-clip:\s*text/);

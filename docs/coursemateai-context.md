@@ -849,6 +849,16 @@ Each stage ships a zip of the changed files plus a test checklist. Ready-to-past
 - **Data:** only what the app already loads (review stats, HUD, documents, local sessions); no new API and no AI call. A visitor who isn't signed in is sent to log in.
 - **Nav:** Today is first in the sidebar's Study group, in the phone bar and in Ctrl K; the logo links to it.
 
+### Redesign, Stage 6: polish (6 Nov 2026)
+
+- **Hero keeps the frame:** the sidebar and phone bar stay in the Study theme (light or dark, as chosen); only `<main>` turns Play in Hero (`AppShell`, `.app-main[data-theme="play"]`). The pixel font still comes only from `ThemeScope` (Hero layout).
+- **No glows anywhere in the UI:** `styles/flat.test.ts` fails on any blurred shadow or `drop-shadow()` in a colour (accent, tone, reward, rarity...). Rings (`0 0 0 Npx`) are the replacement. Only the arena scene (pixel.css, the moon, a raging boss body) may glow.
+- **Progress tracks** use `--color-border` (Today, quests, plan meters, concept map, Study progress), so they show on Ink black.
+- **Profile** shows who you are and your progress, then one "Your account" list linking to Settings#account, Security, Plan & usage and History. The name/username/email/password form lives only in Settings.
+- **Phone headers:** below 1024 px the workspace title shrinks and truncates so its action (Sign out, Replace) stays on the same row.
+- **Empty chat opens at the top** (no auto-scroll until there is a conversation).
+- **Auth copy in sentence case:** "Welcome back", "Log in", "Sign up", "Create your account" / "Create account".
+
 ### UX details pass (5 Nov 2026)
 
 - **Skeletons** show only after 300 ms (`.ui-skeleton` waits, also under reduced motion).

@@ -74,7 +74,7 @@
 .arena-bar__trail { background: var(--color-warning-text); opacity: 0.85; transition: width 900ms var(--motion-ease) 350ms; }
 
 .arena-hearts { display: inline-flex; flex-wrap: wrap; gap: 2px; color: var(--color-danger-text); }
-.arena-hearts svg { transition: color var(--motion-base) var(--motion-ease), transform var(--motion-base) var(--motion-ease); filter: drop-shadow(0 0 4px color-mix(in srgb, var(--color-danger) 60%, transparent)); }
+.arena-hearts svg { transition: color var(--motion-base) var(--motion-ease), transform var(--motion-base) var(--motion-ease); }
 .arena-hearts [data-empty="true"] { color: var(--color-border-strong); filter: none; }
 .gear-chips--tiny .gear-chip { font-size: 0.6875rem; padding: 0.05rem 0.45rem; }
 
@@ -91,7 +91,7 @@
 
 .arena-combo { display: inline-flex; align-items: center; gap: var(--space-1); padding: var(--space-1) var(--space-3); border: 1px solid color-mix(in srgb, var(--color-reward) 50%, transparent); border-radius: var(--radius-full); color: var(--color-reward); font-size: 0.8125rem; }
 .arena-combo[data-idle="true"] { color: var(--color-muted); border-color: var(--color-border); }
-.arena-combo[data-hot="true"] { background: color-mix(in srgb, var(--color-reward) 14%, transparent); box-shadow: 0 0 14px color-mix(in srgb, var(--color-reward) 40%, transparent); }
+.arena-combo[data-hot="true"] { background: color-mix(in srgb, var(--color-reward) 14%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--color-reward) 55%, transparent); }
 
 /* The fight on two columns when there is room: the picture (kept in view) beside the questions. */
 .arena--battle { gap: var(--space-4); }
@@ -200,7 +200,7 @@
   border: 1px solid var(--color-border-strong); border-radius: var(--radius-lg); background: var(--color-elevated); box-shadow: var(--shadow-md);
   text-align: center; justify-items: center;
 }
-.arena-result[data-outcome="won"] { border-color: var(--color-reward); box-shadow: var(--shadow-md), 0 0 40px color-mix(in srgb, var(--color-reward) 20%, transparent); }
+.arena-result[data-outcome="won"] { border-color: var(--color-reward); box-shadow: var(--shadow-md); }
 .arena-result[data-outcome="lost"] { border-color: var(--color-danger-text); }
 .arena-result__figure { width: min(100%, 15rem); }
 .arena-result__headline { margin: 0; font-size: 1.75rem; color: var(--color-text); }

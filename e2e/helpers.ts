@@ -40,14 +40,14 @@ export async function openPage(page: Page, c: PageCase) {
   const mock = await mockApi(page, { signedIn: c.auth });
   await page.goto(c.path);
   if (c.before) {
-    await page.getByRole("button", { name: /Register/ }).click();
+    await page.getByRole("button", { name: /Sign up/ }).click();
     if (c.before === "register-step-2") {
       await page.getByLabel("Full Name").fill("Alice Example");
       await page.getByLabel("Username").fill("alice");
       await page.getByLabel("Email").fill("alice@example.com");
       await page.getByLabel("Password", { exact: true }).fill("correct-horse-1");
       await page.getByLabel("Confirm Password").fill("correct-horse-1");
-      await page.getByRole("button", { name: "Create Account" }).click();
+      await page.getByRole("button", { name: "Create account", exact: true }).click();
     }
   }
   await page.locator(c.ready).first().waitFor({ state: "visible" });

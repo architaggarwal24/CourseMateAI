@@ -3,7 +3,7 @@ export interface PageCase { name: string; path: string; auth: boolean; ready: st
 
 export const PAGES: PageCase[] = [
   { name: "offline", path: "/offline", auth: false, ready: "role=heading[name=\"You're offline\"]" },
-  { name: "login", path: "/login", auth: false, ready: "role=heading[name='Welcome Back']" },
+  { name: "login", path: "/login", auth: false, ready: "role=heading[name='Welcome back']" },
   { name: "terms", path: "/legal/terms", auth: false, ready: "role=heading[name='Terms of Service']" },
   { name: "privacy", path: "/legal/privacy", auth: false, ready: "role=heading[name='Privacy Policy']" },
   { name: "refunds", path: "/legal/refunds", auth: false, ready: "role=heading[name='Cancellation & Refund Policy']" },

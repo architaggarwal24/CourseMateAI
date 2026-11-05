@@ -87,9 +87,9 @@ describe("the account step", () => {
     expect(within(screen.getByLabelText("Email").closest(".ui-field") as HTMLElement).getByRole("alert").textContent).toBe("Invalid email format");
   });
 
-  it("Create Account stays put and lists what is wrong; it does not ask the server", async () => {
+  it("Create account stays put and lists what is wrong; it does not ask the server", async () => {
     await open();
-    await click("Create Account");
+    await click("Create account");
     expect(screen.getAllByRole("alert").length).toBe(4);
     expect(auth.register).not.toHaveBeenCalled();
   });
@@ -106,7 +106,7 @@ describe("the account step", () => {
     expect(screen.getByText("That username is already taken")).toBeTruthy();
     await fillAccount();
     type("Username", "taken_one"); await settle(500);
-    await click("Create Account");
+    await click("Create account");
     expect(auth.register).not.toHaveBeenCalled();
   });
 
@@ -121,7 +121,7 @@ describe("the account step", () => {
     auth.register.mockResolvedValue({ ok: false, failure: { message: "An account with that email already exists. Log in instead?", field: "email" } });
     await open();
     await fillAccount();
-    await click("Create Account");
+    await click("Create account");
     expect(within(screen.getByLabelText("Email").closest(".ui-field") as HTMLElement).getByRole("alert").textContent).toMatch(/already exists/);
   });
 
@@ -129,7 +129,7 @@ describe("the account step", () => {
     auth.register.mockResolvedValue({ ok: false, failure: { message: "Too many tries. Please wait a moment and try again." } });
     await open();
     await fillAccount();
-    await click("Create Account");
+    await click("Create account");
     expect(screen.getByRole("alert").textContent).toMatch(/Too many tries/);
   });
 });
@@ -139,7 +139,7 @@ describe("verifying the email", () => {
     auth.register.mockResolvedValue({ ok: true, signedIn: false });
     const onDone = await open();
     await fillAccount();
-    await click("Create Account");
+    await click("Create account");
     expect(auth.register).toHaveBeenCalledWith({ email: "ada@example.com", password: "correct-horse", username: "ada_l", fullName: "Ada Lovelace" });
     expect(screen.getByText("Verify your email")).toBeTruthy();
     expect(screen.getByText(/sent a 6-digit code to ada@example.com/)).toBeTruthy();
@@ -162,7 +162,7 @@ describe("verifying the email", () => {
     const onDone = await open();
     expect(screen.queryByLabelText("Sign-up progress")).toBeNull();
     await fillAccount();
-    await click("Create Account");
+    await click("Create account");
     expect(onDone).toHaveBeenCalled();
   });
 
@@ -171,7 +171,7 @@ describe("verifying the email", () => {
     const onDone = await open();
     await fillAccount();
     type("Invite code (optional)", "BETA-SAGE");
-    await click("Create Account");
+    await click("Create account");
     expect(calls.find((c) => c.path === "/api/v1/account/redeem")?.body).toEqual({ code: "BETA-SAGE" });
     expect(toasts.success).toHaveBeenCalled();
     expect(onDone).toHaveBeenCalled();

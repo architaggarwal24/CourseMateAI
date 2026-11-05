@@ -103,7 +103,8 @@ export default function ChatView({ documentId, restoreSessionId }: { documentId?
   useEffect(() => () => requestRef.current?.abort(), []);
 
   // Keep the newest text in view - only while the reader is at the bottom.
-  useLayoutEffect(() => { scroll.follow(); }, [messages, followUps, loading]); // eslint-disable-line react-hooks/exhaustive-deps
+  // an empty chat stays at the top (its heading and starter questions); once there is a conversation, follow it
+  useLayoutEffect(() => { if (messages.length) scroll.follow(); }, [messages, followUps, loading]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Auto-save whenever messages change
   useEffect(() => {

@@ -57,7 +57,7 @@
 .cmap-item__meta { flex: none; font-size: 0.75rem; color: var(--color-muted); }
 
 .cmap-progress { display: grid; gap: var(--space-3); max-width: 46ch; margin: var(--space-8) auto; text-align: center; }
-.cmap-progress__bar { height: 6px; border-radius: 999px; background: var(--color-surface-sunken); overflow: hidden; }
+.cmap-progress__bar { height: 6px; border-radius: 999px; background: var(--color-border); overflow: hidden; }
 .cmap-progress__bar > span { display: block; height: 100%; background: var(--color-accent); border-radius: inherit; transition: width 400ms; }
 .cmap-progress ul { margin: 0; padding: 0; list-style: none; display: grid; gap: var(--space-1); font-size: 0.8rem; color: var(--color-text-secondary); text-align: left; }
 .cmap-progress li { display: flex; justify-content: space-between; gap: var(--space-3); }

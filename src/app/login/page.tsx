@@ -130,7 +130,7 @@ export default function LoginPage() {
           <div className="login__card-head">
             <h1 className="login__title"><Logo size={24} /></h1>
           </div>
-          <h2 className="login__welcome">{isRegister ? 'Create Account' : 'Welcome Back'}</h2>
+          <h2 className="login__welcome">{isRegister ? 'Create your account' : 'Welcome back'}</h2>
           <p className="login__sub">{isRegister ? 'A few details and you are in.' : 'Log in to pick up where you left off.'}</p>
 
           {(mode === 'login' || mode === 'register') && google && (
@@ -177,7 +177,7 @@ export default function LoginPage() {
 
               <Magnetic className="block w-full" strength={0.12}>
                 <Button type="submit" variant="primary" size="lg" block loading={loading}>
-                  {loading ? 'Please wait...' : 'Login'}
+                  {loading ? 'Logging in…' : 'Log in'}
                 </Button>
               </Magnetic>
             </form>
@@ -190,7 +190,7 @@ export default function LoginPage() {
           {(mode === 'login' || mode === 'register') && <div className="mt-6 text-center">
             <Button variant="ghost" size="sm" onClick={toggleMode}>
               {isRegister ? 'Already have an account? ' : "Don't have an account? "}
-              <span className="font-semibold text-ink-blue">{isRegister ? 'Login' : 'Register'}</span>
+              <span className="font-semibold text-ink-blue">{isRegister ? 'Log in' : 'Sign up'}</span>
             </Button>
           </div>}
         </motion.div>

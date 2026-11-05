@@ -25,7 +25,7 @@
 .pu-meter__label { font-size: 0.8rem; color: var(--color-text-secondary); }
 .pu-meter__value { font-size: 1.05rem; font-weight: 700; color: var(--color-text); font-variant-numeric: tabular-nums; white-space: nowrap; }
 .pu-meter__value span { font-size: 0.78rem; font-weight: 500; color: var(--color-muted); }
-.pu-meter__bar { height: 6px; border-radius: 999px; background: var(--color-surface-sunken); overflow: hidden; }
+.pu-meter__bar { height: 6px; border-radius: 999px; background: var(--color-border); overflow: hidden; }
 .pu-meter__bar > span { display: block; height: 100%; border-radius: inherit; background: var(--fill); transition: width 400ms; }
 .pu-meter__note { font-size: 0.75rem; color: var(--color-muted); }
 

@@ -29,7 +29,7 @@
   align-self: flex-start; color: var(--color-accent-text); font-size: 0.875rem; font-weight: 600; text-decoration: none; min-height: 2.75rem; }
 .today-tile__link:hover { text-decoration: underline; text-underline-offset: 3px; }
 
-.today-bar { height: 0.5rem; border-radius: var(--radius-full); background: var(--color-surface-sunken); overflow: hidden; }
+.today-bar { height: 0.5rem; border-radius: var(--radius-full); background: var(--color-border); overflow: hidden; }
 .today-bar > span { display: block; height: 100%; border-radius: inherit; background: var(--color-accent); transition: width var(--motion-slow) var(--ease-out-expo); }
 
 /* the one filled card (Von Restorff): the next thing to do */

@@ -107,4 +107,16 @@ describe("UX details", () => {
       expect(block(read(file), sel), sel).not.toMatch(/opacity/);
     }
   });
+  it("progress tracks show against the page (border colour, not the near-black sunken surface)", () => {
+    for (const [file, sel] of [["components/hero/hero.css", ".quest__bar"], ["components/account/plan-usage.css", ".pu-meter__bar"],
+      ["components/map/map.css", ".cmap-progress__bar"], ["components/today/today.css", ".today-bar"],
+      ["components/study/study.css", ".study-progress"]] as const) {
+      expect(block(read(file), sel), sel).toMatch(/background:\s*var\(--color-border\)/);
+    }
+  });
+  it("on a phone the workspace title shares its row with the action (Sign out, Replace) instead of pushing it below", () => {
+    const study = read("components/study/study.css");
+    expect(study).toMatch(/@media \(max-width: 1023px\) \{ \.ws-top__tabs \{[^}]*\} \.ws-doc \{ flex: 1 1 0; \}/);
+    expect(read("components/shell/AccountNav.tsx")).toMatch(/className="ws-doc__meta"><span className="truncate/);
+  });
 });

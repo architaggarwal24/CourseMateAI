@@ -307,6 +307,22 @@ describe("ChatView: auto-scroll", () => {
     Object.defineProperty(el, "scrollTop", { configurable: true, get: () => state.top, set: (v: number) => { state.top = v; } });
   }
 
+  it("an empty chat opens at the top, so its heading and starter questions show on a short phone screen", () => {
+    const tops: number[] = [];
+    const proto = HTMLElement.prototype;
+    Object.defineProperty(proto, "scrollHeight", { configurable: true, get: () => 900 });
+    Object.defineProperty(proto, "scrollTop", { configurable: true, get: () => 0, set: (v: number) => { tops.push(v); } });
+    try {
+      server({});
+      render(<ChatView documentId="d1" />);
+      expect(screen.getByRole("heading", { name: "Chat with your document" })).toBeTruthy();
+      expect(tops.filter((v) => v > 0)).toEqual([]);
+    } finally {
+      delete (proto as unknown as Record<string, unknown>).scrollHeight;
+      delete (proto as unknown as Record<string, unknown>).scrollTop;
+    }
+  });
+
   it("follows new text at the bottom, leaves a reader who scrolled up alone, and returns on 'Latest'", async () => {
     const body = sseBody();
     server({ streams: [() => sse(body)] });

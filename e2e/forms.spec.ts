@@ -7,8 +7,8 @@ test.describe("form errors", () => {
   test("signup step 1: every invalid field names its error through aria-describedby", async ({ page }) => {
     await mockApi(page, { signedIn: false });
     await page.goto("/login");
-    await page.getByRole("button", { name: /Register/ }).click();
-    await page.getByRole("button", { name: "Create Account" }).click();  // nothing filled in
+    await page.getByRole("button", { name: /Sign up/ }).click();
+    await page.getByRole("button", { name: "Create account", exact: true }).click();  // nothing filled in
 
     const invalid = page.locator("input[aria-invalid='true']");
     expect(await invalid.count()).toBeGreaterThanOrEqual(3);
@@ -27,7 +27,7 @@ test.describe("form errors", () => {
     await page.goto("/login");
     await page.getByLabel("Email").fill("alice@example.com");
     await page.getByLabel("Password", { exact: true }).fill("not-the-password");
-    await page.getByRole("button", { name: "Login" }).click();
+    await page.getByRole("button", { name: "Log in", exact: true }).click();
     await expect(page.locator(".ui-card--danger[role=alert]")).toContainText(/don't match an account/i);
   });
 });

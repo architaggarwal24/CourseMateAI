@@ -436,7 +436,7 @@ a.ui-tab { display: inline-flex; align-items: center; text-decoration: none; }
   pointer-events: auto;
   animation: ui-toast-in 520ms var(--ease-spring);
 }
-/* the coloured status edge: a soft lit stripe on the left */
+/* the coloured status edge: a stripe on the left */
 .ui-toast::before {
   content: "";
   position: absolute;
@@ -446,7 +446,6 @@ a.ui-tab { display: inline-flex; align-items: center; text-decoration: none; }
   width: 3px;
   border-radius: 0 3px 3px 0;
   background: var(--toast-tone, var(--color-accent-text));
-  box-shadow: 0 0 12px var(--toast-tone, var(--color-accent-text));
 }
 .ui-toast--success { --toast-tone: var(--color-success-text); }
 .ui-toast--error { --toast-tone: var(--color-danger-text); }
@@ -566,7 +565,7 @@ a.ui-tab { display: inline-flex; align-items: center; text-decoration: none; }
 .ui-badge--common { --badge-tone: var(--color-rarity-common); }
 .ui-badge--rare { --badge-tone: var(--color-rarity-rare); }
 .ui-badge--epic { --badge-tone: var(--color-rarity-epic); }
-.ui-badge--legendary { --badge-tone: var(--color-rarity-legendary); box-shadow: 0 0 14px -4px var(--color-rarity-legendary); }
+.ui-badge--legendary { --badge-tone: var(--color-rarity-legendary); box-shadow: inset 0 0 0 1px var(--color-rarity-legendary); }
 
 /* ── Tooltip ─────────────────────────────────────────────────────────────────────────────────────────────────── */
 .ui-tooltip-anchor { position: relative; display: inline-flex; }

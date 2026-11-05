@@ -197,7 +197,7 @@ export default function SignupFlow({ onDone }: { onDone: () => void }) {
             )}
 
             <Button type="submit" variant="primary" block loading={loading}>
-              {loading ? "Creating your account..." : "Create Account"}
+              {loading ? "Creating your account…" : "Create account"}
             </Button>
           </form>
         ) : (

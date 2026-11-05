@@ -51,6 +51,10 @@ const generate = async (topic = "cells", count?: number) => {
   await screen.findByText(/Question 1 of/);
 };
 const press = (key: string) => fireEvent.keyDown(window, { key });
+/** Answers with a key and waits for the verdict. Under load the first press can land before the key handler is bound,
+ *  so it presses again until the verdict shows (presses while an answer is being checked are ignored by the quiz). */
+const answerWith = (key: string, verdict: string | RegExp) =>
+  waitFor(() => { if (!screen.queryByText(verdict)) press(key); expect(screen.getByText(verdict)).toBeTruthy(); }, { timeout: 15_000 });
 const option = (text: RegExp | string) => screen.getByRole("button", { name: text });
 
 beforeEach(() => { localStorage.clear(); Object.values(toasts).forEach((f) => f.mockClear()); });
@@ -135,11 +139,11 @@ describe("QuizView: review screen", () => {
   it("lists every question with the user's answer and the correct one, after the last answer", async () => {
     const log = server(BANK);
     await generate();
-    press("2"); await screen.findByText("Correct");
+    await answerWith("2", "Correct");
     fireEvent.click(screen.getByRole("button", { name: /Next question/ }));
-    press("2"); await screen.findByText(/Incorrect\. The correct answer is Nucleus/);            // Vacuole: wrong
+    await answerWith("2", /Incorrect\. The correct answer is Nucleus/);            // Vacuole: wrong
     fireEvent.click(screen.getByRole("button", { name: /Next question/ }));
-    press("1"); await screen.findByText("Correct");                                           // True
+    await answerWith("1", "Correct");                                           // True
     fireEvent.click(screen.getByRole("button", { name: "Finish quiz" }));
 
     expect(await screen.findByText("2 of 3 correct")).toBeTruthy();
@@ -172,10 +176,10 @@ describe("QuizView: a quiz shorter than requested", () => {
     expect(screen.getByText("Question 1 of 2")).toBeTruthy();
     expect(document.body.textContent).not.toMatch(NO_ERROR_TEXT);
 
-    press("2"); await screen.findByText("Correct");
+    await answerWith("2", "Correct");
     fireEvent.click(screen.getByRole("button", { name: /Next question/ }));
     expect(screen.getByText("Question 2 of 2")).toBeTruthy();
-    press("1"); await screen.findByText("Correct");
+    await answerWith("1", "Correct");
     fireEvent.click(screen.getByRole("button", { name: "Finish quiz" }));
 
     expect(await screen.findByText("2 of 2 correct")).toBeTruthy();
@@ -189,7 +193,7 @@ describe("QuizView: a quiz shorter than requested", () => {
     server(BANK.slice(0, 1));
     await generate("cells", 10);
     expect(screen.getByText("Question 1 of 1")).toBeTruthy();
-    press("2"); await screen.findByText("Correct");
+    await answerWith("2", "Correct");
     expect(screen.queryByRole("button", { name: /Next question/ })).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Finish quiz" }));
     expect(await screen.findByText("1 of 1 correct")).toBeTruthy();

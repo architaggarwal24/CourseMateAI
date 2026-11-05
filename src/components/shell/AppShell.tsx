@@ -15,7 +15,8 @@ import "./shell.css";
 
 /**
  * The frame around Study, Hero and Account: the sectioned sidebar on desktop (it collapses to an icon rail), a tab
- * bar along the bottom on phones, the screen in between.
+ * bar along the bottom on phones, the screen in between. The frame always stays in the Study theme (light or dark, as
+ * chosen); in Hero only the screen switches to Play, so the sidebar does not flip from light to dark.
  * It also keeps what the old home page kept for the whole session: the HUD refresh (and the review queue's due count).
  * ⌘K opens the command palette.
  */
@@ -38,10 +39,10 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   useRevalidate(loadReview, signedIn);
 
   return (
-    <ThemeScope theme={play ? "play" : "study"}>
+    <ThemeScope theme="study">
     <div className="app-shell" data-area={area ?? undefined}>
       <NavSidebar />
-      <main id="main-content" tabIndex={-1} className="app-main">
+      <main id="main-content" tabIndex={-1} className="app-main" data-theme={play ? "play" : undefined}>
         {authLoading ? (
           <div className="flex flex-1 items-center justify-center">
             <div className="text-center app-loading">

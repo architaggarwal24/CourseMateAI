@@ -1,5 +1,5 @@
-/* The frame around Study, Hero and Account. Colours come from the tokens, so the frame follows the area's theme
- * (AppShell switches to the play theme inside the Hero area). */
+/* The frame around Study, Hero and Account. The frame stays in the Study theme; in Hero only <main> switches to Play
+ * (AppShell), and paints its own background so the darker Ink fills the screen. */
 .app-shell {
   position: relative;
   isolation: isolate;
@@ -121,6 +121,7 @@ html[data-sidebar="collapsed"] .side__nav { overflow: visible; }
 /* ── Main + page transition ──────────────────────────────────────────────────────────────────────────────────── */
 .app-main { flex: 1; min-height: 0; min-width: 0; display: flex; flex-direction: column; overflow: hidden; }
 .app-main:focus-visible { outline-offset: -3px; }
+.app-main[data-theme="play"] { background: var(--color-surface); color: var(--color-text); color-scheme: dark; }
 .app-page { flex: 1; min-height: 0; display: flex; flex-direction: column; }
 
 /* the loading orb while auth resolves */

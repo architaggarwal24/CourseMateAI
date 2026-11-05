@@ -39,7 +39,7 @@
 }
 .hero-header__avatar:hover { transform: scale(1.06) rotate(-3deg); }
 .hero-header__avatar[data-previewing="true"] .champ-avatar__face { border-color: var(--color-reward); }
-.hero-header__level { color: var(--color-highlight-text); font-size: 1rem; text-shadow: 0 0 14px color-mix(in srgb, var(--color-highlight) 50%, transparent); }
+.hero-header__level { color: var(--color-highlight-text); font-size: 1rem; }
 .hero-header__xp { flex: 1 1 12rem; min-width: 10rem; max-width: 26rem; }
 .hero-header__xp-label { display: flex; justify-content: space-between; gap: var(--space-2); margin-bottom: var(--space-1); color: var(--color-text-secondary); font-size: 0.75rem; }
 .hero-header__bar { height: 0.75rem; overflow: hidden; border: 1px solid var(--color-border-strong); border-radius: var(--radius-full); background: var(--color-surface-sunken); }
@@ -47,7 +47,7 @@
 .hero-header__stat { display: inline-flex; align-items: center; gap: var(--space-2); padding: var(--space-1) var(--space-3); border: 1px solid var(--glass-border-strong); border-radius: var(--radius-full); background: var(--glass-tint); box-shadow: none; color: var(--color-text); font-size: 0.8rem; white-space: nowrap; }
 .hero-header__coins { color: var(--color-reward); box-shadow: none; }
 .hero-header__streak { color: var(--color-warning-text); }
-.hero-header__streak:not([data-idle="true"]) svg { filter: drop-shadow(0 0 6px var(--color-warning-text)); animation: hero-flicker 1.6s ease-in-out infinite; }
+.hero-header__streak:not([data-idle="true"]) svg { animation: hero-flicker 1.6s ease-in-out infinite; }
 @keyframes hero-flicker { 0%, 100% { transform: scale(1) rotate(0); } 40% { transform: scale(1.12) rotate(-4deg); } 70% { transform: scale(0.96) rotate(3deg); } }
 .hero-header__streak[data-idle="true"] { color: var(--color-muted); }
 .hero-header__preview {
@@ -165,7 +165,7 @@ button.hero-item__sprite:hover { border-color: var(--color-accent-alt-text); }
 .quest__title { margin: 0; color: var(--color-text); font-size: 0.9375rem; font-weight: 600; line-height: 1.4; }
 .quest__reward { margin: 0.125rem 0 0; color: var(--color-muted); font-size: 0.8125rem; }
 .quest__count { flex: none; color: var(--color-text-secondary); font-size: 0.75rem; }
-.quest__bar { height: 0.5rem; overflow: hidden; border-radius: var(--radius-full); background: var(--color-surface-sunken); }
+.quest__bar { height: 0.5rem; overflow: hidden; border-radius: var(--radius-full); background: var(--color-border); }
 .quest__bar > div { height: 100%; border-radius: var(--radius-full); background: var(--color-accent); box-shadow: none; transition: width 900ms var(--ease-out-expo); }
 .quest[data-state="claimed"] .quest__bar > div { background: var(--color-success); }
 .quest__claim, .quest__done { display: flex; align-items: center; justify-content: center; gap: var(--space-2); min-height: 2.5rem; border-radius: var(--radius-md); font-size: 0.875rem; font-weight: 700; }

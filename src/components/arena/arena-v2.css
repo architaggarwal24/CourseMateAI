@@ -55,7 +55,6 @@
   border: 1px solid color-mix(in srgb, var(--tone) 45%, transparent);
   border-radius: var(--radius-md);
   background: color-mix(in srgb, var(--tone) 10%, transparent);
-  box-shadow: 0 0 22px -10px var(--tone);
 }
 .arena-intent[data-kind="heavy"] { --tone: var(--color-danger-text); animation: arena-throb 1.4s ease-in-out infinite; }
 .arena-intent[data-kind="shield"] { --tone: var(--color-accent-text); }
@@ -72,7 +71,8 @@
 .arena-intent[data-special="true"] { --tone: var(--color-reward); }
 .arena-intent[data-kind="charge"], .arena-intent[data-kind="throw"] { --tone: var(--color-danger-text); animation: arena-throb 1.4s ease-in-out infinite; }
 .arena-intent[data-kind="stunned"], .arena-intent[data-kind="aim"] { --tone: var(--color-warning-text); }
-@keyframes arena-throb { 0%, 100% { box-shadow: 0 0 14px -10px var(--tone); } 50% { box-shadow: 0 0 30px -6px var(--tone); } }
+/* a ring that swells and fades (no glow) */
+@keyframes arena-throb { 0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--tone) 0%, transparent); } 50% { box-shadow: 0 0 0 3px color-mix(in srgb, var(--tone) 40%, transparent); } }
 
 /* ── Creature mechanic (HUD + move choice) ─────────────────────────────────────────────────────────────────── */
 .arena-mech {
@@ -128,7 +128,7 @@
 .arena-move[data-move="jab"] { --tone: var(--color-success-text); }
 .arena-move[data-move="heavy"] { --tone: var(--color-danger-text); }
 .arena-move[data-move="guard"] { --tone: var(--color-highlight-text); }
-.arena-move:hover:not(:disabled) { transform: translateY(-3px); border-color: var(--tone); box-shadow: 0 12px 30px -14px var(--tone); }
+.arena-move:hover:not(:disabled) { transform: translateY(-3px); border-color: var(--tone); box-shadow: 0 0 0 1px var(--tone); }
 .arena-move:active:not(:disabled) { transform: scale(0.97); transition-duration: var(--motion-fast); }
 .arena-move:disabled { opacity: 0.45; cursor: not-allowed; filter: saturate(0.5); }
 .arena-move__icon { grid-area: icon; display: grid; place-items: center; width: 2.5rem; height: 2.5rem; border-radius: 12px; color: var(--tone); border: 1px solid color-mix(in srgb, var(--tone) 45%, transparent); background: color-mix(in srgb, var(--tone) 12%, transparent); transition: transform var(--motion-slow) var(--ease-spring); }
@@ -168,7 +168,7 @@
 }
 .arena-mode[data-tone="epic"] { --tone: var(--color-rarity-epic); }
 .arena-mode[data-tone="reward"] { --tone: var(--color-reward); }
-.arena-mode:hover { border-color: var(--tone); box-shadow: var(--glass-shadow), 0 20px 60px -24px var(--tone); }
+.arena-mode:hover { border-color: var(--tone); box-shadow: var(--glass-shadow), 0 0 0 1px var(--tone); }
 .arena-mode__btn {
   display: grid; justify-items: start; align-content: start; gap: var(--space-2);
   width: 100%; height: 100%; padding: var(--space-5); text-align: left;
@@ -177,7 +177,6 @@
 .arena-mode__icon {
   display: grid; place-items: center; width: 3.25rem; height: 3.25rem; margin-bottom: var(--space-2); border-radius: 16px;
   color: var(--tone); background: color-mix(in srgb, var(--tone) 14%, transparent); border: 1px solid color-mix(in srgb, var(--tone) 45%, transparent);
-  box-shadow: 0 10px 30px -10px var(--tone);
   transition: transform var(--motion-slow) var(--ease-spring);
 }
 .arena-mode:hover .arena-mode__icon { transform: translateY(-3px) rotate(-6deg) scale(1.06); }
@@ -248,7 +247,7 @@
 .run-node__btn[data-kind="rest"] { --tone: var(--color-success-text); }
 .run-node__btn[data-kind="shop"], .run-node__btn[data-kind="treasure"] { --tone: var(--color-reward); }
 .run-node__btn[data-kind="boss"] { width: 3.8rem; height: 3.8rem; }
-.run-node__btn[data-state="open"] { box-shadow: 0 0 0 4px color-mix(in srgb, var(--tone) 20%, transparent), 0 0 28px -4px var(--tone); animation: run-beckon 1.6s ease-in-out infinite; }
+.run-node__btn[data-state="open"] { box-shadow: 0 0 0 4px color-mix(in srgb, var(--tone) 25%, transparent); animation: run-beckon 1.6s ease-in-out infinite; }
 .run-node__btn[data-state="open"]:hover { transform: scale(1.15); animation: none; }
 .run-node__btn[data-state="current"] { background: color-mix(in srgb, var(--tone) 25%, var(--glass-bg-strong)); border-color: var(--color-highlight-text); box-shadow: 0 0 0 3px var(--color-highlight-text); }
 .run-node__btn[data-state="visited"] { color: var(--color-muted); filter: grayscale(0.7); }
@@ -270,7 +269,7 @@
 }
 .run-card svg { color: var(--tone); }
 .run-card span { color: var(--color-muted); font-size: 0.8rem; line-height: 1.45; }
-.run-card:hover:not(:disabled) { transform: translateY(-4px); box-shadow: 0 16px 40px -16px var(--tone); }
+.run-card:hover:not(:disabled) { transform: translateY(-4px); box-shadow: 0 0 0 1px var(--tone); }
 .run-card:disabled { opacity: 0.45; cursor: not-allowed; }
 .run-card__price { display: inline-flex; align-items: center; gap: 4px; color: var(--color-reward) !important; font-weight: 700; }
 .run-over { display: grid; justify-items: center; gap: var(--space-3); padding: var(--space-5); border-radius: var(--radius-xl); text-align: center; }

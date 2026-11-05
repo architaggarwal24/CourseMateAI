@@ -30,7 +30,8 @@
 /* the tabs scroll sideways on a narrow screen (their own scroll box, so the workspace never shifts) */
 .ws-top__tabs { order: 2; min-width: 0; max-width: 100%; overflow-x: auto; scrollbar-width: none; }
 .ws-top__end { order: 3; margin-left: auto; display: flex; align-items: center; gap: var(--space-2); }
-@media (max-width: 1023px) { .ws-top__tabs { order: 4; flex-basis: 100%; } }
+/* below 1024 the tabs take their own row; the title shrinks (and truncates) so the action stays beside it */
+@media (max-width: 1023px) { .ws-top__tabs { order: 4; flex-basis: 100%; } .ws-doc { flex: 1 1 0; } }
 
 .ws-doc { order: 1; min-width: 0; display: flex; align-items: center; gap: var(--space-3); }
 .ws-doc__icon {
@@ -180,7 +181,7 @@
 .study-composer .ui-btn--primary { border-radius: 14px; }
 
 /* ── Quiz ────────────────────────────────────────────────────────────────────────────────────────────────────── */
-.study-progress { position: relative; height: 0.4rem; overflow: hidden; border-radius: var(--radius-full); background: color-mix(in srgb, var(--color-surface-sunken) 70%, transparent); box-shadow: inset 0 0 0 1px var(--glass-border); }
+.study-progress { position: relative; height: 0.4rem; overflow: hidden; border-radius: var(--radius-full); background: var(--color-border); }
 .study-progress > div,
 .study-progress__fill {
   height: 100%; border-radius: var(--radius-full);

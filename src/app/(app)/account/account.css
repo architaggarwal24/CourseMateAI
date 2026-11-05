@@ -46,3 +46,18 @@
 }
 .settings-rail a:hover { color: var(--color-text); background: var(--glass-tint); border-left-color: var(--color-accent-text); }
 .settings-section { scroll-margin-top: var(--space-5); }
+
+/* The profile's account list: one row per thing you can change, each a link to where it lives. */
+.profile-links { margin: 0; padding: var(--space-1) 0; list-style: none; }
+.profile-links > li + li { border-top: 1px solid var(--color-border); }
+.profile-link {
+  display: flex; align-items: center; gap: var(--space-3); min-height: 3.5rem; padding: var(--space-2) var(--space-4);
+  color: var(--color-text); text-decoration: none; transition: background-color var(--motion-fast) var(--motion-ease);
+}
+.profile-link:hover { background: var(--color-elevated-hover); }
+.profile-link__icon { flex: none; color: var(--color-muted); }
+.profile-link__text { display: grid; min-width: 0; flex: 1; }
+.profile-link__title { font-weight: 600; font-size: 0.9rem; }
+.profile-link__detail { color: var(--color-muted); font-size: 0.8rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.profile-link__go { flex: none; color: var(--color-muted); }
+.profile-link:focus-visible { outline-offset: calc(-1 * var(--focus-ring-width)); }
