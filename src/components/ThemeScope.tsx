@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { pixel } from "@/fonts/pixel";
+import { pixel, pixelBody } from "@/fonts/pixel";
 
 export type Theme = "study" | "play";
 
@@ -11,7 +11,7 @@ export type Theme = "study" | "play";
  */
 export default function ThemeScope({ theme, children }: { theme: Theme; children: ReactNode }) {
   return (
-    <div data-theme={theme} className={theme === "play" ? `theme-scope ${pixel.variable}` : "theme-scope"}>
+    <div data-theme={theme} className={theme === "play" ? `theme-scope ${pixel.variable} ${pixelBody.variable}` : "theme-scope"}>
       {children}
     </div>
   );

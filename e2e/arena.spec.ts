@@ -80,7 +80,7 @@ async function axeClean(page: Page, label: string) {
   await settle(page);
   const results = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa", "best-practice"]).analyze();
   const blocking = results.violations.filter((v) => v.impact === "serious" || v.impact === "critical");
-  expect(blocking.map((v) => `${v.id}: ${v.nodes.slice(0, 3).map((n) => n.target.join(" ")).join(", ")}`).join("\n"), `axe on ${label}`).toBe("");
+  expect(blocking.map((v) => `${v.id}: ${v.nodes.slice(0, 3).map((n) => `${n.target.join(" ")} (${n.any[0]?.message ?? ""})`).join(", ")}`).join("\n"), `axe on ${label}`).toBe("");
 }
 
 /** Arena v2: every turn starts with a move (Q = Strike). */
@@ -200,6 +200,14 @@ test.describe("reduced motion", () => {
 // brings a champion, met from the result screen.
 test("the signature weapon's finisher ends the fight, and a champion who joins is met from the result", async ({ page }) => {
   await battleServer(page, { signature: true, joins: "asha" });
+  // every banner the stage shows, in order (a banner is on screen for a second or two: easy to miss by polling)
+  await page.addInitScript(() => {
+    const seen: string[] = ((window as unknown as { __banners: string[] }).__banners = []);
+    new MutationObserver(() => document.querySelectorAll(".px-arena__banner").forEach((b) => {
+      const t = b.textContent ?? "";
+      if (!seen.includes(t)) seen.push(t);
+    })).observe(document, { subtree: true, childList: true, characterData: true });
+  });
   const errors: string[] = [];
   page.on("pageerror", (e) => errors.push(e.message));
   await summon(page);
@@ -209,8 +217,10 @@ test("the signature weapon's finisher ends the fight, and a champion who joins i
   await strike(page);
   await expect(page.getByText("Where is DNA stored?")).toBeVisible();
   await page.keyboard.press("2");
-  await expect(page.locator(".px-arena__banner", { hasText: "FINAL CUT" })).toBeVisible();
-  await expect(page.locator(".px-arena__banner", { hasText: "K.O." })).toBeVisible({ timeout: 4000 });
+  await expect.poll(() => page.evaluate(() => (window as unknown as { __banners: string[] }).__banners), { timeout: 10_000 })
+    .toEqual(expect.arrayContaining(["FINAL CUT", "K.O."]));
+  const order = await page.evaluate(() => (window as unknown as { __banners: string[] }).__banners);
+  expect(order.indexOf("FINAL CUT")).toBeLessThan(order.indexOf("K.O."));      // the finisher, then the KO
   await page.getByRole("button", { name: "See result" }).click();
   await expect(page.getByText("Asha joins you!")).toBeVisible();
   await page.getByRole("button", { name: "Meet Asha" }).click();

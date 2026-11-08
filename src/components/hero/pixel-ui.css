@@ -1,0 +1,165 @@
+/*
+ * The Hero area's own look (Stage P3): a 16-bit RPG menu, built to sit next to the pixel champions and creatures, and
+ * nothing like the Study side. Scoped to [data-theme="play"] (the Hero area, its dialogs and toasts), so Study never
+ * sees it. The tokens for it (indigo panels, square corners, hard shadows, stepped motion, the two pixel fonts) are
+ * in src/styles/tokens.css [data-theme="play"]; this file draws the shapes:
+ *   panels   a dark outline, a pale rim, a hard drop shadow (no blur: flat.test.ts)
+ *   buttons  bevelled blocks that press down 3px, in the pixel label font
+ *   tabs     an RPG command menu: the chosen one is lit, with a blinking cursor
+ *   bars     segmented, like an HP bar
+ *   motion   stepped (steps()), never smooth easing; none under reduced motion
+ */
+
+[data-theme="play"] {
+  --px-ink: #03040d;
+  --px-rim: var(--color-border-strong);
+  --px-shadow: 4px 4px 0 0 var(--px-ink);
+  --px-frame: 0 0 0 2px var(--px-ink), 6px 6px 0 0 var(--px-ink);
+  --px-bevel: inset -3px -3px 0 0 rgb(0 0 0 / 0.38), inset 3px 3px 0 0 rgb(255 255 255 / 0.22);
+  --px-bevel-in: inset 3px 3px 0 0 rgb(0 0 0 / 0.4), inset -2px -2px 0 0 rgb(255 255 255 / 0.12);
+  --px-step: steps(3, end);
+  /* the ticks on a segmented bar: dark lines every 6px */
+  --px-ticks: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='6' height='4'%3E%3Crect x='5' width='1' height='4' fill='%23000' fill-opacity='0.45'/%3E%3C/svg%3E");
+  image-rendering: pixelated;
+}
+
+/* ── panels ──────────────────────────────────────────────────────────────────────────────────────────────────── */
+[data-theme="play"] :is(.ui-card, .glass, .champ-kit, .champ-signature, .qscroll, .px-hero-card, .arena-mode, .hero-item, .hero-cat,
+  .buff, .champ-stage, .champ-mastery__item, .arena-board, .ui-empty) {
+  border: 2px solid var(--px-rim);
+  border-radius: 0;
+  box-shadow: var(--px-frame);
+}
+[data-theme="play"] :is(.champ-mastery__item, .buff) { box-shadow: 0 0 0 2px var(--px-ink), 3px 3px 0 0 var(--px-ink); }
+[data-theme="play"] .qscroll { border-top-width: 4px; border-bottom-width: 4px; }
+[data-theme="play"] .qscroll[data-state="ready"] { border-color: var(--color-reward); }
+[data-theme="play"] :is(.px-hero-card, .arena-mode, .hero-item, .hero-cat):not([data-locked]):not(.arena-mode--soon) {
+  transition: transform 90ms var(--px-step), box-shadow 90ms var(--px-step);
+}
+[data-theme="play"] :is(.px-hero-card, .hero-item, .hero-cat):not([data-locked]):hover,
+[data-theme="play"] .arena-mode:not(.arena-mode--soon):hover {
+  transform: translate(-2px, -2px);
+  box-shadow: 0 0 0 2px var(--px-ink), 8px 8px 0 0 var(--px-ink);
+}
+[data-theme="play"] .px-hero-card[aria-checked="true"] { border-color: var(--color-reward); }
+[data-theme="play"] .px-hero-card[data-locked] { border-style: dashed; box-shadow: 0 0 0 2px var(--px-ink); }
+[data-theme="play"] .arena-mode--soon { border-style: dashed; box-shadow: 0 0 0 2px var(--px-ink); }
+
+/* section titles in the label font, with a hard shadow like a game menu */
+[data-theme="play"] :is(.arena__title, .px-section-title, .qboard__title, .hero-label, .ui-card h3) {
+  font-family: var(--font-label);
+  letter-spacing: 0.04em;
+}
+[data-theme="play"] .arena__title { color: var(--color-reward); font-size: clamp(1.1rem, 0.9rem + 1vw, 1.6rem); text-shadow: 3px 3px 0 var(--px-ink); }
+[data-theme="play"] :is(.px-section-title, .qboard__title) { color: var(--color-reward); text-shadow: 2px 2px 0 var(--px-ink); }
+[data-theme="play"] .hero-label { font-size: 0.6rem; color: var(--color-text-secondary); }
+
+/* ── buttons ─────────────────────────────────────────────────────────────────────────────────────────────────── */
+[data-theme="play"] .ui-btn {
+  border: 2px solid var(--px-ink);
+  border-radius: 0;
+  font-family: var(--font-label);
+  font-size: 0.62rem;
+  font-weight: 400;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  box-shadow: var(--px-bevel), 3px 3px 0 0 var(--px-ink);
+  transition: transform 60ms steps(1, end), box-shadow 60ms steps(1, end), background-color 60ms steps(1, end);
+}
+[data-theme="play"] .ui-btn--sm { font-size: 0.56rem; min-height: 2.25rem; }
+/* fingers: every control at least 44px tall */
+@media (pointer: coarse), (max-width: 767px) {
+  [data-theme="play"] :is(.ui-btn, .hero-tabs .ui-tab) { min-height: 2.75rem; }
+}
+[data-theme="play"] .ui-btn--lg { font-size: 0.72rem; }
+[data-theme="play"] :is(.ui-btn--ghost, .ui-btn--link) { box-shadow: none; border-color: transparent; }
+[data-theme="play"] .ui-btn:hover:not(:disabled) { transform: translate(-1px, -1px); box-shadow: var(--px-bevel), 4px 4px 0 0 var(--px-ink); }
+[data-theme="play"] .ui-btn:active:not(:disabled) { transform: translate(3px, 3px); box-shadow: var(--px-bevel-in); }
+[data-theme="play"] .ui-btn:disabled { box-shadow: none; border-style: dashed; }
+
+/* ── the Hero tabs: an RPG command menu ─────────────────────────────────────────────────────────────────────── */
+[data-theme="play"] .hero-tabs {
+  gap: 4px;
+  padding: 4px;
+  border: 2px solid var(--px-rim);
+  border-radius: 0;
+  background: var(--color-surface-sunken);
+  box-shadow: var(--px-frame);
+}
+[data-theme="play"] .hero-tabs .ui-tab {
+  min-height: 2.75rem;
+  padding: 0 0.85rem 0 1.25rem;
+  border: 2px solid transparent;
+  border-radius: 0;
+  font-family: var(--font-label);
+  font-size: 0.58rem;
+  font-weight: 400;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--color-muted);
+}
+[data-theme="play"] .hero-tabs .ui-tab:hover { color: var(--color-text); background: var(--color-elevated); }
+[data-theme="play"] .hero-tabs .ui-tab[aria-current="page"] {
+  color: var(--color-on-accent);
+  background: var(--color-accent);
+  border-color: var(--px-ink);
+  box-shadow: var(--px-bevel);
+}
+[data-theme="play"] .hero-tabs .ui-tab__bar { display: none; }
+/* the cursor in front of the chosen command */
+[data-theme="play"] .hero-tabs .ui-tab[aria-current="page"]::before {
+  content: "";
+  position: absolute; left: 0.45rem; top: 50%; width: 0; height: 0; margin-top: -4px;
+  border-top: 4px solid transparent; border-bottom: 4px solid transparent; border-left: 5px solid currentColor;
+  animation: px-blink 1s steps(2, end) infinite;
+}
+@keyframes px-blink { 50% { opacity: 0; } }
+
+/* ── badges, chips, fields ───────────────────────────────────────────────────────────────────────────────────── */
+[data-theme="play"] .ui-badge { border-radius: 0; border-width: 2px; font-family: var(--font-label); font-size: 0.55rem; letter-spacing: 0.04em; }
+[data-theme="play"] :is(.hero-header__stat, .hero-bonus) { border: 2px solid var(--px-rim); border-radius: 0; box-shadow: 2px 2px 0 0 var(--px-ink); font-family: var(--font-label); font-size: 0.62rem; }
+[data-theme="play"] :is(.ui-control, .ui-select select, input, select, textarea) { border-radius: 0; }
+[data-theme="play"] .ui-control { border-width: 2px; }
+[data-theme="play"] :focus-visible { outline: 2px solid var(--color-reward); outline-offset: 2px; }
+
+/* ── bars: segmented like an HP bar ─────────────────────────────────────────────────────────────────────────── */
+[data-theme="play"] :is(.hero-header__bar, .px-hero-card__xp, .qscroll__bar, .quest__bar) {
+  border: 2px solid var(--px-ink);
+  border-radius: 0;
+  background-color: var(--color-surface-sunken);
+}
+[data-theme="play"] .hero-header__bar { height: 0.9rem; }
+[data-theme="play"] :is(.hero-header__bar, .px-hero-card__xp, .qscroll__bar, .quest__bar) > * {
+  border-radius: 0;
+  background-image: var(--px-ticks);
+  transition: width 300ms var(--px-step);
+}
+
+/* ── dialogs and toasts in the Hero area ─────────────────────────────────────────────────────────────────────── */
+[data-theme="play"] .ui-modal { border: 3px solid var(--px-rim); border-radius: 0; box-shadow: 0 0 0 3px var(--px-ink), 8px 8px 0 0 var(--px-ink); }
+[data-theme="play"] .ui-modal h2 { font-family: var(--font-label); font-size: 0.9rem; letter-spacing: 0.04em; color: var(--color-reward); }
+[data-theme="play"] .ui-toast { border: 2px solid var(--px-rim); border-radius: 0; box-shadow: 0 0 0 2px var(--px-ink), 4px 4px 0 0 var(--px-ink); }
+
+/* ── the header: a status window ─────────────────────────────────────────────────────────────────────────────── */
+[data-theme="play"] .hero-header { border-bottom: 2px solid var(--px-rim); background: var(--color-surface-sunken); }
+[data-theme="play"] .hero-header__avatar .champ-avatar__face { border-radius: 0; border-width: 3px; box-shadow: 0 0 0 2px var(--px-ink); }
+[data-theme="play"] .hero-header__avatar:hover { transform: translateY(-2px); transition: transform 80ms steps(2, end); }
+[data-theme="play"] .hero-header__level { text-shadow: 2px 2px 0 var(--px-ink); }
+
+/* ── entering a tab: the panel blinks in, in three steps ─────────────────────────────────────────────────────── */
+[data-theme="play"] [data-hero-tab] > * { animation: px-in 210ms steps(3, end) both; }
+@keyframes px-in { from { opacity: 0; transform: translateY(6px); } }
+
+@media (prefers-reduced-motion: reduce) {
+  [data-theme="play"] [data-hero-tab] > *, [data-theme="play"] .hero-tabs .ui-tab[aria-current="page"]::before { animation: none; }
+  [data-theme="play"] :is(.ui-btn, .px-hero-card, .arena-mode, .hero-item, .hero-cat) { transition: none; }
+}
+html.reduce-animations [data-theme="play"] [data-hero-tab] > *,
+html.reduce-animations [data-theme="play"] .hero-tabs .ui-tab[aria-current="page"]::before { animation: none; }
+
+/* ── the arena's own pieces: square icon tiles, square move buttons ──────────────────────────────────────────── */
+[data-theme="play"] :is(.arena-mode__icon, .arena-move__icon, .run-start__icon, .arena-move, .arena-item, .arena-option, .arena-verdict, .arena-result) {
+  border-radius: 0;
+}
+[data-theme="play"] :is(.arena-mode__icon, .arena-move__icon, .run-start__icon) { border-width: 2px; box-shadow: 2px 2px 0 0 var(--px-ink); }
+[data-theme="play"] :is(.qscroll__bar, .px-hero-card__xp, .ff-hud .arena-bar) { border-radius: 0; }

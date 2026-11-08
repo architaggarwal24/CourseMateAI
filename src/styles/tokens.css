@@ -207,23 +207,23 @@
 [data-theme="play"] {
   color-scheme: dark;
 
-  /* the darker Ink: the same black, a touch more contrast between layers */
-  --color-surface: #000000;
-  --color-surface-sunken: #070707;
-  --color-elevated: #111111;
-  --color-elevated-hover: #1c1c1c;
+  /* Stage P3: a 16-bit RPG menu, to sit with the pixel sprites: indigo night panels, pale rims, square corners */
+  --color-surface: #0a0b1e;
+  --color-surface-sunken: #06071a;
+  --color-elevated: #151a3d;
+  --color-elevated-hover: #1f2552;
 
-  --color-border-subtle: #1e1e1e;
-  --color-border: #2e2e2e;
-  --color-border-strong: #474747;
+  --color-border-subtle: #262d63;
+  --color-border: #3c4590;
+  --color-border-strong: #9ea4e0;
 
   --color-text: #ffffff;
-  --color-text-secondary: #d9d9d9;
-  --color-muted: #a8a8a8;
+  --color-text-secondary: #dfe1f5;
+  --color-muted: #b0b4dc;
 
   /* ink blue stays the accent; gold is the highlight and the reward (coins, XP, loot) */
   --color-accent: #3550c8;
-  --color-accent-text: #8a9df2;
+  --color-accent-text: #a3b4ff;
   --color-on-accent: #ffffff;
   --color-accent-alt: #f5b942;
   --color-accent-alt-text: #f5b942;
@@ -253,19 +253,19 @@
   --color-scroll-thumb-hover: rgba(255, 255, 255, 0.26);
 
   --glass-bg: var(--color-elevated);
-  --glass-bg-strong: #161616;
+  --glass-bg-strong: #1a2049;
   --glass-bg-hover: var(--color-elevated-hover);
   --glass-tint: rgba(255, 255, 255, 0.05);
-  --glass-border: #2a2a2a;
-  --glass-border-strong: #3d3d3d;
+  --glass-border: #3c4590;
+  --glass-border-strong: #9ea4e0;
   --glass-highlight: 0 0 0 0 transparent;
   --glass-blur: 0px;
-  --glass-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
+  --glass-shadow: 4px 4px 0 0 #03040d;
   --scrim: rgba(0, 0, 0, 0.78);
 
-  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.6);
-  --shadow-md: 0 8px 24px -8px rgba(0, 0, 0, 0.8);
-  --shadow-lg: 0 24px 64px -16px rgba(0, 0, 0, 0.9);
+  --shadow-sm: 2px 2px 0 0 #03040d;
+  --shadow-md: 4px 4px 0 0 #03040d;
+  --shadow-lg: 8px 8px 0 0 #03040d;
   --shadow-glow: 0 0 0 1px var(--color-border-strong);
   --edge-light: 0 0 0 0 transparent;
 
@@ -280,8 +280,18 @@
   --motion-base: 160ms;
   --motion-slow: 260ms;
 
-  /* the pixel font is for short labels and numbers (3 words at most); body text stays Onest */
+  /* Stage P3: Press Start 2P for labels, numbers, buttons and titles; Pixelify Sans (readable) for running text */
   --font-label: var(--font-pixel), ui-monospace, "Courier New", monospace;
+  --font-sans: var(--font-pixel-body), ui-monospace, "Courier New", monospace;
+  --font-display: var(--font-pixel), ui-monospace, "Courier New", monospace;
+  /* square corners and stepped motion: nothing glides in a 16-bit menu */
+  --radius-sm: 0px;
+  --radius-md: 0px;
+  --radius-lg: 0px;
+  --radius-xl: 0px;
+  --motion-ease: steps(3, end);
+  --ease-spring: steps(4, end);
+  --ease-out-expo: steps(3, end);
   --label-tracking: 0.05em;
 }
 

@@ -38,7 +38,8 @@ export type SummonMode = "quick" | "nemesis";
 /** The server gives a late answer this long (after the clock reaches zero) before it counts the question as missed. */
 export const DEADLINE_GRACE_MS = 3000;
 /** How long a verdict stays before the next turn: short for a right answer, long enough to read for a wrong one. */
-export const AUTO_ADVANCE_MS = { correct: 1800, wrong: 6000 } as const;
+/** How long a verdict stays before moving on; the last one ("over") leaves time for the KO and a finisher to play. */
+export const AUTO_ADVANCE_MS = { correct: 1800, wrong: 6000, over: 6000 } as const;
 const SESSION_KEY = "cmai_arena_session";
 
 export interface ArenaState {
@@ -269,7 +270,7 @@ export function useArenaBattle({ autoResume = true, documentId }: { autoResume?:
       patch({
         battle: r.battle, outcome: r, stage: "feedback", deadline: null, ultimateCast: null,
         rewards: r.rewards ?? r.battle.rewards ?? null,
-        advanceAt: Date.now() + (r.correct && !over ? AUTO_ADVANCE_MS.correct : AUTO_ADVANCE_MS.wrong),
+        advanceAt: Date.now() + (over ? AUTO_ADVANCE_MS.over : r.correct ? AUTO_ADVANCE_MS.correct : AUTO_ADVANCE_MS.wrong),
       });
       if (over) refreshGame();
     } catch (e) {
@@ -293,10 +294,11 @@ export function useArenaBattle({ autoResume = true, documentId }: { autoResume?:
 
   /** Hold the verdict on screen (the player is reading it); `false` lets it move on again shortly. */
   const holdVerdict = useCallback((hold: boolean) => {
-    const { stage, advanceAt } = latest.current;
+    const { stage, advanceAt, battle } = latest.current;
     if (stage !== "feedback") return;
     if (hold && advanceAt !== null) patch({ advanceAt: null });
-    else if (!hold && advanceAt === null) patch({ advanceAt: Date.now() + AUTO_ADVANCE_MS.correct });
+    // the battle's last verdict waits long enough for the KO (and a finisher) to finish playing
+    else if (!hold && advanceAt === null) patch({ advanceAt: Date.now() + (battle && battle.status !== "active" ? AUTO_ADVANCE_MS.over : AUTO_ADVANCE_MS.correct) });
   }, [patch]);
 
   // ── The verdict moves on by itself ────────────────────────────────────────────────────────────────────────────

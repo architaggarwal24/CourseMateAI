@@ -202,6 +202,14 @@ Each step was a set of stages with zips and checklists. Dates are 2026.
   the book). Story: 3 chapters per champion, for the champion you fight as. Every scroll moves by an `event` string
   (`scrollEvent`): actions from `questsOnAction`, fight events from `arena.end` (`fightEvents`), banes from resolve.
   UI: `components/hero/QuestsTab.tsx` + `QuestScroll.tsx` (seal splits on claim); links in `lib/quests/board.ts`.
+- **Round 5 (8 Nov):** arena tab shows only modes + champions; sidebar has one "Hero" link (the Hero tab bar holds
+  the rest); owner-only XP/coin grants (Admin → Manage → XP and coins; `server/admin.ts grantGame`, kind
+  "admin_grant", minus takes away to zero). Bestiary book: IM Fell types (`src/fonts/tome.ts`), worn/torn paper
+  (`tornEdge` clip-path per page), curled 3D turns (leaf = 10 hinged strips moved by rAF outside React; strips use a
+  lighter paper background because the grain is costly to repaint), contents jump = a stack of up to 5 leaves.
+  Hero pixel UI: `components/hero/pixel-ui.css` + play tokens (indigo panels, 0 radius, hard shadows, steps()
+  motion, Press Start 2P labels, Pixelify Sans body; fonts given by AppShell's play ThemeScope). The last verdict
+  waits 6 s (`AUTO_ADVANCE_MS.over`) so the KO/finisher plays.
 - Nothing is in progress (all 4 hero stages delivered). Ideas waiting in the backlog: chiptune sound, sharing a KO clip, campaign mode, more inputs
   (YouTube, slides, OCR), ghost duels and other multiplayer, teacher mode.
 

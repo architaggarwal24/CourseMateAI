@@ -49,7 +49,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
               <p className="text-fg-muted text-sm mt-5">Loading CourseMateAI…</p>
             </div>
           </div>
-        ) : children}
+        ) : play ? <ThemeScope theme="play">{children}</ThemeScope> /* the Hero area's pixel fonts and look */ : children}
       </main>
       <BottomNav />
       <CommandPalette />

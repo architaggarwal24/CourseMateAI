@@ -25,7 +25,7 @@ function resolve(own: Record<string, string>, base: Record<string, string>): Rec
   return Object.fromEntries([...Object.keys({ ...base, ...own })].map((k) => [k, get(k)]));
 }
 // --font-onest / --font-bricolage / --font-geist-mono / --font-pixel are defined at runtime by next/font
-const FONTS = { "--font-onest": "Onest", "--font-bricolage": "Bricolage Grotesque", "--font-geist-mono": "Geist Mono", "--font-pixel": "pixel-face" };
+const FONTS = { "--font-onest": "Onest", "--font-bricolage": "Bricolage Grotesque", "--font-geist-mono": "Geist Mono", "--font-pixel": "pixel-face", "--font-pixel-body": "pixel-body-face" };
 const studyOwn = declarations(/:root,\s*\[data-theme="study"\]/);
 const study = resolve(studyOwn, FONTS);
 const light = resolve(declarations(/:root\[data-mode="light"\],/), { ...FONTS, ...studyOwn });
@@ -120,10 +120,13 @@ describe("flat: no gradients, glass or glow", () => {
 });
 
 describe("the Hero theme (darker Ink)", () => {
-  it("stays dark in light mode, keeps the ink-blue accent, and uses gold only as the highlight/reward", () => {
+  // Stage P3: the Hero area is its own 16-bit look (indigo night panels, square corners, stepped motion, pixel fonts)
+  it("stays dark in light mode, has its own night palette and pixel type, and uses gold only as the highlight/reward", () => {
     expect(code).toMatch(/\[data-theme="play"\] \{\s*color-scheme: dark;/);
-    expect(play["--color-surface"]).toBe("#000000");
-    expect(play["--color-accent"]).toBe(study["--color-accent"]);
+    expect(play["--color-surface"]).toBe("#0a0b1e");
+    expect(play["--color-surface"]).not.toBe(study["--color-surface"]);
+    expect(play["--radius-md"]).toBe("0px");
+    expect(play["--font-sans"]).toMatch(/pixel-body/);
     expect(play["--color-highlight"]).toBe(play["--color-reward"]);
     expect(play["--color-highlight"]).not.toBe(play["--color-accent"]);
     expect(play["--font-label"]).toMatch(/pixel/);

@@ -11,3 +11,14 @@ export const pixel = localFont({
   preload: false,
   variable: "--font-pixel",
 });
+
+// Pixelify Sans (SIL OFL, see LICENSE-PixelifySans.txt): a readable pixel face for running text in the Hero area
+// (Stage P3), so descriptions match the sprites without the strain of Press Start 2P. Play scope only, not preloaded.
+export const pixelBody = localFont({
+  src: "./PixelifySans-latin-variable.woff2",
+  weight: "400 700",
+  style: "normal",
+  display: "swap",
+  preload: false,
+  variable: "--font-pixel-body",
+});

@@ -15,6 +15,7 @@ import InventoryTab from "./InventoryTab";
 import QuestsTab from "./QuestsTab";
 import ShopTab from "./ShopTab";
 import "./hero.css";
+import "./pixel-ui.css";
 
 const ArenaArea = dynamic(() => import("@/components/arena/ArenaArea"), { ssr: false });
 const AchievementsView = dynamic(() => import("@/components/AchievementsView"), { ssr: false });
