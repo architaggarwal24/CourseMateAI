@@ -30,6 +30,9 @@ beforeEach(() => {
     if (u.pathname === "/api/v1/admin/users/7/plan" && method === "PUT") {
       return json({ ...STUDENT, tier: body.tier, tier_name: "Sage", plan: { tier: body.tier, source: "admin", expires_at: "2026-12-05T00:00:00Z", started_at: "x" } });
     }
+    if (u.pathname === "/api/v1/admin/users/7/grant" && method === "POST") {
+      return json({ ...STUDENT, game: { level: 4, total_xp: 500, coins: 20 }, granted: { xp: body.xp, coins: body.coins, reason: body.reason || null } });
+    }
     if (u.pathname === "/api/v1/admin/invites" && method === "GET") return json({ invites: [] });
     if (u.pathname === "/api/v1/admin/ai" && method === "GET") return json(AI);
     if (u.pathname === "/api/v1/admin/ai" && method === "PUT") return json({ ...AI, cap_usd: body.cap_usd });
@@ -121,5 +124,30 @@ describe("AdminPanel", () => {
     fireEvent.click(screen.getByRole("button", { name: "Create code" }));
     await flush();
     expect(sent.find((c) => c.method === "POST")?.body).toMatchObject({ tier: "sage", days: 30, max_uses: 10, valid_days: null });
+  });
+
+  it("the owner gives XP and coins (a minus takes away); other admins don't see it", async () => {
+    auth.user = { user_id: 1, email: "o@x.io", is_admin: true, is_owner: true };
+    render(<AdminPanel />);
+    await flush();
+    fireEvent.click(screen.getByRole("button", { name: "Manage s@example.com" }));
+    const dialog = within(screen.getByRole("dialog"));
+    fireEvent.change(dialog.getByLabelText("XP"), { target: { value: "1.5" } });
+    fireEvent.click(dialog.getByRole("button", { name: "Give" }));
+    expect(dialog.getByText(/A whole number/)).toBeTruthy();
+    expect(sent.some((c) => c.path.endsWith("/grant"))).toBe(false);
+    fireEvent.change(dialog.getByLabelText("XP"), { target: { value: "500" } });
+    fireEvent.change(dialog.getByLabelText("Coins"), { target: { value: "-30" } });
+    fireEvent.change(dialog.getByLabelText("Note (optional)"), { target: { value: "contest" } });
+    fireEvent.click(dialog.getByRole("button", { name: "Give" }));
+    await flush();
+    expect(sent.find((c) => c.path.endsWith("/grant"))).toMatchObject({ path: "/api/v1/admin/users/7/grant", body: { xp: 500, coins: -30, reason: "contest" } });
+    expect(toasts.success).toHaveBeenCalledWith("+500 XP, -30 coins for stud");
+    cleanup();
+    auth.user = { user_id: 2, email: "a@x.io", is_admin: true, is_owner: false };
+    render(<AdminPanel />);
+    await flush();
+    fireEvent.click(screen.getByRole("button", { name: "Manage s@example.com" }));
+    expect(screen.queryByRole("heading", { name: "XP and coins" })).toBeNull();
   });
 });

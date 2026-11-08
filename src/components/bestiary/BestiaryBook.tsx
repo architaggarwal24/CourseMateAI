@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { ChevronLeft, ChevronRight } from "@/components/icons";
 import PixelSprite from "@/components/arena/pixel/PixelSprite";
 import { useChampion } from "@/hooks/useChampion";
@@ -11,6 +11,7 @@ import type { BestiaryEntry, BestiaryPage, BestiaryResponse, Move } from "@/lib/
 import { LOST_PAGES, PAGES, SCRIBE, SEALED_LINES } from "@/lib/bestiary/content";
 import { heroById } from "@/lib/pixel/heroes";
 import { shortcutBlocked } from "@/lib/keys";
+import { tome, tomeCaps } from "@/fonts/tome";
 import "./book.css";
 
 // ── pages ─────────────────────────────────────────────────────────────────────────────────────────────────────
@@ -44,8 +45,56 @@ function fallback(): BestiaryResponse {
   };
 }
 
-function Paper({ side, children, label }: { side: "left" | "right" | "single"; children: ReactNode; label?: string }) {
-  return <div className="tome-page" data-side={side} role={label ? "group" : undefined} aria-label={label}>{children}</div>;
+// ── wear and tear ─────────────────────────────────────────────────────────────────────────────────────────────
+/** A small, steady random number from a seed (the same page always has the same tears and stains). */
+function rand(seed: number) {
+  let h = seed | 0;
+  return () => { h = Math.imul(h ^ (h >>> 15), 2246822519) ^ Math.imul(h ^ (h >>> 13), 3266489917); return ((h ^= h >>> 16) >>> 0) / 4294967296; };
+}
+export const seedOf = (key: string) => { let h = 2166136261; for (const ch of key) h = Math.imul(h ^ ch.charCodeAt(0), 16777619); return h >>> 0; };
+
+/**
+ * The page's outline as a clip-path: ragged on the open edges (the spine side stays straight), and now and then a
+ * corner torn away. In percentages, so it fits any page size.
+ */
+export function tornEdge(seed: number, side: "left" | "right" | "single"): string {
+  const r = rand(seed);
+  const pts: string[] = [];
+  const j = (amp: number) => (r() * amp).toFixed(2);
+  const outerRight = side !== "left";                       // the open edge: right on a right page or a single one
+  const tornCorner = r() < 0.35 ? (r() < 0.5 ? "top" : "bottom") : null;
+  const N = 22;
+  // top edge, left to right
+  for (let i = 0; i <= N; i++) {
+    const x = (i / N) * 100;
+    const nearOuter = outerRight ? i >= N - 3 : i <= 3;
+    const bite = tornCorner === "top" && nearOuter ? 3.5 + r() * 3 : 0;
+    pts.push(`${x.toFixed(2)}% ${(Number(j(0.7)) + bite).toFixed(2)}%`);
+  }
+  // right edge, top to bottom
+  for (let i = 1; i < N; i++) pts.push(`${outerRight ? (100 - Number(j(1.1))).toFixed(2) : "100"}% ${((i / N) * 100).toFixed(2)}%`);
+  // bottom edge, right to left
+  for (let i = N; i >= 0; i--) {
+    const x = (i / N) * 100;
+    const nearOuter = outerRight ? i >= N - 3 : i <= 3;
+    const bite = tornCorner === "bottom" && nearOuter ? 3.5 + r() * 3 : 0;
+    pts.push(`${x.toFixed(2)}% ${(100 - Number(j(0.8)) - bite).toFixed(2)}%`);
+  }
+  // left edge, bottom to top
+  for (let i = N - 1; i > 0; i--) pts.push(`${outerRight ? "0" : Number(j(1.1)).toFixed(2)}% ${((i / N) * 100).toFixed(2)}%`);
+  return `polygon(${pts.join(", ")})`;
+}
+
+function Paper({ side, children, label, seed, folio }: { side: "left" | "right" | "single"; children?: ReactNode; label?: string; seed: number; folio?: number }) {
+  const r = rand(seed + 7);
+  const stain = r() < 0.45 ? 1 + Math.floor(r() * 3) : 0;
+  return (
+    <div className="tome-page" data-side={side} data-stain={stain || undefined} role={label ? "group" : undefined} aria-label={label}
+      style={{ clipPath: tornEdge(seed, side), "--stain-x": `${Math.round(15 + r() * 70)}%`, "--stain-y": `${Math.round(15 + r() * 70)}%` } as CSSProperties}>
+      {children}
+      {folio !== undefined && <p className="tome-folio-mark" aria-hidden="true">{folio}</p>}
+    </div>
+  );
 }
 
 function TitlePage({ data }: { data: BestiaryResponse }) {
@@ -61,7 +110,7 @@ function TitlePage({ data }: { data: BestiaryResponse }) {
   );
 }
 
-function ContentsPage({ data, goTo }: { data: BestiaryResponse; goTo: (species: string) => void }) {
+function ContentsPage({ data, goTo, pageOf }: { data: BestiaryResponse; goTo: (species: string) => void; pageOf: (species: string) => number }) {
   return (
     <nav className="tome-contents" aria-label="Contents">
       <h3 className="tome-h">Contents</h3>
@@ -71,8 +120,14 @@ function ContentsPage({ data, goTo }: { data: BestiaryResponse; goTo: (species: 
           <ul>
             {data.creatures.filter((c) => c.tier === t.tier).map((c) => (
               <li key={c.species}>
-                <button type="button" className="tome-link" onClick={() => goTo(c.species)} aria-label={c.open ? `${c.name}, page` : "A sealed page"}>
-                  {c.open ? c.name : "· · ·"}{c.defeated ? " ✦" : ""}
+                <button type="button" className="tome-link" onClick={() => goTo(c.species)}>
+                  <span className="tome-link__name">
+                    {c.open ? c.name : <><span aria-hidden="true">· · ·</span><span className="sr-only">A sealed page</span></>}
+                    {c.defeated && <><span aria-hidden="true"> ✦</span><span className="sr-only">, beaten</span></>}
+                    <span className="sr-only">, page {pageOf(c.species)}</span>
+                  </span>
+                  <span className="tome-link__dots" aria-hidden="true" />
+                  <span className="tome-link__page" aria-hidden="true">{pageOf(c.species)}</span>
                 </button>
               </li>
             ))}
@@ -178,14 +233,82 @@ function EndPage() {
   );
 }
 
-// ── the book ──────────────────────────────────────────────────────────────────────────────────────────────────
-type Turn = { dir: 1 | -1; progress: number; dragging: boolean };
-const TURN_MS = 520;
+// ── turning pages ─────────────────────────────────────────────────────────────────────────────────────────────
+/** How long one leaf takes to turn, and how far behind each other the leaves of a thick stack follow. */
+export const TURN_MS = 760;
+export const STACK_GAP = 70;
+/** A jump of many pages is shown as a stack of at most this many leaves turning together. */
+export const STACK_MAX = 5;
+/** Vertical strips per leaf: each bends a little more than the one before, so the page curves. */
+const STRIPS = 10;
+/** How much a leaf bends at the height of its turn (degrees, spread over its strips). */
+const BEND = 85;
+
+const easeInOut = (t: number) => (t < 0.5 ? 4 * t * t * t : 1 - (-2 * t + 2) ** 3 / 2);
+const clamp01 = (t: number) => Math.max(0, Math.min(1, t));
 
 /**
- * The Bestiary as a book: a spread of two pages on a wide screen, one page on a phone. The arrow keys turn the page,
- * and so does dragging it (mouse or finger) past a third of the way; the page curls over the spine as it turns.
- * Reduced motion turns pages at once.
+ * Where each leaf of a turn is (0 = lying on the right, 1 = lying on the left) at `clock` (0..1 of the whole turn).
+ * Leaf 0 is the top of the stack on the right; forward, it lifts first; back, the leaf on top of the left stack (the
+ * last one) lifts first. One leaf is an ordinary page turn.
+ */
+export function leafProgress(clock: number, n: number, forward: boolean): number[] {
+  const total = TURN_MS + (n - 1) * STACK_GAP;
+  const t = (forward ? clock : 1 - clock) * total;
+  return Array.from({ length: n }, (_, k) => clamp01((t - k * STACK_GAP) / TURN_MS));
+}
+
+/** The angle of each strip of a leaf at `progress`, and how lit it is (light from the front). */
+export function leafPose(progress: number, wobble = 0) {
+  const e = easeInOut(progress);
+  const hinge = -180 * e;
+  const step = -((BEND + wobble) * Math.sin(Math.PI * e)) / STRIPS;
+  return Array.from({ length: STRIPS }, (_, i) => {
+    const world = ((hinge + step * i) * Math.PI) / 180;
+    return { angle: i === 0 ? hinge : step, shade: 0.72 + 0.28 * Math.abs(Math.cos(world)) };
+  });
+}
+
+/**
+ * One leaf, drawn as strips hinged to each other: the first turns about the spine, each next one bends a little
+ * further, so the leaf curls like paper. Front and back are whole pages; each strip shows its slice of them. The
+ * strips are drawn once per turn; the book moves them (setPose) on every frame without React.
+ */
+function Strip({ i, front, back, refs }: { i: number; front: ReactNode; back: ReactNode; refs: (HTMLDivElement | null)[] }) {
+  const slice = (k: number): CSSProperties => ({ width: `${STRIPS * 100}%`, transform: `translateX(${(-k / STRIPS) * 100}%)` });
+  return (
+    <div className="tome-strip" data-first={i === 0 || undefined} ref={(el) => { refs[i] = el; }}>
+      <div className="tome-strip__face"><div className="tome-strip__slice" style={slice(i)}>{front}</div></div>
+      <div className="tome-strip__face tome-strip__face--back"><div className="tome-strip__slice" style={slice(STRIPS - 1 - i)}>{back}</div></div>
+      {i < STRIPS - 1 && <Strip i={i + 1} front={front} back={back} refs={refs} />}
+    </div>
+  );
+}
+
+function CurlLeaf({ front, back, single, refs, leafRef }: { front: ReactNode; back: ReactNode; single: boolean; refs: (HTMLDivElement | null)[]; leafRef: (el: HTMLDivElement | null) => void }) {
+  return (
+    <div className="tome-leaf" data-single={single || undefined} ref={leafRef} aria-hidden="true" inert>
+      <Strip i={0} front={front} back={back} refs={refs} />
+    </div>
+  );
+}
+
+/** Put a leaf's strips where they are at `progress` (no React render). */
+function setPose(strips: (HTMLDivElement | null)[], progress: number, wobble: number) {
+  const pose = leafPose(progress, wobble);
+  strips.forEach((el, i) => {
+    if (!el) return;
+    el.style.transform = `rotateY(${pose[i].angle.toFixed(2)}deg)`;
+    el.style.setProperty("--shade", pose[i].shade.toFixed(3));
+  });
+}
+
+type Turn = { from: number; to: number };
+
+/**
+ * The Bestiary as a book: a spread of two pages on a wide screen, one page on a phone. The arrow keys turn a page, and
+ * so does dragging it (mouse or finger) past a third of the way; the leaf curls over the spine. Choosing a creature
+ * in the contents turns all the pages up to it at once, as a thick stack. Reduced motion turns pages at once.
  */
 export default function BestiaryBook() {
   const guest = useHUDStore((s) => s.guestMode);
@@ -198,6 +321,12 @@ export default function BestiaryBook() {
   const [turn, setTurn] = useState<Turn | null>(null);
   const bookRef = useRef<HTMLDivElement>(null);
   const drag = useRef<{ x: number; id: number } | null>(null);
+  // the turn's clock (0..1) and the leaves' strips live outside React: a frame moves them directly
+  const clock = useRef(0);
+  const dragging = useRef(false);
+  const stripRefs = useRef<(HTMLDivElement | null)[][]>([]);
+  const leafEls = useRef<(HTMLDivElement | null)[]>([]);
+  const raf = useRef(0);
 
   useEffect(() => {
     if (guest) return;
@@ -212,17 +341,61 @@ export default function BestiaryBook() {
   const lastWide = useRef(wide);
   useEffect(() => {
     if (lastWide.current === wide) return;
+    setTurn(null);
     setAt((i) => (wide ? Math.floor(i / 2) : i * 2));
     lastWide.current = wide;
   }, [wide]);
   const index = Math.min(at, pages.length - 1);
 
+  /** Draw the turn at the current clock: each leaf's curl, which leaf lies on top, the shadow under them. */
+  const paint = useCallback(() => {
+    if (!turn) return;
+    const forward = turn.to > turn.from;
+    const n = Math.min(STACK_MAX, Math.abs(turn.to - turn.from));
+    const prog = leafProgress(clock.current, n, forward);
+    prog.forEach((p, k) => {
+      setPose(stripRefs.current[k] ?? [], p, (k % 3) * 6 - 6);
+      const leaf = leafEls.current[k];
+      if (leaf) leaf.style.zIndex = String(10 + (wide ? (p < 0.5 ? n - k : n + k) : n - k));
+    });
+    bookRef.current?.style.setProperty("--turn-shadow", Math.max(...prog.map((p) => Math.sin(Math.PI * p))).toFixed(3));
+  }, [turn, wide]);
+  useLayoutEffect(() => { paint(); }, [paint]);
+
+  /** Run the clock to its end (1: the new page) or back to its start (0: a drag let go early). */
+  const settle = useCallback((goal: 0 | 1, t: Turn) => {
+    cancelAnimationFrame(raf.current);
+    const n = Math.min(STACK_MAX, Math.abs(t.to - t.from));
+    const total = TURN_MS + (n - 1) * STACK_GAP;
+    const from = clock.current, begin = performance.now();
+    const dur = Math.max(80, Math.abs(goal - from) * total);
+    const tick = (now: number) => {
+      const k = clamp01((now - begin) / dur);
+      clock.current = from + (goal - from) * k;
+      if (k >= 1) {
+        if (goal === 1) setAt(t.to);
+        setTurn(null);
+        return;
+      }
+      paint();
+      raf.current = requestAnimationFrame(tick);
+    };
+    raf.current = requestAnimationFrame(tick);
+  }, [paint]);
+  // a turn that starts by itself (a key, a button, the contents) runs at once
+  const autoRun = useRef(false);
+  useEffect(() => {
+    if (turn && autoRun.current) { autoRun.current = false; settle(1, turn); }
+  }, [turn, settle]);
+  useEffect(() => () => cancelAnimationFrame(raf.current), []);
+
   const byId = useMemo(() => new Map(data.creatures.map((c) => [c.species, c])), [data.creatures]);
   const visible = useMemo(() => {
     const ids = new Set<string>();
-    for (const l of pages[index] ?? []) if (l && (l.kind === "art" || l.kind === "text")) ids.add(l.species);
+    const spans = turn ? [pages[turn.from], pages[turn.to]] : [pages[index]];
+    for (const sp of spans) for (const l of sp ?? []) if (l && (l.kind === "art" || l.kind === "text")) ids.add(l.species);
     return [...ids];
-  }, [pages, index]);
+  }, [pages, index, turn]);
   // the concepts a creature tested you on are read when its page opens (once)
   useEffect(() => {
     if (guest) return;
@@ -233,42 +406,34 @@ export default function BestiaryBook() {
     }
   }, [visible, byId, details, guest]);
 
-  const commit = useCallback((dir: 1 | -1) => { setAt((i) => Math.max(0, Math.min(pages.length - 1, i + dir))); setTurn(null); }, [pages.length]);
-
-  const flip = useCallback((dir: 1 | -1) => {
+  /** Turn from the open spread to `target`: one leaf, or a stack of them for a long way. */
+  const turnTo = useCallback((target: number) => {
     if (turn) return;
-    const target = index + dir;
-    if (target < 0 || target >= pages.length) return;
-    if (reduce) { commit(dir); return; }
-    setTurn({ dir, progress: 0, dragging: false });
-    requestAnimationFrame(() => requestAnimationFrame(() => setTurn({ dir, progress: 1, dragging: false })));
-  }, [turn, index, pages.length, reduce, commit]);
+    const to = Math.max(0, Math.min(pages.length - 1, target));
+    if (to === index) return;
+    if (reduce) { setAt(to); return; }
+    clock.current = 0;
+    autoRun.current = true;
+    setTurn({ from: index, to });
+  }, [turn, pages.length, index, reduce]);
+  const flip = useCallback((dir: 1 | -1) => turnTo(index + dir), [turnTo, index]);
 
-  // a turn finishes when its curl reaches the far side (or falls back to the start)
-  useEffect(() => {
-    if (!turn || turn.dragging) return;
-    if (turn.progress !== 0 && turn.progress !== 1) return;
-    const t = setTimeout(() => (turn.progress === 1 ? commit(turn.dir) : setTurn(null)), TURN_MS);
-    return () => clearTimeout(t);
-  }, [turn, commit]);
-
+  const artIndex = useCallback((species: string) => all.findIndex((l) => l.kind === "art" && l.species === species), [all]);
   const goTo = useCallback((species: string) => {
-    const i = all.findIndex((l) => l.kind === "art" && l.species === species);
-    if (i < 0) return;
-    setTurn(null);
-    setAt(wide ? Math.floor(i / 2) : i);
-  }, [all, wide]);
+    const i = artIndex(species);
+    if (i >= 0) turnTo(wide ? Math.floor(i / 2) : i);
+  }, [artIndex, turnTo, wide]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (shortcutBlocked(e)) return;
       if (e.key === "ArrowRight" || e.key === "PageDown") { e.preventDefault(); flip(1); }
       else if (e.key === "ArrowLeft" || e.key === "PageUp") { e.preventDefault(); flip(-1); }
-      else if (e.key === "Home") { e.preventDefault(); setTurn(null); setAt(wide ? 0 : 1); }
+      else if (e.key === "Home") { e.preventDefault(); turnTo(wide ? 0 : 1); }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [flip, wide]);
+  }, [flip, turnTo, wide]);
 
   // dragging a page: left turns forward, right turns back; let go past a third and it finishes the turn
   const onPointerDown = (e: React.PointerEvent) => {
@@ -279,91 +444,84 @@ export default function BestiaryBook() {
     const d = drag.current;
     if (!d || d.id !== e.pointerId) return;
     const dx = e.clientX - d.x;
-    if (Math.abs(dx) < 6 && !turn) return;
+    if (Math.abs(dx) < 6 && !dragging.current) return;
     const dir: 1 | -1 = dx < 0 ? 1 : -1;
+    if (turn && !dragging.current) return;                                // a turn already running
+    if (dragging.current && turn && Math.sign(turn.to - turn.from) !== dir) return;
     if ((dir === 1 && index >= pages.length - 1) || (dir === -1 && index <= 0)) return;
     (e.currentTarget as HTMLElement).setPointerCapture?.(e.pointerId);
     const width = (bookRef.current?.clientWidth ?? 600) / (wide ? 2 : 1);
-    setTurn({ dir, progress: Math.min(1, Math.abs(dx) / width), dragging: true });
+    clock.current = Math.min(1, Math.abs(dx) / width);
+    if (!dragging.current) { dragging.current = true; setTurn({ from: index, to: index + dir }); }
+    else paint();
   };
   const onPointerUp = () => {
     drag.current = null;
-    setTurn((t) => {
-      if (!t || !t.dragging) return t;
-      if (reduce) { if (t.progress > 0.33) commit(t.dir); return null; }
-      return { ...t, dragging: false, progress: t.progress > 0.33 ? 1 : 0 };
-    });
+    if (!dragging.current || !turn) { dragging.current = false; return; }
+    dragging.current = false;
+    const done = clock.current > 0.33;
+    if (reduce) { if (done) setAt(turn.to); setTurn(null); return; }
+    settle(done ? 1 : 0, turn);
   };
 
+  const folioOf = (l: Leaf) => all.indexOf(l) + 1;
   const render = (l: Leaf | null, side: "left" | "right" | "single"): ReactNode => {
-    if (!l) return <Paper side={side}><span /></Paper>;
-    if (l.kind === "title") return <Paper side={side}><TitlePage data={data} /></Paper>;
-    if (l.kind === "contents") return <Paper side={side}><ContentsPage data={data} goTo={goTo} /></Paper>;
-    if (l.kind === "end") return <Paper side={side}><EndPage /></Paper>;
+    if (!l) return <Paper side={side} seed={seedOf(`blank-${side}`)} />;
+    const seed = seedOf(`${l.kind}-${"species" in l ? l.species : ""}`);
+    const folio = folioOf(l);
+    if (l.kind === "title") return <Paper side={side} seed={seed}><TitlePage data={data} /></Paper>;
+    if (l.kind === "contents") return <Paper side={side} seed={seed} folio={folio}><ContentsPage data={data} goTo={goTo} pageOf={(sp) => artIndex(sp) + 1} /></Paper>;
+    if (l.kind === "end") return <Paper side={side} seed={seed} folio={folio}><EndPage /></Paper>;
     const c = byId.get(l.species)!;
     const label = c.open ? `${c.name}${l.kind === "art" ? "" : ", its page"}` : "A sealed page";
     if (l.kind === "art") {
       const prev = data.tiers.find((t) => t.tier === c.tier - 1);
       const hint = !c.open && prev ? `Beat ${prev.opens_next_at ?? 2} creatures of tier ${ROMAN[prev.tier]} to break this seal (${prev.beaten} so far).` : null;
-      return <Paper side={side} label={label}><ArtPage c={c} nextTierHint={hint} /></Paper>;
+      return <Paper side={side} label={label} seed={seed} folio={folio}><ArtPage c={c} nextTierHint={hint} /></Paper>;
     }
-    return <Paper side={side} label={label}><TextPage c={c} page={details[l.species] ?? null} champion={champion} /></Paper>;
+    return <Paper side={side} label={label} seed={seed} folio={folio}><TextPage c={c} page={details[l.species] ?? null} champion={champion} /></Paper>;
   };
+  const blank = (side: "left" | "right" | "single", k: number) => <Paper side={side} seed={seedOf(`leaf-${k}-${side}`)} />;
 
-  const cur = pages[index];
-  const next = pages[index + 1];
-  const prev = pages[index - 1];
-  const p = turn?.progress ?? 0;
-  const style = (deg: number): CSSProperties => ({
-    transform: `rotateY(${deg}deg)`, transition: turn?.dragging ? "none" : `transform ${TURN_MS}ms cubic-bezier(0.3, 0.1, 0.2, 1)`,
-  });
-
-  let base: ReactNode, leaf: ReactNode = null;
-  if (wide) {
-    const left = turn?.dir === -1 ? prev?.[0] ?? null : cur[0];
-    const right = turn?.dir === 1 ? next?.[1] ?? null : cur[1];
-    base = <>{render(left, "left")}{render(right, "right")}</>;
-    if (turn?.dir === 1 && next) {
-      leaf = (
-        <div className="tome-leaf" data-dir="next" style={style(-180 * p)} aria-hidden="true">
-          <div className="tome-leaf__face">{render(cur[1], "right")}</div>
-          <div className="tome-leaf__face tome-leaf__face--back">{render(next[0], "left")}</div>
-        </div>
-      );
-    } else if (turn?.dir === -1 && prev) {
-      leaf = (
-        <div className="tome-leaf" data-dir="prev" style={style(180 * p)} aria-hidden="true">
-          <div className="tome-leaf__face">{render(cur[0], "left")}</div>
-          <div className="tome-leaf__face tome-leaf__face--back">{render(prev[1], "right")}</div>
-        </div>
-      );
+  // what lies under the turning leaves, and the leaves themselves
+  let base: ReactNode;
+  let leavesNode: ReactNode = null;
+  if (turn) {
+    const lo = Math.min(turn.from, turn.to), hi = Math.max(turn.from, turn.to);
+    const n = Math.min(STACK_MAX, hi - lo);
+    const ks = Array.from({ length: n }, (_, k) => k);
+    stripRefs.current = ks.map(() => []);
+    const leafRef = (k: number) => (el: HTMLDivElement | null) => { leafEls.current[k] = el; };
+    if (wide) {
+      base = <>{render(pages[lo][0], "left")}{render(pages[hi][1], "right")}</>;
+      leavesNode = ks.map((k) => (
+        <CurlLeaf key={`${turn.from}-${turn.to}-${k}`} single={false} refs={stripRefs.current[k]} leafRef={leafRef(k)}
+          front={k === 0 ? render(pages[lo][1], "right") : blank("right", k)}
+          back={k === n - 1 ? render(pages[hi][0], "left") : blank("left", k)} />
+      ));
+    } else {
+      base = render(pages[hi][0], "single");
+      leavesNode = ks.map((k) => (
+        <CurlLeaf key={`${turn.from}-${turn.to}-${k}`} single refs={stripRefs.current[k]} leafRef={leafRef(k)}
+          front={k === 0 ? render(pages[lo][0], "single") : blank("single", k)} back={blank("single", k + 100)} />
+      ));
     }
   } else {
-    base = render(turn?.dir === 1 ? next?.[0] ?? null : cur[0], "single");
-    if (turn?.dir === 1) {
-      leaf = (
-        <div className="tome-leaf tome-leaf--single" style={style(-180 * p)} aria-hidden="true">
-          <div className="tome-leaf__face">{render(cur[0], "single")}</div>
-          <div className="tome-leaf__face tome-leaf__face--back"><div className="tome-page" data-side="single" /></div>
-        </div>
-      );
-    } else if (turn?.dir === -1 && prev) {
-      leaf = (
-        <div className="tome-leaf tome-leaf--single" style={style(-180 + 180 * p)} aria-hidden="true">
-          <div className="tome-leaf__face">{render(prev[0], "single")}</div>
-          <div className="tome-leaf__face tome-leaf__face--back"><div className="tome-page" data-side="single" /></div>
-        </div>
-      );
-    }
+    const cur = pages[index];
+    base = wide ? <>{render(cur[0], "left")}{render(cur[1], "right")}</> : render(cur[0], "single");
   }
 
+  const shown = turn ? turn.to : index;
   return (
-    <section className="tome" aria-labelledby="tome-title">
+    <section className={`tome ${tome.variable} ${tomeCaps.variable}`} aria-labelledby="tome-title">
       <h2 id="tome-title" className="sr-only">Bestiary book</h2>
       <div ref={bookRef} className="tome-book" data-wide={wide || undefined} data-turning={turn ? "true" : undefined}
            onPointerDown={onPointerDown} onPointerMove={onPointerMove} onPointerUp={onPointerUp} onPointerCancel={onPointerUp}>
+        <div className="tome-stack" data-side="left" aria-hidden="true" style={{ "--depth": Math.min(8, shown + 1) } as CSSProperties} />
+        <div className="tome-stack" data-side="right" aria-hidden="true" style={{ "--depth": Math.min(8, pages.length - shown) } as CSSProperties} />
         {base}
-        {leaf}
+        {turn && <div className="tome-cast" aria-hidden="true" />}
+        {leavesNode}
       </div>
       <div className="tome-controls">
         <button type="button" className="tome-turn" onClick={() => flip(-1)} disabled={index === 0 || !!turn} aria-label="Previous page">
@@ -374,7 +532,7 @@ export default function BestiaryBook() {
           <ChevronRight size={18} aria-hidden="true" />
         </button>
       </div>
-      <p className="tome-help">Arrow keys or drag the page to turn it.</p>
+      <p className="tome-help">Arrow keys or drag the page to turn it. Choose a creature in the contents to turn straight to it.</p>
     </section>
   );
 }

@@ -4,7 +4,9 @@
 import { asc, desc, eq, like, or, sql } from "drizzle-orm";
 import { isOwner } from "./auth";
 import type { CurrentUser, RequestContext } from "./context";
-import { session as sessionTable, user as userTable, userPlans } from "./db/schema";
+import { session as sessionTable, user as userTable, userPlans, userProgress } from "./db/schema";
+import { checkAchievements } from "./game/progression";
+import { recordRewardEvent } from "./game/store";
 import { HttpError } from "./http";
 import { clearPlan, setPlan } from "./invites";
 import { TIER_NAMES, isTier, nowIso, tierFor } from "./plans";
@@ -21,6 +23,7 @@ export async function adminUserView(ctx: RequestContext, row: typeof userTable.$
   const owner = isOwner(row, ctx.settings);
   const plan = await ctx.db.select().from(userPlans).where(eq(userPlans.userId, row.id)).get();
   const tier = await tierFor(ctx.db, { id: row.id, owner });
+  const game = await ctx.db.select({ xp: userProgress.totalXp, coins: userProgress.coins, level: userProgress.currentLevel }).from(userProgress).where(eq(userProgress.userId, row.id)).get();
   const bannedNow = !!row.banned && (!row.banExpires || row.banExpires > new Date());
   return {
     user_id: row.id, email: row.email, username: row.displayUsername || row.username, full_name: row.name,
@@ -28,7 +31,37 @@ export async function adminUserView(ctx: RequestContext, row: typeof userTable.$
     banned: bannedNow, ban_reason: bannedNow ? row.banReason : null, ban_expires: bannedNow && row.banExpires ? row.banExpires.toISOString() : null,
     created_at: row.createdAt.toISOString(), tier, tier_name: TIER_NAMES[tier],
     plan: plan ? { tier: plan.tier, source: plan.source, expires_at: plan.expiresAt, started_at: plan.startedAt } : null,
+    game: { level: game?.level ?? 1, total_xp: game?.xp ?? 0, coins: game?.coins ?? 0 },
   };
+}
+
+export const GRANT_MAX = 1_000_000;
+
+/**
+ * The owner gives (or, with a minus, takes away) XP and coins, to anyone, themselves included. One ledger event
+ * (kind "admin_grant", the reason kept as its source), so it shows in the history and levels follow the XP.
+ * Taking away never goes below zero: it takes what there is.
+ */
+export async function grantGame(ctx: RequestContext, actor: CurrentUser, id: number, xp: unknown, coins: unknown, reason: unknown) {
+  if (!actor.owner) throw new HttpError(403, "owner_only", "Only the owner can give XP and coins.");
+  const whole = (v: unknown, field: string) => {
+    const n = v === null || v === undefined || v === "" ? 0 : Number(v);
+    if (!Number.isInteger(n) || Math.abs(n) > GRANT_MAX) {
+      throw new HttpError(400, "invalid_amount", `${field === "xp" ? "XP" : "Coins"} must be a whole number between -${GRANT_MAX.toLocaleString("en")} and ${GRANT_MAX.toLocaleString("en")}.`, null, { field });
+    }
+    return n;
+  };
+  const x = whole(xp, "xp"), c = whole(coins, "coins");
+  if (!x && !c) throw new HttpError(400, "invalid_amount", "Give some XP or coins (a minus takes them away).", null, { field: "xp" });
+  const t = await target(ctx, id);
+  const note = typeof reason === "string" ? reason.trim().slice(0, 120) : "";
+  const now = await ctx.db.select({ xp: userProgress.totalXp, coins: userProgress.coins }).from(userProgress).where(eq(userProgress.userId, id)).get();
+  // taking away: at most what there is
+  const dx = Math.max(x, -(now?.xp ?? 0)), dc = Math.max(c, -(now?.coins ?? 0));
+  const res = await recordRewardEvent(ctx, id, "admin_grant", dx, dc, `admin:${actor.id}${note ? `:${note}` : ""}`, `admin-grant:${actor.id}:${crypto.randomUUID()}`);
+  if (!res.applied) throw new HttpError(409, "grant_failed", "That didn't go through. Try again.");
+  if (dx > 0) await checkAchievements(ctx, id);
+  return { ...(await adminUserView(ctx, t.row)), granted: { xp: dx, coins: dc, reason: note || null } };
 }
 
 export async function listUsers(ctx: RequestContext, { q = "", offset = 0, limit = 25 }: { q?: string; offset?: number; limit?: number }) {

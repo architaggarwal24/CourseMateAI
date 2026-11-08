@@ -3,7 +3,7 @@
 import { Suspense, useEffect, useSyncExternalStore, type ReactNode } from "react";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
-import { BookOpen, GraduationCap, Home, PanelLeft, Repeat, ScrollText, Search, ShoppingBag, Sparkles, Swords, type IconType } from "@/components/icons";
+import { BookOpen, GraduationCap, Home, PanelLeft, Repeat, Search, Swords, type IconType } from "@/components/icons";
 import UserMenu from "@/components/UserMenu";
 import Logo from "@/components/brand/Logo";
 import { dueBadge, useReview } from "@/hooks/useReview";
@@ -80,19 +80,14 @@ function Sidebar({ tab, doc }: { tab: string | null; doc: string | null }) {
 
   const inStudy = pathname === ROUTES.study;
   const inHero = pathname === ROUTES.hero;
-  const heroTab = tab ?? "quests";
   const study: Item[] = [
     { label: "Today", href: ROUTES.today, Icon: Home, current: pathname === ROUTES.today },
     { label: "Study", href: ROUTES.study, Icon: BookOpen, current: inStudy && tab !== "review" && tab !== "exam" && !(tab === "overview" && courses.some((c) => c.id === doc)) },
     { label: "Review", href: ROUTES.studyTab("review"), Icon: Repeat, current: inStudy && tab === "review", extra: <ReviewBadge due={due} /> },
     { label: "Mock exam", href: ROUTES.studyTab("exam"), Icon: GraduationCap, current: inStudy && tab === "exam" },
   ];
-  const hero: Item[] = [
-    { label: "Arena", href: ROUTES.heroArena, Icon: Swords, current: inHero && heroTab === "arena" },
-    { label: "Quests", href: ROUTES.heroQuests, Icon: ScrollText, current: inHero && heroTab === "quests" },
-    { label: "Shop", href: ROUTES.heroShop, Icon: ShoppingBag, current: inHero && heroTab === "shop" },
-    { label: "Champion", href: ROUTES.heroChampion, Icon: Sparkles, current: inHero && heroTab === "champion" },
-  ];
+  // one way in: the Hero area's own tab bar (Quests, Arena, Bestiary, Shop, ...) does the rest
+  const hero: Item[] = [{ label: "Hero", href: ROUTES.hero, Icon: Swords, current: inHero }];
 
   return (
     <aside className="side" data-collapsed={collapsed || undefined}>
@@ -125,7 +120,7 @@ function Sidebar({ tab, doc }: { tab: string | null; doc: string | null }) {
             ))}
           </Group>
         )}
-        <Group id="side-hero" title="Hero">{hero.map((i) => <NavLink key={i.label} {...i} />)}</Group>
+        <Group id="side-hero" title="Play">{hero.map((i) => <NavLink key={i.label} {...i} />)}</Group>
       </nav>
 
       <div className="side__foot">

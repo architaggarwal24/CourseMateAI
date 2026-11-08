@@ -16,6 +16,7 @@ import * as adminUsers from "@/app/api/v1/admin/users/route";
 import * as adminPlan from "@/app/api/v1/admin/users/[id]/plan/route";
 import * as adminRole from "@/app/api/v1/admin/users/[id]/role/route";
 import * as adminBan from "@/app/api/v1/admin/users/[id]/ban/route";
+import * as adminGrant from "@/app/api/v1/admin/users/[id]/grant/route";
 import * as adminInvites from "@/app/api/v1/admin/invites/route";
 import * as adminInvite from "@/app/api/v1/admin/invites/[code]/route";
 import { setMailerForTests } from "./context";
@@ -194,6 +195,30 @@ describe("admin", () => {
     expect((await adminRole.PUT(helper.request(`/api/v1/admin/users/${s2}/role`, { method: "PUT", body: { role: "admin" } }), params({ id: String(s2) }))).status).toBe(403);
     expect((await adminBan.POST(helper.request(`/api/v1/admin/users/${oid}/ban`, { body: {} }), params({ id: String(oid) }))).status).toBe(400);
     expect((await adminRole.PUT(owner.request(`/api/v1/admin/users/${oid}/role`, { method: "PUT", body: { role: "user" } }), params({ id: String(oid) }))).status).toBe(400);
+  });
+
+  it("the owner gives anyone XP and coins (themselves too), takes them away down to zero; admins can't", async () => {
+    const owner = await person("owner@example.com", "boss");
+    const student = await person("lucky@example.com", "lucky");
+    const sid = await idOf(student), oid = await idOf(owner);
+    const grant = (who: Browser, id: number, body: Record<string, unknown>) =>
+      adminGrant.POST(who.request(`/api/v1/admin/users/${id}/grant`, { body }), params({ id: String(id) }));
+    const g = await json(await grant(owner, sid, { xp: 1200, coins: 500, reason: "beta tester" }));
+    expect(g).toMatchObject({ user_id: sid, granted: { xp: 1200, coins: 500, reason: "beta tester" }, game: { total_xp: 1200, coins: 500 } });
+    expect(g.game.level).toBeGreaterThan(1);
+    expect((await json(await grant(owner, oid, { coins: 99999 }))).game.coins).toBe(99999);
+    // taking away: never below zero
+    expect((await json(await grant(owner, sid, { coins: -2000 }))).granted.coins).toBe(-500);
+    expect(await p.env.DB.prepare("SELECT coins FROM user_progress WHERE user_id = ?").bind(sid).first("coins")).toBe(0);
+    expect((await json(await grant(owner, sid, { xp: 1.5 }))).error.code).toBe("invalid_amount");
+    expect((await json(await grant(owner, sid, {}))).error.code).toBe("invalid_amount");
+    expect((await json(await grant(owner, sid, { xp: 2_000_000 }))).error.details.field).toBe("xp");
+    const helper = await person("helper2@example.com", "helper2");
+    const hid = await idOf(helper);
+    await adminRole.PUT(owner.request(`/api/v1/admin/users/${hid}/role`, { method: "PUT", body: { role: "admin" } }), params({ id: String(hid) }));
+    expect((await json(await grant(helper, hid, { xp: 10 }))).error.code).toBe("owner_only");
+    const list = await json(await adminUsers.GET(owner.request("/api/v1/admin/users?q=lucky")));
+    expect(list.users[0].game).toMatchObject({ total_xp: 1200, coins: 0 });
   });
 
   it("a ban signs the person out everywhere and keeps them out until lifted", async () => {

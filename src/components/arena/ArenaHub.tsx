@@ -6,7 +6,6 @@ import { Lock, Map as MapIcon, Swords, Target, Users } from "@/components/icons"
 import { Badge } from "@/components/ui";
 import { fetchActiveRun, fetchLeaderboard, fetchWeakConcepts } from "@/lib/arena/api";
 import { DIFFICULTY_LABEL, type LeaderboardEntry, type Run, type WeakConceptsResponse } from "@/lib/arena/types";
-import { Bestiary } from "./pixel/Bestiary";
 import { Roster } from "./pixel/Roster";
 
 export type ArenaMode = "quick" | "nemesis" | "run";
@@ -90,8 +89,6 @@ export default function ArenaHub({ sessionId, onPick }: { sessionId: string; onP
           </ol>
         </section>
       )}
-
-      <Bestiary />
     </div>
   );
 }

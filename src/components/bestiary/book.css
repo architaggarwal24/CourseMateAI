@@ -1,112 +1,183 @@
-/* The Bestiary book (Stage B2): the one painted surface in the app (aged paper, ink, a shaded spine, a curling page),
- * an exception the owner chose; src/styles/flat.test.ts allows it in this file only. Always the same warm paper, in
- * light and dark mode alike, like a real book on a dark desk. Reduced motion: pages turn at once (BestiaryBook). */
+/* The Bestiary book (Stages B2, B3): the one painted surface in the app, an exception the owner chose; src/styles/
+ * flat.test.ts allows it in this file only. An old printed tome: Fell types (src/fonts/tome.ts), red rubrics and drop
+ * capitals, ink that bleeds a little, foxed and stained paper with torn edges (the outline is a clip-path from
+ * BestiaryBook tornEdge), bound in tooled leather. The same in light and dark mode, like a real book on a dark desk.
+ * Pages curl as they turn: a leaf is a row of hinged strips (BestiaryBook CurlLeaf). Reduced motion: pages turn at once. */
 
 .tome {
-  --paper: #efe2c4; --paper-deep: #e2cfa4; --paper-edge: #c9ae7a;
-  --ink: #2b1d10; --ink-soft: #5b4630; --ink-faint: #7a6447; --ink-red: #8a2a1a; --gold: #a07a1e;
-  --tome-serif: "Iowan Old Style", "Palatino Linotype", Palatino, "Book Antiqua", Georgia, "Times New Roman", serif;
+  --paper: #e9d7a8; --paper-deep: #d8bf86; --paper-burnt: #8a5a24;
+  --ink: #26170a; --ink-soft: #4d3519; --ink-faint: #6e5434; --ink-red: #7c1c0e; --gold: #b08a2e; --leather: #3a2010;
+  --tome-serif: var(--font-tome), "IM Fell English", "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+  --tome-caps: var(--font-tome-sc), var(--font-tome), "Palatino Linotype", Georgia, serif;
   display: grid; justify-items: center; gap: var(--space-3); padding: var(--space-4) var(--space-3) var(--space-8);
 }
 
+/* ── the binding ─────────────────────────────────────────────────────────────────────────────────────────────── */
 .tome-book {
-  position: relative; display: grid; grid-template-columns: 1fr; width: min(100%, 30rem); min-height: 36rem;
-  perspective: 2200px; touch-action: pan-y; user-select: none; cursor: grab;
-  border-radius: 4px; box-shadow: 0 18px 40px rgb(0 0 0 / 0.45), 0 2px 0 #6b4a22;
-  background: #3b2614; padding: 6px;
+  position: relative; display: grid; grid-template-columns: 1fr; width: min(100%, 30rem); min-height: 38rem;
+  perspective: 2600px; touch-action: pan-y; user-select: none; cursor: grab; padding: 14px;
+  border-radius: 6px;
+  background:
+    radial-gradient(ellipse at 30% 20%, rgb(120 70 30 / 0.35), transparent 60%),
+    radial-gradient(ellipse at 80% 85%, rgb(10 5 0 / 0.45), transparent 55%),
+    linear-gradient(135deg, #4a2a14, var(--leather) 45%, #2a160a);
+  box-shadow: 0 22px 48px rgb(0 0 0 / 0.55), inset 0 0 0 2px #24130a, inset 0 0 0 5px rgb(176 138 46 / 0.55), inset 0 0 0 7px #24130a;
 }
-.tome-book[data-wide] { grid-template-columns: 1fr 1fr; width: min(100%, 64rem); min-height: 38rem; }
+.tome-book[data-wide] { grid-template-columns: 1fr 1fr; width: min(100%, 66rem); min-height: 40rem; }
 .tome-book[data-turning] { cursor: grabbing; }
 
+/* the thickness of the pages still to read (right) and already read (left) */
+.tome-stack {
+  position: absolute; top: 18px; bottom: 10px; width: calc(var(--depth, 1) * 1.6px); pointer-events: none;
+  background: repeating-linear-gradient(90deg, #cdb27a 0 1px, #a98a52 1px 1.6px);
+}
+.tome-stack[data-side="left"] { left: 9px; border-radius: 3px 0 0 3px; }
+.tome-stack[data-side="right"] { right: 9px; border-radius: 0 3px 3px 0; }
+.tome-book:not([data-wide]) .tome-stack[data-side="left"] { display: none; }
+
+/* ── the paper ───────────────────────────────────────────────────────────────────────────────────────────────── */
 .tome-page {
-  position: relative; overflow: hidden; min-height: 100%; padding: 2.2rem 2rem 2.4rem;
-  color: var(--ink); font-family: var(--tome-serif); font-size: 0.98rem; line-height: 1.55;
+  position: relative; overflow: hidden; height: 100%; min-height: 100%; padding: 2.4rem 2.2rem 3rem;
+  color: var(--ink); font-family: var(--tome-serif); font-size: 1.04rem; line-height: 1.5;
+  font-feature-settings: "liga", "dlig", "hlig", "onum";
+  text-shadow: 0 0 0.6px rgb(38 23 10 / 0.6), 0 0 1.5px rgb(80 45 15 / 0.12);  /* ink soaking into the fibres */
   background:
-    radial-gradient(ellipse at 20% 15%, rgb(255 250 235 / 0.55), transparent 55%),
-    radial-gradient(ellipse at 85% 90%, rgb(150 105 45 / 0.18), transparent 50%),
-    radial-gradient(circle at 70% 30%, rgb(140 95 40 / 0.07) 0 6%, transparent 7%),
-    linear-gradient(var(--paper), var(--paper-deep));
+    /* stains and foxing */
+    radial-gradient(circle at 72% 28%, rgb(130 85 30 / 0.12) 0 4%, transparent 5.5%),
+    radial-gradient(circle at 24% 78%, rgb(120 75 25 / 0.09) 0 2.5%, transparent 3.5%),
+    radial-gradient(circle at 60% 66%, rgb(140 90 35 / 0.08) 0 1.2%, transparent 2%),
+    radial-gradient(circle at 12% 30%, rgb(140 90 35 / 0.1) 0 0.8%, transparent 1.4%),
+    /* edges browned by hands and years */
+    radial-gradient(ellipse at 50% 50%, transparent 52%, rgb(120 72 22 / 0.28) 82%, rgb(90 50 12 / 0.55) 100%),
+    /* the grain of the paper */
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.35 0 0 0 0 0.22 0 0 0 0 0.08 0 0 0 0.22 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"),
+    linear-gradient(170deg, #efe0b6, var(--paper) 40%, var(--paper-deep));
 }
-/* the spine: each page darkens toward the binding */
-.tome-page[data-side="left"] { border-radius: 3px 0 0 3px; box-shadow: inset -26px 0 30px -18px rgb(70 40 10 / 0.45); }
-.tome-page[data-side="right"] { border-radius: 0 3px 3px 0; box-shadow: inset 26px 0 30px -18px rgb(70 40 10 / 0.45); }
-.tome-page[data-side="single"] { border-radius: 3px; box-shadow: inset 18px 0 24px -16px rgb(70 40 10 / 0.4); }
-/* worn edge */
-.tome-page::after { content: ""; position: absolute; inset: 0; pointer-events: none; box-shadow: inset 0 0 0 1px rgb(120 80 30 / 0.25), inset 0 0 40px rgb(120 80 30 / 0.18); }
+/* a cup ring or a water mark on some pages (data-stain from the page's seed) */
+.tome-page[data-stain]::before {
+  content: ""; position: absolute; left: var(--stain-x, 60%); top: var(--stain-y, 30%); width: 9rem; height: 9rem; margin: -4.5rem 0 0 -4.5rem;
+  border-radius: 50%; pointer-events: none;
+  background: radial-gradient(circle, transparent 58%, rgb(120 70 20 / 0.16) 63%, rgb(120 70 20 / 0.05) 70%, transparent 74%);
+}
+.tome-page[data-stain="2"]::before { width: 13rem; height: 11rem; margin: -5.5rem 0 0 -6.5rem; background: radial-gradient(ellipse, rgb(110 70 25 / 0.1), rgb(110 70 25 / 0.04) 55%, transparent 70%); }
+.tome-page[data-stain="3"]::before { width: 5rem; height: 5rem; margin: -2.5rem 0 0 -2.5rem; background: radial-gradient(circle, rgb(70 35 10 / 0.18) 0 30%, rgb(70 35 10 / 0.05) 50%, transparent 65%); }
 
-/* the turning leaf: two faces, front and back, curling over the spine */
-.tome-leaf { position: absolute; top: 6px; bottom: 6px; width: calc(50% - 6px); transform-style: preserve-3d; z-index: 2; }
-.tome-leaf[data-dir="next"] { left: 50%; transform-origin: left center; }
-.tome-leaf[data-dir="prev"] { left: 6px; transform-origin: right center; }
-.tome-leaf--single { left: 6px; right: 6px; width: auto; transform-origin: left center; }
-.tome-leaf__face { position: absolute; inset: 0; backface-visibility: hidden; display: grid; }
-.tome-leaf__face > .tome-page { box-shadow: inset 0 0 60px rgb(90 55 15 / 0.35); }
-.tome-leaf__face--back { transform: rotateY(180deg); }
-.tome-leaf__face--back > .tome-page { background: linear-gradient(90deg, var(--paper-deep), var(--paper) 30%, var(--paper-deep)); }
+/* the gutter: pages darken and curve into the spine */
+.tome-page[data-side="left"] { box-shadow: inset -30px 0 32px -18px rgb(60 32 8 / 0.55); }
+.tome-page[data-side="right"] { box-shadow: inset 30px 0 32px -18px rgb(60 32 8 / 0.55); }
+.tome-page[data-side="single"] { box-shadow: inset 20px 0 26px -16px rgb(60 32 8 / 0.45); }
+.tome-page::after { content: ""; position: absolute; inset: 0; pointer-events: none; box-shadow: inset 0 0 50px rgb(110 60 15 / 0.25); }
 
-/* ── type ── */
-.tome-h { margin: 0 0 0.8rem; font-family: var(--tome-serif); font-size: 1.35rem; font-weight: 700; letter-spacing: 0.02em; text-align: center; color: var(--ink); }
-.tome-h4 { margin: 1rem 0 0.35rem; font-family: var(--tome-serif); font-size: 0.82rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.12em; color: var(--ink-red); }
-.tome-label { font-weight: 700; font-style: normal; color: var(--ink-red); }
-.tome-muted { margin: 0; font-style: italic; color: var(--ink-faint); }
+/* the folio at the foot of each page */
+.tome-folio-mark { position: absolute; left: 0; right: 0; bottom: 1.1rem; margin: 0; text-align: center; font-style: italic; font-size: 0.85rem; color: var(--ink-faint); }
+.tome-folio-mark::before { content: "~ "; }
+.tome-folio-mark::after { content: " ~"; }
 
-.tome-title { height: 100%; display: grid; align-content: center; justify-items: center; text-align: center; gap: 0.4rem; }
-.tome-title__name { margin: 0.4rem 0; font-family: var(--tome-serif); font-size: clamp(2.2rem, 2rem + 1.4vw, 3.2rem); font-weight: 700; letter-spacing: 0.04em; color: var(--ink); }
-.tome-title__over { margin: 0; font-style: italic; color: var(--ink-soft); }
-.tome-title__by { margin: 1.4rem 0 0; font-variant: small-caps; letter-spacing: 0.08em; color: var(--ink-soft); }
-.tome-title__count { margin: 2.5rem 0 0; color: var(--ink-soft); font-variant-numeric: oldstyle-nums; }
+/* the shadow a turning leaf casts on the pages under it */
+.tome-cast {
+  position: absolute; inset: 14px; pointer-events: none; z-index: 5; opacity: calc(var(--turn-shadow, 0) * 0.55);
+  background: linear-gradient(90deg, transparent 20%, rgb(30 15 5 / 0.45) 50%, transparent 80%);
+}
 
-.tome-contents__tier { margin-top: 0.8rem; }
-.tome-contents__tier h4 { margin: 0 0 0.2rem; display: flex; justify-content: space-between; font-size: 0.9rem; font-weight: 700; color: var(--ink-red); }
-.tome-contents__tier h4 span { color: var(--ink-faint); font-weight: 400; font-variant-numeric: tabular-nums; }
-.tome-contents ul { margin: 0; padding: 0; list-style: none; columns: 2; }
+/* ── a turning leaf: strips hinged one to the next ─────────────────────────────────────────────────────────── */
+.tome-leaf { position: absolute; top: 14px; bottom: 14px; left: 50%; width: calc(50% - 14px); transform-style: preserve-3d; pointer-events: none; }
+.tome-leaf[data-single] { left: 14px; width: calc(100% - 28px); }
+.tome-strip {
+  position: absolute; top: 0; left: 100%; width: 100%; height: 100%;
+  transform-origin: left center; transform-style: preserve-3d; will-change: transform;
+}
+.tome-strip[data-first] { left: 0; width: calc(100% / 10); }
+/* each face reaches 1.5px into its neighbour, so no hairline shows between strips */
+.tome-strip__face { position: absolute; inset: 0 -1.5px 0 0; overflow: hidden; backface-visibility: hidden; -webkit-backface-visibility: hidden; }
+/* light: a strip turned edge-on darkens (a plain overlay: cheaper to move than a filter) */
+.tome-strip__face::after { content: ""; position: absolute; inset: 0; background: #1a0d03; opacity: calc((1 - var(--shade, 1)) * 1.4); pointer-events: none; }
+/* a turning leaf moves every frame: its paper is drawn without the grain and foxing (much cheaper to repaint) */
+.tome-strip .tome-page {
+  text-shadow: none;
+  background:
+    radial-gradient(ellipse at 50% 50%, transparent 52%, rgb(120 72 22 / 0.28) 82%, rgb(90 50 12 / 0.55) 100%),
+    linear-gradient(170deg, #efe0b6, var(--paper) 40%, var(--paper-deep));
+}
+.tome-strip__face--back { transform: rotateY(180deg); }
+.tome-strip__slice { position: absolute; top: 0; left: 0; height: 100%; display: grid; }
+
+/* ── type ────────────────────────────────────────────────────────────────────────────────────────────────────── */
+.tome-h { margin: 0 0 0.9rem; font-family: var(--tome-caps); font-size: 1.5rem; font-weight: 400; letter-spacing: 0.06em; text-align: center; color: var(--ink-red); }
+.tome-h::before, .tome-h::after { content: "❦"; display: inline-block; margin: 0 0.5em; font-size: 0.8em; color: var(--ink-soft); }
+.tome-h::before { transform: scaleX(-1); }
+.tome-h4 { margin: 1rem 0 0.35rem; font-family: var(--tome-caps); font-size: 1rem; font-weight: 400; letter-spacing: 0.08em; color: var(--ink-red); }
+.tome-h4::before { content: "❧ "; color: var(--ink-soft); }
+.tome-label { font-family: var(--tome-caps); font-style: normal; color: var(--ink-red); }
+.tome-muted { margin: 0.6rem 0 0; font-style: italic; color: var(--ink-faint); }
+
+.tome-title { height: 100%; display: grid; align-content: center; justify-items: center; text-align: center; gap: 0.45rem; padding: 1.4rem 1rem; border: 3px double rgb(90 45 15 / 0.55); outline: 1px solid rgb(90 45 15 / 0.3); outline-offset: 6px; }
+.tome-title__name { margin: 0.4rem 0; font-family: var(--tome-serif); font-size: clamp(2.6rem, 2.2rem + 1.6vw, 3.8rem); font-weight: 400; letter-spacing: 0.03em; line-height: 1; color: var(--ink-red); }
+.tome-title__over { margin: 0; font-style: italic; color: var(--ink-soft); font-size: 1.1rem; }
+.tome-title__by { margin: 1.4rem 0 0; font-family: var(--tome-caps); letter-spacing: 0.1em; color: var(--ink-soft); }
+.tome-title__count { margin: 2.2rem 0 0; color: var(--ink-soft); }
+.tome-title__count::before { content: "✠ "; color: var(--ink-red); }
+.tome-title__count::after { content: " ✠"; color: var(--ink-red); }
+
+.tome-contents__tier { margin-top: 0.7rem; }
+.tome-contents__tier h4 { margin: 0 0 0.15rem; display: flex; justify-content: space-between; font-family: var(--tome-caps); font-size: 1rem; font-weight: 400; color: var(--ink-red); }
+.tome-contents__tier h4 span { color: var(--ink-faint); font-family: var(--tome-serif); font-variant-numeric: oldstyle-nums; }
+.tome-contents ul { margin: 0; padding: 0; list-style: none; display: grid; grid-template-columns: 1fr 1fr; column-gap: 1.4rem; }
 .tome-link {
-  min-height: 44px; padding: 0 0.2rem; border: 0; background: none; cursor: pointer; text-align: left;
-  font: inherit; color: var(--ink); text-decoration: underline; text-decoration-color: rgb(43 29 16 / 0.3); text-underline-offset: 3px;
+  display: flex; align-items: baseline; gap: 0.3rem; width: 100%; min-height: 44px; padding: 0 0.1rem; border: 0; background: none; cursor: pointer;
+  font: inherit; text-shadow: inherit; color: var(--ink); text-align: left;
 }
-.tome-link:hover { color: var(--ink-red); }
+.tome-link__name { white-space: nowrap; }
+.tome-link__dots { flex: 1; min-width: 0.8rem; border-bottom: 2px dotted rgb(60 35 12 / 0.45); transform: translateY(-0.3em); }
+.tome-link__page { font-variant-numeric: oldstyle-nums; color: var(--ink-soft); }
+.tome-link:hover .tome-link__name { color: var(--ink-red); text-decoration: underline; text-decoration-color: rgb(124 28 14 / 0.4); text-underline-offset: 3px; }
 .tome-link:focus-visible, .tome-turn:focus-visible { outline: 2px solid var(--ink-red); outline-offset: 2px; border-radius: 2px; }
 
-.tome-tier { margin: 0; text-align: center; font-variant: small-caps; letter-spacing: 0.1em; color: var(--ink-soft); }
+.tome-tier { margin: 0; text-align: center; font-family: var(--tome-caps); letter-spacing: 0.12em; color: var(--ink-soft); }
 .tome-art { height: 100%; display: grid; align-content: start; justify-items: center; text-align: center; gap: 0.3rem; }
 .tome-art__sketch { position: relative; width: 100%; height: 15rem; margin: 0.6rem 0 0.2rem; }
-/* drawn in ink: the sprite with a warm, worn cast */
-.tome-art__sprite { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; object-position: 50% 100%; filter: sepia(0.35) saturate(0.9) contrast(1.05); }
-.tome-art__sprite--sealed { filter: brightness(0); opacity: 0.55; }
-.tome-art__name { margin: 0.2rem 0 0; font-family: var(--tome-serif); font-size: 1.9rem; font-weight: 700; color: var(--ink); }
-.tome-art__epithet { margin: 0; font-style: italic; color: var(--ink-soft); }
+/* drawn in ink on the page: browned, a little faded */
+.tome-art__sprite { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; object-position: 50% 100%; filter: sepia(0.75) saturate(0.7) contrast(1.05) brightness(0.92); mix-blend-mode: multiply; opacity: 0.92; }
+.tome-art__sprite--sealed { filter: brightness(0); opacity: 0.5; }
+.tome-art__name { margin: 0.2rem 0 0; font-family: var(--tome-serif); font-size: 2.2rem; font-weight: 400; color: var(--ink-red); }
+.tome-art__epithet { margin: 0; font-style: italic; color: var(--ink-soft); font-size: 1.1rem; }
 .tome-art__teaser { margin: 0.6rem 0 0; max-width: 22rem; font-style: italic; color: var(--ink-soft); }
-.tome-art__hint { margin: 0.6rem 0 0; font-size: 0.85rem; color: var(--ink-faint); }
+.tome-art__hint { margin: 0.6rem 0 0; font-size: 0.92rem; font-style: italic; color: var(--ink-faint); }
 .tome-seal {
-  margin: 0.4rem 0 0; padding: 0.15rem 0.7rem; border: 2px solid var(--ink-red); border-radius: 999px;
-  font-size: 0.75rem; font-variant: small-caps; letter-spacing: 0.08em; color: var(--ink-red); transform: rotate(-3deg);
+  margin: 0.4rem 0 0; padding: 0.2rem 0.8rem; border: 2px solid var(--ink-red); border-radius: 999px;
+  font-family: var(--tome-caps); font-size: 0.85rem; letter-spacing: 0.08em; color: var(--ink-red); transform: rotate(-4deg);
 }
-.tome-seal[data-mastery="gold"] { border-color: var(--gold); color: var(--gold); }
-.tome-record { margin: 0.8rem 0 0; display: grid; grid-template-columns: repeat(4, auto); gap: 0.2rem 1.1rem; font-size: 0.82rem; }
-.tome-record dt { color: var(--ink-faint); font-variant: small-caps; letter-spacing: 0.05em; }
-.tome-record dd { margin: 0; font-weight: 700; font-variant-numeric: tabular-nums; }
+.tome-seal[data-mastery="gold"] { border-color: var(--gold); color: #7a5a10; }
+.tome-record { margin: 0.8rem 0 0; display: grid; grid-template-columns: repeat(4, auto); gap: 0.1rem 1.1rem; font-size: 0.95rem; }
+.tome-record dt { color: var(--ink-faint); font-family: var(--tome-caps); letter-spacing: 0.05em; font-size: 0.85rem; }
+.tome-record dd { margin: 0; font-variant-numeric: oldstyle-nums tabular-nums; }
 
 .tome-text { display: grid; align-content: start; }
 .tome-lore { margin: 0; text-align: justify; hyphens: auto; }
-.tome-drop { float: left; margin: 0.05rem 0.35rem 0 0; font-size: 3.1rem; line-height: 0.85; font-weight: 700; color: var(--ink-red); }
-.tome-fact { margin: 0.8rem 0 0; font-size: 0.9rem; color: var(--ink-soft); }
-.tome-tactics { margin: 0; padding-left: 1.1rem; font-size: 0.92rem; }
+/* the rubricated initial, boxed like a woodcut */
+.tome-drop {
+  float: left; margin: 0.2rem 0.5rem 0 0; padding: 0.18em 0.16em 0.02em; font-size: 3.4rem; line-height: 0.8; color: var(--ink-red);
+  border: 3px double rgb(80 40 12 / 0.65); background: rgb(150 95 35 / 0.12);
+}
+.tome-fact { margin: 0.8rem 0 0; font-style: italic; color: var(--ink-soft); }
+.tome-tactics { margin: 0; padding-left: 1.2rem; list-style: "✠  "; }
+.tome-tactics li::marker { color: var(--ink-red); }
 .tome-tactics li + li { margin-top: 0.25rem; }
 .tome-bane--clue { font-style: italic; }
-.tome-concepts { margin: 0; padding-left: 1.1rem; font-size: 0.9rem; }
-.tome-concepts span { color: var(--ink-faint); font-variant-numeric: tabular-nums; }
-.tome-elder { margin: 1rem 0 0; padding: 0.55rem 0.7rem; border: 1px dashed rgb(90 55 20 / 0.45); font-size: 0.86rem; color: var(--ink-soft); }
+.tome-concepts { margin: 0; padding-left: 1.2rem; }
+.tome-concepts span { color: var(--ink-faint); font-variant-numeric: oldstyle-nums; }
+.tome-elder { margin: 1rem 0 0; padding: 0.55rem 0.7rem; border: 1px dashed rgb(80 45 15 / 0.5); color: var(--ink-soft); }
 .tome-elder[data-met] { border-style: solid; border-color: var(--ink-red); color: var(--ink); }
-.tome-lost { margin: 0.8rem 0 0; padding: 0.55rem 0.7rem; border-left: 3px solid var(--ink-red); background: rgb(90 55 20 / 0.08); font-size: 0.86rem; font-style: italic; color: var(--ink); }
-/* the champion's note in the margin, as if scribbled later */
-.tome-margin { margin: 1.1rem 0 0 auto; max-width: 17rem; font-style: italic; font-size: 0.9rem; color: #3d2a7a; transform: rotate(-1.2deg); }
-.tome-margin span { font-style: normal; font-variant: small-caps; color: var(--ink-faint); }
+.tome-lost { margin: 0.8rem 0 0; padding: 0.55rem 0.7rem; border-left: 3px solid var(--ink-red); background: rgb(90 55 20 / 0.09); font-style: italic; color: var(--ink); }
 
-.tome-sealed { margin: 40% 0 0; text-align: center; font-size: 1.1rem; font-style: italic; color: var(--ink-soft); }
-.tome-sealed__line { margin: 0.6rem auto 0; max-width: 20rem; text-align: center; font-size: 0.9rem; color: var(--ink-faint); }
+/* a champion's note, scrawled in the margin in another hand and another ink */
+.tome-margin { margin: 1.1rem 0 0 auto; max-width: 17rem; font-style: italic; color: #2c2462; transform: rotate(-1.6deg); text-shadow: 0 0 0.6px rgb(30 25 90 / 0.5); }
+.tome-margin span { font-style: normal; font-family: var(--tome-caps); color: var(--ink-faint); }
+
+.tome-sealed { margin: 40% 0 0; text-align: center; font-size: 1.2rem; font-style: italic; color: var(--ink-soft); }
+.tome-sealed__line { margin: 0.6rem auto 0; max-width: 20rem; text-align: center; color: var(--ink-faint); }
 .tome-end { height: 100%; }
 
-/* ── under the book ── */
+/* ── around the book ─────────────────────────────────────────────────────────────────────────────────────────── */
 .tome-controls { display: flex; align-items: center; gap: var(--space-3); }
 .tome-turn {
   display: inline-flex; align-items: center; justify-content: center; width: 44px; height: 44px; border-radius: 999px;
@@ -114,11 +185,11 @@
 }
 .tome-turn:disabled { cursor: default; color: var(--color-muted); }
 .tome-folio { min-width: 9rem; text-align: center; font-size: 0.85rem; color: var(--color-text-secondary); font-variant-numeric: tabular-nums; }
-.tome-help { margin: 0; font-size: 0.8rem; color: var(--color-muted); }
+.tome-help { margin: 0; font-size: 0.8rem; color: var(--color-muted); text-align: center; }
 
 @media (max-width: 899px) {
-  .tome-page { padding: 1.6rem 1.3rem 1.8rem; font-size: 0.95rem; }
+  .tome-page { padding: 1.8rem 1.4rem 2.6rem; font-size: 1rem; }
   .tome-art__sketch { height: 12rem; }
   .tome-record { grid-template-columns: repeat(2, auto); }
+  .tome-contents ul { grid-template-columns: 1fr; }
 }
-@media (prefers-reduced-motion: reduce) { .tome-leaf { transition: none !important; } }

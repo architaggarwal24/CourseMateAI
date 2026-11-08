@@ -72,6 +72,9 @@ const OLD = [
   "src/hooks/useApi.ts",
   // Stage Q1: the quest board's scrolls (components/hero/QuestScroll.tsx) replaced the old quest list
   "src/components/QuestPanel.tsx",
+  // The Bestiary lives in its own tab (the book); the arena tab no longer shows the creature grid
+  "src/components/arena/pixel/Bestiary.tsx",
+  "src/components/arena/bestiary.test.tsx",
 ];
 
 for (const rel of OLD) {

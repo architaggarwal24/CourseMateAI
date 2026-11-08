@@ -6,6 +6,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Ban, Crown, Search, ShieldCheck, Sparkles, Ticket, UserCog } from "@/components/icons";
 import { Badge, Button, Card, EmptyState, Input, Modal, Select, Skeleton, toast } from "@/components/ui";
 import { useAuth } from "@/contexts/AuthContext";
+import { useHUDStore } from "@/hooks/useHUD";
 import AiModelsCard from "./AiModels";
 import { adminApi, shortDate, TIER_OPTIONS, usd, type AdminUser, type AiReport, type Invite, type Tier } from "@/lib/admin/adminApi";
 
@@ -68,6 +69,7 @@ function UserEditor({ user, isOwnerActor, onClose, onSaved }: {
       actions={<Button variant="ghost" onClick={onClose}>Close</Button>}>
       <div className="space-y-6">
         <p className="text-sm text-fg-2">{user.email}{user.username ? ` · @${user.username}` : ""} · {planLine(user)}</p>
+        {isOwnerActor && <GrantGame user={user} onSaved={onSaved} />}
 
         {user.is_owner ? (
           <p className="text-sm text-fg-2">This is the owner account (OWNER_EMAIL): always an admin, always on Archmage.</p>
@@ -123,6 +125,56 @@ function UserEditor({ user, isOwnerActor, onClose, onSaved }: {
   );
 }
 
+/** The owner only: give anyone (themselves too) XP and coins; a minus takes them away. */
+export function GrantGame({ user, onSaved }: { user: AdminUser; onSaved: (u: AdminUser) => void }) {
+  const me = useAuth().user;
+  const [xp, setXp] = useState("");
+  const [coins, setCoins] = useState("");
+  const [note, setNote] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<{ field: "xp" | "coins"; text: string } | null>(null);
+  const num = (t: string) => (t.trim() === "" ? 0 : Number(t.trim()));
+
+  async function give(e: React.FormEvent) {
+    e.preventDefault();
+    const x = num(xp), c = num(coins);
+    if (!Number.isInteger(x)) { setError({ field: "xp", text: "A whole number (a minus takes XP away)" }); return; }
+    if (!Number.isInteger(c)) { setError({ field: "coins", text: "A whole number (a minus takes coins away)" }); return; }
+    if (!x && !c) { setError({ field: "xp", text: "Enter some XP or coins" }); return; }
+    setBusy(true);
+    try {
+      const fresh = await adminApi.grant(user.user_id, x, c, note);
+      const g = fresh.granted!;
+      const part = (n: number, unit: string) => (n ? `${n > 0 ? "+" : ""}${n.toLocaleString()} ${unit}` : "");
+      toast.success(`${[part(g.xp, "XP"), part(g.coins, "coins")].filter(Boolean).join(", ")} for ${user.username || user.email}`);
+      setXp(""); setCoins(""); setNote("");
+      onSaved(fresh);
+      // your own header shows the new numbers at once
+      if (me && String(me.user_id) === String(user.user_id)) void useHUDStore.getState().refresh();
+    } catch (err) {
+      toast.apiError(err);
+    } finally { setBusy(false); }
+  }
+
+  return (
+    <section aria-labelledby="ed-grant" className="space-y-3">
+      <h3 id="ed-grant" className="text-sm font-semibold text-fg">XP and coins</h3>
+      <p className="text-sm text-fg-2">
+        {user.game ? <>Level {user.game.level} · {user.game.total_xp.toLocaleString()} XP · {user.game.coins.toLocaleString()} coins. </> : null}
+        Any amount; a minus takes away (never below zero).
+      </p>
+      <form className="grid gap-3 sm:grid-cols-3" onSubmit={give} noValidate>
+        <Input label="XP" inputMode="numeric" value={xp} placeholder="0" error={error?.field === "xp" ? error.text : undefined}
+          onChange={(e) => { setXp(e.currentTarget.value); setError(null); }} />
+        <Input label="Coins" inputMode="numeric" value={coins} placeholder="0" error={error?.field === "coins" ? error.text : undefined}
+          onChange={(e) => { setCoins(e.currentTarget.value); setError(null); }} />
+        <Input label="Note (optional)" value={note} maxLength={120} onChange={(e) => setNote(e.currentTarget.value)} />
+        <div className="sm:col-span-3"><Button type="submit" variant="primary" loading={busy}><Sparkles size={14} aria-hidden="true" />Give</Button></div>
+      </form>
+    </section>
+  );
+}
+
 function Users({ isOwnerActor }: { isOwnerActor: boolean }) {
   const [q, setQ] = useState("");
   const [query, setQuery] = useState("");
@@ -175,6 +227,7 @@ function Users({ isOwnerActor }: { isOwnerActor: boolean }) {
                     <Badge tone={u.tier === "apprentice" ? "neutral" : "accent"}>{planLine(u)}</Badge>
                     {u.is_owner && <Badge tone="reward"><Crown size={11} aria-hidden="true" /> Owner</Badge>}
                     {!u.is_owner && u.role === "admin" && <Badge tone="accent"><ShieldCheck size={11} aria-hidden="true" /> Admin</Badge>}
+                    {u.game && <Badge tone="neutral">Lv {u.game.level} · {u.game.coins.toLocaleString()} coins</Badge>}
                     {u.banned && <Badge tone="danger">Banned</Badge>}
                     {!u.email_verified && <Badge tone="warning">Email not verified</Badge>}
                   </div>

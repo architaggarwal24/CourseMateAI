@@ -6,7 +6,7 @@ vi.mock("@/lib/arena/api", () => api);
 
 import { useHUDStore } from "@/hooks/useHUD";
 import { useChampion } from "@/hooks/useChampion";
-import BestiaryBook, { leaves, spreads } from "./BestiaryBook";
+import BestiaryBook, { STACK_GAP, TURN_MS, leafPose, leafProgress, leaves, seedOf, spreads, tornEdge } from "./BestiaryBook";
 import { LOST_PAGES, PAGES } from "@/lib/bestiary/content";
 
 const entry = (species: string, tier: number, over: Record<string, unknown> = {}) => ({
@@ -69,7 +69,7 @@ describe("the Bestiary book", () => {
     render(<BestiaryBook />);
     await screen.findByText(/pages written/);
     key("ArrowRight");
-    fireEvent.click(screen.getByRole("button", { name: "Oni, page" }));
+    fireEvent.click(screen.getByRole("button", { name: /^Oni, page \d+/ }));
     key("ArrowRight");
     expect(screen.getByText(/The oni clue/)).toBeTruthy();
     expect(screen.getByText(/One page is missing/)).toBeTruthy();
@@ -103,5 +103,37 @@ describe("the Bestiary book", () => {
       expect(p?.lore.length, s).toBeGreaterThan(120);
       expect(Object.keys(p.notes).sort(), s).toEqual(["asha", "brak", "kaien", "mira", "thorne", "vex"]);
     }
+  });
+});
+
+// Stage B3: worn pages and curled turns
+describe("the book's paper and its turns", () => {
+  it("each page has its own ragged outline, the same every time; the spine edge stays straight", () => {
+    const a = tornEdge(seedOf("art-minotaur"), "right");
+    expect(a).toMatch(/^polygon\(/);
+    expect(tornEdge(seedOf("art-minotaur"), "right")).toBe(a);
+    expect(tornEdge(seedOf("art-cyclops"), "right")).not.toBe(a);
+    const xs = (poly: string) => poly.slice(8, -1).split(", ").map((pt) => parseFloat(pt));
+    // a right page: its left (spine) side is straight at 0%
+    expect(xs(tornEdge(seedOf("x"), "right")).filter((x) => x < 2).every((x) => x === 0 || x < 2)).toBe(true);
+  });
+
+  it("a leaf bends most halfway over, and lies flat at either end", () => {
+    const flat = leafPose(0), mid = leafPose(0.5), done = leafPose(1);
+    expect(flat[0].angle).toBeCloseTo(0);
+    expect(done[0].angle).toBeCloseTo(-180);
+    expect(Math.abs(mid[1].angle)).toBeGreaterThan(Math.abs(leafPose(0.15)[1].angle));
+    expect(done[3].angle).toBeCloseTo(0);
+  });
+
+  it("a stack of leaves turns together, each a little behind the one before; back, the last one lifts first", () => {
+    const at = (ms: number, n: number, fwd = true) => leafProgress(ms / (TURN_MS + (n - 1) * STACK_GAP), n, fwd);
+    expect(at(0, 4)).toEqual([0, 0, 0, 0]);
+    const mid = at(TURN_MS / 2, 4);
+    expect(mid[0]).toBeGreaterThan(mid[1]);
+    expect(mid[1]).toBeGreaterThan(mid[3]);
+    expect(at(TURN_MS + 3 * STACK_GAP, 4)).toEqual([1, 1, 1, 1]);
+    const back = leafProgress(0.3, 4, false);
+    expect(back[3]).toBeLessThan(back[0]);                                       // the top of the left stack is already moving
   });
 });
