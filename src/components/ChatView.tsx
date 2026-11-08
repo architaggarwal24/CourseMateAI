@@ -2,7 +2,7 @@
 
 import { announceAchievements } from "@/lib/fx/celebrate";
 import { useState, useRef, useEffect, useLayoutEffect, useCallback } from "react";
-import { ArrowDown, ArrowUp, Check, Copy, FileText, History, Lightbulb, ListChecks, MessageSquare, Plus, Sparkles, Trash2 } from "@/components/icons";
+import { ArrowDown, ArrowUp, Check, Copy, FileText, HelpCircle, History, Lightbulb, ListChecks, MessageSquare, Plus, Sparkles, Trash2 } from "@/components/icons";
 import { motion } from "motion/react";
 import { TextReveal } from "@/components/fx";
 import HistoryPanel from "./HistoryPanel";
@@ -13,7 +13,7 @@ import CitationList from "./chat/CitationList";
 import { citedFirst, type Citation } from "@/lib/study/citations";
 import dynamic from "next/dynamic";
 import { Button, ErrorState, Textarea } from "@/components/ui";
-import { askChat, isAbortError } from "@/lib/chatStream";
+import { askChat, isAbortError, type TutorMode } from "@/lib/chatStream";
 import { useDocument } from "@/hooks/useSessions";
 import { useHUDStore } from "@/hooks/useHUD";
 import { useStickToBottom } from "@/hooks/useStickToBottom";
@@ -29,6 +29,8 @@ interface Message {
   citations?: Citation[];
   /** The document doesn't cover the question this answers: shown as the calm "couldn't find that" state. */
   notFound?: { question: string };
+  /** The tutor answered from outside the course material (it said so): a small label over the answer. */
+  outside?: boolean;
 }
 
 function parseFollowUps(content: string): { main: string; followUps: string[] } {
@@ -47,12 +49,25 @@ function parseFollowUps(content: string): { main: string; followUps: string[] } 
   return { main, followUps };
 }
 
-const QUICK_PROMPTS = [
-  "Summarize the key concepts",
-  "What are the main topics covered?",
-  "Explain the most important points",
-  "Give me a study guide from this",
+/** How the tutor teaches (round 7). The student switches any time; the next answer follows it. */
+const MODES: { id: TutorMode; label: string; hint: string; Icon: typeof Lightbulb; placeholder: string; intro: string; prompts: string[] }[] = [
+  { id: "explain", label: "Explain", hint: "Clear explanations with examples", Icon: Lightbulb,
+    placeholder: "Ask your tutor anything about this course…", intro: "Ask anything. Your tutor explains it from your material and shows the page.",
+    prompts: ["Summarize the key ideas", "What's most likely to come up in the exam?", "Explain the hardest concept here", "Make me a study plan for this"] },
+  { id: "socratic", label: "Guide me", hint: "Leads you to the answer with questions and hints", Icon: HelpCircle,
+    placeholder: "What do you want to work out?", intro: "Your tutor won't just hand you answers: it asks questions and gives hints until it clicks.",
+    prompts: ["Help me understand the main idea", "Walk me through a tricky concept", "Check if I really understand this topic", "I'm stuck, help me think it through"] },
+  { id: "quiz", label: "Quiz me", hint: "One question at a time, then feedback", Icon: ListChecks,
+    placeholder: "Type your answer, or say \"quiz me\"…", intro: "Your tutor asks one question at a time from your material and tells you how you did.",
+    prompts: ["Quiz me", "Quiz me on the key definitions", "Ask me exam-style questions", "Give me a hard one"] },
+  { id: "simplify", label: "Simplify", hint: "Plain words and everyday analogies", Icon: Sparkles,
+    placeholder: "What should be explained more simply?", intro: "Plain words, short sentences and an everyday analogy, then the one-line exam version.",
+    prompts: ["Explain the main topic like I'm 12", "What's the big picture here?", "Give me an everyday analogy for this", "Which words do I need to know?"] },
 ];
+const MODE_KEY = "cmai_tutor_mode";
+function savedMode(): TutorMode {
+  try { const m = localStorage.getItem(MODE_KEY); return MODES.some((x) => x.id === m) ? (m as TutorMode) : "explain"; } catch { return "explain"; }
+}
 
 const MAX_INPUT_PX = 160;
 
@@ -79,6 +94,10 @@ export default function ChatView({ documentId, restoreSessionId }: { documentId?
   const [loading, setLoading] = useState(false);
   const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
   const [followUps, setFollowUps] = useState<string[]>([]);
+  const [mode, setModeState] = useState<TutorMode>("explain");
+  useEffect(() => { setModeState(savedMode()); }, []);
+  const setMode = (m: TutorMode) => { setModeState(m); try { localStorage.setItem(MODE_KEY, m); } catch { /* private mode */ } };
+  const modeInfo = MODES.find((m) => m.id === mode)!;
   const [showHistory, setShowHistory] = useState(false);
   // the citation open in the PDF viewer beside the chat
   const [openCitation, setOpenCitationState] = useState<Citation | null>(null);
@@ -170,14 +189,14 @@ export default function ChatView({ documentId, restoreSessionId }: { documentId?
     requestRef.current = controller;
     try {
       const answer = await askChat({
-        question, sessionId, history, signal: controller.signal,
+        question, sessionId, history, signal: controller.signal, mode,
         onToken: (text) => patchAnswer((m) => ({ ...m, content: m.content + text })),
         onFallback: () => patchAnswer((m) => ({ ...m, content: "" })),     // the stream failed: the full answer follows
       });
       const { main, followUps: parsed } = parseFollowUps(answer.content || "No response received");
       patchAnswer(() => answer.blocked
         ? { role: "assistant", content: answer.content, notFound: { question } }
-        : { role: "assistant", content: main, sources: answer.sources, citations: answer.citations });
+        : { role: "assistant", content: main, sources: answer.sources, citations: answer.citations, ...(answer.coverage === "none" ? { outside: true } : {}) });
       if (parsed.length > 0 && !answer.blocked) setFollowUps(parsed);
       setAnnouncement(answer.blocked ? "The document doesn't cover that question." : "Answer complete.");
       refreshIfStale(5_000);
@@ -193,7 +212,7 @@ export default function ChatView({ documentId, restoreSessionId }: { documentId?
     } finally {
       if (requestRef.current === controller) { requestRef.current = null; setLoading(false); }
     }
-  }, [loading, messages, sessionId, refreshIfStale, scroll]);
+  }, [loading, messages, sessionId, refreshIfStale, scroll, mode]);
 
   /** Ask the failed question again (the conversation without it, so it isn't in the history twice). */
   const retryFailed = () => {
@@ -280,12 +299,12 @@ export default function ChatView({ documentId, restoreSessionId }: { documentId?
               {messages.length === 0 && (
                 <div className="py-12 text-center">
                   <span className="study-intro__icon mx-auto mb-6" aria-hidden="true"><MessageSquare size={26} /></span>
-                  <TextReveal as="h3" className="block text-3xl font-bold tracking-tight text-gradient mb-2" text="Chat with your document" />
+                  <TextReveal as="h3" className="block text-3xl font-bold tracking-tight text-gradient mb-2" text={uploadedFile ? "Your tutor is ready" : "Meet your tutor"} />
                   <p className="text-fg-muted mb-8">
-                    {uploadedFile ? `Chatting with ${uploadedFile}. Ask anything about it.` : "Upload a PDF first, then ask questions — answers come straight from your document."}
+                    {uploadedFile ? `${modeInfo.intro} Studying ${uploadedFile}.` : "Add a PDF to this course, then ask anything: answers come from your own material."}
                   </p>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-left">
-                    {QUICK_PROMPTS.map((p, i) => {
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-left" key={mode}>
+                    {modeInfo.prompts.map((p, i) => {
                       const PromptIcon = [Lightbulb, ListChecks, FileText, MessageSquare][i % 4];
                       return (
                       <motion.div key={p} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
@@ -334,6 +353,7 @@ export default function ChatView({ documentId, restoreSessionId }: { documentId?
                     initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1] }}>
                     <span className="chat-ai__avatar" aria-hidden="true"><Sparkles size={15} /></span>
                     <div className="chat-ai__body">
+                      {msg.outside && !isStreaming && <p className="chat-ai__outside">Not in your PDFs: a general explanation</p>}
                       <ChatMarkdown citations={isStreaming ? 0 : msg.citations?.length ?? 0}
                                     onCite={msg.citations?.length ? (n) => setOpenCitation(msg.citations!.find((c) => c.n === n) ?? null) : undefined}>
                         {shown}
@@ -357,7 +377,7 @@ export default function ChatView({ documentId, restoreSessionId }: { documentId?
 
               {!loading && followUps.length > 0 && (
                 <motion.div className="flex flex-col gap-2 pl-11" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>
-                  <p className="study-suggest-label !mb-1">Explore further</p>
+                  <p className="study-suggest-label !mb-1">{mode === "quiz" ? "Quick replies" : "Explore further"}</p>
                   <div className="flex flex-wrap gap-2">
                     {followUps.map((q, i) => (
                       <Button key={i} size="sm" className="text-left" onClick={() => { setFollowUps([]); void sendMessage(q); }}>
@@ -382,6 +402,16 @@ export default function ChatView({ documentId, restoreSessionId }: { documentId?
 
         {/* Input: pinned below the scrolling list */}
         <div className="ws-composer-bar">
+          {/* how the tutor teaches: one choice, applies from the next message */}
+          <div role="group" aria-label="How your tutor teaches" className="tutor-modes mx-auto w-full max-w-[72ch]">
+            {MODES.map((m) => (
+              <Button key={m.id} size="sm" variant="ghost" pressed={mode === m.id} title={m.hint} className="tutor-mode"
+                onClick={() => setMode(m.id)} aria-describedby={`tutor-mode-${m.id}`}>
+                <m.Icon size={14} aria-hidden="true" />{m.label}
+                <span id={`tutor-mode-${m.id}`} className="sr-only">{m.hint}</span>
+              </Button>
+            ))}
+          </div>
           <form onSubmit={(e) => { e.preventDefault(); handleSend(); }} className="study-composer mx-auto w-full max-w-[72ch]">
             <Textarea
               ref={inputRef}
@@ -390,7 +420,7 @@ export default function ChatView({ documentId, restoreSessionId }: { documentId?
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={onKeyDown}
-              placeholder={messages.length > 0 ? "Ask a follow-up question…" : "Ask a question about your PDF…"}
+              placeholder={messages.length > 0 && mode !== "quiz" ? "Reply to your tutor…" : modeInfo.placeholder}
               hint={undefined}
               wrapperClassName="flex-1"
               className="resize-none"

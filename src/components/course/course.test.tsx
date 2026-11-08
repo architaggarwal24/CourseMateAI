@@ -96,30 +96,32 @@ describe("course editor", () => {
 
 describe("library menu", () => {
   const openMenu = () => {
-    const trigger = screen.getByRole("button", { name: /switch document or course/ });
+    const trigger = screen.getByRole("button", { name: /switch course or PDF/ });
     fireEvent.keyDown(trigger, { key: "Enter" });
     return screen.getByRole("menu");
   };
 
-  it("lists courses then documents; picking one says which kind it is", async () => {
+  it("lists each course with its PDFs under it, then PDFs in no course; picking one says which kind it is", async () => {
     const pick = vi.fn(), create = vi.fn();
-    render(<LibraryMenu current="d1" courses={[course()]} documents={DOCS} coursesLocked={false} onPick={pick} onNewCourse={create}>
+    render(<LibraryMenu current="d1" courses={[course()]} documents={DOCS} onPick={pick} onNewCourse={create}>
       <span>biology.pdf</span></LibraryMenu>);
     const menu = openMenu();
     const items = within(menu).getAllByRole("menuitem").map((i) => i.textContent);
-    expect(items).toEqual(["Life sciences2 PDFs", "New course…", "biology.pdf", "chemistry.pdf", "physics.pdfindexing"]);
+    expect(items).toEqual(["Life sciences2 PDFs", "biology.pdf", "chemistry.pdf", "New course…", "physics.pdf"]);
+    expect(within(menu).getByText("Not in a course")).toBeTruthy();
     expect(within(menu).getAllByLabelText("Current")).toHaveLength(1);
     fireEvent.click(within(menu).getByRole("menuitem", { name: /Life sciences/ }));
     expect(pick).toHaveBeenCalledWith("c1", "course");
   });
 
-  it("without courses on the plan, says which plan has them", () => {
-    render(<LibraryMenu current="d1" courses={[]} documents={DOCS} coursesLocked onPick={vi.fn()} onNewCourse={vi.fn()}>
-      <span>biology.pdf</span></LibraryMenu>);
+  it("a PDF of a course is picked as a document (to focus on it)", () => {
+    const pick = vi.fn();
+    render(<LibraryMenu current="c1" courses={[course()]} documents={DOCS.slice(0, 2)} onPick={pick} onNewCourse={vi.fn()}>
+      <span>Life sciences</span></LibraryMenu>);
     const menu = openMenu();
-    const locked = within(menu).getByRole("menuitem", { name: "Courses come with Sage" });
-    expect(locked.getAttribute("aria-disabled")).toBe("true");
-    expect(within(menu).queryByText("New course…")).toBeNull();
+    expect(within(menu).queryByText("Not in a course")).toBeNull();
+    fireEvent.click(within(menu).getByRole("menuitem", { name: "chemistry.pdf" }));
+    expect(pick).toHaveBeenCalledWith("d2", "document");
   });
 });
 
@@ -143,11 +145,14 @@ describe("course overview", () => {
     expect(screen.queryByRole("button", { name: "Edit" })).toBeNull();                      // the header's "Edit course" does that
   });
 
-  it("an empty course asks for documents", () => {
+  it("an empty course asks for its first PDF: upload one, or pick from PDFs you have", () => {
     server();
-    const edit = vi.fn();
-    render(<CourseOverview course={course({ documents: [], ready: 0 })} onEdit={edit} />);
-    fireEvent.click(screen.getByRole("button", { name: "Add documents" }));
+    const edit = vi.fn(), upload = vi.fn();
+    render(<CourseOverview course={course({ documents: [], ready: 0 })} onEdit={edit} onUpload={upload} hasOtherPdfs />);
+    expect(screen.getByRole("heading", { name: "Add your first PDF" })).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Upload a PDF" }));
+    expect(upload).toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("button", { name: "Pick from your PDFs" }));
     expect(edit).toHaveBeenCalled();
   });
 });

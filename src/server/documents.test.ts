@@ -231,10 +231,41 @@ describe("courses", () => {
     { page: 2, text: "Benzene rings are aromatic and very stable carbon structures." },
   ];
 
-  it("are a Sage feature", async () => {
+  it("are on every plan: Free holds one course (round 7: Study works inside a course)", async () => {
     const b = await person("free@example.com", "free");
-    const r = await courses.GET(b.request("/api/v1/courses"));
-    expect((await json(r)).error).toMatchObject({ code: "feature_locked", details: { required_tier: "sage" } });
+    expect((await json(await courses.GET(b.request("/api/v1/courses")))).courses).toEqual([]);
+    const first = await courses.POST(b.request("/api/v1/courses", { body: { name: "Biology" } }));
+    expect(first.status).toBe(200);
+    const second = await courses.POST(b.request("/api/v1/courses", { body: { name: "Chemistry" } }));
+    expect((await json(second)).error).toMatchObject({ code: "plan_limit", details: { limit: "courses", allowed: 1 } });
+  });
+
+  it("a PDF uploaded inside a course joins it; someone else's course is refused", async () => {
+    const b = await person("free@example.com", "free");
+    const c = await json(await courses.POST(b.request("/api/v1/courses", { body: { name: "Biology" } })));
+    const bytes = pdfBytes("in-course");
+    const start = await upload.POST(b.request("/api/v1/upload", { body: { filename: "Cells.pdf", size: bytes.length, pages: 1, file_hash: await sha256(bytes), course_id: c.id } }));
+    const started = await json(start);
+    expect(started.course_id).toBe(c.id);
+    const list = await json(await courses.GET(b.request("/api/v1/courses")));
+    expect(list.courses[0].documents.map((d: { id: string }) => d.id)).toEqual([started.session_id]);
+
+    const other = await person("other@example.com", "other");
+    const bad = await upload.POST(other.request("/api/v1/upload", { body: { filename: "x.pdf", size: 10, pages: 1, file_hash: "e".repeat(64), course_id: c.id } }));
+    expect((await json(bad)).error.code).toBe("course_not_found");
+  });
+
+  it("PDFs from before courses were needed are gathered into a first course, once", async () => {
+    const b = await person("old@example.com", "oldie");
+    const a = await uploadPdf(b, "A.pdf");
+    const z = await uploadPdf(b, "B.pdf", BIOLOGY, { bytes: pdfBytes("other") });
+    const [one, two] = await Promise.all([courses.GET(b.request("/api/v1/courses")), courses.GET(b.request("/api/v1/courses"))]);
+    for (const r of [one, two]) {
+      const got = await json(r);
+      expect(got.courses).toHaveLength(1);
+      expect(got.courses[0]).toMatchObject({ name: "My PDFs" });
+      expect(new Set(got.courses[0].documents.map((d: { id: string }) => d.id))).toEqual(new Set([a.id, z.id]));
+    }
   });
 
   it("group documents; the course id works as a document; search hears every relevant document", async () => {

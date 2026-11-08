@@ -2,15 +2,16 @@ import { useCallback, useRef, useState } from "react";
 import { toast } from "@/components/ui/Toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { useSessionStore } from "@/hooks/useSessions";
+import { useCourses } from "@/hooks/useCourses";
 
 export const MAX_PDF_BYTES = 50 * 1024 * 1024;
 
 /**
  * Uploading a PDF for the active document: `documentId` replaces (or re-creates) that document, none lets the
- * server pick one. The server answers at once and keeps indexing; the store polls its status, which the Study
- * header renders.
+ * server pick one. `courseId`: the PDF joins that course (Study works inside courses). The server answers at once
+ * and keeps indexing; the store polls its status, which the Study header renders.
  */
-export function useDocumentUpload(documentId: string | undefined) {
+export function useDocumentUpload(documentId: string | undefined, courseId?: string) {
   const { user } = useAuth();
   const uploadDocument = useSessionStore((s) => s.uploadDocument);
   const [uploading, setUploading] = useState(false);
@@ -23,8 +24,9 @@ export function useDocumentUpload(documentId: string | undefined) {
 
     setUploading(true);
     try {
-      const document = await uploadDocument(documentId, file);
+      const document = await uploadDocument(documentId, file, courseId);
       if (document.status === "ready") toast.success(`✅ ${document.filename} ready!`);   // same file as before: reused
+      if (courseId) void useCourses.getState().load(true).catch(() => {});          // its PDF list changed
       return document;
     } catch (error) {
       toast.apiError(error, { onRetry: () => upload(file) });
@@ -33,7 +35,7 @@ export function useDocumentUpload(documentId: string | undefined) {
       setUploading(false);
       if (inputRef.current) inputRef.current.value = "";
     }
-  }, [documentId, user, uploadDocument]);
+  }, [documentId, courseId, user, uploadDocument]);
 
   const pick = useCallback(() => inputRef.current?.click(), []);
 

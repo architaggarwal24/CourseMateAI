@@ -4,10 +4,10 @@ import { useEffect } from "react";
 import { useHUDStore } from "@/hooks/useHUD";
 import { useReview } from "@/hooks/useReview";
 import { useRevalidate } from "@/hooks/useRevalidate";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import ThemeScope from "@/components/ThemeScope";
-import { areaOf } from "@/lib/routes";
+import { areaOf, ROUTES } from "@/lib/routes";
 import NavSidebar from "./NavSidebar";
 import BottomNav from "./BottomNav";
 import CommandPalette from "./CommandPaletteLoader";
@@ -27,10 +27,19 @@ import "./shell.css";
  * ⌘K opens the command palette.
  */
 export default function AppShell({ children }: { children: React.ReactNode }) {
-  const { loading: authLoading, user } = useAuth();
+  const { loading: authLoading, user, unreachable } = useAuth();
   const loadHud = useHUDStore((s) => s.load);
   const area = areaOf(usePathname());
   const play = area === "hero";
+  const router = useRouter();
+
+  // The app needs an account: signed out (never signed in, logged out elsewhere, or the session expired), go to the
+  // login page and come back here afterwards. The loading screen stays up meanwhile, so nothing flashes.
+  // (Offline is not signed out: the screen shows what it can, and the login page waits for a real "no".)
+  const signedOut = !authLoading && !user && !unreachable;
+  useEffect(() => {
+    if (signedOut) router.replace(ROUTES.loginNext(window.location.pathname + window.location.search));
+  }, [signedOut, router]);
 
   // Starts GET /hud at once, alongside the sign-in check (AuthProvider reuses this request instead of asking again
   // after /auth/me answers). Coming in from the login page, a HUD loaded seconds ago is reused.
@@ -48,11 +57,11 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     <div className="app-shell" data-area={area ?? undefined}>
       <NavSidebar />
       <main id="main-content" tabIndex={-1} className="app-main" data-theme={play ? "play" : undefined}>
-        {authLoading ? (
+        {authLoading || signedOut ? (
           <div className="flex flex-1 items-center justify-center">
             <div className="text-center app-loading">
               <span className="app-loading__orb" aria-hidden="true" />
-              <p className="text-fg-muted text-sm mt-5">Loading CourseMateAI…</p>
+              <p className="text-fg-muted text-sm mt-5">{signedOut ? "Taking you to the login page…" : "Loading CourseMateAI…"}</p>
             </div>
           </div>
         ) : play ? <ThemeScope theme="play">{children}</ThemeScope> /* the Hero area's pixel fonts and look */ : children}

@@ -31,7 +31,7 @@ test("uploading reads each page's text in the browser and sends it in batches", 
   await page.getByLabel("Choose a PDF").setInputFiles(PDF);
   await expect.poll(() => sent.pages.some((b) => b.done), { timeout: 20_000 }).toBe(true);
 
-  expect(sent.start).toMatchObject({ filename: "cell-biology.pdf", pages: expect.any(Number) });
+  expect(sent.start).toMatchObject({ filename: "cell-biology.pdf", pages: expect.any(Number), course_id: "course-1" });   // it joins the course on screen
   expect(String(sent.start?.file_hash)).toMatch(/^[0-9a-f]{64}$/);
   expect(sent.file).toBeGreaterThan(100);
   const pages = sent.pages.flatMap((b) => b.pages);

@@ -3,8 +3,8 @@
 import { useEffect, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import { useRouter, useSearchParams } from "next/navigation";
-import { FileX } from "@/components/icons";
-import { Button, EmptyState } from "@/components/ui";
+import { BookMarked, FileX } from "@/components/icons";
+import { Button, EmptyState, toast } from "@/components/ui";
 import { DOCUMENT_GONE_EVENT } from "@/lib/api/client";
 import { useDocumentUpload } from "@/hooks/useDocumentUpload";
 import { useDocuments, useSessionStore } from "@/hooks/useSessions";
@@ -29,6 +29,8 @@ const ExamView = dynamic(() => import("@/components/exam/ExamView"), { ssr: fals
 const ConceptMapView = dynamic(() => import("@/components/map/ConceptMapView"), { ssr: false });
 const CourseOverview = dynamic(() => import("@/components/course/CourseOverview"), { ssr: false });
 const CourseEditor = dynamic(() => import("@/components/course/CourseEditor"), { ssr: false });
+const DeleteDocument = dynamic(() => import("@/components/course/DeleteDocument"), { ssr: false });
+const CourseOnboarding = dynamic(() => import("@/components/course/CourseOnboarding"), { ssr: false });
 
 const LABELS: Record<StudyTab, string> = {
   chat: "Chat", quiz: "Quiz", notes: "Notes", flashcards: "Flashcards", map: "Map", review: "Review", exam: "Exam", overview: "Overview",
@@ -55,19 +57,26 @@ export default function StudyWorkspace() {
 
   const { documents, list, loaded } = useDocuments();
   const refreshDocument = useSessionStore((s) => s.refreshDocument);
-  const { courses, loaded: coursesLoaded, locked: coursesLocked, load: loadCourses } = useCourses();
+  const { courses, loaded: coursesLoaded, load: loadCourses } = useCourses();
+  const update = useCourses((s) => s.update);
   const [editor, setEditor] = useState<{ course: Course | null } | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   // The courses load alongside the documents (not after them): a course link (?doc=<course>) waited for both in turn.
   const { user } = useAuth();
   useEffect(() => { if (user) loadCourses().catch(() => {}); }, [user, loadCourses]);
-  const course = courseById(courses, requestedDocId) ?? null;
-  const tab: StudyTab = isStudyTab(tabParam) && (tabParam !== "overview" || course) ? tabParam : DEFAULT_STUDY_TAB;
-
-  // Which document: the one in the URL; else the one an older saved session was made on (its id is the document's);
-  // else the most recently used one on the server.
+  // Which subject: the one in the URL (a course, or one PDF of a course); else the PDF an older saved session was
+  // made on (its id is the document's); else the most recently used course (once the courses are in).
   const documentId =
-    requestedDocId ?? (restoreSessionId && documents[restoreSessionId] ? restoreSessionId : undefined) ?? list[0]?.id;
+    requestedDocId ?? (restoreSessionId && documents[restoreSessionId] ? restoreSessionId : undefined)
+    ?? (coursesLoaded ? courses[0]?.id ?? list[0]?.id : undefined);
+  const course = courseById(courses, documentId) ?? null;
+  // Study needs a course (round 7): the course on screen, or the one the open PDF belongs to.
+  const parentCourse = course ?? courses.find((c) => c.documents.some((d) => d.id === documentId)) ?? null;
+  const noCourses = loaded && coursesLoaded && !!user && courses.length === 0;
+  const loose = loaded && coursesLoaded && !!documentId && !course && !parentCourse && !!documents[documentId];
+  // a course opens on its page unless a tool was asked for
+  const tab: StudyTab = isStudyTab(tabParam) && (tabParam !== "overview" || course) ? tabParam : course && !tabParam ? "overview" : DEFAULT_STUDY_TAB;
   const doc = documentId ? documents[documentId] ?? null : null;
   // The URL names a document (or course) the server no longer has (expired, or removed): one clear state, not
   // failing screens. A course id is only "gone" once the courses have loaded without it.
@@ -83,8 +92,9 @@ export default function StudyWorkspace() {
     refreshDocument(course.id).catch(() => { /* offline: the overview still shows */ });
   }, [course?.id, course?.updated_at, refreshDocument]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // On a course a dropped PDF becomes a new document (a course isn't replaced by one file).
-  const upload = useDocumentUpload(course ? undefined : documentId);
+  // On a course a dropped PDF becomes a new document in it (a course isn't replaced by one file); on one of its PDFs
+  // a new file replaces that PDF (and it stays in the course).
+  const upload = useDocumentUpload(course ? undefined : documentId, parentCourse?.id);
 
   // Keep the document in the URL once it is known, so a refresh or a shared link opens the same one.
   useEffect(() => {
@@ -126,19 +136,54 @@ export default function StudyWorkspace() {
     <div className="ws">
       <DocumentHeader doc={doc} gone={gone} loaded={loaded} upload={upload} course={course}
         onEditCourse={() => setEditor({ course })}
-        switcher={loaded && upload.signedIn ? (name) => (
-          <LibraryMenu current={documentId} courses={courses} documents={list} coursesLocked={coursesLocked}
+        onDelete={doc && !course ? () => setDeleting(true) : undefined}
+        inCourse={!course && parentCourse ? { name: parentCourse.name, href: ROUTES.studyTab("overview", undefined, parentCourse.id) } : undefined}
+        noCourse={noCourses}
+        switcher={loaded && upload.signedIn && !noCourses ? (name) => (
+          <LibraryMenu current={documentId} courses={courses} documents={list}
             onPick={(id, kind) => router.push(ROUTES.studyTab(kind === "course" ? "overview" : tab === "overview" ? DEFAULT_STUDY_TAB : tab, undefined, id))}
             onNewCourse={() => setEditor({ course: null })}>{name}</LibraryMenu>
         ) : undefined}
-        tabs={<SubNav label="Study tools" items={items} className="!px-[3px]" />} />
+        tabs={noCourses || loose ? undefined : <SubNav label="Study tools" items={items} className="!px-[3px]" />} />
+      {deleting && doc && !course && (
+        <DeleteDocument doc={doc} onClose={() => setDeleting(false)}
+          onDeleted={(id) => {
+            setDeleting(false);
+            loadCourses(true).catch(() => {});                   // it left any course it was in
+            // back to its course's page (or the next PDF, for one that wasn't in a course)
+            if (parentCourse) router.replace(ROUTES.studyTab("overview", undefined, parentCourse.id));
+            else router.replace(ROUTES.studyTab(tab === "overview" ? DEFAULT_STUDY_TAB : tab, undefined, list.find((d) => d.id !== id)?.id));
+          }} />
+      )}
       {editor && (
         <CourseEditor open onClose={() => setEditor(null)} course={editor.course} documents={list}
           onSaved={(c) => { if (!editor.course) router.push(ROUTES.studyTab("overview", undefined, c.id)); }}
           onDeleted={() => router.push(ROUTES.studyTab(DEFAULT_STUDY_TAB))} />
       )}
       <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
-        {gone ? (
+        {noCourses ? (
+          <CourseOnboarding onCreated={(c) => router.push(ROUTES.studyTab("overview", undefined, c.id))} />
+        ) : loose && doc ? (
+          <div className="flex-1 flex items-center justify-center px-6">
+            <EmptyState
+              icon={<BookMarked size={32} />}
+              title="Add this PDF to a course first"
+              description={`Study works inside a course. Put ${doc.filename} in one to chat, quiz and review it.`}
+              action={
+                <div className="flex flex-wrap justify-center gap-2">
+                  {courses.slice(0, 3).map((c) => (
+                    <Button key={c.id} variant="primary" onClick={async () => {
+                      try {
+                        await update(c.id, { document_ids: [...c.documents.map((d) => d.id), doc.id] });
+                        router.replace(ROUTES.studyTab(tab === "overview" ? DEFAULT_STUDY_TAB : tab, undefined, doc.id));
+                      } catch (e) { toast.apiError(e); }
+                    }}>Add to {c.name}</Button>
+                  ))}
+                  <Button onClick={() => setEditor({ course: null })}>New course…</Button>
+                </div>
+              } />
+          </div>
+        ) : gone ? (
           <div className="flex-1 flex items-center justify-center px-6">
             <EmptyState
               icon={<FileX size={32} />}
@@ -156,7 +201,7 @@ export default function StudyWorkspace() {
             {tab === "map"        && <ConceptMapView key={key} documentId={documentId} />}
             {tab === "review"     && <ReviewView    key={key} documentId={documentId} />}
             {tab === "exam"       && <ExamView      key={key} documentId={documentId} />}
-            {tab === "overview"   && course && <CourseOverview key={course.id} course={course} onEdit={() => setEditor({ course })} />}
+            {tab === "overview"   && course && <CourseOverview key={course.id} course={course} onEdit={() => setEditor({ course })} onUpload={upload.pick} uploading={upload.uploading} hasOtherPdfs={list.length > course.documents.length} />}
           </>
         )}
       </div>

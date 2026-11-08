@@ -28,7 +28,7 @@ describe("routes", () => {
   it("every old URL redirects to a page that exists", () => {
     expect(LEGACY_REDIRECTS.map(r => r.from).sort()).toEqual(
       [
-        "/", "/arena", "/avatar", "/avatar/hero-forge", "/inventory", "/profile", "/settings", "/shop",
+        "/arena", "/avatar", "/avatar/hero-forge", "/inventory", "/profile", "/settings", "/shop",
         "/hero/arena", "/hero/shop", "/hero/inventory", "/hero/avatar", "/hero/forge", "/hero/champion", "/hero/achievements",
       ].sort(),
     );
@@ -39,8 +39,9 @@ describe("routes", () => {
     for (const { from } of LEGACY_REDIRECTS) expect(served).not.toContain(from);
   });
 
-  it("the site's root opens Today", () => {
-    expect(LEGACY_REDIRECTS.find((r) => r.from === "/")?.to).toBe("/today");
+  it("the site's root is the landing page (a page, not a redirect: signed in, it sends you on to Today itself)", () => {
+    expect(LEGACY_REDIRECTS.find((r) => r.from === "/")).toBeUndefined();
+    expect(served).toContain("/");
   });
 
   it("no redirect lands on another redirect", () => {

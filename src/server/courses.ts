@@ -1,15 +1,18 @@
 // Courses on the Worker (Stage 4.2; the same rules as backend/services/course_service.py): a named group of the
 // user's documents, studied together. A course id stands wherever a document id does (GET /documents/{id} answers
-// with the course seen as one document). Deleting a course leaves its documents. Courses are a Sage feature.
+// with the course seen as one document). Deleting a course leaves its documents. Every plan has courses (round 7:
+// Study works inside a course); someone with PDFs from before gets them gathered into a first course.
 import { and, count, desc, eq, inArray, sql } from "drizzle-orm";
 import type { CurrentUser, RequestContext } from "./context";
 import { conceptMastery, courseDocuments, courses, documents, exams, reviewItems } from "./db/schema";
-import { courseMembers } from "./documents";
+import { courseMembers, MAX_COURSE_DOCUMENTS } from "./documents";
 import { HttpError } from "./http";
 import { limits, nowIso, planLimit, requireFeature, tierFor } from "./plans";
 
 export const MAX_COURSES = 30;
-export const MAX_DOCUMENTS = 20;
+export const MAX_DOCUMENTS = MAX_COURSE_DOCUMENTS;
+/** The course someone's PDFs from before courses were for everyone are gathered into. */
+export const FIRST_COURSE_NAME = "My PDFs";
 const MAX_NAME = 80;
 const MAX_DESCRIPTION = 500;
 
@@ -67,7 +70,21 @@ async function setMembers(ctx: RequestContext, courseId: string, ids: string[], 
 
 export async function listCourses(ctx: RequestContext, user: CurrentUser) {
   await gate(ctx, user);
-  const rows = await ctx.db.select().from(courses).where(eq(courses.userId, user.id)).orderBy(desc(courses.updatedAt)).all();
+  let rows = await ctx.db.select().from(courses).where(eq(courses.userId, user.id)).orderBy(desc(courses.updatedAt)).all();
+  if (!rows.length) {
+    // PDFs uploaded before Study needed a course: gather them into a first course, so nobody is locked out of them.
+    const docs = await ctx.db.select({ id: documents.id }).from(documents).where(eq(documents.userId, user.id))
+      .orderBy(desc(documents.lastUsedAt)).limit(MAX_DOCUMENTS).all();
+    if (docs.length) {
+      // one id per account, so two first visits at once make one course, not two
+      const id = `first-course-${user.id}`;
+      const now = nowIso();
+      const made = await ctx.db.insert(courses).values({ id, userId: user.id, name: FIRST_COURSE_NAME, description: null, createdAt: now, updatedAt: now })
+        .onConflictDoNothing().returning({ id: courses.id }).all();
+      if (made.length) await setMembers(ctx, id, docs.map((d) => d.id), now);
+      rows = await ctx.db.select().from(courses).where(eq(courses.userId, user.id)).orderBy(desc(courses.updatedAt)).all();
+    }
+  }
   return Promise.all(rows.map((r) => publicCourse(ctx, r)));
 }
 

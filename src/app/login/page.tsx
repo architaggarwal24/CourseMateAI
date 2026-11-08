@@ -3,6 +3,7 @@
 import { useEffect, useState, type CSSProperties } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { Brain, Eye, EyeOff, Layers, MessageSquare, Sparkles, Swords, Trophy, Zap } from '@/components/icons';
 import { Magnetic, TextReveal } from '@/components/fx';
 import './login.css';
@@ -14,6 +15,7 @@ import VerifyEmailStep from '@/components/auth/VerifyEmailStep';
 import { Button, Card, Input } from '@/components/ui';
 import { fetchAuthConfig } from '@/lib/auth/config';
 import { ROUTES } from '@/lib/routes';
+import { safeNext } from '@/lib/auth/session-cookie';
 import Logo from '@/components/brand/Logo';
 
 /** What the card shows: the log-in form, or one of the steps that can follow it. */
@@ -29,21 +31,29 @@ export default function LoginPage() {
   const [google, setGoogle] = useState(false);
   const isRegister = mode === 'register';
 
-  const { login, refresh } = useAuth();
+  const { login, refresh, user, loading: authLoading } = useAuth();
   const router = useRouter();
+  // ?next= (an app page that sent you here) and ?mode=register (the landing page's "Start free")
+  const [next, setNext] = useState<string>(ROUTES.today);
 
   useEffect(() => {
     let alive = true;
     fetchAuthConfig().then((c) => { if (alive) setGoogle(c.google); });
-    if (typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('error') === 'google') {
-      setError("Google sign-in didn't finish. Please try again.");
-    }
+    const q = new URLSearchParams(window.location.search);
+    if (q.get('error') === 'google') setError("Google sign-in didn't finish. Please try again.");
+    if (q.get('mode') === 'register') setMode('register');
+    setNext(safeNext(q.get('next'), ROUTES.today));
     return () => { alive = false; };
   }, []);
 
+  // Already signed in (a bookmark, the back button): on to the app.
+  useEffect(() => {
+    if (!authLoading && user && mode === 'login') router.replace(safeNext(new URLSearchParams(window.location.search).get('next'), ROUTES.today));
+  }, [authLoading, user, mode, router]);
+
   async function signedIn() {
     await refresh();
-    router.push(ROUTES.today);
+    router.push(next);
   }
 
   const handleChange = (e: React.FormEvent<HTMLInputElement>) => {
@@ -58,7 +68,7 @@ export default function LoginPage() {
     setNotice('');
     try {
       const result = await login(formData.email, formData.password);
-      if (result.status === 'signed-in') router.push(ROUTES.today);
+      if (result.status === 'signed-in') router.push(next);
       else if (result.status === 'two-factor') setMode('two-factor');
       else if (result.status === 'verify-email') setMode('verify');
       else setError(result.failure.message);
@@ -82,7 +92,7 @@ export default function LoginPage() {
 
       {/* Left: what CourseMateAI is, shown rather than told (wide screens only) */}
       <section className="login__showcase" aria-label="About CourseMateAI">
-        <div className="login__brand"><Logo size={30} /></div>
+        <div className="login__brand"><Link href={ROUTES.home} aria-label="CourseMateAI home" className="inline-flex"><Logo size={30} /></Link></div>
 
         <div className="login__pitch">
           <p className="login__eyebrow fx-rise">
@@ -139,7 +149,7 @@ export default function LoginPage() {
           )}
 
           {mode === 'register' ? (
-            <SignupFlow onDone={() => router.push(ROUTES.today)} />
+            <SignupFlow onDone={() => router.push(next)} />
           ) : mode === 'two-factor' ? (
             <TwoFactorStep onDone={signedIn} onCancel={backToLogin} />
           ) : mode === 'verify' ? (

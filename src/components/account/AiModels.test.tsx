@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 
-const api = vi.hoisted(() => ({ aiModels: vi.fn(), setAiSlots: vi.fn(), setMyModel: vi.fn(), setOllamaUrl: vi.fn() }));
+const api = vi.hoisted(() => ({ aiModels: vi.fn(), setAiSlots: vi.fn(), setMyModel: vi.fn(), setOllamaUrl: vi.fn(), testModel: vi.fn() }));
 vi.mock("@/lib/admin/adminApi", async (orig) => ({ ...(await orig<typeof import("@/lib/admin/adminApi")>()), adminApi: api }));
 vi.mock("@/components/ui/Toast", () => ({ toast: { success: vi.fn(), error: vi.fn(), info: vi.fn(), apiError: vi.fn() } }));
 
@@ -26,6 +26,34 @@ describe("Admin -> AI models", () => {
     fireEvent.change(fast, { target: { value: "gemini:other" } });
     fireEvent.click(screen.getByRole("button", { name: "Save models" }));
     await waitFor(() => expect(api.setAiSlots).toHaveBeenCalledWith({ fast: "gemini:other" }));
+  });
+});
+
+describe("Test connection", () => {
+  it("a slot with a bad setting shows why; Test asks the server and shows the reply or the error with a hint", async () => {
+    api.aiModels.mockResolvedValue({ ...DATA, problems: { fast: 'LLM_FAST is "gemini-3.6-flash": write it as provider:model' } });
+    api.testModel.mockResolvedValueOnce({ ok: false, spec: null, source: "LLM_FAST", error: "This slot has no usable model.", hint: "write it as provider:model" });
+    render(<AiModelsCard />);
+    await screen.findByText(/write it as provider:model/);
+    fireEvent.click(screen.getAllByRole("button", { name: "Test" })[0]);
+    await waitFor(() => expect(api.testModel).toHaveBeenCalledWith({ slot: "fast" }));
+    expect(await screen.findByText(/This slot has no usable model/)).toBeTruthy();
+
+    api.testModel.mockResolvedValueOnce({ ok: true, spec: "gemini:other", source: "this setting", latency_ms: 640, reply: "OK" });
+    fireEvent.change(screen.getByLabelText("Fast"), { target: { value: "gemini:other" } });
+    fireEvent.click(screen.getAllByRole("button", { name: "Test" })[0]);
+    await waitFor(() => expect(api.testModel).toHaveBeenLastCalledWith({ spec: "gemini:other" }));
+    expect(await screen.findByText(/answered in 640 ms/)).toBeTruthy();
+  });
+
+  it("your model: tests what's chosen, saved or not", async () => {
+    api.aiModels.mockResolvedValue(DATA);
+    api.testModel.mockResolvedValue({ ok: true, spec: "ollama:llama3.2:latest", source: "this setting", latency_ms: 900, reply: "OK" });
+    render(<MyModel />);
+    fireEvent.change(await screen.findByLabelText("Provider"), { target: { value: "ollama" } });
+    fireEvent.change(screen.getByLabelText("Model"), { target: { value: "llama3.2:latest" } });
+    fireEvent.click(screen.getByRole("button", { name: "Test connection" }));
+    await waitFor(() => expect(api.testModel).toHaveBeenCalledWith({ spec: "ollama:llama3.2:latest" }));
   });
 });
 
@@ -61,7 +89,7 @@ describe("Ollama: any model, and a tunnel for the live site", () => {
     fireEvent.change(screen.getByLabelText("Tunnel address"), { target: { value: "https://o.trycloudflare.com" } });
     fireEvent.click(screen.getByRole("button", { name: "Save" }));
     await waitFor(() => expect(api.setOllamaUrl).toHaveBeenCalledWith("https://o.trycloudflare.com"));
-    expect((await screen.findByRole("status")).textContent).toContain("phi4");
+    await waitFor(() => expect(screen.getAllByRole("status").some((s) => s.textContent?.includes("phi4"))).toBe(true));
   });
 
   it("a model Ollama hasn't listed can be typed in", async () => {

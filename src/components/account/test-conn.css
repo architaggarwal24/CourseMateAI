@@ -1,0 +1,8 @@
+/* "Test connection" (Admin -> AI, Settings -> AI): the button, then one line saying how the model answered. */
+.test-conn { display: flex; flex-wrap: wrap; align-items: flex-start; gap: var(--space-2) var(--space-3); }
+.test-conn__result { flex: 1 1 16rem; min-width: 0; }
+.test-conn__line { display: flex; gap: var(--space-2); align-items: flex-start; margin: 0; font-size: var(--text-sm, 0.875rem); line-height: 1.45; overflow-wrap: anywhere; }
+.test-conn__line > svg { flex: none; margin-top: 0.2em; }
+.test-conn__line[data-ok="true"] { color: var(--color-success-text); }
+.test-conn__line[data-ok="false"] { color: var(--color-danger-text); }
+.test-conn__hint { display: block; margin-top: var(--space-1); color: var(--color-text-secondary); }

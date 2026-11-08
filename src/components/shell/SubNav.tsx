@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Fragment, useEffect, useId, useRef, type MouseEvent } from "react";
+import { useEffect, useId, useRef, type MouseEvent } from "react";
 import { motion } from "motion/react";
 import { cn } from "@/lib/utils";
 
@@ -15,7 +15,11 @@ export interface SubNavItem {
   mode?: "exact" | "prefix";
   /** When set, decides "current" itself (for tabs that differ by query string, not by path). */
   current?: boolean;
-  /** Tabs with the same group sit together under a small label (Learn, Practice): Hick's law, fewer things at a glance. */
+  /**
+   * Tabs with the same group sit together in their own track, captioned by the group's name above it (Learn,
+   * Practice): a heading, not a tab - it has no tab shape, sits outside the track, and names the group for screen
+   * readers (role="group"). Hick's law: fewer things at a glance.
+   */
   group?: string;
   /** A count shown beside the label (e.g. cards due), with its meaning for screen readers. */
   badge?: { count: number; label: string };
@@ -46,26 +50,46 @@ export default function SubNav({ label, items, className, onNavigate }: {
       strip.current.scrollTo?.({ left: el.offsetLeft - (strip.current.clientWidth - el.offsetWidth) / 2 });
     }
   }, [currentHref]);
+  const link = (item: SubNavItem) => (
+    <Link
+      key={item.href}
+      href={item.href}
+      className="ui-tab"
+      aria-current={isCurrent(pathname, item) ? "page" : undefined}
+      onClick={onNavigate ? (e) => onNavigate(item, e) : undefined}
+    >
+      {item.label}
+      {item.badge && item.badge.count > 0 && (
+        <span className="ui-tab__badge"><span aria-hidden="true">{item.badge.count > 99 ? "99+" : item.badge.count}</span>
+          <span className="sr-only">, {item.badge.label}</span></span>
+      )}
+      {isCurrent(pathname, item) && <motion.span layoutId={`${barId}-bar`} className="ui-tab__bar" transition={{ type: "spring", stiffness: 520, damping: 40 }} aria-hidden="true" />}
+    </Link>
+  );
+
+  // Grouped: one captioned track per group (consecutive items with the same group).
+  if (items.some((i) => i.group)) {
+    const groups: { name: string; items: SubNavItem[] }[] = [];
+    for (const item of items) {
+      const last = groups.at(-1);
+      if (last && last.name === (item.group ?? "")) last.items.push(item);
+      else groups.push({ name: item.group ?? "", items: [item] });
+    }
+    return (
+      <nav ref={strip} aria-label={label} className={cn("ui-tabs__groups shrink-0 px-4", className)}>
+        {groups.map((g, gi) => (
+          <div key={`${g.name}-${gi}`} role="group" aria-labelledby={g.name ? `${barId}-g${gi}` : undefined} className="ui-tabs__grp">
+            {g.name && <span id={`${barId}-g${gi}`} className="ui-tabs__cap">{g.name}</span>}
+            <div className="ui-tabs__list ui-tabs__list--grp">{g.items.map(link)}</div>
+          </div>
+        ))}
+      </nav>
+    );
+  }
+
   return (
     <nav ref={strip} aria-label={label} className={cn("ui-tabs__list shrink-0 px-4", className)}>
-      {items.map((item, i) => (
-        <Fragment key={item.href}>
-        {item.group && item.group !== items[i - 1]?.group && <span className="ui-tabs__group" aria-hidden="true">{item.group}</span>}
-        <Link
-          href={item.href}
-          className="ui-tab"
-          aria-current={isCurrent(pathname, item) ? "page" : undefined}
-          onClick={onNavigate ? (e) => onNavigate(item, e) : undefined}
-        >
-          {item.label}
-          {item.badge && item.badge.count > 0 && (
-            <span className="ui-tab__badge"><span aria-hidden="true">{item.badge.count > 99 ? "99+" : item.badge.count}</span>
-              <span className="sr-only">, {item.badge.label}</span></span>
-          )}
-          {isCurrent(pathname, item) && <motion.span layoutId={`${barId}-bar`} className="ui-tab__bar" transition={{ type: "spring", stiffness: 520, damping: 40 }} aria-hidden="true" />}
-        </Link>
-        </Fragment>
-      ))}
+      {items.map(link)}
     </nav>
   );
 }

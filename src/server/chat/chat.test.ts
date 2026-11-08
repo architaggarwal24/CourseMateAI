@@ -20,6 +20,7 @@ import { AI_ENV, fakeLlms } from "../test/ai-fakes";
 import { params, person, sseEvents, uploadPdf } from "../test/flows";
 import { isSelfContained, standaloneQuestion } from "./rewrite";
 import { toRetrieval } from "./index";
+import { isConversation, isQuizRequest, subjectLine } from "./prompts";
 
 let p: LocalPlatform;
 let mail: ReturnType<typeof fakeMailer>;
@@ -66,18 +67,59 @@ describe("POST /chat", () => {
     expect(u.used.ai_calls_day).toBe(1);
   });
 
-  it("a question the document doesn't cover is refused without asking a model", async () => {
+  it("a question the material doesn't cover still gets an honest answer (told it isn't covered; nothing cited)", async () => {
     const b = await person(mail, "free@example.com", "free");
     const id = await uploadPdf(b, "Bio.pdf", BIO);
     const r = await json(await chat.POST(b.request("/api/v1/chat", { body: { question: "Who won the 1998 football world cup?", session_id: id } })));
-    expect(r).toMatchObject({ blocked: true, citations: [], content: expect.stringMatching(/cannot find/) });
-    expect(llm.calls).toHaveLength(0);
+    expect(r).toMatchObject({ blocked: false, coverage: "none", citations: [], sources: [] });
+    expect(llm.calls.at(-1)!.messages[0].content).toMatch(/does not seem to cover this question/);
+  });
+
+  it("a greeting is a conversation: no search, no rewards, the tutor answers as a person", async () => {
+    const b = await person(mail, "free@example.com", "free");
+    const id = await uploadPdf(b, "Bio.pdf", BIO);
+    llm = fakeLlms({ "*": "Hey! Want to start with how cells get their energy?" });
+    setLlmFactoryForTests(llm.factory);
+    const r = await json(await chat.POST(b.request("/api/v1/chat", { body: { question: "hi", session_id: id } })));
+    expect(r).toMatchObject({ coverage: "conversation", citations: [], rewards: null, content: expect.stringMatching(/Hey!/) });
+    expect(llm.calls).toHaveLength(1);                                         // no rewrite, no search
+    const [system, user] = llm.calls[0].messages;
+    expect(system.content).toMatch(/This message is conversation/);
+    expect(system.content).toMatch(/The student is studying: Bio\.pdf/);
+    expect(user.content).toBe("hi");
   });
 
   it("checks the question, and the document", async () => {
     const b = await person(mail, "free@example.com", "free");
-    expect((await json(await chat.POST(b.request("/api/v1/chat", { body: { question: "hi", session_id: "x" } })))).error.message).toBe("Question is too short");
+    expect((await json(await chat.POST(b.request("/api/v1/chat", { body: { question: "   ", session_id: "x" } })))).error.message).toBe("Question cannot be empty");
     expect((await chat.POST(b.request("/api/v1/chat", { body: { question: "What is ATP?", session_id: "nope" } }))).status).toBe(404);
+  });
+
+  it("teaches in the mode the student picked; the tutor talks like a teacher and offers follow-ups", async () => {
+    const b = await person(mail, "free@example.com", "free");
+    const id = await uploadPdf(b, "Bio.pdf", BIO);
+    const r = await json(await chat.POST(b.request("/api/v1/chat", { body: { question: "How do mitochondria make ATP?", session_id: id, mode: "socratic" } })));
+    expect(r.tutor_mode).toBe("socratic");
+    const system = llm.calls.at(-1)!.messages[0].content;
+    expect(system).toMatch(/personal tutor/);
+    expect(system).toMatch(/MODE: Socratic/);
+    expect(system).toMatch(/write exactly "---"/);
+    expect(system).not.toMatch(/MODE: Explain/);
+    // an unknown mode is Explain
+    await chat.POST(b.request("/api/v1/chat", { body: { question: "How do mitochondria make ATP?", session_id: id, mode: "nonsense" } }));
+    expect(llm.calls.at(-1)!.messages[0].content).toMatch(/MODE: Explain/);
+  });
+
+  it("Quiz me without a topic quizzes on what was just discussed", async () => {
+    const b = await person(mail, "free@example.com", "free");
+    const id = await uploadPdf(b, "Bio.pdf", BIO);
+    const history = [{ role: "user", content: "How do mitochondria make ATP?" }, { role: "assistant", content: "Through cellular respiration [1]." }];
+    const r = await json(await chat.POST(b.request("/api/v1/chat", { body: { question: "quiz me", session_id: id, mode: "quiz", history } })));
+    expect(r.tutor_mode).toBe("quiz");
+    expect(llm.calls.map((c) => c.target)).not.toContain("workers-ai:@cf/meta/llama-3.1-8b-instruct-fp8");   // no rewrite needed
+    const last = llm.calls.at(-1)!.messages;
+    expect(last[0].content).toMatch(/MODE: Quiz me/);
+    expect(last.at(-1)!.content).toContain("[1] (Bio.pdf · p.2)");             // searched for the last topic
   });
 
   it("a follow-up is rewritten (a small job, on Workers AI) before searching", async () => {
@@ -179,6 +221,16 @@ describe("rewrite and citations", () => {
   it("a failed rewrite falls back to the previous question", async () => {
     const r = await standaloneQuestion("Why does it happen?", [{ role: "user", content: "Explain osmosis" }], async () => { throw new Error("x"); });
     expect(r).toEqual({ query: "Explain osmosis Why does it happen?", method: "fallback" });
+  });
+
+  it("tells conversation from a question, and a quiz request from an answer", () => {
+    for (const m of ["hi", "Hello!", "thanks so much", "ok", "who are you?", "what can you do", "I'm confused"]) expect(isConversation(m), m).toBe(true);
+    for (const m of ["hi, what is osmosis?", "Thanks, but why does ATP matter?", "What is ATP?", "ok so how does respiration work"]) expect(isConversation(m), m).toBe(false);
+    expect(isQuizRequest("quiz me")).toBe(true);
+    expect(isQuizRequest("next question")).toBe(true);
+    expect(isQuizRequest("mitochondria")).toBe(false);
+    expect(subjectLine("Biology", ["a.pdf", "b.pdf"])).toBe("Biology (a.pdf, b.pdf)");
+    expect(subjectLine("a.pdf", ["a.pdf"])).toBe("a.pdf");
   });
 
   it("drops a passage another one already contains", () => {

@@ -62,10 +62,15 @@ export interface AiReport {
 
 export type SlotName = "fast" | "strong" | "premium" | "small";
 /** Admin -> AI models (GET /admin/ai/models). */
+/** Admin -> AI -> Test connection (src/server/ai/test.ts). */
+export interface AiTestResult { ok: boolean; spec: string | null; source: string; latency_ms?: number; reply?: string; error?: string; hint?: string }
+
 export interface AiModels {
   /** What admins saved for everyone (a missing slot uses its setting, shown in `defaults`). */
   slots: Partial<Record<SlotName, string>>;
   defaults: Record<SlotName, string>;
+  /** Why a slot can't be used now (null: fine). */
+  problems?: Partial<Record<SlotName, string | null>>;
   providers: { id: string; configured: boolean; key_env: string | null }[];
   /** This admin's own model, or null for the normal ones. */
   mine: string | null;
@@ -114,6 +119,7 @@ export const adminApi = {
   setAiSlots: (slots: Partial<Record<SlotName, string | null>>) => call<AiModels>("/ai/models", { method: "PUT", body: { slots } }),
   setOllamaUrl: (url: string | null) => call<AiModels>("/ai/models", { method: "PUT", body: { ollama_url: url } }),
   setMyModel: (spec: string | null) => call<{ spec: string | null }>("/ai/mine", { method: "PUT", body: { spec } }),
+  testModel: (what: { spec: string } | { slot: SlotName }) => call<AiTestResult>("/ai/test", { method: "POST", body: what }),
   revokeInvite: (code: string) => call<{ ok: true }>(`/invites/${encodeURIComponent(code)}`, { method: "DELETE" }),
 };
 

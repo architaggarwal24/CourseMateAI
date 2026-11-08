@@ -9,7 +9,7 @@ import { route } from "./models";
 import { generate, setLlmFactoryForTests } from "./run";
 import { setCapUsd } from "./usage";
 import {
-  aiSettings, checkOllamaUrl, effectiveEnv, ollamaEnabled, ollamaModels, overrideTarget, providerStatus, saveOllamaUrl, saveOverride, saveSlots,
+  aiSettings, checkOllamaUrl, effectiveEnv, ollamaBase, ollamaEnabled, ollamaModels, overrideTarget, providerStatus, saveOllamaUrl, saveOverride, saveSlots,
 } from "./config";
 
 let p: LocalPlatform;
@@ -124,6 +124,12 @@ describe("Ollama on the live site, through an admin's tunnel", () => {
     expect(() => checkOllamaUrl("http://1.2.3.4:11434")).toThrow(/https/);
     expect(() => checkOllamaUrl("not a url")).toThrow();
     expect(checkOllamaUrl(`${TUNNEL}/`)).toBe(TUNNEL);
+    // the API paths the app adds itself are dropped (".../v1" answered "404 page not found")
+    expect(checkOllamaUrl(`${TUNNEL}/v1`)).toBe(TUNNEL);
+    expect(checkOllamaUrl(`${TUNNEL}/v1/`)).toBe(TUNNEL);
+    expect(checkOllamaUrl(`${TUNNEL}/api`)).toBe(TUNNEL);
+    expect(checkOllamaUrl("http://localhost:11434/v1", { NODE_ENV: "development" })).toBe("http://localhost:11434");
+    expect(ollamaBase({}, "http://localhost:11434/v1")).toBe("http://localhost:11434");          // already saved that way
     expect(await saveOllamaUrl(db, `${TUNNEL}/`)).toBe(TUNNEL);
     expect((await aiSettings(db)).ollamaUrl).toBe(TUNNEL);
     await saveOverride(db, 1, "ollama:my-custom-model:q4", process.env, TUNNEL);            // any model name

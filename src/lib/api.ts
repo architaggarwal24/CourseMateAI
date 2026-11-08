@@ -43,13 +43,13 @@ function body(result: { data?: unknown }): any {
  * document already there (`reused`). Then `sendUpload` (lib/upload.ts) sends the file and the pages.
  * Throws an ApiError with the server's message on failure (and "no_text" for a scanned PDF).
  */
-export async function uploadPDF(file: File, sessionId?: string): Promise<UploadResult & { read: ReadPdf }> {
+export async function uploadPDF(file: File, sessionId?: string, courseId?: string): Promise<UploadResult & { read: ReadPdf }> {
   const read = await readPdf(file);
   let res: Response;
   try {
     res = await fetch(new Request(`${API_BASE_URL}/upload`, {
       method: "POST", credentials: "include", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ filename: file.name, size: file.size, pages: read.pageCount, file_hash: read.hash, session_id: sessionId }),
+      body: JSON.stringify({ filename: file.name, size: file.size, pages: read.pageCount, file_hash: read.hash, session_id: sessionId, course_id: courseId }),
     }));
   } catch {
     throw new ApiError(0, { code: "network", message: "Couldn't reach CourseMateAI. Check your connection and try again.", action: "retry", details: null });
@@ -67,6 +67,11 @@ export async function fetchDocuments(): Promise<DocumentInfo[]> {
 }
 
 /** One document's status, or null when the server no longer has it (expired, deleted, never uploaded). */
+/** Delete a document for good: its PDF, pages and search index. */
+export async function deleteDocument(documentId: string): Promise<void> {
+  await api.DELETE("/documents/{document_id}", { params: { path: { document_id: documentId } } });
+}
+
 export async function fetchDocument(documentId: string): Promise<DocumentInfo | null> {
   try {
     const { data } = await api.GET("/documents/{document_id}", { params: { path: { document_id: documentId } } });
@@ -83,9 +88,11 @@ export async function chatQuestion(
   topK: number = 5,
   history: { role: string; content: string }[] = [],
   signal?: AbortSignal,
+  mode: string = "explain",
 ) {
   const { data } = await api.POST("/chat", {
-    body: { question, session_id: sessionId, history, top_k: topK },
+    // (mode: how the tutor teaches; newer than the generated schema)
+    body: { question, session_id: sessionId, history, top_k: topK, mode } as { question: string; session_id: string; history: typeof history; top_k: number },
     signal,
   });
   return body({ data });

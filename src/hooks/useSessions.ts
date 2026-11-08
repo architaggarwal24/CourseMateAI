@@ -1,7 +1,7 @@
 import { useEffect, useMemo } from "react";
 import { create } from "zustand";
 import { useAuth } from "@/contexts/AuthContext";
-import { fetchDocument, fetchDocuments, uploadPDF, type DocumentInfo } from "@/lib/api";
+import { deleteDocument, fetchDocument, fetchDocuments, uploadPDF, type DocumentInfo } from "@/lib/api";
 import { isInFlight, POLL_INTERVAL_MS, SLOW_POLL_AFTER, SLOW_POLL_INTERVAL_MS } from "@/lib/documents";
 import { sendUpload } from "@/lib/upload";
 
@@ -13,8 +13,11 @@ interface SessionStore {
   documentsLoaded: boolean;
   loadDocuments: (owner: string) => Promise<void>;
   refreshDocument: (sessionId: string) => Promise<DocumentInfo | null>;
-  /** Upload a PDF. With an id it replaces (or re-creates) that document; without one the server picks the id. */
-  uploadDocument: (sessionId: string | undefined, file: File) => Promise<DocumentInfo>;
+  /** Upload a PDF. With an id it replaces (or re-creates) that document; without one the server picks the id.
+   *  With a course id the PDF joins that course. */
+  uploadDocument: (sessionId: string | undefined, file: File, courseId?: string) => Promise<DocumentInfo>;
+  /** Delete a PDF on the server (its file, pages and search index) and drop it here. */
+  removeDocument: (sessionId: string) => Promise<void>;
   clearDocuments: () => void;
 }
 
@@ -84,10 +87,10 @@ export const useSessionStore = create<SessionStore>()((set, get) => ({
     return doc;
   },
 
-  uploadDocument: async (sessionId: string | undefined, file: File) => {
+  uploadDocument: async (sessionId: string | undefined, file: File, courseId?: string) => {
     // The browser reads the PDF and the server accepts it (queued); then the file and the pages go up in the
     // background, each answer moving the document on (reading -> indexing -> ready). Polling covers a reload.
-    const { document, reused, read } = await uploadPDF(file, sessionId);
+    const { document, reused, read } = await uploadPDF(file, sessionId, courseId);
     const put = (doc: DocumentInfo) => set({ documents: { ...get().documents, [doc.id]: doc } });
     put(document);
     if (!reused) {
@@ -101,6 +104,14 @@ export const useSessionStore = create<SessionStore>()((set, get) => ({
     }
     if (isInFlight(document.status)) startPolling(document.id, get);
     return document;
+  },
+
+  removeDocument: async (sessionId: string) => {
+    await deleteDocument(sessionId);
+    stopDocumentPolling(sessionId);
+    const documents = { ...get().documents };
+    delete documents[sessionId];
+    set({ documents });
   },
 
   clearDocuments: () => {

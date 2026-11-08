@@ -26,7 +26,7 @@ test("a course opens on its overview and every tool works on the whole course", 
 test("the document name is a switcher between courses and documents", async ({ page }) => {
   await mockApi(page, { documents: [DOCUMENT, DOCUMENT_2] });
   await page.goto("/study?tab=quiz&doc=doc-1");
-  const trigger = page.getByRole("button", { name: /switch document or course/ });
+  const trigger = page.getByRole("button", { name: /switch course or PDF/ });
   await trigger.click();
   const menu = page.getByRole("menu");
   await expect(menu.getByRole("menuitem", { name: /Life sciences/ })).toBeVisible();

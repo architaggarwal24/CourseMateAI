@@ -54,7 +54,7 @@ export function setLlmFactoryForTests(f: Factory | null): void {
   testFactory = f;
 }
 
-function llmFor(t: Target, env: { AI?: unknown }): Llm {
+export function llmFor(t: Target, env: { AI?: unknown }): Llm {
   if (testFactory) return testFactory(t, env);
   if (t.provider === "workers-ai") {
     if (!env.AI) throw new Error("Workers AI isn't bound");

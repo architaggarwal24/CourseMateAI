@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Cpu } from "@/components/icons";
 import { Badge, Button, Card, Input, Skeleton, toast } from "@/components/ui";
 import { adminApi, type AiModels, type SlotName } from "@/lib/admin/adminApi";
+import TestConnection from "./TestConnection";
 
 const SLOTS: { id: SlotName; label: string; hint: string }[] = [
   { id: "fast", label: "Fast", hint: "Cheap model: Apprentice questions, everyone's fallback." },
@@ -111,11 +112,20 @@ export default function AiModelsCard() {
               </li>
             ))}
           </ul>
-          <div className="grid gap-3 sm:grid-cols-2">
-            {SLOTS.map((s) => (
-              <Input key={s.id} label={s.label} hint={s.hint} mono value={draft[s.id] ?? ""} placeholder={data.defaults[s.id] || "not set"}
-                onChange={(e) => { const v = e.currentTarget.value; setDraft((d) => ({ ...d, [s.id]: v })); }} />
-            ))}
+          <div className="grid gap-4 sm:grid-cols-2">
+            {SLOTS.map((s) => {
+              const typed = (draft[s.id] ?? "").trim();
+              const problem = !typed && !data.slots[s.id] ? data.problems?.[s.id] : null;
+              return (
+                <div key={s.id} className="space-y-2">
+                  <Input label={s.label} hint={s.hint} mono value={draft[s.id] ?? ""} placeholder={data.defaults[s.id] || "not set"}
+                    error={problem ?? undefined}
+                    onChange={(e) => { const v = e.currentTarget.value; setDraft((d) => ({ ...d, [s.id]: v })); }} />
+                  {/* a typed (unsaved) model is tested as typed; otherwise what the slot uses now */}
+                  <TestConnection label="Test" what={() => (typed && typed !== data.slots[s.id] && s.id !== "small" ? { spec: typed } : { slot: s.id })} />
+                </div>
+              );
+            })}
           </div>
           <div className="flex flex-wrap gap-2">
             <Button type="submit" loading={busy}>Save models</Button>

@@ -299,6 +299,34 @@ describe("ChatView: errors", () => {
   });
 });
 
+describe("ChatView: the tutor's teaching style", () => {
+  it("Explain is the default; picking Quiz me sends it with the next message, changes the starters and is remembered", async () => {
+    const body = sseBody();
+    const log = server({ streams: [() => sse(body)] });
+    render(<ChatView documentId="d1" />);
+    const group = screen.getByRole("group", { name: "How your tutor teaches" });
+    expect(within(group).getByRole("button", { name: /Explain/ }).getAttribute("aria-pressed")).toBe("true");
+    fireEvent.click(within(group).getByRole("button", { name: /Quiz me/ }));
+    expect(within(group).getByRole("button", { name: /Quiz me/ }).getAttribute("aria-pressed")).toBe("true");
+    expect(localStorage.getItem("cmai_tutor_mode")).toBe("quiz");
+    fireEvent.click(screen.getByRole("button", { name: "Quiz me on the key definitions" }));
+    await waitFor(() => expect(log.bodies).toHaveLength(1));
+    expect(log.bodies[0]).toMatchObject({ question: "Quiz me on the key definitions", mode: "quiz" });
+    await act(async () => { body.push(frame("token", { text: "What does ATP stand for?\n---\n- I'm not sure, give me a hint\n- Adenosine triphosphate" }) + frame("sources", { ...FINAL, citations: [], sources: [] })); body.close(); });
+    expect(await screen.findByText("Quick replies")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "I'm not sure, give me a hint" })).toBeTruthy();
+  });
+
+  it("an answer from outside the course material says so", async () => {
+    const body = sseBody();
+    server({ streams: [() => sse(body)] });
+    render(<ChatView documentId="d1" />);
+    ask("Who won the 1998 world cup?");
+    await act(async () => { body.push(frame("token", { text: "Your notes don't cover that." }) + frame("sources", { ...FINAL, coverage: "none", citations: [], sources: [] })); body.close(); });
+    expect(await screen.findByText("Not in your PDFs: a general explanation")).toBeTruthy();
+  });
+});
+
 describe("ChatView: auto-scroll", () => {
   /** A scroll box of 400px showing a list `height` px tall; the test moves scrollTop like a user would. */
   function geometry(el: HTMLElement, state: { height: number; top: number }) {
@@ -315,7 +343,7 @@ describe("ChatView: auto-scroll", () => {
     try {
       server({});
       render(<ChatView documentId="d1" />);
-      expect(screen.getByRole("heading", { name: "Chat with your document" })).toBeTruthy();
+      expect(screen.getByRole("heading", { name: /your tutor/i })).toBeTruthy();
       expect(tops.filter((v) => v > 0)).toEqual([]);
     } finally {
       delete (proto as unknown as Record<string, unknown>).scrollHeight;

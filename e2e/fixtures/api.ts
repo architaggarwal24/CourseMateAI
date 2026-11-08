@@ -306,6 +306,12 @@ export async function mockApi(page: Page, { signedIn = true, advanced = true, do
         { id: "workers-ai", configured: true, key_env: null }],
     });
     if (path === "/admin/ai/mine") return json(route, 200, { spec: null });
+    if (path === "/admin/ai/test" && method === "POST") {
+      const body = route.request().postDataJSON() as { spec?: string; slot?: string };
+      return json(route, 200, body.spec?.startsWith("ollama:")
+        ? { ok: false, spec: body.spec, source: "this setting", latency_ms: 5003, error: "fetch failed", hint: "The tunnel address didn't answer. Quick tunnels (trycloudflare.com) get a new address every time they start: paste the new one in Admin → AI." }
+        : { ok: true, spec: body.spec ?? "gemini:gemini-3.5-flash-lite", source: body.spec ? "this setting" : "LLM_FAST", latency_ms: 742, reply: "OK" });
+    }
     if (path === "/admin/ai") return json(route, 200, { days: 30, today_usd: 0.42, cap_usd: 2, cap_max_usd: 20, can_edit: true, capped: false, total_usd: 3.1, by_day: [],
       models: [{ provider: "gemini", model: "gemini-3.8-flash", calls: 120, fallbacks: 2, tokens_in: 90000, tokens_out: 30000, cost_usd: 0.42, priced: true }],
       routes: { apprentice: { small: ["workers-ai:@cf/meta/llama-3.1-8b-instruct-fp8"], strong: ["gemini:gemini-3.5-flash-lite"] },
@@ -320,6 +326,11 @@ export async function mockApi(page: Page, { signedIn = true, advanced = true, do
     if (path === `/courses/${COURSE.id}/progress`) return json(route, 200, COURSE_PROGRESS);
     if (path === `/documents/${COURSE.id}`) return json(route, 200, COURSE_VIEW);
     const doc = path.match(/^\/documents\/([^/]+)$/);
+    if (doc && method === "DELETE") {
+      const i = documents.findIndex((d) => d.id === doc[1]);
+      if (i >= 0) documents.splice(i, 1);
+      return json(route, 200, { ok: true });
+    }
     if (doc) {
       const found = documents.find((d) => d.id === doc[1]);
       return found ? json(route, 200, found) : json(route, 404, { error: { code: "document_not_found", message: "Document not found.", action: "reupload", details: null } });

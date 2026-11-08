@@ -67,7 +67,7 @@ describe("Plan & usage", () => {
     expect(calls.getAttribute("aria-valuetext")).toBe("21 of 25");
     expect(calls.closest("li")!.getAttribute("data-state")).toBe("near");                   // 84%: nearly used up
     expect(screen.getByRole("progressbar", { name: "AI tokens this month" }).closest("li")!.textContent).toContain("45K");
-    expect(screen.getByText("Courses come with Sage")).toBeTruthy();
+    expect(screen.queryByText("Courses come with Sage")).toBeNull();          // every plan has courses now
     const cards = within(screen.getByRole("region", { name: "Plans" })).getAllByRole("listitem").filter((li) => li.classList.contains("pu-card"));
     expect(cards.map((c) => c.querySelector("h3")!.textContent)).toEqual(["Apprentice", "Scholar", "Sage", "Archmage"]);
     expect(cards[1].textContent).toContain("₹149/month");

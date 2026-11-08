@@ -42,3 +42,21 @@
   .course-tiles { --course-tile-h: 107px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .course-docs li { flex-wrap: wrap; }
 }
+/* a course's PDFs, indented under it in the switcher */
+.lib-menu__course + .lib-menu__course { border-top: 1px solid var(--color-border-subtle); margin-top: 2px; padding-top: 2px; }
+.lib-menu__doc { padding-left: calc(var(--space-3) + 1.1rem); font-size: 0.84rem; color: var(--color-text-secondary); }
+
+/* Study starts with a course (CourseOnboarding) */
+.course-onboard { flex: 1; min-height: 0; overflow-y: auto; display: grid; place-items: center; padding: var(--space-6) var(--space-4); }
+.course-onboard__card { width: min(100%, 30rem); display: grid; gap: var(--space-4); justify-items: center; text-align: center;
+  padding: var(--space-6) var(--space-5); border: 1px solid var(--color-border); border-radius: var(--radius-lg); background: var(--color-elevated); }
+.course-onboard__icon { display: grid; place-items: center; width: 3.25rem; height: 3.25rem; border-radius: var(--radius-lg);
+  color: var(--color-accent-text); border: 1px solid var(--color-border); background: var(--color-surface); }
+.course-onboard__title { margin: 0; font-family: var(--font-display); font-size: 1.5rem; font-weight: 700; letter-spacing: -0.02em; }
+.course-onboard__lede { margin: 0; color: var(--color-text-secondary); line-height: 1.6; max-width: 26rem; }
+.course-onboard__steps { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; justify-content: center; gap: var(--space-2) var(--space-4); font-size: 0.82rem; color: var(--color-text-secondary); }
+.course-onboard__steps li { display: inline-flex; align-items: center; gap: 0.35rem; }
+.course-onboard__steps li > span { display: grid; place-items: center; width: 1.25rem; height: 1.25rem; border-radius: 50%; font-size: 0.7rem; font-weight: 700; color: var(--color-on-accent); background: var(--color-accent); }
+.course-onboard__steps svg { color: var(--color-accent-text); }
+.course-onboard__form { width: 100%; display: grid; gap: var(--space-3); text-align: left; }
+.course-onboard__ideas { display: flex; flex-wrap: wrap; gap: var(--space-1); margin-top: calc(-1 * var(--space-1)); }

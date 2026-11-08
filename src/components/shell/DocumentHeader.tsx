@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
-import { BookMarked, FileText, FileUp, Pencil, Upload } from "@/components/icons";
+import { BookMarked, FileText, FileUp, Pencil, Trash2, Upload } from "@/components/icons";
 import { Badge, Button, toast, type BadgeTone } from "@/components/ui";
 import type { DocumentUpload } from "@/hooks/useDocumentUpload";
 import type { DocumentInfo, DocumentStatus } from "@/lib/api";
@@ -40,6 +40,12 @@ interface Props {
   onEditCourse?: () => void;
   /** Wraps the name in the document / course switcher (LibraryMenu). */
   switcher?: (name: ReactNode) => ReactNode;
+  /** Asks to delete the open PDF (the workspace confirms first). */
+  onDelete?: () => void;
+  /** The open PDF's course (a link back to its page). */
+  inCourse?: { name: string; href: string };
+  /** No course yet: the header only says so (the workspace shows how to make one). */
+  noCourse?: boolean;
 }
 
 /**
@@ -47,7 +53,7 @@ interface Props {
  * count, status badge) with Replace, or the way to upload one. Everything shown comes from the server's record,
  * so it survives reloads and backend restarts.
  */
-export default function DocumentHeader({ doc, gone, loaded, upload, tabs, course, onEditCourse, switcher }: Props) {
+export default function DocumentHeader({ doc, gone, loaded, upload, tabs, course, onEditCourse, switcher, onDelete, inCourse, noCourse }: Props) {
   const { inputRef, uploading, upload: uploadFile, pick, signedIn } = upload;
   const [isPageDragging, setIsPageDragging] = useState(false);
 
@@ -127,7 +133,12 @@ export default function DocumentHeader({ doc, gone, loaded, upload, tabs, course
       <div className="ws-doc">
         <span className="ws-doc__icon" aria-hidden="true">{course ? <BookMarked size={17} /> : <FileText size={17} />}</span>
         <div className="min-w-0">
-          {course ? (
+          {noCourse ? (
+            <>
+              <span className="ws-doc__name">No course yet</span>
+              <span className="ws-doc__meta">Make one to start studying</span>
+            </>
+          ) : course ? (
             <>
               {named(<span className="ws-doc__name" title={course.name}>{course.name}</span>)}
               <span className="ws-doc__meta">
@@ -142,6 +153,7 @@ export default function DocumentHeader({ doc, gone, loaded, upload, tabs, course
             <>
               {named(<span className="ws-doc__name" title={doc.filename}>{doc.filename}</span>)}
               <span className="ws-doc__meta">
+                {inCourse && <a href={inCourse.href} className="ws-doc__crumb" title={`In the course ${inCourse.name}`}><BookMarked size={12} aria-hidden="true" />{inCourse.name}</a>}
                 <Badge tone={badge.tone} aria-label={`Status: ${stageLabel(doc.status)}`}>{badge.label}</Badge>
                 {doc.status === "ready" && doc.chunks != null && (
                   <span className="whitespace-nowrap">{doc.chunks} {doc.chunks === 1 ? "chunk" : "chunks"}</span>
@@ -177,15 +189,27 @@ export default function DocumentHeader({ doc, gone, loaded, upload, tabs, course
 
       {tabs && <div className="ws-top__tabs">{tabs}</div>}
 
-      {!gone && (
+      {!gone && !noCourse && (
         <div className="ws-top__end">
           {course ? (
-            <Button size="sm" onClick={onEditCourse}><Pencil size={14} aria-hidden="true" />Edit course</Button>
+            <>
+              <Button size="sm" variant="primary" onClick={pick} disabled={busy} loading={uploading}>
+                {!uploading && <Upload size={14} aria-hidden="true" />}Add PDF
+              </Button>
+              <Button size="sm" onClick={onEditCourse}><Pencil size={14} aria-hidden="true" />Edit course</Button>
+            </>
           ) : doc ? (
-            <Button size="sm" onClick={pick} disabled={busy} loading={uploading} aria-label="Replace PDF" title="Replace PDF">
-              {!uploading && <Upload size={14} aria-hidden="true" />}
-              {problem ? (doc.status === "failed" ? "Try again" : "Re-upload") : "Replace"}
-            </Button>
+            <>
+              <Button size="sm" onClick={pick} disabled={busy} loading={uploading} aria-label="Replace PDF" title="Replace PDF">
+                {!uploading && <Upload size={14} aria-hidden="true" />}
+                {problem ? (doc.status === "failed" ? "Try again" : "Re-upload") : "Replace"}
+              </Button>
+              {onDelete && (
+                <Button size="sm" variant="ghost" icon onClick={onDelete} disabled={busy} aria-label="Delete PDF" title="Delete PDF">
+                  <Trash2 size={14} aria-hidden="true" />
+                </Button>
+              )}
+            </>
           ) : (
             <Button size="sm" variant="primary" onClick={pick} disabled={busy} loading={uploading}>
               {!uploading && <Upload size={14} aria-hidden="true" />}

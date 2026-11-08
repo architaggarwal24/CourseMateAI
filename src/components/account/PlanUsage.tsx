@@ -86,7 +86,7 @@ export default function PlanUsage() {
     { key: "ai_calls_day", used: usage.used.ai_calls_day, allowed: usage.limits.ai_calls_day, note: `Resets ${untilText(usage.resets.ai_calls_day)}` },
     { key: "tokens_month", used: usage.used.tokens_month, allowed: usage.limits.tokens_month, note: `Renews ${untilText(usage.resets.tokens_month)}` },
     { key: "documents", used: usage.used.documents, allowed: usage.limits.documents, note: `PDFs up to ${usage.limits.pdf_mb} MB` },
-    { key: "courses", used: usage.used.courses, allowed: usage.limits.courses, note: usage.limits.courses ? undefined : "Courses come with Sage" },
+    { key: "courses", used: usage.used.courses, allowed: usage.limits.courses, note: undefined },
   ];
 
   return (

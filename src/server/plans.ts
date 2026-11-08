@@ -20,7 +20,7 @@ export function isTier(value: unknown): value is Tier {
 export const FEATURES = {
   review_queue: "scholar",
   exam_mode: "sage",
-  courses: "sage",
+  courses: "apprentice",                     // every plan: Study needs a course (round 7)
   concept_map: "sage",
   pdf_viewer: "sage",
 } as const satisfies Record<string, Tier>;
@@ -34,21 +34,21 @@ export const LIMIT_KEYS = ["documents", "pdf_mb", "ai_calls_day", "tokens_month"
 export type Limits = Record<(typeof LIMIT_KEYS)[number], number>;
 
 export const PLANS: Record<Tier, { price_month: number; price_year: number } & Limits> = {
-  apprentice: { price_month: 0, price_year: 0, documents: 3, pdf_mb: 10, ai_calls_day: 25, tokens_month: 300_000, courses: 0 },
-  scholar: { price_month: 149, price_year: 1490, documents: 15, pdf_mb: 25, ai_calls_day: 150, tokens_month: 3_000_000, courses: 0 },
+  apprentice: { price_month: 0, price_year: 0, documents: 3, pdf_mb: 10, ai_calls_day: 25, tokens_month: 300_000, courses: 1 },
+  scholar: { price_month: 149, price_year: 1490, documents: 15, pdf_mb: 25, ai_calls_day: 150, tokens_month: 3_000_000, courses: 3 },
   sage: { price_month: 299, price_year: 2990, documents: 50, pdf_mb: 50, ai_calls_day: 400, tokens_month: 10_000_000, courses: 10 },
   archmage: { price_month: 599, price_year: 5990, documents: 150, pdf_mb: 50, ai_calls_day: 1200, tokens_month: 30_000_000, courses: 30 },
 };
 const TAGLINES: Record<Tier, string> = {
   apprentice: "Try every core tool on a few PDFs.",
   scholar: "For a semester: more PDFs and the daily review queue.",
-  sage: "Courses, exams, the concept map and the PDF viewer.",
+  sage: "More courses, mock exams, the concept map and the PDF viewer.",
   archmage: "Everything, with the most room and the strongest models.",
 };
 const HIGHLIGHTS: Record<Tier, string[]> = {
   apprentice: ["Chat, quizzes, notes and flashcards", "The arena and your champion"],
   scholar: ["Everything in Apprentice", "Spaced-repetition review"],
-  sage: ["Everything in Scholar", "Courses across PDFs", "Mock exams with a report", "Concept map and PDF viewer"],
+  sage: ["Everything in Scholar", "Mock exams with a report", "Concept map and PDF viewer"],
   archmage: ["Everything in Sage", "Strongest models first", "The largest limits"],
 };
 

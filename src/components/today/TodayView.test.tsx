@@ -24,7 +24,10 @@ beforeEach(() => {
       { quest_type: "quiz", title: "Complete 3 quizzes", current_count: 1, target_count: 3, completed: false }], refresh: vi.fn() } as never);
   useSessionStore.setState({ documentsOwner: "1", documentsLoaded: true, loadDocuments: vi.fn(async () => {}),
     documents: { d1: doc("d1", "Mitosis.pdf", "2026-11-05T10:00:00Z"), d2: doc("d2", "Enzymes.pdf", "2026-11-04T10:00:00Z") } } as never);
-  useCourses.setState({ loaded: true, locked: false, courses: [], load: vi.fn(async () => {}) } as never);
+  useCourses.setState({ loaded: true, locked: false, load: vi.fn(async () => {}), courses: [
+    { id: "c1", name: "Biology", description: null, ready: 2, created_at: "", updated_at: "", documents: [{ id: "d1", filename: "Mitosis.pdf", status: "ready" }, { id: "d2", filename: "Enzymes.pdf", status: "ready" }] },
+    { id: "c2", name: "Chemistry", description: null, ready: 0, created_at: "", updated_at: "", documents: [] },
+  ] } as never);
   saveMetadata({ q1: { type: "quiz", preview: "cells · 3/5 answered", updated: "2026-11-05T09:00:00Z", title: "Mitosis.pdf" } as never });
 });
 afterEach(cleanup);
@@ -64,13 +67,21 @@ describe("Today", () => {
     expect(within(card).getByRole("link", { name: /Continue/ }).getAttribute("href")).toBe("/study?tab=quiz&session=q1");
   });
 
-  it("with no saved session, it opens your latest PDF instead", () => {
+  it("with no saved session, it opens your latest course instead", () => {
     localStorage.clear();
     render(<TodayView />);
-    expect(within(screen.getByRole("region", { name: "Continue" })).getByRole("link").getAttribute("href")).toBe("/study?tab=chat&doc=d1");
+    expect(within(screen.getByRole("region", { name: "Continue" })).getByRole("link").getAttribute("href")).toBe("/study?tab=overview&doc=c1");
   });
 
-  it("shows the streak, the quests, your level and coins, and your PDFs", () => {
+  it("with no course yet, both Continue and Add point to making one", () => {
+    localStorage.clear();
+    useCourses.setState({ courses: [] } as never);
+    render(<TodayView />);
+    expect(within(screen.getByRole("region", { name: "Continue" })).getByRole("link", { name: /Create a course/ }).getAttribute("href")).toBe("/study");
+    expect(within(screen.getByRole("region", { name: "Add" })).getByRole("link", { name: /Create a course/ })).toBeTruthy();
+  });
+
+  it("shows the streak, the quests, your level and coins, and your courses", () => {
     render(<TodayView />);
     expect(screen.getByRole("region", { name: "Streak" }).textContent).toContain("6-day streak");
     const quests = screen.getByRole("region", { name: "Daily quests" });
@@ -79,9 +90,10 @@ describe("Today", () => {
     const hero = screen.getByRole("region", { name: "Hero" });
     expect(hero.textContent).toContain("Lv 7");
     expect(hero.textContent).toContain("1,240");
-    const pdfs = within(screen.getByRole("region", { name: "Your PDFs" })).getAllByRole("link");
-    expect(pdfs.map((a) => a.textContent)).toEqual([expect.stringContaining("Mitosis.pdf"), expect.stringContaining("Enzymes.pdf")]);
-    expect(screen.getByRole("button", { name: /Add a PDF/ })).toBeTruthy();
+    const list = within(screen.getByRole("region", { name: "Your courses" })).getAllByRole("link");
+    expect(list.map((a) => a.textContent)).toEqual([expect.stringContaining("Biology2 PDFs"), expect.stringContaining("Chemistry0 PDFs")]);
+    expect(list[0].getAttribute("href")).toBe("/study?tab=overview&doc=c1");
+    expect(screen.getByRole("button", { name: "Add a PDF to Biology" })).toBeTruthy();
   });
 
   it("sends a visitor who isn't signed in to log in", () => {

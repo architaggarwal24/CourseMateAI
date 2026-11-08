@@ -88,6 +88,13 @@ export async function courseMembers(ctx: RequestContext, courseId: string): Prom
   return rows.map((r) => r.d);
 }
 
+/** Put a document at the end of a course (no-op if it's already in it). */
+export async function joinCourse(ctx: RequestContext, courseId: string, documentId: string, now = nowIso()) {
+  const n = (await ctx.db.select({ n: count() }).from(courseDocuments).where(eq(courseDocuments.courseId, courseId)).get())?.n ?? 0;
+  await ctx.db.insert(courseDocuments).values({ courseId, documentId, position: n, addedAt: now }).onConflictDoNothing();
+  await ctx.db.update(courses).set({ updatedAt: now }).where(eq(courses.id, courseId));
+}
+
 /** GET /documents/{id}: a document the user owns, or a course of theirs seen as one document. */
 export async function getDocumentOrCourse(ctx: RequestContext, user: CurrentUser, id: string) {
   const found = await resolveDocumentOrCourse(ctx, user, id);
@@ -134,7 +141,10 @@ async function purge(ctx: RequestContext, deps: SearchDeps | null, row: Document
   }
 }
 
-export interface StartUpload { filename?: unknown; size?: unknown; pages?: unknown; file_hash?: unknown; session_id?: unknown }
+/** PDFs one course holds. */
+export const MAX_COURSE_DOCUMENTS = 20;
+
+export interface StartUpload { filename?: unknown; size?: unknown; pages?: unknown; file_hash?: unknown; session_id?: unknown; course_id?: unknown }
 
 export async function startUpload(ctx: RequestContext, deps: SearchDeps | null, user: CurrentUser, body: StartUpload) {
   const filename = cleanFilename(body.filename);
@@ -142,6 +152,16 @@ export async function startUpload(ctx: RequestContext, deps: SearchDeps | null, 
   const pages = Number(body.pages);
   const hash = String(body.file_hash ?? "").toLowerCase();
   const sessionId = typeof body.session_id === "string" && body.session_id.trim() ? body.session_id.trim() : null;
+  // Study works on courses (round 7): a PDF uploaded inside one joins it. Checked before anything is written.
+  const courseId = typeof body.course_id === "string" && body.course_id.trim() ? body.course_id.trim() : null;
+  if (courseId) {
+    const c = await ctx.db.select({ userId: courses.userId }).from(courses).where(eq(courses.id, courseId)).get();
+    if (!c || c.userId !== user.id) throw new HttpError(404, "course_not_found", "That course doesn't exist.");
+    const n = (await ctx.db.select({ n: count() }).from(courseDocuments).where(eq(courseDocuments.courseId, courseId)).get())?.n ?? 0;
+    const already = sessionId ? await ctx.db.select({ d: courseDocuments.documentId }).from(courseDocuments)
+      .where(and(eq(courseDocuments.courseId, courseId), eq(courseDocuments.documentId, sessionId))).get() : undefined;
+    if (!already && n >= MAX_COURSE_DOCUMENTS) throw new HttpError(400, "course_full", `A course holds at most ${MAX_COURSE_DOCUMENTS} PDFs. Start another course for more.`);
+  }
   if (!/\.pdf$/i.test(filename)) throw new HttpError(400, "invalid_file", "Only PDF files are supported.", "reupload");
   if (!Number.isInteger(size) || size <= 0) throw new HttpError(400, "invalid_file", "That file is empty.", "reupload");
   if (size > MAX_FILE_BYTES) throw new HttpError(400, "invalid_file", "That PDF is over 50 MB. Try a smaller file.", "reupload");
@@ -168,7 +188,8 @@ export async function startUpload(ctx: RequestContext, deps: SearchDeps | null, 
     if (settled.status !== "failed") {
       await ctx.db.update(documents).set({ lastUsedAt: nowIso() }).where(eq(documents.id, settled.id));
       const message = settled.status === "ready" ? `'${filename}' is already indexed and ready` : `'${filename}' is already being processed`;
-      return { ok: true, message, session_id: settled.id, reused: true, document: publicView(settled) };
+      if (courseId) await joinCourse(ctx, courseId, settled.id);
+      return { ok: true, message, session_id: settled.id, reused: true, document: publicView(settled), course_id: courseId };
     }
   }
   if (!existing) {
@@ -206,8 +227,9 @@ export async function startUpload(ctx: RequestContext, deps: SearchDeps | null, 
         `Your plan holds ${lim.documents} documents and you have ${after - 1}. Delete one, or upgrade for more.`);
     }
   }
+  if (courseId) await joinCourse(ctx, courseId, id, now);
   const row = (await ctx.db.select().from(documents).where(eq(documents.id, id)).get())!;
-  return { ok: true, message: `'${filename}' received - it is being processed`, session_id: id, reused: false, document: publicView(row) };
+  return { ok: true, message: `'${filename}' received - it is being processed`, session_id: id, reused: false, document: publicView(row), course_id: courseId };
 }
 
 function hex(buf: ArrayBuffer): string {

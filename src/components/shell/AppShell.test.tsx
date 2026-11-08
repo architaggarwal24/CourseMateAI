@@ -1,20 +1,21 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, render, screen } from "@testing-library/react";
 
-const nav = vi.hoisted(() => ({ path: "/hero" }));
+const nav = vi.hoisted(() => ({ path: "/hero", replace: vi.fn() }));
+const auth = vi.hoisted(() => ({ loading: false, user: { user_id: 1 } as unknown }));
 vi.mock("next/navigation", () => ({
   usePathname: () => nav.path,
   useSearchParams: () => new URLSearchParams(""),
-  useRouter: () => ({ push: vi.fn(), replace: vi.fn() }),
+  useRouter: () => ({ push: vi.fn(), replace: nav.replace }),
 }));
-vi.mock("@/contexts/AuthContext", () => ({ useAuth: () => ({ loading: false, user: null }) }));
+vi.mock("@/contexts/AuthContext", () => ({ useAuth: () => auth }));
 vi.mock("./NavSidebar", () => ({ default: () => <aside data-testid="side" /> }));
 vi.mock("./BottomNav", () => ({ default: () => <nav data-testid="bottom" /> }));
 vi.mock("./CommandPaletteLoader", () => ({ default: () => null, openCommandPalette: () => {} }));
 
 import AppShell from "./AppShell";
 
-afterEach(cleanup);
+afterEach(() => { cleanup(); nav.replace.mockReset(); auth.user = { user_id: 1 }; });
 
 const themeOf = (el: Element) => el.closest("[data-theme]")?.getAttribute("data-theme");
 
@@ -25,6 +26,16 @@ describe("the app shell", () => {
     expect(themeOf(screen.getByTestId("side"))).toBe("study");
     expect(themeOf(screen.getByTestId("bottom"))).toBe("study");
     expect(themeOf(screen.getByText("arena"))).toBe("play");
+  });
+
+  it("needs an account: signed out, it shows no app screen and goes to the login page, coming back here after", () => {
+    auth.user = null;
+    nav.path = "/study";
+    window.history.replaceState(null, "", "/study?tab=quiz&doc=d1");
+    render(<AppShell><p>secret</p></AppShell>);
+    expect(screen.queryByText("secret")).toBeNull();
+    expect(screen.getByText(/Taking you to the login page/)).toBeTruthy();
+    expect(nav.replace).toHaveBeenCalledWith("/login?next=%2Fstudy%3Ftab%3Dquiz%26doc%3Dd1");
   });
 
   it("is Study throughout outside Hero", () => {

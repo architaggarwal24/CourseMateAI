@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { BookMarked, Brain, FileText, GraduationCap, Layers, MessageSquare, Repeat } from "@/components/icons";
+import { BookMarked, Brain, FileText, GraduationCap, Layers, MessageSquare, Repeat, Upload } from "@/components/icons";
 import StudyToolbar from "@/components/study/StudyToolbar";
 import { Badge, Button, ButtonLink, Card, EmptyState, Skeleton, toast } from "@/components/ui";
 import { ROUTES, type StudyTab } from "@/lib/routes";
@@ -13,7 +13,13 @@ const pct = (x: number | null | undefined) => (x == null ? "–" : `${Math.round
  * A course's page: how it is going (concepts mastered, accuracy, review cards due, exams), its documents, and
  * every study tool on the whole course at once. All of it is stored data: no AI call.
  */
-export default function CourseOverview({ course, onEdit }: { course: Course; onEdit: () => void }) {
+export default function CourseOverview({ course, onEdit, onUpload, uploading, hasOtherPdfs }: {
+  course: Course; onEdit: () => void;
+  /** Upload a PDF into this course (the workspace's file picker). */
+  onUpload?: () => void; uploading?: boolean;
+  /** The user has PDFs outside this course that could be added. */
+  hasOtherPdfs?: boolean;
+}) {
   const [p, setP] = useState<CourseProgress | null>(null);
   useEffect(() => {
     let alive = true;
@@ -34,9 +40,14 @@ export default function CourseOverview({ course, onEdit }: { course: Course; onE
       <div className="flex-1 min-h-0 overflow-y-auto px-6 py-8" tabIndex={0} role="region" aria-label="Course overview">
         <div className="mx-auto w-full max-w-[84ch] course-overview">
           {course.documents.length === 0 ? (
-            <EmptyState icon={<BookMarked size={30} />} title="This course has no documents yet"
-                        description="Add the PDFs it covers: chat, quizzes, flashcards, exams and the arena then use them all together."
-                        action={<Button variant="primary" onClick={onEdit}>Add documents</Button>} />
+            <EmptyState icon={<BookMarked size={30} />} title="Add your first PDF"
+                        description="Lecture slides, chapters, past papers: everything this course covers. Chat, notes, quizzes, review and exams then use all of it together. Or drop a PDF anywhere on this page."
+                        action={
+                          <div className="flex flex-wrap justify-center gap-2">
+                            {onUpload && <Button variant="primary" onClick={onUpload} loading={uploading}><Upload size={15} aria-hidden="true" />Upload a PDF</Button>}
+                            {(hasOtherPdfs || !onUpload) && <Button onClick={onEdit}>Pick from your PDFs</Button>}
+                          </div>
+                        } />
           ) : (
             <>
               <section aria-labelledby="course-progress-title">

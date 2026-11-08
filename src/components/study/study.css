@@ -43,6 +43,10 @@
 }
 .ws-doc__name { display: block; max-width: 34ch; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 0.875rem; font-weight: 600; color: var(--color-text); }
 .ws-doc__meta { display: flex; align-items: center; gap: var(--space-2); font-size: 0.75rem; color: var(--color-muted); }
+.ws-doc__crumb { display: inline-flex; align-items: center; gap: 0.25rem; min-height: 1.5rem; max-width: 12rem; padding-right: var(--space-1); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--color-text-secondary); text-decoration: none; }
+/* phones: the switcher already names the course (and a tap target this small would be too small) */
+@media (max-width: 767px) { .ws-doc__crumb { display: none; } }
+.ws-doc__crumb:hover { color: var(--color-text); text-decoration: underline; }
 .ws-doc__stages { display: flex; gap: 3px; width: 5.5rem; }
 .ws-doc__stage { height: 4px; flex: 1; border-radius: var(--radius-full); background: var(--color-border); }
 .ws-doc__stage[data-state="done"] { background: var(--color-accent-text); }
@@ -336,3 +340,11 @@ pointer-events: none;
 .upgrade-card__desc { margin: 0; color: var(--color-text-secondary); line-height: 1.6; }
 .upgrade-card__note { margin: var(--space-3) 0 0; color: var(--color-muted); font-size: 0.85rem; }
 .upgrade-card__actions { margin-top: var(--space-4); display: flex; flex-wrap: wrap; gap: var(--space-2); }
+
+/* how the tutor teaches (Chat): four toggles above the message box */
+.tutor-modes { display: flex; flex-wrap: wrap; gap: var(--space-1); margin-bottom: var(--space-2); }
+.tutor-mode[aria-pressed="true"] { color: var(--color-accent-text); background: var(--color-elevated); box-shadow: 0 0 0 1px var(--color-border-strong); }
+@media (max-width: 480px) { .tutor-modes { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; } .tutor-modes::-webkit-scrollbar { display: none; } }
+/* an answer from outside the course material (the tutor said so) */
+.chat-ai__outside { display: inline-flex; margin: 0 0 var(--space-2); padding: 0.1rem 0.5rem; border-radius: var(--radius-full); font-size: 0.72rem; font-weight: 600;
+  color: var(--color-warning-text); border: 1px solid var(--color-border); }

@@ -16,14 +16,21 @@ export interface ChatAnswer {
   /** The document doesn't contain what was asked ("I couldn't find that in your document"). */
   blocked: boolean;
   needsClarification: boolean;
+  /** How well the course material covers it: "none" is an honest answer from outside the PDFs. */
+  coverage?: "strong" | "weak" | "none" | "conversation";
   rewards?: any;
 }
+
+/** How the tutor teaches (server/chat/prompts.ts). */
+export type TutorMode = "explain" | "socratic" | "quiz" | "simplify";
 
 export interface AskOptions {
   question: string;
   sessionId: string;
   history: { role: string; content: string }[];
   topK?: number;
+  /** How the tutor teaches (default: explain). */
+  mode?: TutorMode;
   /** Aborting (the user left, started a new chat ...) rejects with an AbortError and never falls back. */
   signal?: AbortSignal;
   /** Called with each piece of the answer as it arrives. */
@@ -98,7 +105,7 @@ export async function streamChat(opts: AskOptions): Promise<ChatAnswer> {
     method: "POST",
     credentials: "include",
     headers: { "Content-Type": "application/json", Accept: "text/event-stream" },
-    body: JSON.stringify({ question: opts.question, session_id: opts.sessionId, history: opts.history, top_k: opts.topK ?? 5 }),
+    body: JSON.stringify({ question: opts.question, session_id: opts.sessionId, history: opts.history, top_k: opts.topK ?? 5, mode: opts.mode ?? "explain" }),
     signal: opts.signal,
   });
   if (!response.ok) await throwForResponse(response);     // the same ApiError (and global effects) as every other call
@@ -126,6 +133,7 @@ export async function streamChat(opts: AskOptions): Promise<ChatAnswer> {
     citations: Array.isArray(final.citations) ? final.citations : [],
     blocked: !!final.blocked,
     needsClarification: !!final.needs_clarification,
+    coverage: final.coverage,
     rewards: final.rewards ?? undefined,
   };
 }
@@ -141,13 +149,14 @@ export async function askChat(opts: AskOptions): Promise<ChatAnswer> {
   } catch (err) {
     if (isAbortError(err) || opts.signal?.aborted || isDefinite(err)) throw err;
     opts.onFallback?.();
-    const data = await chatQuestion(opts.question, opts.sessionId, opts.topK ?? 5, opts.history, opts.signal);
+    const data = await chatQuestion(opts.question, opts.sessionId, opts.topK ?? 5, opts.history, opts.signal, opts.mode);
     return {
       content: String(data?.content ?? ""),
       sources: Array.isArray(data?.sources) ? data.sources.map(String) : [],
       citations: Array.isArray(data?.citations) ? data.citations : [],
       blocked: !!data?.blocked,
       needsClarification: !!data?.needs_clarification,
+      coverage: data?.coverage,
       rewards: data?.rewards ?? undefined,
     };
   }

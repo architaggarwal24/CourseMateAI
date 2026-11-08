@@ -28,9 +28,16 @@ const OLLAMA_URL_KEY = "ollama_url";
 export function ollamaEnabled(env: Env = process.env, tunnel?: string | null): boolean {
   return env.NODE_ENV === "development" || !!tunnel;
 }
+/**
+ * Ollama's own address, without an API path: people paste ".../v1" (the OpenAI-style path) or ".../api", and the app
+ * adds those itself, so ".../v1/v1/chat/completions" answered "404 page not found".
+ */
+export function ollamaRoot(url: string): string {
+  return url.trim().replace(/\/+$/, "").replace(/\/(?:v1|api)(?:\/(?:chat\/completions|chat|tags|generate))?$/i, "").replace(/\/+$/, "");
+}
 /** Where Ollama answers: the saved tunnel URL first, then OLLAMA_BASE_URL, then this computer. */
 export function ollamaBase(env: Env = process.env, tunnel?: string | null): string {
-  return (tunnel || env.OLLAMA_BASE_URL || "http://localhost:11434").replace(/\/+$/, "");
+  return ollamaRoot(tunnel || env.OLLAMA_BASE_URL || "http://localhost:11434");
 }
 
 /** A tunnel URL checked: https (or http://localhost in development), no path tricks. */
@@ -42,7 +49,7 @@ export function checkOllamaUrl(raw: string, env: Env = process.env): string {
     throw invalid("The live site can only reach Ollama over https (a tunnel address).", "url");
   }
   if (u.username || u.password) throw invalid("Leave the user name and password out of the address.", "url");
-  return `${u.origin}${u.pathname.replace(/\/+$/, "")}`;
+  return ollamaRoot(`${u.origin}${u.pathname}`);
 }
 
 /** Save (or with null clear) the Ollama tunnel URL. */

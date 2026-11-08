@@ -4,7 +4,6 @@
 // (Better Auth, src/server/auth): sign-in, sign-up and codes go to /api/auth/* (src/lib/auth/authApi.ts), and
 // GET /api/v1/auth/me says who you are, with your plan and whether you are an admin.
 import { createContext, useCallback, useContext, useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
 import { useHUDStore } from "@/hooks/useHUD";
 import { rawApi } from "@/lib/api";
 import * as authApi from "@/lib/auth/authApi";
@@ -33,6 +32,8 @@ export type RegisterResult = { ok: true; signedIn: boolean } | { ok: false; fail
 interface AuthContextType {
   user: User | null;
   loading: boolean;
+  /** The sign-in check couldn't reach the server (offline): not the same as being signed out. */
+  unreachable?: boolean;
   /** Re-reads who is signed in (after a code, a profile change, Google). */
   refresh: () => Promise<User | null>;
   login: (email: string, password: string) => Promise<SignInResult>;
@@ -45,16 +46,18 @@ const AuthContext = createContext<AuthContextType | null>(null);
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
-  const router = useRouter();
+  const [unreachable, setUnreachable] = useState(false);
   const setUserIdAsync = useHUDStore((s) => s.setUserIdAsync);
 
   const refresh = useCallback(async (): Promise<User | null> => {
     let next: User | null = null;
+    let offline = false;
     try {
       const { data, response } = await rawApi.GET("/auth/me");
       if (response.ok && data) next = data as unknown as User;
-    } catch { /* offline: signed out */ }
+    } catch { offline = true; /* offline: no answer either way */ }
     setUser(next);
+    setUnreachable(offline);
     // One GET /hud at most: it shares the request AppShell started on mount (in parallel with /auth/me), and a
     // signed-out visitor gets the guest HUD without asking.
     try { await setUserIdAsync(next ? String(next.user_id) : "guest"); } catch { /* it fills in later */ }
@@ -79,16 +82,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   async function logout() {
     try { await rawApi.POST("/auth/logout"); } catch { /* signed out here either way */ }
-    setUser(null);
     useChampion.getState().reset();             // the next person on this browser starts from the default
     useReview.getState().reset();
     useCourses.getState().reset();
-    try { await setUserIdAsync("guest"); } catch { /* see refresh */ }
-    router.push(ROUTES.study);
+    // A full page load to the landing page: every cached store starts empty, and the app frame never sees a
+    // signed-out moment (it would send you to the login page instead).
+    window.location.assign(ROUTES.home);
   }
 
   return (
-    <AuthContext.Provider value={{ user, loading, refresh, login, register, logout }}>
+    <AuthContext.Provider value={{ user, loading, unreachable, refresh, login, register, logout }}>
       {children}
     </AuthContext.Provider>
   );

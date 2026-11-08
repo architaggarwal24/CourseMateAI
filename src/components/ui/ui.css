@@ -360,10 +360,21 @@ textarea.ui-control { min-height: 5rem; resize: vertical; line-height: var(--lin
   scrollbar-width: none;
 }
 .ui-tabs__list::-webkit-scrollbar { display: none; }
-/* a small label in front of a group of tabs (Learn, Practice); hidden on phones, where the strip scrolls */
-.ui-tabs__group { align-self: center; padding: 0 var(--space-1) 0 var(--space-3); font-size: 0.66rem; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--color-muted); white-space: nowrap; }
-.ui-tabs__group:first-child { padding-left: var(--space-2); }
-@media (max-width: 767px) { .ui-tabs__group { display: none; } }
+/* Grouped tabs (Learn, Practice): each group is its own track with its name as a caption ABOVE it - a heading in
+ * the page's quiet text style, never inside the track, never tab-shaped, so it can't be mistaken for a tab. The
+ * row of groups scrolls sideways on a narrow screen. */
+.ui-tabs__groups { display: flex; align-items: flex-end; gap: var(--space-3); max-width: 100%; overflow-x: auto; scrollbar-width: none; }
+.ui-tabs__groups::-webkit-scrollbar { display: none; }
+.ui-tabs__grp { display: flex; flex-direction: column; gap: 3px; flex: none; min-width: 0; }
+.ui-tabs__cap {
+  display: flex; align-items: center; gap: 0.4rem; padding: 0 0.35rem;
+  font-size: 0.625rem; font-weight: 600; letter-spacing: 0.09em; text-transform: uppercase; line-height: 1;
+  color: var(--color-muted); white-space: nowrap; cursor: default; user-select: none;
+}
+/* a hairline after the caption ties it to its track (a section rule, not a control) */
+.ui-tabs__cap::after { content: ""; flex: 1; height: 1px; background: var(--color-border-subtle); }
+.ui-tabs__list--grp { overflow: visible; max-width: none; }
+.ui-tabs__groups > .ui-tabs__grp + .ui-tabs__grp { padding-left: var(--space-3); border-left: 1px solid var(--color-border-subtle); }
 .ui-tab {
   position: relative;
   isolation: isolate;

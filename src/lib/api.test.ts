@@ -159,7 +159,7 @@ describe("typed client: URLs, bodies and request behaviour", () => {
     expect(new URL(req.url).search).toBe("");                       // top_k travels in the body now
     expect(req.credentials).toBe("include");
     expect(await req.json()).toEqual({
-      question: "What is mitosis?", session_id: "sess-1", top_k: 7, history: [{ role: "user", content: "hello" }],
+      question: "What is mitosis?", session_id: "sess-1", top_k: 7, history: [{ role: "user", content: "hello" }], mode: "explain",
     });
   });
 

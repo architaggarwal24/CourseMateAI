@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { Button, Input, Select, Skeleton, toast } from "@/components/ui";
 import { adminApi, type AiModels } from "@/lib/admin/adminApi";
+import TestConnection from "./TestConnection";
 
 const NORMAL = "";
 
@@ -67,6 +68,9 @@ export default function MyModel() {
         <Button type="submit" loading={busy} disabled={provider !== NORMAL && !model.trim()}>Save</Button>
         {data.mine && <span className="self-center text-sm text-fg-muted">Now: <span className="font-mono text-fg">{data.mine}</span></span>}
       </div>
+      {/* tests what's chosen above (saved or not); "Normal models" tests the Fast slot everyone gets */}
+      <TestConnection disabled={provider !== NORMAL && !model.trim()}
+        what={() => (provider === NORMAL ? { slot: "fast" } : { spec: `${provider}:${model.trim()}` })} />
     </form>
   );
 }

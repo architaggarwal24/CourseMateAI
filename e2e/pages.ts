@@ -2,6 +2,7 @@
 export interface PageCase { name: string; path: string; auth: boolean; ready: string; before?: "register" | "register-step-2" }
 
 export const PAGES: PageCase[] = [
+  { name: "landing", path: "/", auth: false, ready: "role=heading[name=/turned into a/]" },
   { name: "offline", path: "/offline", auth: false, ready: "role=heading[name=\"You're offline\"]" },
   { name: "login", path: "/login", auth: false, ready: "role=heading[name='Welcome back']" },
   { name: "terms", path: "/legal/terms", auth: false, ready: "role=heading[name='Terms of Service']" },

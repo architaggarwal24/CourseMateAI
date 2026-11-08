@@ -1,6 +1,6 @@
 import { Suspense, lazy } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 
 vi.mock("@/lib/upload", () => ({
   readPdf: vi.fn(async () => ({ pageCount: 1, pages: [{ page: 1, text: "Cells." }], hash: "a".repeat(64), textChars: 6 })),
@@ -48,11 +48,17 @@ const json = (status: number, body: unknown) =>
   new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json" } });
 const gone = () => json(404, { error: { code: "document_not_found", message: "That document couldn't be found.", action: null, details: null } });
 
-/** The server: `docs` is what it holds (mutable, so a test can delete a document behind the page's back). */
-function server(docs: DocumentInfo[], courses: any[] = []) {
-  const uploads: { session_id?: string; filename: string }[] = [];
+/** The course every document is in unless a test says otherwise (Study works inside courses, round 7). */
+const courseOf = (docs: DocumentInfo[]) => ({ id: "c0", name: "Biology", description: null, ready: docs.length, created_at: "2026-10-01T00:00:00Z",
+  updated_at: "2026-10-01T00:00:00Z", documents: docs.map((d) => ({ id: d.id, filename: d.filename, status: d.status })) });
+
+/** The server: `docs` is what it holds (mutable, so a test can delete a document behind the page's back).
+ *  `given`: its courses (default: one course holding every document). */
+function server(docs: DocumentInfo[], given: any[] | null = null) {
+  const uploads: { session_id?: string; filename: string; course_id?: string }[] = [];
   const spy = vi.fn(async (req: Request) => {
     const { pathname } = new URL(req.url);
+    const courses = given ?? [courseOf(docs)];
     if (pathname === "/api/v1/documents") return json(200, { documents: [...docs] });
     if (pathname === "/api/v1/courses") return json(200, { courses });
     const course = courses.find((c) => pathname === `/api/v1/documents/${c.id}`);
@@ -103,6 +109,15 @@ const tabView = async (name: string) => {
   return screen.getByTestId(`tab-${name}`);
 };
 
+/** Wait (in real time, like tabView) until `find` returns something. */
+const eventually = async <T,>(find: () => T | null) => {
+  const until = performance.now() + 10_000;
+  let got = find();
+  while (!got && performance.now() < until) { await settle(); await act(realTick); got = find(); }
+  if (!got) throw new Error("never appeared");
+  return got;
+};
+
 const open = async (query: string) => {
   nav.query = query;
   render(<StudyWorkspace />);
@@ -110,16 +125,23 @@ const open = async (query: string) => {
 };
 
 describe("Study workspace: the document comes first", () => {
-  it("lists the server's document in a persistent header (name, chunks, status) and puts it in the URL", async () => {
+  it("lists the server's document in a persistent header (name, chunks, status, its course)", async () => {
     server([doc("ready")]);
-    await open("tab=quiz");
+    await open("tab=quiz&doc=d1");
     const header = screen.getByRole("banner", { name: "Active document" });
     expect(header.textContent).toContain("lecture.pdf");
     expect(header.textContent).toContain("42 chunks");
     expect(header.textContent).toContain("Ready");
+    expect(screen.getByRole("link", { name: "Biology" }).getAttribute("href")).toBe("/study?tab=overview&doc=c0");
     expect(screen.getByLabelText("Replace PDF")).toBeTruthy();
     expect((await tabView("quiz")).textContent).toBe("quiz|d1|");   // the tab got the document
-    expect(nav.replace).toHaveBeenCalledWith("/study?tab=quiz&doc=d1");
+  });
+
+  it("with nothing in the URL, it opens your latest course (on its page) and puts it in the URL", async () => {
+    server([doc("ready")]);
+    await open("");
+    expect((await tabView("overview")).textContent).toBe("overview|c0");
+    expect(nav.replace).toHaveBeenCalledWith("/study?tab=overview&doc=c0");
   });
 
   it("shows a document that is still being indexed, then a failed one with its reason", async () => {
@@ -135,14 +157,33 @@ describe("Study workspace: the document comes first", () => {
     expect(screen.getByRole("alert").textContent).toContain("No readable text was found in this PDF.");
   });
 
-  it("offers an upload when the server has no documents (no 'gone' state for a new user)", async () => {
-    server([]);
+  it("a new user starts by making a course: no tools, no 'gone' state, until there is one", async () => {
+    server([], []);
     await open("");
-    expect(screen.getByRole("banner").textContent).toContain("No document yet");
-    expect(screen.getByText("Upload PDF")).toBeTruthy();
+    expect(screen.getByRole("banner").textContent).toContain("No course yet");
+    expect(await eventually(() => screen.queryByRole("heading", { name: "Start with a course" }))).toBeTruthy();
+    expect(screen.queryByRole("navigation", { name: "Study tools" })).toBeNull();
     expect(screen.queryByText(/no longer available/i)).toBeNull();
     expect(nav.replace).not.toHaveBeenCalled();
-    expect((await tabView("chat")).textContent).toBe("chat|none|");
+    expect(screen.queryByTestId("tab-chat")).toBeNull();
+  });
+
+  it("a PDF in no course asks to be added to one first", async () => {
+    server([doc("ready")], [{ ...courseOf([]), id: "c9", name: "Physics" }]);
+    await open("tab=chat&doc=d1");
+    expect(await eventually(() => screen.queryByText("Add this PDF to a course first"))).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Add to Physics" })).toBeTruthy();
+    expect(screen.queryByTestId("tab-chat")).toBeNull();
+  });
+
+  it("on a course, a new PDF is uploaded into it", async () => {
+    const s = server([doc("ready")]);
+    await open("tab=overview&doc=c0");
+    const input = document.querySelector("input[type=file]") as HTMLInputElement;
+    await act(async () => { fireEvent.change(input, { target: { files: [new File(["%PDF-1.4"], "lab.pdf", { type: "application/pdf" })] } }); });
+    await vi.waitFor(() => expect(s.uploads).toHaveLength(1));
+    expect(s.uploads[0]).toMatchObject({ course_id: "c0", filename: "lab.pdf" });
+    expect(s.uploads[0].session_id).toBeUndefined();
   });
 
   it("Replace uploads over the same document id", async () => {
@@ -205,7 +246,7 @@ describe("Study workspace: the tab lives in the URL", () => {
   it("tab links are plain URLs that keep the document and drop a reopened session, grouped Learn then Practice", async () => {
     server([doc("ready")]);
     await open("tab=chat&doc=d1&session=s9");
-    const hrefs = screen.getAllByRole("link").map((a) => a.getAttribute("href"));
+    const hrefs = within(screen.getByRole("navigation", { name: "Study tools" })).getAllByRole("link").map((a) => a.getAttribute("href"));
     expect(hrefs).toEqual(["/study?tab=chat&doc=d1", "/study?tab=notes&doc=d1", "/study?tab=map&doc=d1", "/study?tab=quiz&doc=d1", "/study?tab=flashcards&doc=d1", "/study?tab=review&doc=d1", "/study?tab=exam&doc=d1"]);
     expect(screen.getByRole("link", { name: "Chat" }).getAttribute("aria-current")).toBe("page");
     expect(screen.getByRole("link", { name: "Quiz" }).getAttribute("aria-current")).toBeNull();
@@ -235,7 +276,7 @@ describe("Study workspace: a course is a subject too", () => {
     expect(screen.queryByLabelText("Replace PDF")).toBeNull();                       // a course isn't replaced by a file
     expect(screen.getByRole("button", { name: "Edit course" })).toBeTruthy();
     expect((await tabView("overview")).textContent).toBe("overview|c1");
-    const hrefs = screen.getAllByRole("link").map((a) => a.getAttribute("href"));
+    const hrefs = within(screen.getByRole("navigation", { name: "Study tools" })).getAllByRole("link").map((a) => a.getAttribute("href"));
     expect(hrefs[0]).toBe("/study?tab=overview&doc=c1");
     expect(hrefs).toContain("/study?tab=quiz&doc=c1");
     expect(screen.queryByText(/no longer available/i)).toBeNull();

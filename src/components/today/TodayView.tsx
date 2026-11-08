@@ -3,11 +3,11 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowRight, BookOpen, CheckCircle, Coins, FileText, Flame, Repeat, ScrollText, Swords, Upload } from "@/components/icons";
+import { ArrowRight, BookMarked, BookOpen, CheckCircle, Coins, Flame, Plus, Repeat, ScrollText, Swords, Upload } from "@/components/icons";
 import { useAuth } from "@/contexts/AuthContext";
 import { useReview } from "@/hooks/useReview";
 import { useHUDStore } from "@/hooks/useHUD";
-import { useDocuments } from "@/hooks/useSessions";
+import { useCourses } from "@/hooks/useCourses";
 import { useDocumentUpload } from "@/hooks/useDocumentUpload";
 import { loadMetadata } from "@/lib/sessions";
 import { greeting, lastSession, reviewProgress, todaySummary, type LastSession } from "@/lib/today";
@@ -48,8 +48,11 @@ export default function TodayView() {
   const router = useRouter();
   const stats = useReview((s) => s.stats);
   const { level, coins, xpInto, xpToNext, streakDays, streakFreezes, quests } = useHUDStore();
-  const { list: pdfs } = useDocuments();
-  const upload = useDocumentUpload(undefined);
+  // Study works inside courses (round 7): Today lists them, and a new PDF goes into the latest one.
+  const { courses, loaded: coursesLoaded, load: loadCourses } = useCourses();
+  useEffect(() => { if (user) loadCourses().catch(() => {}); }, [user, loadCourses]);
+  const latest = courses[0];
+  const upload = useDocumentUpload(undefined, latest?.id);
   const [session, setSession] = useState<LastSession | null>(null);
 
   useEffect(() => { if (!loading && !user) router.replace(ROUTES.login); }, [loading, user, router]);
@@ -65,7 +68,7 @@ export default function TodayView() {
 
   const continueHref = session
     ? ROUTES.studyTab(session.type as StudyTab, session.id)
-    : pdfs[0] ? ROUTES.studyTab("chat", undefined, pdfs[0].id) : null;
+    : latest ? ROUTES.studyTab("overview", undefined, latest.id) : null;
 
   return (
     <div className="today">
@@ -99,14 +102,14 @@ export default function TodayView() {
         <Tile id="today-continue" title="Continue" icon={<BookOpen size={18} />} className="today-tile--wide">
           {continueHref ? (
             <>
-              <p className="today-tile__lead">{session ? `${session.label} · ${session.title ?? "your document"}` : pdfs[0]?.filename}</p>
+              <p className="today-tile__lead">{session ? `${session.label} · ${session.title ?? "your document"}` : latest?.name}</p>
               <p className="today-tile__text">{session ? session.preview || "Pick up where you stopped." : "Ask it anything, or make a quiz from it."}</p>
               <Link href={continueHref} className="ui-btn ui-btn--primary today-tile__cta">Continue<ArrowRight size={16} /></Link>
             </>
           ) : (
             <>
-              <p className="today-tile__text">Upload a PDF to start: chat with it, quiz yourself, and make flashcards.</p>
-              <button type="button" className="ui-btn ui-btn--primary today-tile__cta" onClick={upload.pick}><Upload size={16} />Upload a PDF</button>
+              <p className="today-tile__text">Make a course for a subject and add its PDFs: then chat with it, quiz yourself, and make flashcards.</p>
+              <Link href={ROUTES.study} className="ui-btn ui-btn--primary today-tile__cta"><Plus size={16} />Create a course</Link>
             </>
           )}
         </Tile>
@@ -129,26 +132,36 @@ export default function TodayView() {
           <Link href={ROUTES.heroArena} className="today-tile__link">Enter the arena<ArrowRight size={16} /></Link>
         </Tile>
 
-        <Tile id="today-pdfs" title="Your PDFs" icon={<FileText size={18} />} className="today-tile--wide">
-          {pdfs.length ? (
+        <Tile id="today-courses" title="Your courses" icon={<BookMarked size={18} />} className="today-tile--wide">
+          {courses.length ? (
             <ul className="today-list">
-              {pdfs.slice(0, 4).map((d) => (
-                <li key={d.id}>
-                  <Link href={ROUTES.studyTab("chat", undefined, d.id)} className="today-list__item">
-                    <FileText size={16} /><span className="today-list__name">{d.filename}</span>
+              {courses.slice(0, 4).map((c) => (
+                <li key={c.id}>
+                  <Link href={ROUTES.studyTab("overview", undefined, c.id)} className="today-list__item">
+                    <BookMarked size={16} /><span className="today-list__name">{c.name}</span>
+                    <span className="today-tile__meta num">{c.documents.length} PDF{c.documents.length === 1 ? "" : "s"}</span>
                     <ArrowRight size={16} className="today-list__go" />
                   </Link>
                 </li>
               ))}
             </ul>
-          ) : <p className="today-tile__text">Your PDFs show up here once you upload one.</p>}
+          ) : <p className="today-tile__text">{coursesLoaded ? "Your courses show up here once you make one." : "Loading your courses…"}</p>}
         </Tile>
 
         <Tile id="today-add" title="Add" icon={<Upload size={18} />} className="today-tile--wide">
-          <p className="today-tile__text">Drop in lecture notes, a textbook chapter or past papers. It is ready to study in about a minute.</p>
-          <button type="button" className="ui-btn ui-btn--secondary today-tile__cta" onClick={upload.pick} disabled={upload.uploading} aria-busy={upload.uploading || undefined}>
-            <Upload size={16} />{upload.uploading ? "Uploading…" : "Add a PDF"}
-          </button>
+          {latest ? (
+            <>
+              <p className="today-tile__text">Drop in lecture notes, a textbook chapter or past papers for <strong>{latest.name}</strong>. It is ready to study in about a minute.</p>
+              <button type="button" className="ui-btn ui-btn--secondary today-tile__cta" onClick={upload.pick} disabled={upload.uploading} aria-busy={upload.uploading || undefined}>
+                <Upload size={16} />{upload.uploading ? "Uploading…" : `Add a PDF to ${latest.name}`}
+              </button>
+            </>
+          ) : (
+            <>
+              <p className="today-tile__text">PDFs go into a course: one per subject.</p>
+              <Link href={ROUTES.study} className="ui-btn ui-btn--secondary today-tile__cta"><Plus size={16} />Create a course</Link>
+            </>
+          )}
           <input ref={upload.inputRef} type="file" accept=".pdf" className="hidden" aria-label="Choose a PDF"
             onChange={async (e) => {
               const file = e.currentTarget.files?.[0];
