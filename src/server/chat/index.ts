@@ -104,7 +104,7 @@ export interface ChatPlan {
 }
 
 export async function callerFor(ctx: RequestContext, user: CurrentUser): Promise<Caller> {
-  return { id: user.id, owner: user.owner, tier: await tierFor(ctx.db, user) };
+  return { id: user.id, owner: user.owner, admin: user.admin, tier: await tierFor(ctx.db, user) };
 }
 
 export async function planChat(ctx: RequestContext, user: CurrentUser, body: Record<string, unknown>): Promise<ChatPlan> {

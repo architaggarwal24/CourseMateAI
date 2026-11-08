@@ -495,15 +495,30 @@ const matches = (word: string, k: string) => (k.length < 4 ? word === k : word.s
 
 /** The creature for a topic: most keyword hits wins; no hit (or a tie) by a stable hash, so a topic keeps its creature. */
 export async function pickSpecies(topic: string, nemesis = false): Promise<string> {
-  if (nemesis || (topic || "").startsWith("Nemesis: ")) return NEMESIS_SPECIES;
+  return (await summon(topic, null, nemesis)).species;
+}
+
+/**
+ * The creature a topic summons, among the `open` ones (null: all). `wanted` is the one it would summon with every
+ * creature open: when that one is still locked, the closest open creature stands in (most keyword hits, then the
+ * stable hash), and the locked one's page remembers the topic.
+ */
+export async function summon(topic: string, open: Set<string> | null, nemesis = false): Promise<{ species: string; wanted: string }> {
+  if (nemesis || (topic || "").startsWith("Nemesis: ")) return { species: NEMESIS_SPECIES, wanted: NEMESIS_SPECIES };
   const w = words(topic);
   const hex = [...new Uint8Array(await crypto.subtle.digest("SHA-1", new TextEncoder().encode((topic || "").trim().toLowerCase())))]
     .map((b) => b.toString(16).padStart(2, "0")).join("");
   const digest = BigInt(`0x${hex}`);
   const scores = Object.fromEntries(PICKABLE.map((sid) => [sid, w.reduce((n, word) => n + CREATURES[sid].keywords.filter((k) => matches(word, k)).length, 0)]));
-  const best = Math.max(0, ...Object.values(scores));
-  const pool = best > 0 ? PICKABLE.filter((s) => scores[s] === best) : PICKABLE;
-  return pool[Number(digest % BigInt(pool.length))];
+  const choose = (from: string[]) => {
+    const best = Math.max(0, ...from.map((s) => scores[s]));
+    const pool = best > 0 ? from.filter((s) => scores[s] === best) : from;
+    return pool[Number(digest % BigInt(pool.length))];
+  };
+  const wanted = choose(PICKABLE);
+  if (!open || open.has(wanted)) return { species: wanted, wanted };
+  const allowed = PICKABLE.filter((s) => open.has(s));
+  return { species: allowed.length ? choose(allowed) : wanted, wanted };
 }
 
 const fill = (text: string, topic: string) => text.replaceAll("{topic}", topic);
@@ -513,7 +528,8 @@ export function baseBoss(species: string, topic: string, difficulty: string): Re
   const c = CREATURES[species] ?? CREATURES.hydra;
   const t = (topic || "the unknown").trim().slice(0, 80);
   return {
-    species: CREATURES[species] ? species : "hydra", origin: c.origin, name: c.name, title: `Warden of ${t}`,
+    // on nightmare it is the creature's Elder form (the Bestiary page that it unlocks)
+    species: CREATURES[species] ? species : "hydra", origin: c.origin, name: difficulty === "nightmare" ? `Elder ${c.name}` : c.name, title: `Warden of ${t}`,
     tagline: `A ${c.origin} legend, bound to ${t}`, personality: `An ancient ${c.name.toLowerCase()} that guards ${t}`,
     conceptual_core: `The ${c.name} feeds on every gap in your understanding of ${t}.`, max_hp: HP_HINT[difficulty] ?? 120,
     rage_threshold: difficulty === "nightmare" ? 0.6 : 0.4, special_ability: c.special, weakness: t, attack_names: [...c.attacks],

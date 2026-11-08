@@ -105,11 +105,10 @@ function publicItem(r: Row, now: Date, doc: DocRef | undefined, withIntervals: b
   };
 }
 
-async function countsToday(ctx: RequestContext, userId: number, now: Date) {
-  const r = await ctx.db.select({ n: count(), fresh: sum(sql`${reviewLogs.wasNew}`) }).from(reviewLogs)
-    .where(and(eq(reviewLogs.userId, userId), eq(reviewLogs.localDate, today(now)))).get();
-  return { reviewed: Number(r?.n ?? 0), new: Number(r?.fresh ?? 0) };
-}
+const countsTodayQuery = (ctx: RequestContext, userId: number, now: Date) =>
+  ctx.db.select({ n: count(), fresh: sum(sql`${reviewLogs.wasNew}`) }).from(reviewLogs)
+    .where(and(eq(reviewLogs.userId, userId), eq(reviewLogs.localDate, today(now))));
+const countsFrom = (r: { n: number; fresh: string | null } | undefined) => ({ reviewed: Number(r?.n ?? 0), new: Number(r?.fresh ?? 0) });
 
 async function getItem(ctx: RequestContext, userId: number, id: number): Promise<Row> {
   const row = Number.isInteger(id) ? await ctx.db.select().from(reviewItems).where(and(eq(reviewItems.id, id), eq(reviewItems.userId, userId))).get() : undefined;
@@ -122,36 +121,50 @@ export async function queue(ctx: RequestContext, userId: number, { limit = 20, h
   const n = Math.max(1, Math.min(Math.trunc(limit) || 20, 100));
   const scope = hashes?.length ? inArray(reviewItems.docHash, hashes) : undefined;
   const base = (...c: unknown[]) => and(eq(reviewItems.userId, userId), ...(c as never[]), ...(scope ? [scope] : []));
-  const learning = await ctx.db.select().from(reviewItems)
-    .where(base(gt(reviewItems.reps, 0), inArray(reviewItems.state, [1, 3]), lte(reviewItems.due, stamp(new Date(now.getTime() + LEARN_AHEAD_MS)))))
-    .orderBy(reviewItems.due).limit(n).all();
-  const review = await ctx.db.select().from(reviewItems)
-    .where(base(gt(reviewItems.reps, 0), eq(reviewItems.state, 2), lte(reviewItems.due, stamp(now))))
-    .orderBy(reviewItems.due).limit(n).all();
-  const newLeft = Math.max(0, NEW_PER_DAY - (await countsToday(ctx, userId, now)).new);
-  const fresh = newLeft ? await ctx.db.select().from(reviewItems)
+  // Learning, due reviews and today's counts in one round trip (a D1 batch); the new cards depend on the counts.
+  const [learning, review, todayRows] = await ctx.db.batch([
+    ctx.db.select().from(reviewItems)
+      .where(base(gt(reviewItems.reps, 0), inArray(reviewItems.state, [1, 3]), lte(reviewItems.due, stamp(new Date(now.getTime() + LEARN_AHEAD_MS)))))
+      .orderBy(reviewItems.due).limit(n),
+    ctx.db.select().from(reviewItems)
+      .where(base(gt(reviewItems.reps, 0), eq(reviewItems.state, 2), lte(reviewItems.due, stamp(now))))
+      .orderBy(reviewItems.due).limit(n),
+    countsTodayQuery(ctx, userId, now),
+  ]);
+  const newLeft = Math.max(0, NEW_PER_DAY - countsFrom(todayRows[0]).new);
+  const picked = [...learning, ...review];
+  const fresh = newLeft && picked.length < n ? await ctx.db.select().from(reviewItems)
     .where(base(eq(reviewItems.reps, 0), lte(reviewItems.due, stamp(now))))
     .orderBy(reviewItems.due, reviewItems.id).limit(Math.min(n, newLeft)).all() : [];
-  return publicItems(ctx, userId, [...learning, ...review, ...fresh].slice(0, n), now);
+  return publicItems(ctx, userId, [...picked, ...fresh].slice(0, n), now);
 }
 
 export async function stats(ctx: RequestContext, userId: number, now = new Date()) {
   const t = stamp(now);
-  const c = async (...w: unknown[]) => Number((await ctx.db.select({ n: count() }).from(reviewItems).where(and(eq(reviewItems.userId, userId), ...(w as never[]))).get())?.n ?? 0);
-  const todayCounts = await countsToday(ctx, userId, now);
+  const learnBy = stamp(new Date(now.getTime() + LEARN_AHEAD_MS));
+  const n = (cond: ReturnType<typeof sql>) => sql<number>`COALESCE(SUM(CASE WHEN ${cond} THEN 1 ELSE 0 END), 0)`;
+  // One round trip (a D1 batch) for what used to be six: today's counts, the due counts and the next due card in
+  // one pass over the user's cards, and the cards per source.
+  const [todayRows, dueRows, sourceRows] = await ctx.db.batch([
+    countsTodayQuery(ctx, userId, now),
+    ctx.db.select({
+      newReady: n(sql`${reviewItems.reps} = 0 AND ${reviewItems.due} <= ${t}`),
+      learning: n(sql`${reviewItems.reps} > 0 AND ${reviewItems.state} IN (1, 3) AND ${reviewItems.due} <= ${learnBy}`),
+      review: n(sql`${reviewItems.reps} > 0 AND ${reviewItems.state} = 2 AND ${reviewItems.due} <= ${t}`),
+      next: sql<string | null>`MIN(CASE WHEN ${reviewItems.due} > ${t} THEN ${reviewItems.due} END)`,
+    }).from(reviewItems).where(eq(reviewItems.userId, userId)),
+    ctx.db.select({ source: reviewItems.source, n: count() }).from(reviewItems).where(eq(reviewItems.userId, userId)).groupBy(reviewItems.source),
+  ]);
+  const todayCounts = countsFrom(todayRows[0]);
   const newLeft = Math.max(0, NEW_PER_DAY - todayCounts.new);
-  const newReady = await c(eq(reviewItems.reps, 0), lte(reviewItems.due, t));
-  const learning = await c(gt(reviewItems.reps, 0), inArray(reviewItems.state, [1, 3]), lte(reviewItems.due, stamp(new Date(now.getTime() + LEARN_AHEAD_MS))));
-  const review = await c(gt(reviewItems.reps, 0), eq(reviewItems.state, 2), lte(reviewItems.due, t));
-  const next = await ctx.db.select({ d: min(reviewItems.due) }).from(reviewItems).where(and(eq(reviewItems.userId, userId), gt(reviewItems.due, t))).get();
+  const d = dueRows[0];
+  const newReady = Number(d?.newReady ?? 0), learning = Number(d?.learning ?? 0), review = Number(d?.review ?? 0);
   const bySource: Record<string, number> = Object.fromEntries(SOURCES.map((s) => [s, 0]));
-  for (const r of await ctx.db.select({ source: reviewItems.source, n: count() }).from(reviewItems).where(eq(reviewItems.userId, userId)).groupBy(reviewItems.source).all()) {
-    bySource[r.source] = Number(r.n);
-  }
+  for (const r of sourceRows) bySource[r.source] = Number(r.n);
   return {
     due: learning + review + Math.min(newReady, newLeft), learning, review, new: Math.min(newReady, newLeft),
     new_waiting: newReady, new_left_today: newLeft, reviewed_today: todayCounts.reviewed,
-    total: Object.values(bySource).reduce((a, b) => a + b, 0), by_source: bySource, next_due_at: next?.d ?? null,
+    total: Object.values(bySource).reduce((a, b) => a + b, 0), by_source: bySource, next_due_at: d?.next ?? null,
   };
 }
 

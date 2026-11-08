@@ -21,7 +21,9 @@ export type BeatKind =
   | "intro" | "hero-strike" | "hero-cast" | "boss-strike" | "boss-shield" | "boss-heal" | "boss-drain"
   | "boss-ko" | "hero-ko" | "rage"
   // Phase 3 Stage 2: creature mechanics and champion kits
-  | "mechanic" | "ultimate" | "riposte" | "dodge";
+  | "mechanic" | "ultimate" | "riposte" | "dodge"
+  // Stage C1: a champion with their own mastery weapon ends the fight with a finisher
+  | "finisher";
 
 /**
  * What a creature's mechanic or a champion's kit did on a turn, one per server event type (backend
@@ -99,6 +101,8 @@ export interface Beat {
   /** boss-strike / dodge: a charge (a long, fast rush) or a thrown projectile (a boulder) instead of a swing. */
   charge?: boolean;
   projectile?: boolean;
+  /** hero-strike / ultimate: the champion fights with their own mastery weapon (their own animation). */
+  signature?: boolean;
   /** The turn this beat belongs to - echoed back by onImpact. */
   key?: string | number;
 }
@@ -282,7 +286,7 @@ export class FightScene {
         const fps = this.heroFps("attack");
         this.after(200, () => this.setAnim(this.h, "attack"));
         const hit = 200 + this.impactAfterFrames(2, fps);
-        this.after(hit, () => this.bossHurt(beat));
+        this.after(hit, () => { this.bossHurt(beat); if (beat.signature && !beat.shielded) this.signatureStrike(); });
         if (style === "twin" || style === "fist") this.after(hit + 120, () => this.bossHurt({ ...beat, heavy: false }, true));
         this.after(hit + 380, () => { this.setAnim(this.h, "dash"); this.move(this.h, 0, 260); });
         this.after(hit + 640, () => this.setAnim(this.h, "idle"));
@@ -354,8 +358,36 @@ export class FightScene {
         if (!this.reduced) for (let i = 0; i < 30; i++) this.mote(x + (Math.random() - 0.5) * 40, GROUND_Y - Math.random() * 60, i % 3 ? accent : "#ffffff");
         this.shake(3, 300);
         this.opts.onBanner?.(beat.text ?? "ULTIMATE", "ult");
+        if (beat.signature) { this.after(300, () => this.signatureUltimate()); this.after(1300, () => this.setAnim(this.h, "idle")); return 1400; }
         this.after(900, () => this.setAnim(this.h, "idle"));
         return 1000;
+      }
+      case "finisher": {
+        // the champion's own last blow, then the KO as usual
+        const reach = Math.max(30, this.bossFront - HERO_X - (style === "lance" ? 62 : 38));
+        this.opts.onBanner?.(beat.text ?? "FINISHER", "ult");
+        this.flashSky = this.now;
+        if (style !== "mage") { this.setAnim(this.h, "dash"); this.move(this.h, reach, 220); }
+        else this.setAnim(this.h, "cast");
+        const blows = 6;
+        for (let i = 0; i < blows; i++) {
+          this.after(240 + i * 110, () => {
+            this.setAnim(this.h, style === "mage" ? "cast" : "attack");
+            this.signatureStrike(i === blows - 1);
+            this.b.flashUntil = this.now + 70;
+            this.setAnim(this.b, "hit");
+          });
+        }
+        const end = 240 + blows * 110 + 200;
+        this.after(end, () => {
+          this.setAnim(this.b, "ko", true);
+          this.shake(8, 600);
+          this.opts.onBanner?.("K.O.", "ko");
+          if (style !== "mage") { this.move(this.h, 0, 300); this.setAnim(this.h, "dash"); }
+        });
+        this.after(end + 650, () => this.dissolve());
+        this.after(end + 900, () => this.setAnim(this.h, "win", true));
+        return end + 1300;
       }
       case "riposte": {
         // a quick counter from the guard: a short lunge, one light blow, back on the mark
@@ -403,7 +435,7 @@ export class FightScene {
       const [tx, ty] = this.bossCenter();
       this.fx.push({ kind: "orb", x: HERO_X + 30, y: GROUND_Y - 62, tx, ty, start: this.now, dur: this.reduced ? 1 : flight, color: beat.crit ? "#facc15" : "#67e8f9", size: beat.heavy ? 7 : 5 });
     });
-    this.after(launch + flight, () => this.bossHurt(beat));
+    this.after(launch + flight, () => { this.bossHurt(beat); if (beat.signature && !beat.shielded) this.signatureStrike(); });
     this.after(launch + flight + 300, () => this.setAnim(this.h, "idle"));
     return launch + flight + 450;
   }
@@ -516,6 +548,69 @@ export class FightScene {
     this.burst(sx, sy, "#f87171", 16, 2);
     this.fx.push({ kind: "slash", x: sx, y: sy, start: this.now, dur: 160, color: "#fecaca", size: 26, flip: true });
     this.shake(5, 220);
+  }
+
+  // ── signature weapon (Stage C1) ────────────────────────────────────────────
+  /** The extra flourish of a blow struck with the champion's own mastery weapon, in the champion's colours. */
+  private signatureStrike(big = false) {
+    const accent = this.hero.accent;
+    const [bx, by] = this.bossCenter();
+    const x = this.bossFront + 18, y = by;
+    const size = big ? 1.5 : 1;
+    switch (this.hero.style) {
+      case "blade":       // two crossing cuts
+        this.fx.push({ kind: "slash", x, y: y - 6, start: this.now, dur: 220, color: accent, size: 40 * size });
+        this.fx.push({ kind: "slash", x, y: y + 6, start: this.now + 40, dur: 220, color: "#ffffff", size: 40 * size, flip: true });
+        break;
+      case "lance":       // a line of dawn light along the thrust
+        if (!this.reduced) for (let i = 0; i < 16; i++) this.particles.push({ x: HERO_X + 30 + i * ((x - HERO_X - 30) / 16), y: y + (Math.random() - 0.5) * 4, vx: 1.5, vy: 0, life: 14 + i, max: 30, color: i % 2 ? accent : "#fde68a", size: 2, g: 0, kind: "spark" });
+        this.fx.push({ kind: "ring", x, y, start: this.now, dur: 300, color: "#fde68a", size: 36 * size });
+        break;
+      case "fist":        // the ground answers the blow
+        this.fx.push({ kind: "ring", x, y: GROUND_Y - 6, start: this.now, dur: 360, color: accent, size: 70 * size });
+        this.shake(big ? 7 : 4, 200);
+        break;
+      case "mage":        // two smaller orbs follow the first
+        for (let k = 0; k < 2; k++) this.fx.push({ kind: "orb", x: HERO_X + 30, y: GROUND_Y - 70 - k * 10, tx: bx, ty: by, start: this.now + k * 60, dur: this.reduced ? 1 : 280, color: k ? "#67e8f9" : accent, size: 4 });
+        break;
+      case "twin":        // a shadow strikes from the other side
+        this.h.ghostUntil = this.now + 220;
+        this.fx.push({ kind: "slash", x: x + 24, y, start: this.now, dur: 200, color: accent, size: 30 * size, flip: true });
+        this.fx.push({ kind: "slash", x: x + 12, y: y + 10, start: this.now + 60, dur: 200, color: "#e11d48", size: 26 * size });
+        break;
+      default:            // a shield bash that rings like a bell
+        this.fx.push({ kind: "ring", x, y, start: this.now, dur: 320, color: accent, size: 48 * size });
+        this.fx.push({ kind: "ring", x, y, start: this.now + 80, dur: 320, color: "#e2e8f0", size: 30 * size });
+    }
+    this.burst(x, y, accent, big ? 30 : 12, 2);
+  }
+
+  /** The ultimate with the champion's own weapon: a bigger, champion-shaped version. */
+  private signatureUltimate() {
+    const accent = this.hero.accent;
+    const [bx, by] = this.bossCenter();
+    const [hx, hy] = this.heroCenter();
+    switch (this.hero.style) {
+      case "blade":
+        for (let i = 0; i < 9; i++) this.after(i * 70, () => this.fx.push({ kind: "slash", x: bx - 30 + (i % 3) * 12, y: by - 20 + Math.floor(i / 3) * 18, start: this.now, dur: 200, color: i === 8 ? "#facc15" : accent, size: 30, flip: i % 2 === 1 }));
+        break;
+      case "lance":
+        for (let i = 0; i < 3; i++) this.after(i * 120, () => this.fx.push({ kind: "bolt", x: bx - 20 + i * 20, y: 0, start: this.now, dur: 220, color: i === 1 ? "#fde68a" : accent, size: 0 }));
+        break;
+      case "fist":
+        for (let i = 0; i < 4; i++) this.after(i * 110, () => { this.fx.push({ kind: "ring", x: hx + 40 + i * 50, y: GROUND_Y - 4, start: this.now, dur: 320, color: accent, size: 40 }); this.shake(3, 120); });
+        break;
+      case "mage":
+        for (let i = 0; i < 6; i++) this.after(i * 70, () => this.fx.push({ kind: "orb", x: hx + Math.cos(i) * 30, y: hy - 30 + Math.sin(i) * 20, tx: bx, ty: by, start: this.now, dur: this.reduced ? 1 : 360, color: i % 2 ? "#67e8f9" : accent, size: 5 }));
+        break;
+      case "twin":
+        this.h.ghostUntil = this.now + 900;
+        for (let i = 0; i < 5; i++) this.after(i * 90, () => this.fx.push({ kind: "slash", x: bx - 20 + i * 10, y: by - 10 + (i % 2) * 20, start: this.now, dur: 180, color: i % 2 ? "#e11d48" : accent, size: 28, flip: i % 2 === 0 }));
+        break;
+      default:
+        this.fx.push({ kind: "ring", x: hx, y: hy, start: this.now, dur: 800, color: accent, size: 70 });
+        this.after(200, () => this.fx.push({ kind: "ring", x: hx, y: hy, start: this.now, dur: 700, color: "#e2e8f0", size: 54 }));
+    }
   }
 
   // ── particles & fx ─────────────────────────────────────────────────────────

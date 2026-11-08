@@ -4,8 +4,9 @@ import { api } from "@/lib/api/client";
 import type {
   ActiveBattle, AnswerResponse, BattleGetResponse, ChooseResponse, CreateResponse, Difficulty, ForfeitResponse, ItemId,
   ItemResponse, LeaderboardResponse, Move, QuestionResponse, Run, RunBoardEntry, RunResponse, Spell, SpellResponse,
-  TravelResponse, UltimateResponse, WeakConceptsResponse,
+  TravelResponse, UltimateResponse, WeakConceptsResponse, BestiaryPage, BestiaryResponse,
 } from "./types";
+import { API_BASE_URL, throwForResponse } from "@/lib/api/client";
 
 // The generated schema types these bodies loosely, so the real shapes (types.ts) are asserted here, in one place.
 const as = <T,>(data: unknown) => data as T;
@@ -103,3 +104,15 @@ export async function fetchLeaderboard(topic: string, difficulty: Difficulty, si
   const { data } = await api.GET("/arena/leaderboard", { params: { query: query as never }, signal });
   return as<LeaderboardResponse>(data);
 }
+
+// The Bestiary isn't in the hand-kept OpenAPI types; same origin, same error handling (throwForResponse).
+async function getJson<T>(path: string): Promise<T> {
+  const res = await fetch(`${API_BASE_URL}${path}`, { credentials: "include" });
+  if (!res.ok) await throwForResponse(res);
+  return (await res.json()) as T;
+}
+
+/** The Bestiary: every page and the tiers (signed-in players). */
+export const fetchBestiary = () => getJson<BestiaryResponse>("/bestiary");
+/** One page, with the concepts this creature has tested you on. */
+export const fetchBestiaryPage = (species: string) => getJson<BestiaryPage>(`/bestiary/${encodeURIComponent(species)}`);

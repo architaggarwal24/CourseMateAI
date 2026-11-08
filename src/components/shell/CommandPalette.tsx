@@ -13,6 +13,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useShortcutLabel } from "@/hooks/useShortcutLabel";
 import { ROUTES } from "@/lib/routes";
 import { toggleMode } from "@/lib/theme";
+import { PALETTE_EVENT, isPaletteKey } from "./CommandPaletteLoader";
 
 /** A page to go to (`href`), or an action to run (`run`). */
 interface Entry { id: string; label: string; hint?: string; href?: string; run?: "logout" | "theme"; icon: ReactNode; keywords?: string[]; adminOnly?: boolean }
@@ -35,6 +36,7 @@ const GROUPS: { heading: string; items: Entry[] }[] = [
     heading: "Hero",
     items: [
       { id: "arena", label: "Battle Arena", hint: "Fight a boss", href: ROUTES.heroArena, icon: <Swords size={16} />, keywords: ["boss", "fight", "battle", "expedition"] },
+      { id: "bestiary", label: "Bestiary", hint: "The book of creatures", href: ROUTES.heroTab("bestiary"), icon: <BookOpen size={16} />, keywords: ["creatures", "monsters", "bane", "lore", "book"] },
       { id: "quests", label: "Daily quests", href: ROUTES.heroQuests, icon: <ScrollText size={16} /> },
       { id: "shop", label: "Shop", href: ROUTES.heroShop, icon: <ShoppingBag size={16} />, keywords: ["buy", "gear", "potion"] },
       { id: "inventory", label: "Inventory", href: ROUTES.heroInventory, icon: <Backpack size={16} /> },
@@ -62,33 +64,28 @@ const GROUPS: { heading: string; items: Entry[] }[] = [
   },
 ];
 
-/** Open the palette from anywhere (the sidebar's search button). */
-export const openCommandPalette = () => window.dispatchEvent(new Event("cmai:command-palette"));
+/** Open the palette from anywhere (the sidebar's search button). Kept here for callers that import it from this file. */
+export { openCommandPalette } from "./CommandPaletteLoader";
 
 /**
  * ⌘K / Ctrl+K: jump anywhere in the app by typing. A Radix dialog (focus trap, Escape, focus return) around a cmdk
  * list (fuzzy filter, arrow keys, Enter). Always the Study look, whichever area it was opened from.
  */
-export default function CommandPalette() {
+export default function CommandPalette({ defaultOpen = false }: { defaultOpen?: boolean }) {
   const router = useRouter();
   const { user, logout } = useAuth();
-  const [open, setOpen] = useState(false);
+  // CommandPaletteLoader mounts it on the first ⌘K or search click, already open.
+  const [open, setOpen] = useState(defaultOpen);
   const toggleLabel = useShortcutLabel(["mod", "K"]);
   const isAdmin = !!(user as { is_admin?: boolean } | null)?.is_admin;
 
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (!(e.metaKey || e.ctrlKey) || e.key.toLowerCase() !== "k") return;
-      // Another dialog owns the keyboard: two focus traps would fight. (The palette's own dialog may toggle itself.)
-      const other = document.querySelector('[aria-modal="true"]:not(.cmdk-dialog)');
-      if (other) return;
-      e.preventDefault();
-      setOpen((o) => !o);
-    };
+    // Another dialog owns the keyboard: two focus traps would fight. (The palette's own dialog may toggle itself.)
+    const onKey = (e: KeyboardEvent) => { if (isPaletteKey(e)) { e.preventDefault(); setOpen((o) => !o); } };
     const onOpen = () => setOpen(true);
     window.addEventListener("keydown", onKey);
-    window.addEventListener("cmai:command-palette", onOpen);
-    return () => { window.removeEventListener("keydown", onKey); window.removeEventListener("cmai:command-palette", onOpen); };
+    window.addEventListener(PALETTE_EVENT, onOpen);
+    return () => { window.removeEventListener("keydown", onKey); window.removeEventListener(PALETTE_EVENT, onOpen); };
   }, []);
 
   // Read when the menu opens: what the switch would change to.

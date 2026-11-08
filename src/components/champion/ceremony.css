@@ -1,0 +1,22 @@
+/* The unlock ceremony (Stage C1): the new champion in flat rays of their own colour. */
+.champ-ceremony__stage {
+  position: relative; height: 11rem; display: grid; place-items: center; overflow: hidden;
+  border-radius: var(--radius-lg, 12px); background: var(--color-surface-sunken); border: 1px solid var(--color-border);
+}
+.champ-ceremony__rays {
+  position: absolute; width: 22rem; height: 22rem; left: 50%; top: 50%; margin: -11rem 0 0 -11rem;
+  fill: color-mix(in oklab, var(--hero-accent) 28%, transparent);
+  animation: champ-rays 24s linear infinite;
+}
+.champ-ceremony__sprite { position: relative; width: 9rem; height: 9rem; object-fit: contain; image-rendering: pixelated; animation: champ-rise 700ms cubic-bezier(.2,.9,.3,1.2) both; }
+.champ-ceremony__title { margin: var(--space-3) 0 0; text-align: center; font-weight: 700; color: var(--color-text); }
+.champ-ceremony__kit { margin: var(--space-3) 0 0; display: grid; gap: var(--space-2); }
+.champ-ceremony__kit dt { font-size: 0.8rem; font-weight: 600; color: var(--color-text); }
+.champ-ceremony__kit dd { margin: 0; font-size: 0.8rem; color: var(--color-text-secondary); }
+.champ-ceremony__reward { display: flex; justify-content: center; gap: var(--space-2); margin: var(--space-3) 0 0; }
+@keyframes champ-rays { to { transform: rotate(360deg); } }
+@keyframes champ-rise { from { transform: translateY(1.5rem) scale(.85); opacity: 0; } to { transform: none; opacity: 1; } }
+@media (prefers-reduced-motion: reduce) {
+  .champ-ceremony__rays, .champ-ceremony__sprite { animation: none; }
+}
+html.reduce-animations .champ-ceremony__rays, html.reduce-animations .champ-ceremony__sprite { animation: none; }

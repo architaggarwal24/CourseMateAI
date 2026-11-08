@@ -85,6 +85,8 @@ export interface MockOptions {
   /** Level 5+ with coins, so the shop, inventory and the arena have something to show. */
   advanced?: boolean;
   documents?: typeof DOCUMENT[];
+  /** Stage C1: a champion who just joined and is waiting for their unlock ceremony. */
+  ceremony?: string;
 }
 
 const ADMIN_USERS = [
@@ -100,7 +102,7 @@ const INVITES = [
 ];
 
 /** Installs the mock. Returns the list of GET paths nothing answered, so a test can say a new call needs a fixture. */
-export async function mockApi(page: Page, { signedIn = true, advanced = true, documents = [DOCUMENT] }: MockOptions = {}) {
+export async function mockApi(page: Page, { signedIn = true, advanced = true, documents = [DOCUMENT], ceremony }: MockOptions = {}) {
   const unanswered: string[] = [];
   const progress = { ...hud.progress, current_level: advanced ? 7 : 1, total_xp: advanced ? 1450 : 0, coins: advanced ? 320 : 0, xp_into_level: advanced ? 150 : 0, xp_to_next: 400, streak_days: advanced ? 4 : 0 };
   const shopData = { ...shop, shop_unlocked: advanced, level: progress.current_level, coins: progress.coins };
@@ -119,12 +121,33 @@ export async function mockApi(page: Page, { signedIn = true, advanced = true, do
   const championProgress = Object.fromEntries(Object.entries(KITS).map(([id, [p, u]]) => [id, {
     xp: id === "kaien" ? 120 : 0, level: id === "kaien" ? 2 : 1, level_xp: id === "kaien" ? 100 : 0, next_level_xp: id === "kaien" ? 250 : 100,
     battles: id === "kaien" ? 3 : 0, wins: id === "kaien" ? 2 : 0, mastery: mastery(id), kit: kit(p, u),
+    signature: { weapon: `mastery_${id}_weapon`, perk: { name: `${p} Edge`, text: `${p}, a little stronger.` }, finisher: `${u} Finale`, owned: false, worn: false },
+    // Stage C1 locks: Asha, Brak and Mira have joined; Vex waits on Bestiary tier IV, Thorne on level 25
+    unlock: id === "vex" ? { unlocked: false, celebrated: false, source: null, how: "Beat every creature in Bestiary tier IV", have: 0, need: 2, reward: { xp: 600, coins: 400 } }
+      : id === "thorne" ? { unlocked: false, celebrated: false, source: null, how: "Reach level 25", have: 7, need: 25, reward: { xp: 500, coins: 300 } }
+      : { unlocked: true, celebrated: id !== ceremony, source: id === "kaien" ? "free" : "tier1", how: id === "kaien" ? "Free" : "Beat every creature in Bestiary tier I", have: 4, need: 4, reward: { xp: 150, coins: 100 } },
   }]));
   const championState = () => ({
     ...champion, champions: ["kaien", "asha", "brak", "mira", "vex", "thorne"],
     loadout: { armor: worn.armor ?? null, headgear: worn.headgear ?? null, weapon: worn.weapon ?? null, pet: worn.pet ?? null },
     progress: championProgress,
   });
+
+  const scroll = <T extends { id: string; kind: string; title: string }>(o: T) => ({ text: "", progress: 0, target: 1, completed: false, claimed: false, reward: { xp: 300, coins: 150 }, call: { place: "arena" }, period: "", ...o });
+  const questBoard = {
+    week: "2026-W45",
+    weekly: [
+      scroll({ id: "trial_quizzes", kind: "weekly", title: "Trial of Questions", text: "Complete 6 quizzes.", target: 6, progress: 3, call: { place: "quiz" }, period: "2026-W45" }),
+      scroll({ id: "trial_reviews", kind: "weekly", title: "Trial of Memory", text: "Review 80 cards.", target: 80, progress: 12, call: { place: "review" }, period: "2026-W45" }),
+      scroll({ id: "trial_hard", kind: "weekly", title: "Trial of Iron", text: "Win a fight on hard or nightmare.", reward: { xp: 400, coins: 250 }, period: "2026-W45" }),
+    ],
+    hunts: [
+      scroll({ id: "hunt:minotaur", kind: "hunt", title: "Hunt the Minotaur", text: "Beat the Minotaur for the first time.", progress: 1, completed: true, reward: { xp: 120, coins: 60 }, call: { place: "arena", topic: "graph algorithms" }, lost_page: "minotaur" }),
+      scroll({ id: "hunt:cyclops", kind: "hunt", title: "Hunt the Cyclops", text: "Beat the Cyclops for the first time.", reward: { xp: 120, coins: 60 }, call: { place: "arena", topic: "mechanics" }, lost_page: "cyclops" }),
+    ],
+    story: { champion: "kaien", chapters_done: 0, chapters: 3,
+      scroll: scroll({ id: "story:kaien:1", kind: "story", title: "Kaien · The Ninth Page", text: "A book with eight pages and a gap where the ninth should be. Win a fight as Kaien.", reward: { xp: 100, coins: 60 } }) },
+  };
 
   const entitlements = { tier: "archmage", tier_name: "Archmage", features: {
     review_queue: { enabled: true, name: "Spaced-repetition review", required_tier: "scholar", required_tier_name: "Scholar" },
@@ -192,14 +215,52 @@ export async function mockApi(page: Page, { signedIn = true, advanced = true, do
     if (path === "/daily-quests") return json(route, 200, dailyQuests);
     if (path === "/shop") return json(route, 200, { ...shopData, champion_id: champion.champion_id });
     if (path === "/avatar") return json(route, 200, { ...avatar, champion_id: champion.champion_id, champion_chosen: champion.chosen });
+    // The quest board (Stage Q1): a trial half done, a hunt ready to claim (it finds the Minotaur's lost page),
+    // and Kaien's first chapter.
+    if (path === "/quests") return json(route, 200, questBoard);
+    if (path === "/quests/claim" && method === "POST") {
+      const id = (route.request().postDataJSON() as { id: string }).id;
+      const s = [...questBoard.weekly, ...questBoard.hunts, questBoard.story.scroll].find((x) => x?.id === id);
+      if (!s || !s.completed || s.claimed) return json(route, 409, { error: { code: "scroll_not_done", message: "Finish the quest first.", action: null, details: null } });
+      s.claimed = true;
+      return json(route, 200, { ok: true, id, kind: s.kind, reward: s.reward, lost_page: s.kind === "hunt" ? "minotaur" : null, totals: { total_xp: 1570, coins: progress.coins + s.reward.coins, level: 7 } });
+    }
+    if (path === "/avatar/champion/celebrate" && method === "POST") {
+      const body = route.request().postDataJSON() as { champion_id: string };
+      const u = championProgress[body.champion_id]?.unlock as { celebrated: boolean; reward: { xp: number; coins: number } } | undefined;
+      const first = !!u && !u.celebrated;
+      if (u) u.celebrated = true;
+      return json(route, 200, { champion_id: body.champion_id, first, reward: first ? u!.reward : { xp: 0, coins: 0 }, state: championState() });
+    }
     if (path === "/avatar/champion") {
       if (!signedIn) return json(route, 401, { error: { code: "unauthenticated", message: "Please log in to continue.", action: "relogin", details: null } });
       if (method === "PUT") {
         const body = route.request().postDataJSON() as { champion_id?: string };
         if (!championState().champions.includes(body.champion_id ?? "")) return json(route, 422, { error: { code: "unknown_champion", message: "That champion doesn't exist.", action: null, details: null } });
+        if (!(championProgress[body.champion_id!].unlock as { unlocked: boolean }).unlocked) return json(route, 403, { error: { code: "champion_locked", message: "That champion hasn't joined you yet.", action: null, details: null } });
         champion.champion_id = body.champion_id!; champion.chosen = true;
       }
       return json(route, 200, championState());
+    }
+    // The Bestiary (Stage B1): tier I open, the Minotaur beaten (its bane written in), the Hydra's page still dark.
+    if (path === "/bestiary") {
+      const TIER: Record<string, number> = { minotaur: 1, cyclops: 1, oni: 1, kitsune: 1, naga: 2, rakshasa: 2, sphinx: 2, fenrir: 2, hydra: 3, kraken: 3, ammit: 3, simurgh: 4, jormungandr: 4 };
+      const NAMES: Record<string, [string, string]> = { minotaur: ["Minotaur", "Greek"], cyclops: ["Cyclops", "Greek"], oni: ["Oni", "Japanese"], kitsune: ["Kitsune", "Japanese"] };
+      return json(route, 200, {
+        tiers: [
+          { tier: 1, name: "Beasts of the Wilds", open: true, beaten: 1, total: 4, opens_next_at: 2 },
+          { tier: 2, name: "Tricksters and Hunters", open: false, beaten: 0, total: 4, opens_next_at: 2 },
+          { tier: 3, name: "Ancient Horrors", open: false, beaten: 0, total: 3, opens_next_at: 2 },
+          { tier: 4, name: "World-Enders", open: false, beaten: 0, total: 2, opens_next_at: null },
+        ],
+        creatures: Object.entries(TIER).map(([species, tier]) => {
+          const open = tier === 1, beaten = species === "minotaur";
+          return { species, tier, open, met: beaten, defeated: beaten, name: open ? NAMES[species][0] : null, origin: open ? NAMES[species][1] : null,
+            teaser_topic: species === "hydra" ? "cell biology" : null, mastery: beaten ? "bronze" : "none",
+            record: beaten ? { fights: 2, wins: 1, losses: 1, flawless_wins: 0, nightmare_wins: 0, best_seconds: 140, best_accuracy: 88, first_win_at: "2026-11-05T09:00:00Z", last_fought_at: "2026-11-06T09:00:00Z" } : null,
+            bane: open ? { clue: "A clue for this creature.", moves: beaten ? ["guard", "heavy"] : null, found_alone: false, uses: 0 } : null };
+        }),
+      });
     }
     if (path === "/achievements") return json(route, 200, achievements);
     if (path === "/providers") return json(route, 200, providers);
@@ -208,6 +269,15 @@ export async function mockApi(page: Page, { signedIn = true, advanced = true, do
     if (path === "/auth/config") return json(route, 200, { google: false, email_delivery: true, verification_required: true, invite_only: false });
     if (path === "/admin/users") return json(route, 200, { users: ADMIN_USERS, total: ADMIN_USERS.length, offset: 0, limit: 25 });
     if (path === "/admin/invites") return json(route, 200, { invites: INVITES });
+    // Admin -> AI models and the admin's own model (Settings -> AI).
+    if (path === "/admin/ai/models") return json(route, 200, {
+      slots: {}, mine: null, ollama: { enabled: false, base: null, models: [] },
+      defaults: { fast: "gemini:gemini-3.5-flash-lite", strong: "gemini:gemini-3.8-flash", premium: "claude:claude-sonnet-5-5", small: "@cf/meta/llama-3.1-8b-instruct-fp8" },
+      providers: [{ id: "gemini", configured: true, key_env: "GOOGLE_API_KEY" }, { id: "openai", configured: false, key_env: "OPENAI_API_KEY" },
+        { id: "claude", configured: true, key_env: "ANTHROPIC_API_KEY" }, { id: "nvidia", configured: false, key_env: "NVIDIA_API_KEY" },
+        { id: "workers-ai", configured: true, key_env: null }],
+    });
+    if (path === "/admin/ai/mine") return json(route, 200, { spec: null });
     if (path === "/admin/ai") return json(route, 200, { days: 30, today_usd: 0.42, cap_usd: 2, cap_max_usd: 20, can_edit: true, capped: false, total_usd: 3.1, by_day: [],
       models: [{ provider: "gemini", model: "gemini-3.8-flash", calls: 120, fallbacks: 2, tokens_in: 90000, tokens_out: 30000, cost_usd: 0.42, priced: true }],
       routes: { apprentice: { small: ["workers-ai:@cf/meta/llama-3.1-8b-instruct-fp8"], strong: ["gemini:gemini-3.5-flash-lite"] },

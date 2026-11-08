@@ -1,11 +1,11 @@
 "use client";
 
-import { useMemo, useRef, type ComponentProps } from "react";
+import { memo, useMemo, useRef, type ComponentProps } from "react";
 import ReactMarkdown, { type Components } from "react-markdown";
 import remarkGfm from "remark-gfm";
 import remarkMath from "remark-math";
 import rehypeKatex from "rehype-katex";
-import rehypeHighlight from "rehype-highlight";
+import rehypeHighlight from "@/lib/study/highlight";
 import "katex/dist/katex.min.css";
 import "highlight.js/styles/github-dark.css";
 import { citationNumber, linkCitations } from "@/lib/study/citations";
@@ -25,9 +25,9 @@ const components: Components = {
  * An assistant answer as markdown: headings, lists, code, tables, math. Inter 16px / 1.6 at a readable width.
  * With `citations` (how many passages the answer has), its [n] markers become buttons that call `onCite(n)`.
  */
-export default function ChatMarkdown({ children, citations = 0, onCite }: {
-  children: string; citations?: number; onCite?: (n: number) => void;
-}) {
+interface Props { children: string; citations?: number; onCite?: (n: number) => void }
+
+function ChatMarkdown({ children, citations = 0, onCite }: Props) {
   const citable = !!onCite;
   const text = useMemo(() => (citable ? linkCitations(children, citations) : children), [children, citations, citable]);
   // the renderers must stay the same functions across renders (or the citation buttons are remounted and a focus
@@ -59,3 +59,11 @@ export default function ChatMarkdown({ children, citations = 0, onCite }: {
     </div>
   );
 }
+
+/**
+ * Parsed again only when its text or citation count changes. While an answer streams the chat re-renders on every
+ * token; without this every earlier answer went through remark, KaTeX and highlighting again each time. A new onCite
+ * function alone doesn't count: the chat's is the same "open citation n of this message" each render.
+ */
+export default memo(ChatMarkdown, (a: Props, b: Props) =>
+  a.children === b.children && (a.citations ?? 0) === (b.citations ?? 0) && !!a.onCite === !!b.onCite);

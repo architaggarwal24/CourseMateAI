@@ -40,7 +40,7 @@ const PLAY_FILES = [
   ...HERO_COMPONENTS,
   "components/arena/ArenaArea.tsx", "components/arena/BattleScreen.tsx", "components/arena/SummonPanel.tsx",
   "components/arena/ResultPanel.tsx", "components/arena/pixel/PixelArena.tsx", "components/arena/TimerRing.tsx", "components/arena/pixel/Roster.tsx",
-  "components/arena/Hearts.tsx", "components/AchievementsView.tsx", "components/QuestPanel.tsx",
+  "components/arena/Hearts.tsx", "components/AchievementsView.tsx", "components/hero/QuestScroll.tsx",
 ];
 
 describe("Study screens", () => {

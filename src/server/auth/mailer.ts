@@ -27,6 +27,9 @@ export interface MailerEnv {
   RESEND_API_KEY?: string;
 }
 
+/** How long one email may take to hand over to Resend. */
+export const SEND_TIMEOUT_MS = 10_000;
+
 export function createMailer(env: MailerEnv, fetchImpl: typeof fetch = fetch, log: (line: string) => void = console.log): Mailer {
   const from = (env.EMAIL_FROM || "").trim();
   if (env.EMAIL && from) {
@@ -41,6 +44,8 @@ export function createMailer(env: MailerEnv, fetchImpl: typeof fetch = fetch, lo
           method: "POST",
           headers: { authorization: `Bearer ${env.RESEND_API_KEY}`, "content-type": "application/json" },
           body: JSON.stringify({ from, to: [m.to], subject: m.subject, text: m.text, html: m.html }),
+          // A slow mail service must not hold a sign-up open: give up after 10 s (the person can ask for a new code).
+          signal: AbortSignal.timeout(SEND_TIMEOUT_MS),
         });
         if (!res.ok) throw new Error(`Resend refused the email (${res.status})`);
       },

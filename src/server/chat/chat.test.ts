@@ -5,6 +5,8 @@ import * as chat from "@/app/api/v1/chat/route";
 import * as chatStream from "@/app/api/v1/chat/stream/route";
 import * as usage from "@/app/api/v1/account/usage/route";
 import * as adminAi from "@/app/api/v1/admin/ai/route";
+import * as adminAiModels from "@/app/api/v1/admin/ai/models/route";
+import * as adminAiMine from "@/app/api/v1/admin/ai/mine/route";
 import * as adminRole from "@/app/api/v1/admin/users/[id]/role/route";
 import * as me from "@/app/api/v1/auth/me/route";
 import { setMailerForTests } from "../context";
@@ -113,6 +115,24 @@ describe("POST /chat/stream", () => {
 });
 
 describe("Admin -> AI", () => {
+  it("admins set the models for everyone and their own; students can't, and Ollama is hidden outside next dev", async () => {
+    const owner = await person(mail, "owner@example.com", "boss");
+    const view = await json(await adminAiModels.GET(owner.request("/api/v1/admin/ai/models")));
+    expect(view).toMatchObject({ slots: {}, mine: null, ollama: { enabled: false, models: [] } });
+    expect(view.defaults.fast).toBe("gemini:flash-lite");
+    expect(view.providers.map((x: { id: string }) => x.id)).not.toContain("ollama");
+    const saved = await json(await adminAiModels.PUT(owner.request("/api/v1/admin/ai/models", { method: "PUT", body: { slots: { fast: "claude:haiku" } } })));
+    expect(saved.slots).toEqual({ fast: "claude:haiku" });
+    expect((await json(await adminAi.GET(owner.request("/api/v1/admin/ai")))).routes.apprentice.strong[0]).toBe("claude:haiku");
+    const bad = await adminAiModels.PUT(owner.request("/api/v1/admin/ai/models", { method: "PUT", body: { slots: { strong: "openai:gpt-5" } } }));
+    expect((await json(bad)).error.code).toBe("provider_not_configured");
+    expect((await json(await adminAiMine.PUT(owner.request("/api/v1/admin/ai/mine", { method: "PUT", body: { spec: "claude:opus" } })))).spec).toBe("claude:opus");
+    expect((await adminAiMine.PUT(owner.request("/api/v1/admin/ai/mine", { method: "PUT", body: { spec: "ollama:llama3" } }))).status).toBe(400);
+    const student = await person(mail, "s2@example.com", "student2");
+    expect((await adminAiModels.GET(student.request("/api/v1/admin/ai/models"))).status).toBe(403);
+    expect((await adminAiMine.PUT(student.request("/api/v1/admin/ai/mine", { method: "PUT", body: { spec: "claude:opus" } }))).status).toBe(403);
+  });
+
   it("shows the spend per model and lets the owner set the daily cap", async () => {
     const owner = await person(mail, "owner@example.com", "boss");
     const id = await uploadPdf(owner, "Bio.pdf", BIO);

@@ -17,15 +17,18 @@ const ITEM_TO_BUFF: Record<string, string> = { potion_health_small: "heal_1", fi
 const ONCE_A_DAY = new Set(["potion_streak_shield", "potion_quest_reset"]);
 const title = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
-export async function shopState(ctx: RequestContext, p: Player, progress?: Progress) {
-  const prog = progress ?? await getProgress(ctx, p.id);
-  let avatar = await getAvatar(ctx, p.id);
+/** `known` passes reads the caller already made (the HUD reads the inventory and buffs itself). */
+export async function shopState(ctx: RequestContext, p: Player, progress?: Progress,
+  known: { inv?: Awaited<ReturnType<typeof inventory>>; buffs?: Awaited<ReturnType<typeof activeBuffs>> } = {}) {
+  // Independent reads side by side rather than one after another.
+  const [prog, avatar0, inv, buffs] = await Promise.all([
+    progress ?? getProgress(ctx, p.id), getAvatar(ctx, p.id), known.inv ?? inventory(ctx, p.id), known.buffs ?? activeBuffs(ctx, p.id),
+  ]);
+  let avatar = avatar0;
   const free = CATALOG.filter((it) => it.price === 0 && !it.consumable && !it.mastery).map((it) => it.id);
   if (free.some((id) => !avatar.owned.includes(id))) {
     avatar = await modifyAvatar(ctx, p.id, (_e, owned) => { for (const id of free) if (!owned.includes(id)) owned.push(id); });
   }
-  const inv = await inventory(ctx, p.id);
-  const buffs = await activeBuffs(ctx, p.id);
   const buffCounts = Object.fromEntries(Object.entries(ITEM_TO_BUFF).map(([item, key]) => [item, Number(buffs[key]?.count ?? 0)]));
   const level = prog.currentLevel, coins = prog.coins;
   const items = CATALOG.map((it) => {

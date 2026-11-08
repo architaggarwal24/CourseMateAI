@@ -114,7 +114,7 @@ describe("<HeroArea />", () => {
     render(<HeroArea />);
     const nav_ = screen.getByRole("navigation", { name: "Hero" });
     expect(within(nav_).getAllByRole("link").map((l) => l.textContent)).toEqual(
-      ["Quests", "Arena", "Shop", "Inventory", "Champion", "Achievements"],
+      ["Quests", "Arena", "Bestiary", "Shop", "Inventory", "Champion", "Achievements"],
     );
     expect(within(nav_).getByRole("link", { name: "Quests" }).getAttribute("aria-current")).toBe("page");
     expect(within(nav_).getByRole("link", { name: "Shop" }).getAttribute("aria-current")).toBeNull();

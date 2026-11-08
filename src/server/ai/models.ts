@@ -22,10 +22,13 @@ export const ROUTES: Record<Tier, Record<Job, Slot[]>> = {
   archmage: { small: ["fast", "small"], strong: ["premium", "strong", "fast", "small"] },
 };
 
-export const PROVIDERS = ["gemini", "openai", "claude", "nvidia", "workers-ai"] as const;
+// "ollama": a model on the admin's own computer, for that admin's requests during `next dev` only (ai/config.ts).
+export const PROVIDERS = ["gemini", "openai", "claude", "nvidia", "workers-ai", "ollama"] as const;
 export type Provider = (typeof PROVIDERS)[number];
+/** Providers that take an API key from the server's settings. */
+export type KeyedProvider = Exclude<Provider, "workers-ai" | "ollama">;
 
-const KEY_ENV: Record<Exclude<Provider, "workers-ai">, string> = {
+export const KEY_ENV: Record<KeyedProvider, string> = {
   gemini: "GOOGLE_API_KEY", openai: "OPENAI_API_KEY", claude: "ANTHROPIC_API_KEY", nvidia: "NVIDIA_API_KEY",
 };
 const ALIASES: Record<string, Provider> = { google: "gemini", anthropic: "claude", "nvidia-nim": "nvidia" };
@@ -62,6 +65,7 @@ export function slotTarget(slot: Slot, env: Env = process.env): Target | null {
     const spec = parseSpec(env[name]);
     if (!spec) continue;
     if (spec.provider === "workers-ai") return { slot, ...spec };
+    if (spec.provider === "ollama") continue;                     // never for everyone
     const apiKey = (env[KEY_ENV[spec.provider]] || "").trim();
     if (!apiKey) continue;
     return { slot, ...spec, apiKey };

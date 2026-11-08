@@ -356,3 +356,22 @@ describe("the HUD store drops a refresh that a local change has outdated", () =>
     expect(useHUDStore.getState().coins).toBe(70);
   });
 });
+
+// Performance pass (Stage P1): the sidebar's user menu and the Hero area (or Profile) both load the shop when the app
+// opens; they asked GET /shop twice at the same moment. A load already in flight is now shared.
+describe("loading the shop", () => {
+  it("two loads at the same time ask once", async () => {
+    fakeServer(makeShop(250));
+    await Promise.all([useHeroStore.getState().loadShop(), useHeroStore.getState().loadShop()]);
+    expect(api.GET.mock.calls.filter(([p]) => p === "/shop")).toHaveLength(1);
+    expect(useHeroStore.getState().shop!.coins).toBe(250);
+    expect(useHeroStore.getState().loading).toBe(false);
+  });
+
+  it("a load after the first one has answered asks again (the area opening later wants current data)", async () => {
+    fakeServer(makeShop(250));
+    await useHeroStore.getState().loadShop();
+    await useHeroStore.getState().loadShop();
+    expect(api.GET.mock.calls.filter(([p]) => p === "/shop")).toHaveLength(2);
+  });
+});

@@ -14,14 +14,15 @@ const BANK = [
 ];
 const PROFILE = { name: "Cell Warden", species: "minotaur", origin: "Greek", tagline: "Guardian of cells", intro_taunt: "You will not pass.", weakness: "Nucleus" };
 
-async function battleServer(page: Page) {
-  await mockApi(page);
+async function battleServer(page: Page, opts: { signature?: boolean; joins?: string } = {}) {
+  await mockApi(page, opts.joins ? { ceremony: opts.joins } : {});
   let battle: any = null, seq = -1, answered = false;
   const json = (route: Route, body: unknown, status = 200) => route.fulfill({ status, contentType: "application/json", body: JSON.stringify(body) });
   const end = (status: "won" | "lost") => {
     battle.status = status;
     battle.result = { grade: status === "won" ? "A" : "F", accuracy: Math.round((battle.correct / Math.max(1, battle.answered)) * 100), time_seconds: 42, new_personal_best: status === "won" };
     battle.rewards = { arena_round_complete: null, boss_defeat: status === "won" ? { ok: true, xp_gained: 50, coins_gained: 25 } : null };
+    if (status === "won" && opts.joins) battle.result.champions_unlocked = [opts.joins];
   };
   // Registered after mockApi, so it answers first.
   await page.route("**/api/v1/arena/battles**", async (route) => {
@@ -38,7 +39,8 @@ async function battleServer(page: Page) {
           counters: [{ label: "Charge in", value: 2, hint: "turns until it charges" }], locked_moves: [] },
         kit: { champion: "kaien", meter: 100, max: 100, ready: true, active: false, effects: {},
           passive: { name: "Riposte", text: "A right Guard against a blow hits back for half a Strike." },
-          ultimate: { name: "Ninth Page Cut", text: "Your next right answer hits x2.5 and cuts through shields." } } };
+          ultimate: { name: "Ninth Page Cut", text: "Your next right answer hits x2.5 and cuts through shields." },
+          signature: opts.signature ? { name: "Edge of the Ninth Page", text: "Riposte hits back for 75% of a Strike (not half).", finisher: "Final Cut" } : null } };
       seq = -1; answered = false;
       return json(route, { ok: true, battle_id: "b1", resumed: false, boss: PROFILE, battle });
     }
@@ -192,4 +194,29 @@ test.describe("reduced motion", () => {
     const running = await page.evaluate(() => document.getAnimations().filter((a) => a.playState === "running" && ((a as CSSAnimation).animationName ?? "").startsWith("arena-")).length);
     expect(running).toBe(0);
   });
+});
+
+// Stage C1: Kaien with his own mastery weapon ends the fight with his finisher; the win that finishes a Bestiary tier
+// brings a champion, met from the result screen.
+test("the signature weapon's finisher ends the fight, and a champion who joins is met from the result", async ({ page }) => {
+  await battleServer(page, { signature: true, joins: "asha" });
+  const errors: string[] = [];
+  page.on("pageerror", (e) => errors.push(e.message));
+  await summon(page);
+  await expect(page.getByText("Signature weapon · Edge of the Ninth Page")).toBeVisible();
+  await page.keyboard.press("2");
+  await page.getByRole("button", { name: /Continue/ }).click();
+  await strike(page);
+  await expect(page.getByText("Where is DNA stored?")).toBeVisible();
+  await page.keyboard.press("2");
+  await expect(page.locator(".px-arena__banner", { hasText: "FINAL CUT" })).toBeVisible();
+  await expect(page.locator(".px-arena__banner", { hasText: "K.O." })).toBeVisible({ timeout: 4000 });
+  await page.getByRole("button", { name: "See result" }).click();
+  await expect(page.getByText("Asha joins you!")).toBeVisible();
+  await page.getByRole("button", { name: "Meet Asha" }).click();
+  const dialog = page.getByRole("dialog", { name: "Asha joins you" });
+  await expect(dialog).toBeVisible();
+  await dialog.getByRole("button", { name: "Claim reward" }).click();
+  await expect(dialog).toBeHidden();
+  expect(errors).toEqual([]);
 });

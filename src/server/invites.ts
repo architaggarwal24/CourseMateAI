@@ -5,7 +5,7 @@ import { and, desc, eq, lt, sql } from "drizzle-orm";
 import type { Db } from "./db";
 import { inviteCodes, inviteRedemptions, userPlans } from "./db/schema";
 import { HttpError } from "./http";
-import { TIER_NAMES, TIERS, isTier, nowIso, planRow, type Tier } from "./plans";
+import { TIER_NAMES, TIERS, forgetTier, isTier, nowIso, planRow, type Tier } from "./plans";
 
 const CODE_RE = /^[A-Z0-9][A-Z0-9-]{3,39}$/;
 const ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";          // no 0/O, 1/I
@@ -61,11 +61,13 @@ export async function setPlan(db: Db, userId: number, tier: Tier, opts: { days?:
     startedAt: nowIso(now), expiresAt, updatedAt: nowIso(now),
   } as const;
   await db.insert(userPlans).values(values).onConflictDoUpdate({ target: userPlans.userId, set: values });
+  forgetTier(db, userId);
   return (await db.select().from(userPlans).where(eq(userPlans.userId, userId)).get())!;
 }
 
 export async function clearPlan(db: Db, userId: number): Promise<void> {
   await db.delete(userPlans).where(eq(userPlans.userId, userId));
+  forgetTier(db, userId);
 }
 
 export async function validateInvite(db: Db, code: string, now = new Date()): Promise<InviteRow> {

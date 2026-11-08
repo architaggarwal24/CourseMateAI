@@ -34,17 +34,31 @@
 .profile-stat__label span { color: var(--tone); display: inline-flex; }
 .profile-stat__value { margin: 0.2rem 0 0; font-family: var(--font-mono); font-size: 1.6rem; font-weight: 600; color: var(--color-text); }
 
-/* settings: a rail of section links beside the sections */
-.settings-grid { display: grid; gap: var(--space-6); }
-@media (min-width: 1100px) { .settings-grid { grid-template-columns: 12rem minmax(0, 1fr); } }
-.settings-rail { display: none; }
-@media (min-width: 1100px) { .settings-rail { display: grid; align-content: start; gap: 2px; position: sticky; top: var(--space-4); } }
-.settings-rail a {
-  display: block; padding: 0.45rem 0.75rem; border-radius: var(--radius-sm); border-left: 2px solid transparent;
-  color: var(--color-muted); font-size: 0.85rem; font-weight: 500; text-decoration: none;
+/* Settings: the title and the index stay put and only the sections scroll (.settings-scroll). Wide screens: the index
+ * is a column beside the sections; narrower: a row of chips above them (scrolls sideways if it must). */
+.settings-page { height: 100%; display: flex; flex-direction: column; min-height: 0; }
+.settings-head { flex: none; width: 100%; max-width: 64rem; margin: 0 auto; padding: var(--space-6) var(--space-6) var(--space-3); }
+.settings-grid { flex: 1; min-height: 0; width: 100%; max-width: 64rem; margin: 0 auto; padding: 0 var(--space-6);
+  display: grid; grid-template-rows: auto minmax(0, 1fr); gap: var(--space-3); }
+.settings-scroll { min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: var(--space-1) 2px var(--space-8); }
+.settings-scroll:focus-visible { outline: 2px solid var(--color-accent-text); outline-offset: 2px; border-radius: var(--radius-md); }
+.section-index { display: flex; gap: var(--space-2); overflow-x: auto; scrollbar-width: none; padding: 2px 0 var(--space-1); }
+.section-index::-webkit-scrollbar { display: none; }
+.section-index a {
+  flex: none; display: inline-flex; align-items: center; min-height: 44px; padding: 0 0.9rem; border-radius: var(--radius-full);
+  border: 1px solid var(--color-border); color: var(--color-muted); font-size: 0.85rem; font-weight: 500; text-decoration: none;
+  white-space: nowrap;
   transition: color var(--motion-base) var(--motion-ease), background-color var(--motion-base) var(--motion-ease), border-color var(--motion-base) var(--motion-ease);
 }
-.settings-rail a:hover { color: var(--color-text); background: var(--glass-tint); border-left-color: var(--color-accent-text); }
+.section-index a:hover { color: var(--color-text); background: var(--glass-tint); }
+.section-index a[aria-current="true"] { color: var(--color-accent-text); border-color: var(--color-accent-text); background: var(--glass-tint); }
+@media (min-width: 1100px) {
+  .settings-grid { grid-template-rows: minmax(0, 1fr); grid-template-columns: 12rem minmax(0, 1fr); gap: var(--space-6); }
+  .section-index { flex-direction: column; overflow: visible; padding: var(--space-1) 0 0; gap: 2px; }
+  .section-index a { min-height: 0; padding: 0.45rem 0.75rem; border: 0; border-left: 2px solid transparent; border-radius: var(--radius-sm); }
+  .section-index a:hover { border-left-color: var(--color-border); }
+  .section-index a[aria-current="true"] { border-left-color: var(--color-accent-text); }
+}
 .settings-section { scroll-margin-top: var(--space-5); }
 
 /* The profile's account list: one row per thing you can change, each a link to where it lives. */

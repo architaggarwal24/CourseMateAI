@@ -104,10 +104,27 @@ export async function planRow(db: Db, userId: number, now: Date = new Date()): P
 
 export interface PlanHolder { id: number; owner: boolean }
 
-export async function tierFor(db: Db, who: PlanHolder, now: Date = new Date()): Promise<Tier> {
+// One plan read per request: a route that checks a feature, a quota and a lock asked the same row up to three times.
+// The Db handle is made per request (requestContext), so this cache lives exactly as long as one request.
+const tierCache = new WeakMap<Db, Map<number, Promise<Tier>>>();
+
+export async function tierFor(db: Db, who: PlanHolder, now?: Date): Promise<Tier> {
   if (who.owner) return OWNER_TIER;
-  const row = await planRow(db, who.id, now);
-  return row && isTier(row.tier) ? row.tier : DEFAULT_TIER;
+  // An explicit time (tests, "what will the plan be then") is never cached.
+  if (now) return planRow(db, who.id, now).then((row) => (row && isTier(row.tier) ? row.tier : DEFAULT_TIER));
+  let perDb = tierCache.get(db);
+  if (!perDb) tierCache.set(db, (perDb = new Map()));
+  const known = perDb.get(who.id);
+  if (known) return known;
+  const read = planRow(db, who.id).then((row) => (row && isTier(row.tier) ? row.tier : DEFAULT_TIER));
+  perDb.set(who.id, read);
+  read.catch(() => perDb.delete(who.id));
+  return read;
+}
+
+/** A plan was just granted, changed or removed in this request: the next tierFor reads it again. */
+export function forgetTier(db: Db, userId: number): void {
+  tierCache.get(db)?.delete(userId);
 }
 
 export async function entitlementsSummary(db: Db, who: PlanHolder) {

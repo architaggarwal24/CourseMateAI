@@ -10,7 +10,8 @@ import shopFile from "./content/shop.json";
 
 export const ITEM_TYPES = ["armor", "headgear", "weapon", "pet", "potion", "title"] as const;
 export const KNOWN_EFFECTS = ["heal_1", "hint_charge", "fifty_fifty", "xp_boost_1h", "xp_boost_2h", "coin_boost_1h", "streak_freeze", "reset_daily_quests"];
-export const KNOWN_UNLOCK_TYPES = ["total_quizzes_completed", "streak_days", "total_bosses_defeated", "current_level", "best_quiz_accuracy", "nightmare_bosses_defeated"];
+export const KNOWN_UNLOCK_TYPES = ["total_quizzes_completed", "streak_days", "total_bosses_defeated", "current_level", "best_quiz_accuracy", "nightmare_bosses_defeated",
+  "bestiary_banes_found", "bestiary_creatures_defeated"];
 export const REWARD_ACTIONS = ["arena_round_complete", "boss_defeat", "quiz_complete", "chat_bundle_5", "notes_generation", "flashcard_complete",
   "expedition_complete", "review_complete", "exam_complete"] as const;
 export type RewardAction = (typeof REWARD_ACTIONS)[number];

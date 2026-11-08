@@ -61,4 +61,11 @@ describe("mechanic and kit beats", () => {
     expect(effects(beatsFor({ ...base, mechanic: mech("chained", "regrowth") }, { status: "won" } as Battle))).toEqual(["hero-strike", "fx:chained", "boss-ko"]);
     expect(effects(beatsFor({ ...base, mechanic: mech("something_new") }, active))).toEqual(["hero-strike"]);
   });
+  it("with the champion's own mastery weapon: signature strikes and a finisher instead of the plain KO", () => {
+    const kitHud = { signature: { name: "Edge", text: "x", finisher: "Final Cut" } } as never;
+    const won = beatsFor({ ...base }, { ...active, status: "won", kit: kitHud } as Battle);
+    expect(won[0]).toMatchObject({ kind: "hero-strike", signature: true });
+    expect(won.at(-1)).toEqual({ kind: "finisher", text: "FINAL CUT" });
+    expect(beatsFor({ ...base }, active)[0]).not.toHaveProperty("signature");
+  });
 });

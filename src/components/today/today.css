@@ -7,6 +7,9 @@
 .today__hello { display: grid; gap: var(--space-1); margin-bottom: var(--space-5); }
 .today__hello h1 { margin: 0; font-size: clamp(1.6rem, 1.2rem + 1.4vw, 2.2rem); font-weight: 700; line-height: 1.15; }
 .today__hello p { margin: 0; color: var(--color-text-secondary); font-size: 1rem; }
+/* The summary changes once the review count and quests arrive ("You're all caught up" -> "Two things left today:
+ * ..."); on a phone the longer one takes two lines. Its room is kept from the start so the tiles don't jump. */
+@media (max-width: 640px) { .today__hello p { min-height: calc(2lh); } }
 
 .today__grid { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: var(--space-3); }
 .today-tile { grid-column: span 2; display: flex; flex-direction: column; gap: var(--space-2); min-width: 0;

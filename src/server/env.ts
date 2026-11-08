@@ -12,9 +12,23 @@ export function setEnvForTests(env: CloudflareEnv | null): void {
 export async function getEnv(): Promise<CloudflareEnv | null> {
   if (testEnv) return testEnv;
   try {
-    return (await getCloudflareContext({ async: true })).env as CloudflareEnv;
+    const env = (await getCloudflareContext({ async: true })).env as CloudflareEnv;
+    fillProcessEnv(env as unknown as Record<string, unknown>);
+    return env;
   } catch {
     return null;
+  }
+}
+
+/**
+ * The Worker's text settings (vars and secrets) into process.env, where the server reads them, without overwriting
+ * anything already there. On Cloudflare OpenNext has done this already; under `next dev` nobody does, so .dev.vars
+ * (OWNER_EMAIL, BETTER_AUTH_SECRET, the AI keys) reached only the Cloudflare context and the owner wasn't recognised.
+ */
+export function fillProcessEnv(env: Record<string, unknown> | null | undefined): void {
+  if (!env) return;
+  for (const [k, v] of Object.entries(env)) {
+    if (typeof v === "string" && process.env[k] === undefined) process.env[k] = v;
   }
 }
 

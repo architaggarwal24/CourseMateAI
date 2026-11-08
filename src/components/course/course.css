@@ -22,7 +22,8 @@
 
 .course-overview { display: grid; gap: var(--space-6); }
 .course-h { margin: 0 0 var(--space-3); font-size: 1rem; font-weight: 700; color: var(--color-text); }
-.course-tiles { margin: 0; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--space-3); }
+/* --course-tile-h: a tile's height, for the loading skeleton (so nothing moves when the numbers arrive). */
+.course-tiles { --course-tile-h: 88px; margin: 0; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--space-3); }
 .course-tile { display: flex; flex-direction: column-reverse; justify-content: flex-end; }
 .course-tiles dd { margin: 0; font-size: 1.6rem; font-weight: 700; color: var(--color-text); font-variant-numeric: tabular-nums; }
 .course-tiles dt { margin-top: var(--space-1); font-size: 0.75rem; color: var(--color-text-secondary); }
@@ -38,6 +39,6 @@
 .course-docs__name:hover { text-decoration: underline; }
 .course-docs__meta { flex: none; font-size: 0.78rem; }
 @media (max-width: 640px) {
-  .course-tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .course-tiles { --course-tile-h: 107px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .course-docs li { flex-wrap: wrap; }
 }

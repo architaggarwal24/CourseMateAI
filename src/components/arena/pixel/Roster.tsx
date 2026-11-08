@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import { lookFor } from "@/components/champion/useChampionLook";
-import { useChampion } from "@/hooks/useChampion";
+import { Lock } from "@/components/icons";
+import { isUnlocked, useChampion } from "@/hooks/useChampion";
 import { useHeroStore } from "@/hooks/useHero";
 import { HEROES, type Style } from "@/lib/pixel/heroes";
 import PixelSprite from "./PixelSprite";
@@ -17,7 +18,8 @@ const STYLE_LABEL: Record<Style, string> = { blade: "Swordsman", heavy: "Knight"
 
 /**
  * Pick your champion: your avatar everywhere and the fighter you bring into the arena. A radio group (arrow keys
- * move); the choice is saved on your account. Each card shows that champion in your current skins.
+ * move); the choice is saved on your account. Each card shows that champion in your current skins. A champion who
+ * hasn't joined yet is a dark silhouette with what brings them (arrow keys skip it; a click says what is left).
  */
 export function Roster() {
   const heroId = useChampion((s) => s.championId);
@@ -32,28 +34,45 @@ export function Roster() {
         {HEROES.map((base) => {
           const h = lookFor(base.id, shop).hero;
           const on = h.id === heroId;
+          const lock = progress[h.id]?.unlock;
+          const locked = !isUnlocked(progress, h.id);
           return (
             <button
               key={h.id} type="button" role="radio" aria-checked={on} tabIndex={on ? 0 : -1}
-              className="px-hero-card" style={{ "--hero-accent": h.accent } as React.CSSProperties}
+              aria-disabled={locked || undefined} data-locked={locked || undefined}
+              aria-describedby={locked ? `px-lock-${h.id}` : undefined}
+              className="px-hero-card" style={{ "--hero-accent": locked ? "var(--color-muted)" : h.accent } as React.CSSProperties}
               onClick={() => { void setHero(h.id); }}
               onMouseEnter={() => setHover(h.id)} onMouseLeave={() => setHover(null)} onFocus={() => setHover(h.id)} onBlur={() => setHover(null)}
               onKeyDown={(e) => {
-                const i = HEROES.findIndex((x) => x.id === h.id);
                 const d = e.key === "ArrowRight" || e.key === "ArrowDown" ? 1 : e.key === "ArrowLeft" || e.key === "ArrowUp" ? -1 : 0;
                 if (!d) return;
                 e.preventDefault();
-                const n = HEROES[(i + d + HEROES.length) % HEROES.length];
+                // like any radio group, the arrows pass over the champions you can't pick yet
+                const open = HEROES.filter((x) => isUnlocked(progress, x.id) || x.id === h.id);
+                const i = open.findIndex((x) => x.id === h.id);
+                const n = open[(i + d + open.length) % open.length];
                 void setHero(n.id);
                 (e.currentTarget.parentElement?.querySelector(`[data-hero="${n.id}"]`) as HTMLElement | null)?.focus();
               }}
               data-hero={h.id}
             >
               <span className="px-hero-card__stage" aria-hidden="true">
-                <PixelSprite hero={h} anim={hover === h.id ? "attack" : on ? "win" : "idle"} className="px-hero-card__sprite" />
+                <PixelSprite hero={h} anim={locked ? "idle" : hover === h.id ? "attack" : on ? "win" : "idle"} className="px-hero-card__sprite" />
               </span>
               <span className="px-hero-card__name pixel-font">{h.name}</span>
-              {progress[h.id] && (
+              {locked && lock ? (
+                <span className="px-hero-card__lock" id={`px-lock-${h.id}`}>
+                  <span className="px-hero-card__lockline"><Lock size={12} aria-hidden="true" /><span className="sr-only">Locked. </span>{lock.how}</span>
+                  {lock.need > 1 && (
+                    <span className="px-hero-card__level">
+                      <span className="sr-only">{`${lock.have} of ${lock.need}`}</span>
+                      <span className="px-hero-card__xp" aria-hidden="true"><span style={{ width: `${Math.round((100 * lock.have) / lock.need)}%` }} /></span>
+                      <span className="text-xs" aria-hidden="true">{lock.have}/{lock.need}</span>
+                    </span>
+                  )}
+                </span>
+              ) : progress[h.id] && (
                 <span className="px-hero-card__level">
                   <span className="sr-only">Level {progress[h.id].level}</span>
                   <span className="pixel-font" aria-hidden="true">Lv {progress[h.id].level}</span>

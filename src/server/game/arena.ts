@@ -18,12 +18,15 @@ import type { Caller } from "../ai/run";
 import { record as recordMastery } from "../study/mastery";
 import { questionKey, sameAnswer } from "../study/text";
 import { bossFlavor, generateBattleQuiz, questionTier, type BattleQuestion } from "./arenaAi";
-import { baseBoss, pickSpecies } from "./bestiary";
+import { baseBoss, summon } from "./bestiary";
+import * as tome from "./tome";
+import * as roster from "./roster";
+import * as scrolls from "./scrolls";
 import { bossTaunt, makeIntent, mergeFlavor, playerHit, rollIntent, sanitizeBoss, type Boss, type Intent } from "./boss";
 import { ITEMS } from "./content";
 import * as kits from "./kits";
 import { DAMAGING_KINDS, forBoss, illusionOption, key as mkey, Turn } from "./mechanics";
-import { award, activeBuffs, consumeCharge } from "./progression";
+import { award, activeBuffs, checkAchievements, consumeCharge } from "./progression";
 import { consumeInventory, getAvatar, inventory, modifyAvatar, type Player } from "./store";
 
 export const PLAYER_MAX_HP = 10;
@@ -77,7 +80,8 @@ export function gearFor(equipped: Record<string, string>) {
 }
 const relicsOf = (boss: Boss) => new Set<string>(boss.mods?.relics ?? []);
 const timeLimit = (boss: Boss, move?: string | null) =>
-  (MOVES[move || DEFAULT_MOVE]?.seconds ?? SECONDS_PER_QUESTION) + Number(boss.gear?.time_sec ?? 0) + (relicsOf(boss).has("owl_feather") ? OWL_FEATHER_SECONDS : 0);
+  Math.round((MOVES[move || DEFAULT_MOVE]?.seconds ?? SECONDS_PER_QUESTION) * (tome.TIER_TIME[(boss.tier ?? 1) as 1 | 2 | 3 | 4] ?? 1))
+  + Number(boss.gear?.time_sec ?? 0) + (relicsOf(boss).has("owl_feather") ? OWL_FEATHER_SECONDS : 0);
 const questionLimit = (boss: Boss, q: QRow) => timeLimit(boss, q.move) + (q.timewarped ? TIMEWARP_SECONDS : 0);
 const heavyCost = (boss: Boss) => (relicsOf(boss).has("whetstone") ? 1 : MOVES.heavy.cost);
 const moveCost = (move: string, boss: Boss) => (move === "heavy" ? heavyCost(boss) : MOVES[move].cost);
@@ -118,7 +122,7 @@ export function state(b: Row) {
     focus_cap: b.focusCap, shield: b.shield, intent: b.intentJson && b.status === "active" ? J(b.intentJson, null) : null,
     relics: [...relicsOf(boss)].sort(), heavy_cost: heavyCost(boss), question_issued: b.status === "active" && b.currentSeq !== null,
     free_timewarp: relicsOf(boss).has("hourglass") && !boss.mods?.hourglass_used, mechanic: mechanicHud(boss, b.difficulty),
-    kit: boss.kit ? kits.kitHud(boss.kit) : null,
+    kit: boss.kit ? kits.kitHud(boss.kit) : null, tier: boss.tier ?? 1, bane: tome.baneHud(boss),
     ...(b.status !== "active" ? { result: J(b.resultJson, {}), rewards: J(b.rewardsJson, null) } : {}),
   };
 }
@@ -170,10 +174,18 @@ async function docsFor(ctx: RequestContext, userId: number, sessionId: string) {
 
 // ── creating ─────────────────────────────────────────────────────────────────────────────────────────────────
 /** The boss for a fight: instant (a bestiary creature from the topic); its topic lines come later (enrich). */
-export async function newBoss(topic: string, difficulty: string): Promise<Boss> {
-  const boss = sanitizeBoss(baseBoss(await pickSpecies(topic), topic, difficulty), difficulty);
+export async function newBoss(topic: string, difficulty: string, open: Set<string> | null = null): Promise<Boss> {
+  const { species, wanted } = await summon(topic, open);
+  const boss = sanitizeBoss(baseBoss(species, topic, difficulty), difficulty);
   Object.assign(boss, { current_hp: boss.max_hp, phase: 1, rage: false, asked_concepts: [], rounds_fought: 0, total_damage_taken: 0, total_damage_dealt: 0, flavor_pending: true });
+  // a locked creature the topic called for (the Bestiary page remembers it); not part of the boss shown to the player
+  if (wanted !== species) Object.defineProperty(boss, "wanted", { value: wanted, enumerable: false });
   return boss;
+}
+
+/** The creatures a topic may summon for this player (the Bestiary's open tiers). */
+export async function summonable(ctx: RequestContext, userId: number): Promise<Set<string>> {
+  return tome.openSpecies(await tome.records(ctx, userId));
 }
 
 export async function createBattle(ctx: RequestContext, userId: number, o: {
@@ -181,12 +193,17 @@ export async function createBattle(ctx: RequestContext, userId: number, o: {
   hearts?: number | null; maxHearts?: number | null; mods?: Record<string, unknown>; hpScale?: number; targets?: string[] | null; focusCap?: number;
 }): Promise<Row> {
   const boss = sanitizeBoss({ ...o.boss }, o.difficulty);
-  boss.max_hp = Math.round(boss.max_hp * (HP_PACING[o.difficulty] ?? 2.6) * (o.hpScale ?? 1));
+  // Bestiary tier: more HP (and, through boss.tier, less time and harder blows); the bane shows once it is known.
+  boss.tier = tome.tierOf(String(boss.species ?? ""));
+  boss.bane_known = tome.baneKnown((await tome.records(ctx, userId)).get(String(boss.species ?? "")));
+  if (o.boss.wanted && o.boss.wanted !== boss.species) await tome.noteTeaser(ctx, userId, o.boss.wanted, o.topic);
+  boss.max_hp = Math.round(boss.max_hp * (HP_PACING[o.difficulty] ?? 2.6) * (o.hpScale ?? 1) * (tome.TIER_HP[boss.tier as 1 | 2 | 3 | 4] ?? 1));
   boss.difficulty = o.difficulty;
   boss.current_hp = boss.max_hp;
   const avatar = await getAvatar(ctx, userId);
   boss.gear = gearFor(avatar.equipped);
-  boss.kit = kits.initKit(avatar.championId);
+  // fighting with the champion's own mastery weapon: a small perk, its own animations and a finisher (kits.SIGNATURES)
+  boss.kit = kits.initKit(avatar.championId, kits.hasSignature(kits.kitFor(avatar.championId).champion, avatar.equipped));
   const mods: Record<string, any> = { ...(o.mods ?? {}) };
   mods.relics ??= [];
   Object.assign(mods, { aegis_used: false, hourglass_used: false });
@@ -237,9 +254,10 @@ async function storeBatch(ctx: RequestContext, battleId: string, phase: number, 
     (concepts.has(ck) && !nemesis ? repeats : fresh).push([ck, tk, q]);
     concepts.add(ck); texts.add(tk);
   }
-  for (const [ck, tk, q] of fresh.length ? fresh : repeats) {
-    await ctx.db.insert(arenaQuestions).values({ battleId, seq: next++, phase, conceptKey: ck, textKey: tk, questionJson: JSON.stringify(q) }).onConflictDoNothing();
-  }
+  // The new questions in one round trip (a D1 batch), one statement each (D1 allows 100 bound parameters per statement).
+  const inserts = (fresh.length ? fresh : repeats).map(([ck, tk, q]) =>
+    ctx.db.insert(arenaQuestions).values({ battleId, seq: next++, phase, conceptKey: ck, textKey: tk, questionJson: JSON.stringify(q) }).onConflictDoNothing());
+  if (inserts.length) await ctx.db.batch(inserts as [typeof inserts[number], ...typeof inserts]);
   const col = phase === 1 ? arenaBattles.genAttempts1 : arenaBattles.genAttempts2;
   await ctx.db.update(arenaBattles).set({ [phase === 1 ? "genAttempts1" : "genAttempts2"]: sql`${col} + 1` }).where(eq(arenaBattles.id, battleId));
 }
@@ -465,6 +483,8 @@ async function resolve(ctx: RequestContext, player: Player, b: Row, q: QRow, pic
   const rage = () => {
     if (boss.current_hp < boss.max_hp * (boss.rage_threshold ?? 0.4) && (boss.phase ?? 1) === 1) { boss.phase = 2; boss.rage = true; phaseChanged = true; }
   };
+  // The creature's bane (tome.ts): these moves, answered right in a row, stagger it: x1.5 and it loses its turn.
+  const baneHit = tome.trackBane(boss, move, correct);
   if (correct) {
     combo += 1;
     const hit = playerHit(boss, combo, kt.comboExtra);
@@ -472,6 +492,7 @@ async function resolve(ctx: RequestContext, player: Player, b: Row, q: QRow, pic
     if (weak) dealt *= relics.has("scholar_lens") ? 3 : 2;
     const moveMult = move === "jab" && kt.jabMult ? kt.jabMult : MOVES[move].mult;
     dealt = Math.trunc(dealt * moveMult * turn.mult * kt.mult);
+    if (baneHit) dealt = Math.trunc(dealt * tome.BANE_MULT);
     if (dealt > 0) {
       const gear = boss.gear ?? {};
       const weaponBonus = Math.round(dealt * Number(gear.damage_pct ?? 0));
@@ -493,7 +514,7 @@ async function resolve(ctx: RequestContext, player: Player, b: Row, q: QRow, pic
   let taunt: string;
   if (boss.current_hp > 0) {
     const kind = intent.kind;
-    if (turn.skip) { /* takes aim / stunned */ }
+    if (turn.skip || baneHit) { /* takes aim / stunned / staggered by its bane */ }
     else if (DAMAGING_KINDS.includes(kind)) {
       const value = Number(intent.value ?? 0) + turn.bossBonus;
       attackName = intent.name;
@@ -557,6 +578,7 @@ async function resolve(ctx: RequestContext, player: Player, b: Row, q: QRow, pic
     damage_taken: taken, attack_name: attackName, taunt, phase_changed: phaseChanged, combo, gear_bonus: gearBonus, pet_strike: petStrike,
     intent, next_intent: nextIntent, blocked, interrupted, shield_absorbed: absorbed, boss_healed: healed, focus, focus_gained: focusGained,
     focus_drained: drained, aegis, revived, lifesteal, dodged, riposte, kit_meter_gained: meterGained,
+    bane: baneHit ? { landed: true, found: false } : null,
     kit: { events: kt.events, refund: kt.refund, hud: kits.kitHud(kstate) },
     mechanic: mech ? { id: mech.id, events: turn.events, boss_healed: mechHeal, damage: mechDamage, hearts: turn.hearts, focus: turn.focusDelta,
                        shield: boss.current_hp > 0 ? turn.shield : 0, illusion_picked: turn.illusionPicked, hud: mechanicHud(boss, b.difficulty) } : null,
@@ -570,6 +592,18 @@ async function resolve(ctx: RequestContext, player: Player, b: Row, q: QRow, pic
     focus, shield, intentJson: nextIntent ? JSON.stringify(nextIntent) : b.intentJson, updatedAt: iso(now),
   }).where(eq(arenaBattles.id, battleId));
   await recordMastery(ctx, b.userId, b.docHash, question.concept, correct, { source: "arena", question: { question: question.question, correct_answer: correctOption, explanation: question.explanation } });
+  if (baneHit) {
+    // landed before it was written in: the player worked it out (paid once, with an achievement check)
+    const { found } = await tome.baneLanded(ctx, b.userId, String(boss.species ?? ""));
+    await scrolls.scrollEvent(ctx, b.userId, ["bane_landed", `bane_as:${kstate.champion}`]);
+    if (found) {
+      outcome.bane = { landed: true, found: true };
+      const newly = await checkAchievements(ctx, b.userId);
+      if (newly.length) (outcome as Record<string, unknown>).new_achievements = newly;
+      await ctx.db.update(arenaQuestions).set({ outcomeJson: JSON.stringify(outcome) })
+        .where(and(eq(arenaQuestions.battleId, battleId), eq(arenaQuestions.seq, q.seq)));
+    }
+  }
   if (boss.current_hp <= 0) await end(ctx, player, battleId, "won");
   else if (playerHp <= 0 || answered >= MAX_ANSWERS) await end(ctx, player, battleId, "lost");
   return outcome;
@@ -633,6 +667,26 @@ export async function end(ctx: RequestContext, player: Player, battleId: string,
   const paid: Record<string, unknown> = { arena_round_complete: null, boss_defeat: null };
   const result: Record<string, unknown> = { grade, accuracy, time_seconds: seconds, new_personal_best: false, missed: await missed(ctx, battleId),
     champion: await championXp(ctx, player.id, b, status === "won") };
+  // the Bestiary: the record, first defeat, mastery, a newly opened tier (every mode counts, runs too)
+  const fought = String(J<Boss>(b.bossJson, {}).species ?? "");
+  const fight = await tome.recordFight(ctx, player.id, {
+    // flawless (no heart lost) counts toward gold mastery on hard or nightmare only
+    species: fought, won: status === "won", flawless: b.playerHp >= b.playerMaxHp && (b.difficulty === "hard" || b.difficulty === "nightmare"),
+    nightmare: b.difficulty === "nightmare", seconds, accuracy,
+  });
+  result.bestiary = fight;
+  // a finished Bestiary tier brings a champion (its ceremony plays on screen, from the roster)
+  if (fight?.tiers_finished.length) {
+    const joined = await roster.grantForTiers(ctx, player.id, fight.tiers_finished);
+    if (joined.length) result.champions_unlocked = joined;
+  }
+  if (status === "won") {
+    // the quest board: hunts, hard-fight trials, the champion's story
+    const fighter = String(J<Boss>(b.bossJson, {}).kit?.champion ?? "kaien");
+    await scrolls.scrollEvent(ctx, player.id, scrolls.fightEvents({ species: fought, difficulty: b.difficulty, champion: fighter }));
+    const newly = await checkAchievements(ctx, player.id);
+    if (newly.length) result.new_achievements = newly;
+  }
   if (b.runId) {
     if (onRunBattleEnd) result.run = await onRunBattleEnd(ctx, player, { ...b, status }, status);
   } else {

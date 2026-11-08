@@ -239,7 +239,12 @@ describe("the shop, potions and the avatar", () => {
     const b = await person(mail, "free@example.com", "free");
     const c0 = await json(await champion.GET(b.request("/api/v1/avatar/champion")));
     expect(c0).toMatchObject({ champion_id: "kaien", chosen: false, champions: ["kaien", "asha", "brak", "mira", "vex", "thorne"] });
-    expect(c0.progress.asha).toMatchObject({ level: 1, next_level_xp: 100, kit: { passive: { name: "Reach" } } });
+    expect(c0.progress.asha).toMatchObject({ level: 1, next_level_xp: 100, kit: { passive: { name: "Reach" } }, unlock: { unlocked: false } });
+    // a locked champion is refused until it joins (Stage C1: roster.test.ts)
+    const locked = await champion.PUT(b.request("/api/v1/avatar/champion", { method: "PUT", body: { champion_id: "asha" } }));
+    expect(locked.status).toBe(403);
+    expect((await json(locked)).error.code).toBe("champion_locked");
+    await p.env.DB.prepare("INSERT INTO champion_unlocks (user_id, champion_id, source, unlocked_at) VALUES (?, 'asha', 'tier1', '2026-11-08')").bind(Number(await uid(b))).run();
     const put = await champion.PUT(b.request("/api/v1/avatar/champion", { method: "PUT", body: { champion_id: "asha", loadout: { armor: "armor_gi_white", weapon: "weapon_dragon_blade" } } }));
     expect(await json(put)).toMatchObject({ champion_id: "asha", chosen: true, loadout: { armor: "armor_gi_white", weapon: null } });
     expect((await champion.PUT(b.request("/api/v1/avatar/champion", { method: "PUT", body: { champion_id: "nobody" } }))).status).toBe(422);

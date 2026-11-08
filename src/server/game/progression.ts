@@ -1,6 +1,8 @@
 // XP, coins, levels, streaks, daily quests, achievements and buffs (Stage 4.5; ports of backend/services/progression:
 // reward_service, streak_service, quest_service, achievement_service, buff_service). Every payout is one ledger
 // event with a unique key (store.recordRewardEvent), so nothing can be paid twice.
+import { scrollEvent } from "./scrolls";
+import { bestiaryStats } from "./tome";
 import { and, eq, sql } from "drizzle-orm";
 import type { RequestContext } from "../context";
 import { dailyQuests, userAchievements, userBuffs } from "../db/schema";
@@ -99,7 +101,10 @@ export async function questsOnAction(ctx: RequestContext, p: Player, action: str
     case "exam_complete": await bump("complete_exams"); break;
     case "chat_question": await bump("ask_questions"); break;
   }
+  // the quest board's weekly trials count the same actions (scrolls.ts)
+  if (SCROLL_ACTIONS.has(action)) await scrollEvent(ctx, p.id, [action]);
 }
+const SCROLL_ACTIONS = new Set(["quiz_complete", "boss_defeat", "notes_generation", "flashcard_complete", "review_card", "exam_complete"]);
 
 /** Being active today (the "keep your streak" quest), with today's quests made first. */
 export async function markActive(ctx: RequestContext, p: Player, progress?: Progress) {
@@ -108,7 +113,8 @@ export async function markActive(ctx: RequestContext, p: Player, progress?: Prog
 }
 
 // ── achievements ─────────────────────────────────────────────────────────────────────────────────────────────
-function statValue(p: Progress, type: string): number {
+function statValue(p: Progress, type: string, extra: Record<string, number> = {}): number {
+  if (type in extra) return extra[type];
   switch (type) {
     case "total_quizzes_completed": return p.totalQuizzesCompleted;
     case "streak_days": return p.streakDays;
@@ -126,7 +132,9 @@ export async function checkAchievements(ctx: RequestContext, userId: number) {
   for (let pass = 0; pass < 5; pass++) {
     const p = await getProgress(ctx, userId);
     const have = new Set((await ctx.db.select({ id: userAchievements.achievementId }).from(userAchievements).where(eq(userAchievements.userId, userId)).all()).map((r) => r.id));
-    const due = ACHIEVEMENTS.filter((a: AchievementDef) => !have.has(a.id) && statValue(p, a.unlock_type) >= a.threshold);
+    // Bestiary achievements count banes found alone and creatures beaten (read only when one is still open)
+    const extra = ACHIEVEMENTS.some((a: AchievementDef) => !have.has(a.id) && a.unlock_type.startsWith("bestiary_")) ? await bestiaryStats(ctx, userId) : {};
+    const due = ACHIEVEMENTS.filter((a: AchievementDef) => !have.has(a.id) && statValue(p, a.unlock_type, extra) >= a.threshold);
     if (!due.length) break;
     const cosmetics: string[] = [];
     for (const a of due) {

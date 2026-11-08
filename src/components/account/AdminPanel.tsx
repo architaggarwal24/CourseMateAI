@@ -6,6 +6,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Ban, Crown, Search, ShieldCheck, Sparkles, Ticket, UserCog } from "@/components/icons";
 import { Badge, Button, Card, EmptyState, Input, Modal, Select, Skeleton, toast } from "@/components/ui";
 import { useAuth } from "@/contexts/AuthContext";
+import AiModelsCard from "./AiModels";
 import { adminApi, shortDate, TIER_OPTIONS, usd, type AdminUser, type AiReport, type Invite, type Tier } from "@/lib/admin/adminApi";
 
 const PAGE = 25;
@@ -354,6 +355,7 @@ export default function AdminPanel() {
       </div>
       <Users isOwnerActor={!!user.is_owner} />
       <AiSpend />
+      <AiModelsCard />
       <Invites />
     </div>
   );

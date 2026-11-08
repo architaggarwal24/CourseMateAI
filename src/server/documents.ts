@@ -89,18 +89,32 @@ export async function courseMembers(ctx: RequestContext, courseId: string): Prom
 
 /** GET /documents/{id}: a document the user owns, or a course of theirs seen as one document. */
 export async function getDocumentOrCourse(ctx: RequestContext, user: CurrentUser, id: string) {
-  const row = await ctx.db.select().from(documents).where(eq(documents.id, id)).get();
+  const found = await resolveDocumentOrCourse(ctx, user, id);
+  if (found.kind === "course") return courseView(found.course, found.members);
+  return publicView(found.row, (await pinnedIds(ctx, [found.row.id])).has(found.row.id));
+}
+
+/**
+ * An id the user owns, as a document (settled) or a course (with its documents): one round trip asks for both kinds
+ * at once (a D1 batch) instead of a document miss followed by a course read.
+ */
+export async function resolveDocumentOrCourse(ctx: RequestContext, user: CurrentUser, id: string):
+  Promise<{ kind: "document"; row: DocumentRow } | { kind: "course"; course: typeof courses.$inferSelect; members: DocumentRow[] }> {
+  const [docRows, courseRows] = await ctx.db.batch([
+    ctx.db.select().from(documents).where(eq(documents.id, id)).limit(1),
+    ctx.db.select().from(courses).where(eq(courses.id, id)).limit(1),
+  ]);
+  const row = docRows[0];
   if (!row) {
-    const course = await ctx.db.select().from(courses).where(eq(courses.id, id)).get();
+    const course = courseRows[0];
     if (course && course.userId === user.id) {
       requireFeature(await tierFor(ctx.db, user), "courses");
-      return courseView(course, await courseMembers(ctx, course.id));
+      return { kind: "course", course, members: await courseMembers(ctx, course.id) };
     }
     throw notFound();
   }
   if (row.userId !== user.id) throw notFound();
-  const settled = await settleStale(ctx, row);
-  return publicView(settled, (await pinnedIds(ctx, [row.id])).has(row.id));
+  return { kind: "document", row: await settleStale(ctx, row) };
 }
 
 function cleanFilename(name: unknown): string {

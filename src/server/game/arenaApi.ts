@@ -67,7 +67,8 @@ export async function createBattle(ctx: RequestContext, user: CurrentUser, playe
     }
     throw new HttpError(409, "battle_in_progress", "You already have a battle running for this document. Finish or forfeit it first.", null, { battle_id: existing.id });
   }
-  const boss = await arena.newBoss(topic, difficulty);
+  // only creatures whose Bestiary tier is open answer a topic (a locked one sends the closest open creature)
+  const boss = await arena.newBoss(topic, difficulty, await arena.summonable(ctx, user.id));
   const b = await arena.createBattle(ctx, user.id, { sessionId, docHash: study.hash, topic, difficulty, boss, mode, targets });
   await markActive(ctx, player);
   arena.prefetch(ctx, caller, b.id, user.id);
@@ -137,7 +138,7 @@ export async function travel(ctx: RequestContext, user: CurrentUser, runId: stri
   const nodeId = String(body.node_id ?? "");
   const plan = await exp.planTravel(ctx, user.id, runId, nodeId);
   const caller = await callerFor(ctx, user);
-  const boss = plan.fight ? await arena.newBoss(plan.topic!, plan.difficulty) : null;
+  const boss = plan.fight ? await arena.newBoss(plan.topic!, plan.difficulty, await arena.summonable(ctx, user.id)) : null;
   const result = await exp.travel(ctx, user.id, runId, nodeId, boss);
   const battleId = (result as { battle_id?: unknown }).battle_id;
   if (typeof battleId === "string") { arena.prefetch(ctx, caller, battleId, user.id); arena.enrich(ctx, caller, battleId, user.id); }

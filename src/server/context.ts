@@ -1,5 +1,5 @@
 // What a Worker route needs for one request: the bindings, the database, Better Auth, and who is signed in.
-import { eq } from "drizzle-orm";
+import { eq, getTableColumns } from "drizzle-orm";
 import { createAuth, isOwner, type Auth, type AuthSettings } from "./auth";
 import { createMailer, type Mailer } from "./auth/mailer";
 import { getDb, type Db } from "./db";
@@ -50,10 +50,29 @@ export interface CurrentUser {
   admin: boolean;
 }
 
+const USER_COLUMNS = Object.keys(getTableColumns(userTable)) as (keyof UserRow)[];
+
+/**
+ * The account row out of the session Better Auth just read: it fetched the user (every column: its own fields, the
+ * plugins' and our `timezone`) a moment ago, so reading it again is a wasted D1 round trip on every request. If a
+ * column is ever missing (a field Better Auth doesn't know), null, and the caller reads the table as before.
+ */
+export function rowFromSessionUser(u: Record<string, unknown>): UserRow | null {
+  const row: Record<string, unknown> = {};
+  for (const k of USER_COLUMNS) {
+    if (!(k in u)) return null;
+    row[k] = u[k] ?? null;
+  }
+  const id = Number(u.id);
+  if (!Number.isInteger(id)) return null;
+  return { ...row, id } as UserRow;
+}
+
 export async function currentUser(req: Request, ctx: RequestContext): Promise<CurrentUser | null> {
   const s = await ctx.auth.api.getSession({ headers: req.headers });
   if (!s?.user) return null;
-  const row = await ctx.db.select().from(userTable).where(eq(userTable.id, Number(s.user.id))).get();
+  const row = rowFromSessionUser(s.user as unknown as Record<string, unknown>)
+    ?? await ctx.db.select().from(userTable).where(eq(userTable.id, Number(s.user.id))).get();
   if (!row) return null;
   const owner = isOwner(row, ctx.settings);
   return { id: row.id, row, owner, admin: owner || row.role === "admin" };

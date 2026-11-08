@@ -12,7 +12,7 @@ import { and, desc, eq, inArray, ne, sql } from "drizzle-orm";
 import type { CurrentUser, RequestContext } from "./context";
 import { paymentEvents, subscriptions, userPlans } from "./db/schema";
 import { HttpError } from "./http";
-import { PLANS, TIER_NAMES, type Tier } from "./plans";
+import { PLANS, TIER_NAMES, forgetTier, type Tier } from "./plans";
 
 export const GRACE_DAYS = 3;
 const PERIOD_DAYS: Record<string, number> = { month: 30, year: 365 };
@@ -222,6 +222,7 @@ async function syncPlan(ctx: RequestContext, row: Sub) {
       set: { tier: row.tier as Tier, source: "subscription", sourceRef: row.id, expiresAt: iso(expires), updatedAt: t,
              startedAt: sql`CASE WHEN ${userPlans.sourceRef} = ${row.id} THEN ${userPlans.startedAt} ELSE ${t} END` },
     });
+  forgetTier(ctx.db, row.userId);
 }
 
 /** Switching plans: the user's other live subscriptions are cancelled now (best effort). */

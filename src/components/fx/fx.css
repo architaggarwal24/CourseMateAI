@@ -39,3 +39,21 @@
 }
 html.reduce-animations .fx-ripple,
 html.reduce-animations .fx-spark { display: none; }
+
+/* Entrances that run from the first paint, in CSS, so server-rendered content never waits invisible for the
+ * JavaScript to load (motion/react would render it at opacity 0 until hydration). Per element:
+ * --fx-delay, --fx-dur, --fx-x, --fx-y. Reduced motion (OS or the in-app switch, globals.css) makes them instant. */
+.fx-rise {
+  animation: fx-rise var(--fx-dur, 600ms) var(--ease-out-expo) var(--fx-delay, 0ms) both;
+}
+@keyframes fx-rise {
+  from { opacity: 0; transform: translate(var(--fx-x, 0), var(--fx-y, 8px)); }
+}
+/* TextReveal: each word rises out of a soft blur. */
+.fx-word {
+  display: inline-block;
+  animation: fx-word 700ms var(--ease-out-expo) var(--fx-delay, 0ms) both;
+}
+@keyframes fx-word {
+  from { opacity: 0; transform: translateY(0.45em); filter: blur(8px); }
+}

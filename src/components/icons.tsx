@@ -34,6 +34,7 @@ import {
   ChevronUpDownIcon as HChevronUpDown,
   CircleStackIcon as HCircleStack,
   ClockIcon as HClock,
+  CpuChipIcon as HCpuChip,
   Cog6ToothIcon as HCog6Tooth,
   ComputerDesktopIcon as HComputerDesktop,
   CreditCardIcon as HCreditCard,
@@ -177,6 +178,7 @@ export const ChevronsRight = hero(HChevronDoubleRight, "ChevronsRight");
 export const ChevronsUpDown = hero(HChevronUpDown, "ChevronsUpDown");
 export const CircleHelp = hero(HQuestionMarkCircle, "CircleHelp");
 export const Clock = hero(HClock, "Clock");
+export const Cpu = hero(HCpuChip, "Cpu");
 export const Copy = hero(HDocumentDuplicate, "Copy");
 export const CreditCard = hero(HCreditCard, "CreditCard");
 export const Database = hero(HCircleStack, "Database");

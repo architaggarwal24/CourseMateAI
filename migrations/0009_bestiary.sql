@@ -1,0 +1,20 @@
+CREATE TABLE `bestiary_records` (
+	`user_id` integer NOT NULL,
+	`species` text NOT NULL,
+	`fights` integer DEFAULT 0 NOT NULL,
+	`wins` integer DEFAULT 0 NOT NULL,
+	`losses` integer DEFAULT 0 NOT NULL,
+	`flawless_wins` integer DEFAULT 0 NOT NULL,
+	`nightmare_wins` integer DEFAULT 0 NOT NULL,
+	`best_seconds` integer,
+	`best_accuracy` integer,
+	`bane_found` integer DEFAULT false NOT NULL,
+	`bane_uses` integer DEFAULT 0 NOT NULL,
+	`teaser_topic` text,
+	`first_win_at` text,
+	`last_fought_at` text,
+	`mastery_paid` text DEFAULT 'none' NOT NULL,
+	`updated_at` text NOT NULL,
+	PRIMARY KEY(`user_id`, `species`),
+	FOREIGN KEY (`user_id`) REFERENCES `user`(`id`) ON UPDATE no action ON DELETE cascade
+);

@@ -27,7 +27,8 @@ import { localPlatform, type LocalPlatform } from "../test/platform";
 import { fakeEmbedder, fakeVectors } from "../test/search-fakes";
 import { AI_ENV, fakeLlms } from "../test/ai-fakes";
 import { params, person, uploadPdf } from "../test/flows";
-import { CREATURES, pickSpecies } from "./bestiary";
+import { CREATURES, pickSpecies, summon } from "./bestiary";
+import { openSpecies } from "./tome";
 import { playerHit, rollIntent } from "./boss";
 import { buildMap } from "./expedition";
 import * as kits from "./kits";
@@ -128,7 +129,8 @@ describe("a battle", () => {
     const s = await start(b, id);
     expect(s).toMatchObject({ ok: true, resumed: false, battle: { status: "active", player: { hp: 10, max_hp: 10 }, focus: 0, intent: expect.any(Object) } });
     expect(JSON.stringify(s)).not.toContain("correct_answer");
-    expect(s.boss.species).toBe(await pickSpecies("mitochondria"));
+    // a new player's Bestiary has tier I open only: the topic's creature, or the closest open one standing in
+    expect(s.boss.species).toBe((await summon("mitochondria", openSpecies(new Map()))).species);
     const again = await start(b, id);
     expect(again).toMatchObject({ resumed: true, battle_id: s.battle_id });
     expect((await battles.POST(post(b, "/api/v1/arena/battles", { session_id: id, topic: "membranes", difficulty: "easy" }))).status).toBe(409);

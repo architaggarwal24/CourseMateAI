@@ -7,13 +7,23 @@ export interface SkeletonProps extends HTMLAttributes<HTMLSpanElement> {
   circle?: boolean;
 }
 
-/** A placeholder block while content loads. Decorative: hidden from screen readers (label the region instead). */
-export default function Skeleton({ width = "100%", height = "1rem", circle, className, style, ...rest }: SkeletonProps) {
+/** True when the classes set this dimension (h-[360px], w-full ...): then the inline default must not override them. */
+const sizedBy = (className: string | undefined, prefix: "h-" | "w-") =>
+  !!className && className.split(/\s+/).some((c) => c.startsWith(prefix));
+
+/**
+ * A placeholder block while content loads. Decorative: hidden from screen readers (label the region instead).
+ * Size it with the width / height props or with Tailwind classes; a class wins over the defaults (an inline style
+ * would otherwise beat it and leave a 1rem sliver, so the page jumps when the content arrives).
+ */
+export default function Skeleton({ width, height, circle, className, style, ...rest }: SkeletonProps) {
+  const w = width ?? (sizedBy(className, "w-") ? undefined : "100%");
+  const h = height ?? (sizedBy(className, "h-") ? undefined : "1rem");
   return (
     <span
       aria-hidden="true"
       className={cn("ui-skeleton", circle && "ui-skeleton--circle", className)}
-      style={{ width, height, ...style }}
+      style={{ ...(w !== undefined && { width: w }), ...(h !== undefined && { height: h }), ...style }}
       {...rest}
     />
   );

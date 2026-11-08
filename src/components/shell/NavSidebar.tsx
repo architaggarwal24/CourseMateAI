@@ -12,7 +12,7 @@ import { useShortcutLabel } from "@/hooks/useShortcutLabel";
 import { isSidebarCollapsed, SIDEBAR_EVENT, toggleSidebar } from "@/lib/sidebar";
 import { ROUTES } from "@/lib/routes";
 import ReviewBadge from "./ReviewBadge";
-import { openCommandPalette } from "./CommandPalette";
+import { openCommandPalette } from "./CommandPaletteLoader";
 
 const subscribe = (cb: () => void) => { window.addEventListener(SIDEBAR_EVENT, cb); return () => window.removeEventListener(SIDEBAR_EVENT, cb); };
 /** Collapsed or not (on <html data-sidebar>, set before first paint); the server renders it expanded. */

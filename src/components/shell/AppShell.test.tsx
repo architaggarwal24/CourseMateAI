@@ -10,7 +10,7 @@ vi.mock("next/navigation", () => ({
 vi.mock("@/contexts/AuthContext", () => ({ useAuth: () => ({ loading: false, user: null }) }));
 vi.mock("./NavSidebar", () => ({ default: () => <aside data-testid="side" /> }));
 vi.mock("./BottomNav", () => ({ default: () => <nav data-testid="bottom" /> }));
-vi.mock("./CommandPalette", () => ({ default: () => null }));
+vi.mock("./CommandPaletteLoader", () => ({ default: () => null, openCommandPalette: () => {} }));
 
 import AppShell from "./AppShell";
 

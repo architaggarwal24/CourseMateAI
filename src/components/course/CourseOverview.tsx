@@ -41,7 +41,13 @@ export default function CourseOverview({ course, onEdit }: { course: Course; onE
             <>
               <section aria-labelledby="course-progress-title">
                 <h3 id="course-progress-title" className="course-h">Progress</h3>
-                {!p ? <Skeleton className="h-[92px] w-full rounded-[var(--radius-lg)]" aria-label="Loading progress" /> : (
+                {/* The same grid as the tiles (4 across, 2 on a phone) at a tile's height, so nothing below moves when
+                    the numbers arrive. (Skeleton's own inline height wins over a class: it is passed as a prop.) */}
+                {!p ? (
+                  <div className="course-tiles" aria-label="Loading progress" role="status">
+                    {[0, 1, 2, 3].map((i) => <Skeleton key={i} height="var(--course-tile-h)" className="rounded-[var(--radius-lg)]" />)}
+                  </div>
+                ) : (
                   <dl className="course-tiles">
                     <Card pad="sm" className="course-tile"><dt>Concepts mastered <span>({p.concepts.strong ?? 0} of {p.concepts.seen ?? 0})</span></dt><dd>{pct(p.mastery)}</dd></Card>
                     <Card pad="sm" className="course-tile"><dt>Right answers <span>({p.answers.correct ?? 0} of {p.answers.total ?? 0})</span></dt><dd>{pct(p.answers.accuracy)}</dd></Card>

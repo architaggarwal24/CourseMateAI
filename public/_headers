@@ -1,0 +1,19 @@
+# Cache rules for the files Cloudflare serves straight from Workers Static Assets (they never reach the Worker, so
+# the headers in next.config.ts don't apply to them).
+# https://developers.cloudflare.com/workers/static-assets/headers
+# https://opennext.js.org/cloudflare/caching#static-assets-caching
+
+# Build output: every file name carries a hash of its content, so it can be kept for a year and never re-checked.
+/_next/static/*
+  Cache-Control: public, max-age=31536000, immutable
+
+# The service worker must never be cached, so a new version reaches everyone on their next visit.
+/sw.js
+  Cache-Control: no-cache, no-store, must-revalidate
+  Content-Security-Policy: default-src 'self'; script-src 'self'
+
+# App icons keep their names when the logo changes: a day, then the browser checks again.
+/icons/*
+  Cache-Control: public, max-age=86400
+/favicon.ico
+  Cache-Control: public, max-age=86400

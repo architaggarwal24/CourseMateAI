@@ -4,7 +4,8 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { BookOpen, Coins, Crown, Sparkles, Trophy } from "@/components/icons";
 import ItemArt from "@/components/champion/ItemArt";
-import { useChampion } from "@/hooks/useChampion";
+import ChampionCeremony from "@/components/champion/ChampionCeremony";
+import { ceremonyDue, useChampion } from "@/hooks/useChampion";
 import { useHeroStore } from "@/hooks/useHero";
 import { heroById } from "@/lib/pixel/heroes";
 import { ROUTES } from "@/lib/routes";
@@ -82,6 +83,8 @@ export default function ResultPanel({ battle, rewards, retreated, bossName, onAg
       )}
 
       <ChampionXpLine battle={battle} />
+      <BestiaryLine battle={battle} />
+      <JoinedLine battle={battle} />
 
       {entries.length > 0 && (
         <ol className="arena-board w-full text-left">
@@ -147,6 +150,48 @@ function ChampionXpLine({ battle }: { battle: Battle }) {
             </li>
           ))}
         </ul>
+      )}
+    </section>
+  );
+}
+
+const ROMAN = ["", "I", "II", "III", "IV"];
+const MASTERY = { none: "", bronze: "Bronze", silver: "Silver", gold: "Gold" } as const;
+
+/** A champion this win brought (a Bestiary tier finished): their ceremony, when the player is ready for it. */
+function JoinedLine({ battle }: { battle: Battle }) {
+  const joined = battle.result?.champions_unlocked ?? [];
+  const load = useChampion((s) => s.load);
+  const due = useChampion((s) => ceremonyDue(s.progress));
+  const [meet, setMeet] = useState(false);
+  // the roster learns about the new champion (the ceremony reads it from there)
+  useEffect(() => { if (joined.length) void load({ signedIn: true, force: true }); }, [joined.length, load]);
+  if (!joined.length) return null;
+  const names = joined.map((id) => heroById(id).name).join(" and ");
+  return (
+    <section className="arena-result__joined" aria-label="A champion joins you">
+      <p className="pixel-font">{names} {joined.length > 1 ? "join" : "joins"} you!</p>
+      {due && <Button variant="primary" size="sm" onClick={() => setMeet(true)}>Meet {heroById(due).name}</Button>}
+      {meet && due && <ChampionCeremony />}
+    </section>
+  );
+}
+
+/** What the fight wrote in the Bestiary: a first defeat, a mastery step, a newly opened tier. */
+function BestiaryLine({ battle }: { battle: Battle }) {
+  const b = battle.result?.bestiary;
+  if (!b || (!b.first_win && !b.mastery_up && !b.tier_opened)) return null;
+  const name = battle.boss.name;
+  return (
+    <section className="arena-result__bestiary" aria-label="Bestiary">
+      {b.first_win && <p>A new page: the {name} is written in your Bestiary, and its bane revealed.</p>}
+      {b.mastery_up && b.mastery_up !== "bronze" && <p>{MASTERY[b.mastery_up]} mastery of the {name}.</p>}
+      {b.tier_opened && <p className="pixel-font">Tier {ROMAN[b.tier_opened]} awakens: new creatures answer your summons.</p>}
+      {(b.rewards.xp > 0 || b.rewards.coins > 0) && (
+        <p className="arena-result__rewards">
+          {b.rewards.xp > 0 && <Badge tone="accent"><Sparkles size={12} aria-hidden="true" />+{b.rewards.xp} XP</Badge>}
+          {b.rewards.coins > 0 && <Badge tone="reward"><Coins size={12} aria-hidden="true" />+{b.rewards.coins} coins</Badge>}
+        </p>
       )}
     </section>
   );

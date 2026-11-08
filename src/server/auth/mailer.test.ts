@@ -22,6 +22,8 @@ describe("createMailer", () => {
     expect(url).toBe("https://api.resend.com/emails");
     expect(init.headers.authorization).toBe("Bearer re_x");
     expect(JSON.parse(init.body)).toMatchObject({ from: "no-reply@x.io", to: ["a@x.io"] });
+    // Performance pass: a slow mail service gives up instead of holding the sign-up request open.
+    expect(init.signal).toBeInstanceOf(AbortSignal);
   });
 
   it("reports a refused email", async () => {

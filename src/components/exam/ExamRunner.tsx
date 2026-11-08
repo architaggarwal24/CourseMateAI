@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useLayoutEffect } from "react";
 import { ArrowLeft, ArrowRight, Clock, Flag, Send } from "@/components/icons";
 import { Button, Modal, toast } from "@/components/ui";
 import { useCountdown } from "@/hooks/useCountdown";
@@ -65,7 +65,8 @@ export default function ExamRunner({ exam, onSubmit, submitting }: { exam: Exam;
 
   const live = useRef({ pick, toggleFlag, go, index, q, confirm });
   live.current = { pick, toggleFlag, go, index, q, confirm };
-  useEffect(() => {
+  // A layout effect: bound before the screen paints, so a key pressed the moment it shows is never missed.
+  useLayoutEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const l = live.current;
       if (l.confirm || shortcutBlocked(e) || !l.q) return;

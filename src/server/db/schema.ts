@@ -420,6 +420,32 @@ export const userAvatar = sqliteTable("user_avatar", {
   updatedAt: text("updated_at").notNull(),
 });
 
+/** The Bestiary (Stage B1): what one player has done against each creature. Tiers open from wins (server/game/tome.ts). */
+export const bestiaryRecords = sqliteTable("bestiary_records", {
+  userId: integer("user_id").notNull().references(() => user.id, { onDelete: "cascade" }),
+  species: text("species").notNull(),
+  fights: integer("fights").notNull().default(0),
+  wins: integer("wins").notNull().default(0),
+  losses: integer("losses").notNull().default(0),
+  /** Won without losing a heart, on hard or nightmare (gold mastery). */
+  flawlessWins: integer("flawless_wins").notNull().default(0),
+  nightmareWins: integer("nightmare_wins").notNull().default(0),
+  bestSeconds: integer("best_seconds"),
+  bestAccuracy: integer("best_accuracy"),
+  /** Landed its bane combo before the first win (worked it out from the clue). */
+  baneFound: integer("bane_found", { mode: "boolean" }).notNull().default(false),
+  baneUses: integer("bane_uses").notNull().default(0),
+  /** A topic that would have summoned it while it was still locked (the page's teaser). */
+  teaserTopic: text("teaser_topic"),
+  firstWinAt: text("first_win_at"),
+  lastFoughtAt: text("last_fought_at"),
+  /** Mastery already paid out: none | bronze | silver | gold. */
+  masteryPaid: text("mastery_paid").notNull().default("none"),
+  /** Its lost page was found (a Hunt's reward, Stage Q1): the book shows the extra lore. */
+  lostPage: integer("lost_page", { mode: "boolean" }).notNull().default(false),
+  updatedAt: text("updated_at").notNull(),
+}, (t) => [primaryKey({ columns: [t.userId, t.species] })]);
+
 export const championProgress = sqliteTable("champion_progress", {
   userId: integer("user_id").notNull().references(() => user.id, { onDelete: "cascade" }),
   championId: text("champion_id").notNull(),
@@ -429,6 +455,37 @@ export const championProgress = sqliteTable("champion_progress", {
   wins: integer("wins").notNull().default(0),
   updatedAt: text("updated_at").notNull(),
 }, (t) => [primaryKey({ columns: [t.userId, t.championId] })]);
+
+/**
+ * Champions the player may fight as (Stage C1). Kaien needs no row. `source`: tier1..tier4 (a Bestiary tier
+ * finished), level (Thorne at player level 25) or kept (picked before champions were locked). The unlock ceremony
+ * sets celebrated_at once, with its reward.
+ */
+export const championUnlocks = sqliteTable("champion_unlocks", {
+  userId: integer("user_id").notNull().references(() => user.id, { onDelete: "cascade" }),
+  championId: text("champion_id").notNull(),
+  source: text("source").notNull(),
+  unlockedAt: text("unlocked_at").notNull(),
+  celebratedAt: text("celebrated_at"),
+}, (t) => [primaryKey({ columns: [t.userId, t.championId] })]);
+
+/**
+ * The quest board's scrolls beyond the daily quests (Stage Q1): weekly trials (period = the week, e.g. 2026-W45),
+ * Bestiary hunts and champion story chapters (period = ""). `event` is what moves it on (scrolls.ts); the seal
+ * breaks when it is claimed (claimed_at), paid once by its ledger key.
+ */
+export const questScrolls = sqliteTable("quest_scrolls", {
+  userId: integer("user_id").notNull().references(() => user.id, { onDelete: "cascade" }),
+  scrollId: text("scroll_id").notNull(),
+  period: text("period").notNull().default(""),
+  kind: text("kind").notNull(),
+  event: text("event").notNull(),
+  target: integer("target").notNull(),
+  progress: integer("progress").notNull().default(0),
+  createdAt: text("created_at").notNull(),
+  completedAt: text("completed_at"),
+  claimedAt: text("claimed_at"),
+}, (t) => [primaryKey({ columns: [t.userId, t.scrollId, t.period] }), index("quest_scrolls_event").on(t.userId, t.event)]);
 
 export const dailyActionCounts = sqliteTable("daily_action_counts", {
   userId: integer("user_id").notNull().references(() => user.id, { onDelete: "cascade" }),

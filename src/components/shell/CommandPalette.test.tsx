@@ -72,3 +72,28 @@ describe("the command menu", () => {
     localStorage.clear();
   });
 });
+
+// Performance pass (Stage P3): the palette's code (cmdk, the dialog) left the first load of every page. A small
+// loader listens for ⌘K / the search button and mounts the palette already open.
+describe("the palette loader", () => {
+  it("the first Ctrl+K loads the palette and opens it; the search button does the same", async () => {
+    const { default: CommandPaletteLoader, openCommandPalette } = await import("./CommandPaletteLoader");
+    const first = render(<CommandPaletteLoader />);
+    expect(screen.queryByRole("dialog")).toBeNull();
+    open();
+    expect(await screen.findByRole("dialog")).toBeTruthy();
+    expect(screen.getByText("Concept map")).toBeTruthy();
+    first.unmount();
+    render(<CommandPaletteLoader />);
+    act(() => openCommandPalette());
+    expect(await screen.findByRole("dialog")).toBeTruthy();
+  });
+
+  it("the app frame imports only the loader, never the palette itself", async () => {
+    const { readFileSync } = await import("node:fs");
+    const { join } = await import("node:path");
+    for (const f of ["AppShell.tsx", "NavSidebar.tsx"]) {
+      expect(readFileSync(join(__dirname, f), "utf8"), f).not.toMatch(/from "\.\/CommandPalette"/);
+    }
+  });
+});

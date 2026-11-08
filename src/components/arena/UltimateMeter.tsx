@@ -26,6 +26,9 @@ export default function UltimateMeter({ kit, onCast, disabled, busy, compact = f
         </Button>
       )}
       {!compact && <span className="sr-only">{kit.ultimate.text}</span>}
+      {!compact && kit.signature && (
+        <span className="arena-ult__sig" title={kit.signature.text}>Signature weapon · {kit.signature.name}<span className="sr-only">: {kit.signature.text}</span></span>
+      )}
     </div>
   );
 }

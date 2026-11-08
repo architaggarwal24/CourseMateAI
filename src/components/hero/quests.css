@@ -1,0 +1,55 @@
+/* The quest board (Stage Q1): quests as sealed scrolls. Flat: a rolled edge (thick top and bottom border), a wax seal
+   that cracks when the quest is done and splits when its reward is claimed. */
+.qboard { display: grid; gap: var(--space-6); }
+@media (min-width: 900px) { .qboard { grid-template-columns: minmax(0, 1fr) 18rem; align-items: start; } }
+.qboard__main { display: grid; gap: var(--space-6); min-width: 0; }
+.qboard__side { display: grid; gap: var(--space-6); align-content: start; }
+.qboard__title { margin: 0; font-size: 0.85rem; color: var(--color-text); }
+.qboard__note { margin: var(--space-1) 0 0; font-size: 0.8rem; color: var(--color-text-secondary); }
+.qboard__empty { margin: var(--space-3) 0 0; font-size: 0.85rem; color: var(--color-muted); }
+.qboard__list { display: grid; gap: var(--space-3); margin: var(--space-3) 0 0; padding: 0; list-style: none; }
+@media (min-width: 640px) { .qboard__list { grid-template-columns: repeat(auto-fill, minmax(17rem, 1fr)); } }
+
+.qscroll {
+  --seal: #9f1d1d;
+  position: relative; display: grid; grid-template-columns: auto minmax(0, 1fr); gap: var(--space-3);
+  padding: var(--space-4) var(--space-4) var(--space-4) var(--space-3);
+  background: var(--color-elevated); border: 1px solid var(--color-border);
+  border-top-width: 4px; border-bottom-width: 4px; border-radius: var(--radius-md);
+}
+.qscroll[data-kind="weekly"] { --seal: #1e40af; }
+.qscroll[data-kind="hunt"] { --seal: #166534; }
+.qscroll[data-kind="story"] { --seal: #6b21a8; }
+.qscroll[data-state="ready"] { border-color: var(--color-reward); }
+.qscroll[data-state="open"] { opacity: 0.8; }
+
+.qscroll__seal { position: relative; width: 2.5rem; height: 2.5rem; display: grid; place-items: center; color: #fff; }
+.qscroll__half {
+  position: absolute; top: 0; width: 50%; height: 100%; background: var(--seal);
+  transition: transform 450ms cubic-bezier(.3,.7,.4,1), opacity 450ms ease;
+}
+.qscroll__half--l { left: 0; border-radius: 999px 0 0 999px; }
+.qscroll__half--r { right: 0; border-radius: 0 999px 999px 0; }
+.qscroll__sigil { position: relative; }
+/* done: a crack down the middle (the two halves part by a hair) */
+.qscroll[data-state="ready"] .qscroll__half--l { transform: translateX(-1px) rotate(-3deg); }
+.qscroll[data-state="ready"] .qscroll__half--r { transform: translateX(1px) rotate(3deg); }
+/* breaking, then broken: the halves fall away */
+.qscroll[data-breaking] .qscroll__half--l, .qscroll[data-state="open"] .qscroll__half--l { transform: translate(-0.6rem, 0.5rem) rotate(-35deg); opacity: 0; }
+.qscroll[data-breaking] .qscroll__half--r, .qscroll[data-state="open"] .qscroll__half--r { transform: translate(0.6rem, 0.5rem) rotate(35deg); opacity: 0; }
+.qscroll[data-breaking] .qscroll__sigil, .qscroll[data-state="open"] .qscroll__sigil { color: var(--seal); }
+
+.qscroll__body { display: grid; gap: var(--space-2); min-width: 0; }
+.qscroll__kind { margin: 0; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--color-text-secondary); }
+.qscroll__title { margin: 0; font-size: 0.95rem; font-weight: 700; color: var(--color-text); }
+.qscroll__text { margin: 0; font-size: 0.82rem; color: var(--color-text-secondary); line-height: 1.45; }
+.qscroll__progress { display: flex; align-items: center; gap: var(--space-2); }
+.qscroll__bar { flex: 1; height: 0.4rem; border-radius: 2px; background: var(--color-surface-sunken); border: 1px solid var(--color-border); overflow: hidden; }
+.qscroll__bar > span { display: block; height: 100%; background: var(--color-reward); }
+.qscroll__count { font-size: 0.7rem; color: var(--color-text-secondary); }
+.qscroll__reward { display: flex; flex-wrap: wrap; gap: var(--space-1); margin: 0; }
+.qscroll__actions { display: flex; gap: var(--space-2); }
+.qscroll__done { font-size: 0.8rem; color: var(--color-text-secondary); }
+
+@media (prefers-reduced-motion: reduce) { .qscroll__half { transition: none; } }
+html.reduce-animations .qscroll__half { transition: none; }

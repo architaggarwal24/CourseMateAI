@@ -68,6 +68,10 @@ const OLD = [
   "src/components/fx/Spotlight.tsx",
   "src/components/fx/TiltCard.tsx",
   "src/components/fx/usePointerVars.ts",
+  // Performance pass: an empty leftover file
+  "src/hooks/useApi.ts",
+  // Stage Q1: the quest board's scrolls (components/hero/QuestScroll.tsx) replaced the old quest list
+  "src/components/QuestPanel.tsx",
 ];
 
 for (const rel of OLD) {

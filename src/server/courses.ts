@@ -117,26 +117,33 @@ export async function courseProgress(ctx: RequestContext, user: CurrentUser, id:
   const r = await row(ctx, user, id);
   const members = await courseMembers(ctx, r.id);
   const hashes = [...members.map((m) => m.fileHash), `course:${r.id}`];
-  const concepts = await ctx.db.select({
-    key: conceptMastery.conceptKey, concept: sql<string>`MAX(${conceptMastery.concept})`, seen: sql<number>`SUM(${conceptMastery.seen})`,
-    correct: sql<number>`SUM(${conceptMastery.correct})`, streak: sql<number>`MAX(${conceptMastery.wrongStreak})`,
-  }).from(conceptMastery).where(and(eq(conceptMastery.userId, user.id), inArray(conceptMastery.docHash, hashes))).groupBy(conceptMastery.conceptKey).all();
+  const t = new Date().toISOString().replace(/\.\d{3}Z$/, "Z");
+  const memberHashes = [...new Set(members.map((m) => m.fileHash))];
+  // Every read below in one round trip (a D1 batch); the per-document numbers are one grouped query, not one each.
+  const [concepts, cardRows, taken, docRows] = await ctx.db.batch([
+    ctx.db.select({
+      key: conceptMastery.conceptKey, concept: sql<string>`MAX(${conceptMastery.concept})`, seen: sql<number>`SUM(${conceptMastery.seen})`,
+      correct: sql<number>`SUM(${conceptMastery.correct})`, streak: sql<number>`MAX(${conceptMastery.wrongStreak})`,
+    }).from(conceptMastery).where(and(eq(conceptMastery.userId, user.id), inArray(conceptMastery.docHash, hashes))).groupBy(conceptMastery.conceptKey),
+    ctx.db.select({ total: count(), due: sql<number>`COALESCE(SUM(CASE WHEN ${reviewItems.due} <= ${t} AND ${reviewItems.reps} > 0 THEN 1 ELSE 0 END), 0)` })
+      .from(reviewItems).where(and(eq(reviewItems.userId, user.id), inArray(reviewItems.docHash, hashes))),
+    ctx.db.select({ id: exams.id, accuracy: exams.accuracy, submitted_at: exams.submittedAt }).from(exams)
+      .where(and(eq(exams.userId, user.id), inArray(exams.docHash, hashes), eq(exams.status, "graded"))).orderBy(desc(exams.submittedAt)).limit(5),
+    ctx.db.select({ hash: conceptMastery.docHash, n: count(), seen: sql<number>`COALESCE(SUM(${conceptMastery.seen}), 0)`, correct: sql<number>`COALESCE(SUM(${conceptMastery.correct}), 0)` })
+      .from(conceptMastery).where(and(eq(conceptMastery.userId, user.id), inArray(conceptMastery.docHash, memberHashes.length ? memberHashes : [""])))
+      .groupBy(conceptMastery.docHash),
+  ]);
+  const cards = cardRows[0];
+  const byHash = new Map(docRows.map((d) => [d.hash, d]));
   const strong = concepts.filter((c) => c.seen >= 2 && c.correct / c.seen >= 0.8 && !c.streak).length;
   const weak = concepts.filter((c) => c.seen > c.correct)
     .sort((a, b) => (-(a.seen - a.correct) - 1.5 * a.streak) - (-(b.seen - b.correct) - 1.5 * b.streak) || a.concept.localeCompare(b.concept));
-  const t = new Date().toISOString().replace(/\.\d{3}Z$/, "Z");
-  const cards = await ctx.db.select({ total: count(), due: sql<number>`COALESCE(SUM(CASE WHEN ${reviewItems.due} <= ${t} AND ${reviewItems.reps} > 0 THEN 1 ELSE 0 END), 0)` })
-    .from(reviewItems).where(and(eq(reviewItems.userId, user.id), inArray(reviewItems.docHash, hashes))).get();
-  const taken = await ctx.db.select({ id: exams.id, accuracy: exams.accuracy, submitted_at: exams.submittedAt }).from(exams)
-    .where(and(eq(exams.userId, user.id), inArray(exams.docHash, hashes), eq(exams.status, "graded"))).orderBy(desc(exams.submittedAt)).limit(5).all();
-  const perDoc = [];
-  for (const m of members) {
-    const d = await ctx.db.select({ n: count(), seen: sql<number>`COALESCE(SUM(${conceptMastery.seen}), 0)`, correct: sql<number>`COALESCE(SUM(${conceptMastery.correct}), 0)` })
-      .from(conceptMastery).where(and(eq(conceptMastery.userId, user.id), eq(conceptMastery.docHash, m.fileHash))).get();
+  const perDoc = members.map((m) => {
+    const d = byHash.get(m.fileHash);
     const seen = Number(d?.seen ?? 0);
-    perDoc.push({ id: m.id, filename: m.filename, concepts: Number(d?.n ?? 0), answered: seen,
-                  accuracy: seen ? Math.round((Number(d?.correct ?? 0) / seen) * 10_000) / 10_000 : null });
-  }
+    return { id: m.id, filename: m.filename, concepts: Number(d?.n ?? 0), answered: seen,
+             accuracy: seen ? Math.round((Number(d?.correct ?? 0) / seen) * 10_000) / 10_000 : null };
+  });
   const answered = concepts.reduce((a, c) => a + Number(c.seen), 0);
   const right = concepts.reduce((a, c) => a + Number(c.correct), 0);
   return {

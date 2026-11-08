@@ -74,7 +74,10 @@ export type Intent = { kind: string; name: string; value: number; description: s
 
 export function intentBaseDamage(boss: Boss, difficulty: string): number {
   const s = DAMAGE[difficulty] ?? DAMAGE.hard;
-  return boss.rage ? s.rage_base : s.base;
+  // Bestiary tiers (tome.ts): +1 in rage from tier III, +1 always at tier IV.
+  const tier = Number(boss.tier ?? 1);
+  const bonus = tier >= 4 ? 1 : tier === 3 && boss.rage ? 1 : 0;
+  return (boss.rage ? s.rage_base : s.base) + bonus;
 }
 
 export function makeIntent(kind: string, boss: Boss, difficulty: string, shieldFactor = 1, rng: Rng = Math.random): Intent {

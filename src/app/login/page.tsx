@@ -1,10 +1,9 @@
 "use client";
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type CSSProperties } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRouter } from 'next/navigation';
 import { Brain, Eye, EyeOff, Layers, MessageSquare, Sparkles, Swords, Trophy, Zap } from '@/components/icons';
-import { motion } from 'motion/react';
 import { Magnetic, TextReveal } from '@/components/fx';
 import './login.css';
 import SignupFlow from '@/components/auth/SignupFlow';
@@ -86,22 +85,22 @@ export default function LoginPage() {
         <div className="login__brand"><Logo size={30} /></div>
 
         <div className="login__pitch">
-          <motion.p className="login__eyebrow" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }}>
+          <p className="login__eyebrow fx-rise">
             <Zap size={13} aria-hidden="true" /> Your AI study companion
-          </motion.p>
+          </p>
           <TextReveal as="h2" className="login__headline text-gradient" text="Study smarter. Level up while you do." />
-          <motion.p className="login__lede" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.5, duration: 0.8 }}>
+          <p className="login__lede fx-rise" style={{ "--fx-delay": "500ms", "--fx-dur": "800ms", "--fx-y": "0px" } as CSSProperties}>
             Upload a PDF. Chat with it, turn it into quizzes, flashcards and notes — then take what you learned into the arena.
-          </motion.p>
+          </p>
           <ul className="login__features">
             {[
               { icon: <MessageSquare size={16} />, text: "Answers grounded in your document, with sources" },
               { icon: <Brain size={16} />, text: "Quizzes and flashcards in one click" },
               { icon: <Swords size={16} />, text: "Boss battles built from what you got wrong" },
             ].map((f, i) => (
-              <motion.li key={f.text} initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.7 + i * 0.1, duration: 0.5 }}>
+              <li key={f.text} className="fx-rise" style={{ "--fx-delay": `${700 + i * 100}ms`, "--fx-dur": "500ms", "--fx-x": "-10px", "--fx-y": "0px" } as CSSProperties}>
                 <span className="login__feature-icon" aria-hidden="true">{f.icon}</span>{f.text}
-              </motion.li>
+              </li>
             ))}
           </ul>
         </div>
@@ -125,8 +124,7 @@ export default function LoginPage() {
 
       {/* Right: the form */}
       <section className="login__panel">
-        <motion.div className="login__card" initial={{ opacity: 0, y: 18, scale: 0.98 }} animate={{ opacity: 1, y: 0, scale: 1 }}
-                    transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}>
+        <div className="login__card fx-rise" style={{ "--fx-y": "18px" } as CSSProperties}>
           <div className="login__card-head">
             <h1 className="login__title"><Logo size={24} /></h1>
           </div>
@@ -193,7 +191,7 @@ export default function LoginPage() {
               <span className="font-semibold text-ink-blue">{isRegister ? 'Log in' : 'Sign up'}</span>
             </Button>
           </div>}
-        </motion.div>
+        </div>
 
         <p className="text-center text-xs text-fg-muted mt-6">
           By continuing, you agree to our <a className="underline" href="/legal/terms">Terms of Service</a> and{" "}

@@ -251,9 +251,14 @@ async function grade(ctx: RequestContext, userId: number, r: ExamRow, now: Date,
     timeUsedS: Math.max(0, used), breakdownJson: JSON.stringify(breakdown(qs)), autoSubmitted: auto,
   }).where(and(eq(exams.id, r.id), eq(exams.status, "active"))).returning({ id: exams.id }).all();
   if (!won.length) return false;                                 // graded by another tab
+  // Every answer's grade in one round trip (a D1 batch; it was one per question). One statement per row, so a long
+  // exam stays under D1's 100 bound parameters per statement.
+  const saves = qs.map((q) => ctx.db.insert(examAnswers)
+    .values({ examId: r.id, idx: q.idx, answer: q.answer, flagged: false, correct: !!q.isCorrect, answeredAt: stamp(now) })
+    .onConflictDoUpdate({ target: [examAnswers.examId, examAnswers.idx], set: { correct: !!q.isCorrect } }));
+  if (saves.length) await ctx.db.batch(saves as [typeof saves[number], ...typeof saves]);
+  // Mastery stays in question order (a concept's wrong streak depends on it).
   for (const q of qs) {
-    await ctx.db.insert(examAnswers).values({ examId: r.id, idx: q.idx, answer: q.answer, flagged: false, correct: !!q.isCorrect, answeredAt: stamp(now) })
-      .onConflictDoUpdate({ target: [examAnswers.examId, examAnswers.idx], set: { correct: !!q.isCorrect } });
     await mastery.record(ctx, userId, r.docHash, q.concept, !!q.isCorrect, {
       source: "exam", now, question: { question: q.question, correct_answer: q.correctAnswer, explanation: q.explanation },
     });

@@ -92,7 +92,8 @@
 .arena-verdict__line--mech { color: var(--color-reward); }
 
 /* ── Ultimate meter ────────────────────────────────────────────────────────────────────────────────────────── */
-.arena-ult { display: inline-flex; align-items: center; gap: var(--space-2); }
+.arena-ult { display: inline-flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; }
+.arena-ult__sig { flex-basis: 100%; font-size: 0.7rem; color: var(--color-text-secondary); }
 .arena-ult__bar {
   position: relative; width: 6rem; height: 0.5rem; overflow: hidden;
   border: 1px solid var(--color-border-strong); border-radius: 2px; background: var(--color-surface-sunken);

@@ -133,3 +133,22 @@ describe("document polling in the sessions store", () => {
     expect(store().documentsOwner).toBe("2");
   });
 });
+
+// Performance pass (Stage P1): opening a course asked GET /documents/<id> twice at once (the course effect and the
+// "is it still there" recheck). Asks for the same document at the same time now share one request.
+describe("refreshing one document", () => {
+  it("two refreshes of the same document at the same time ask once", async () => {
+    const { statusCalls } = serve({ status: [json(200, doc("ready")), json(200, doc("ready"))] });
+    const [a, b] = await Promise.all([store().refreshDocument("s1"), store().refreshDocument("s1")]);
+    expect(statusCalls()).toBe(1);
+    expect(a?.status).toBe("ready");
+    expect(b?.status).toBe("ready");
+  });
+
+  it("a refresh after the last one answered asks again", async () => {
+    const { statusCalls } = serve({ status: [json(200, doc("ready")), json(200, doc("ready"))] });
+    await store().refreshDocument("s1");
+    await store().refreshDocument("s1");
+    expect(statusCalls()).toBe(2);
+  });
+});

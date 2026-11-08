@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useRouter } from "next/navigation";
 import {
@@ -14,6 +14,8 @@ import { parseApiError, rawApi } from "@/lib/api";
 import { loadMetadata, deleteSession } from "@/lib/sessions";
 import InstallApp from "@/components/pwa/InstallApp";
 import ThemeSwitch from "@/components/account/ThemeSwitch";
+import SectionIndex from "@/components/account/SectionIndex";
+import MyModel from "@/components/account/MyModel";
 import { ROUTES } from "@/lib/routes";
 
 
@@ -39,6 +41,7 @@ function applyAppearance(prefs: { fontSize: string; reduceAnimations: boolean })
 // ── Section wrapper ───────────────────────────────────────────────────────────
 const slug = (t: string) => t.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
 const SECTIONS = ["Account", "AI", "Appearance", "App", "Data & Privacy", "Danger Zone"];
+const SECTION_LINKS = SECTIONS.map((t) => ({ id: slug(t), label: t }));
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return <Card id={slug(title)} title={title} interactive className="settings-section">{children}</Card>;
 }
@@ -65,6 +68,7 @@ function RevealButton({ shown, onToggle, label }: { shown: boolean; onToggle: ()
 export default function SettingsPage() {
   const { user, logout, loading: authLoading } = useAuth();
   const router = useRouter();
+  const scroller = useRef<HTMLDivElement>(null);
 
   const [form, setForm] = useState({
     fullName: "", username: "", email: "",
@@ -231,17 +235,17 @@ export default function SettingsPage() {
   );
   if (!user) return null;
 
+  // The title and the index stay put; only the sections scroll (in `scroller`), and the index marks where you are.
   return (
-    <div>
-      <div className="max-w-5xl mx-auto px-6 pt-6">
+    <div className="settings-page">
+      <div className="settings-head">
         <h1 className="text-2xl font-bold tracking-tight text-fg">Settings</h1>
         <p className="text-sm text-fg-muted">Manage your account and preferences</p>
       </div>
 
-      <div className="max-w-5xl mx-auto px-6 py-6 settings-grid">
-      <nav aria-label="Settings sections" className="settings-rail">
-        {SECTIONS.map((t) => <a key={t} href={`#${slug(t)}`}>{t}</a>)}
-      </nav>
+      <div className="settings-grid">
+      <SectionIndex label="Settings sections" items={SECTION_LINKS} scroller={scroller} />
+      <div ref={scroller} className="settings-scroll" tabIndex={0} role="region" aria-label="Settings">
       <div className="space-y-6 min-w-0">
 
         {/* ── ACCOUNT ──────────────────────────────────────────────────────── */}
@@ -303,6 +307,13 @@ export default function SettingsPage() {
             <CheckCircle2 size={16} className="text-ink-green shrink-0" aria-hidden="true" />
             <span className="text-sm text-fg">CourseMateAI&apos;s AI is included in your plan: nothing to set up. See what you&apos;ve used in Plan &amp; usage.</span>
           </Card>
+          {user.is_admin && (
+            <div className="mt-5">
+              <FieldRow label="Your model (admins)">
+                <div className="mt-2"><MyModel /></div>
+              </FieldRow>
+            </div>
+          )}
         </Section>
 
         <Section title="Appearance">
@@ -394,6 +405,7 @@ export default function SettingsPage() {
           </Card>
         </Section>
 
+      </div>
       </div>
       </div>
     </div>

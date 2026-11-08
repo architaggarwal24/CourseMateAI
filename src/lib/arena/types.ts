@@ -50,6 +50,8 @@ export interface KitHud {
   champion: string; meter: number; max: number; ready: boolean; active: boolean;
   passive: { name: string; text: string }; ultimate: { name: string; text: string };
   effects: Partial<Record<"armed" | "wall" | "vanish" | "fortress", string | number>>;
+  /** Fighting with the champion's own mastery weapon: its perk and the finisher that ends the fight. */
+  signature?: { name: string; text: string; finisher: string } | null;
 }
 export interface KitOutcome { events: MechanicEvent[]; refund: number; hud: KitHud }
 /** XP the champion earned in a finished battle (and the mastery skins a level-up unlocked). */
@@ -91,7 +93,33 @@ export interface BattleResult {
   champion?: ChampionXp;
   /** For a battle inside an expedition: what it did to the run. */
   run?: { status?: string; pending?: string; gained_gold?: number; [key: string]: unknown };
+  /** The Bestiary: this creature's record, a first defeat, mastery gained, a tier opened. */
+  bestiary?: BestiaryFight | null;
+  /** Champions this win brought (a Bestiary tier finished); the unlock ceremony follows. */
+  champions_unlocked?: string[];
+  new_achievements?: { id: string; name: string; description: string }[];
 }
+
+export type Mastery = "none" | "bronze" | "silver" | "gold";
+export interface BestiaryFight {
+  species: string; tier: number; won: boolean; first_win: boolean; flawless: boolean;
+  mastery: Mastery; mastery_up: Mastery | null; tier_opened: number | null; tiers_finished?: number[]; rewards: { xp: number; coins: number };
+}
+/** A creature's bane in a fight: the combo once it is written in (after the first win), else only the clue. */
+export interface BaneHud { known: boolean; clue: string; moves: Move[] | null; progress: number }
+/** One page of the Bestiary (GET /bestiary). A locked page has no name, story or bane. */
+export interface BestiaryEntry {
+  species: string; tier: number; open: boolean; met: boolean; defeated: boolean;
+  name: string | null; origin: string | null; teaser_topic: string | null; mastery: Mastery;
+  record: { fights: number; wins: number; losses: number; flawless_wins: number; nightmare_wins: number; best_seconds: number | null;
+    best_accuracy: number | null; first_win_at: string | null; last_fought_at: string | null } | null;
+  bane: { clue: string; moves: Move[] | null; found_alone: boolean; uses: number } | null;
+  /** The creature's lost page was found (a Hunt's reward). */
+  lost_page?: boolean;
+}
+export interface BestiaryTier { tier: number; name: string; open: boolean; beaten: number; total: number; opens_next_at: number | null }
+export interface BestiaryResponse { tiers: BestiaryTier[]; creatures: BestiaryEntry[] }
+export interface BestiaryPage extends BestiaryEntry { concepts: { concept: string; asked: number; right: number }[] }
 
 /** What the hero's gear adds to a fight (snapshot taken when the battle began; see backend/services/arena_service.py). */
 export interface Gear {
@@ -135,6 +163,9 @@ export interface Battle {
   mechanic?: MechanicHud | null;
   /** The champion's kit and ultimate meter. */
   kit?: KitHud | null;
+  /** The creature's Bestiary tier (1-4) and its bane. */
+  tier?: number;
+  bane?: BaneHud | null;
   /** Only once the battle is over. */
   result?: Partial<BattleResult>;
   rewards?: BattleRewards | null;
@@ -205,6 +236,9 @@ export interface Outcome {
   kit_meter_gained?: number;
   mechanic?: MechanicOutcome | null;
   kit?: KitOutcome | null;
+  /** The bane landed (x1.5, the boss lost its turn); `found`: worked out alone, rewarded once. */
+  bane?: { landed: boolean; found: boolean } | null;
+  new_achievements?: { id: string; name: string; description: string }[];
 }
 
 export interface AnswerResponse extends Outcome { ok: boolean; replayed: boolean; battle: Battle; rewards: BattleRewards | null }

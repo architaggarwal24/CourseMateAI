@@ -9,7 +9,7 @@
 import { and, eq, inArray, sql } from "drizzle-orm";
 import type { CurrentUser, RequestContext } from "../context";
 import { conceptMaps, conceptMastery, documents, type documentChunks } from "../db/schema";
-import { courseMembers, getDocumentOrCourse } from "../documents";
+import { resolveDocumentOrCourse } from "../documents";
 import { HttpError } from "../http";
 import { requireFeature, tierFor } from "../plans";
 import { allChunks } from "../search";
@@ -74,17 +74,22 @@ export async function extract(ctx: RequestContext, caller: Caller, chunks: Chunk
 
 // ── scope ────────────────────────────────────────────────────────────────────────────────────────────────────
 async function scope(ctx: RequestContext, user: CurrentUser, id: string) {
-  const view = await getDocumentOrCourse(ctx, user, id);                 // ownership (and the courses gate)
-  if ((view as { kind?: string }).kind === "course") {
-    const members = await courseMembers(ctx, id);
-    return { kind: "course" as const, name: (view as { filename: string }).filename, docs: members, hashes: [...members.map((m) => m.fileHash), `course:${id}`] };
+  const found = await resolveDocumentOrCourse(ctx, user, id);           // ownership (and the courses gate)
+  if (found.kind === "course") {
+    const members = found.members;
+    return { kind: "course" as const, name: found.course.name, docs: members, hashes: [...members.map((m) => m.fileHash), `course:${id}`] };
   }
-  const row = (await ctx.db.select().from(documents).where(eq(documents.id, id)).get())!;
-  return { kind: "document" as const, name: row.filename, docs: [{ ...row, status: (view as { status: DocRow["status"] }).status }], hashes: [row.fileHash] };
+  return { kind: "document" as const, name: found.row.filename, docs: [found.row], hashes: [found.row.fileHash] };
 }
 
-const mapRow = (ctx: RequestContext, hash: string) =>
-  ctx.db.select().from(conceptMaps).where(and(eq(conceptMaps.docHash, hash), eq(conceptMaps.version, VERSION))).get();
+/** The maps of these documents, by hash, in one query. */
+async function mapRows(ctx: RequestContext, hashes: string[]) {
+  const unique = [...new Set(hashes)];
+  const rows = unique.length
+    ? await ctx.db.select().from(conceptMaps).where(and(inArray(conceptMaps.docHash, unique), eq(conceptMaps.version, VERSION))).all()
+    : [];
+  return new Map(rows.map((r) => [r.docHash, r]));
+}
 
 const setRow = (ctx: RequestContext, hash: string, fields: Partial<typeof conceptMaps.$inferInsert>) =>
   ctx.db.update(conceptMaps).set({ ...fields, updatedAt: now() }).where(and(eq(conceptMaps.docHash, hash), eq(conceptMaps.version, VERSION)));
@@ -96,9 +101,10 @@ const live = (r: { status: string; leaseUntil: string | null }) => (r.status ===
 export async function build(ctx: RequestContext, user: CurrentUser, id: string) {
   const s = await scope(ctx, user, id);
   const todo: DocRow[] = [];
+  const maps = await mapRows(ctx, s.docs.filter((d) => d.status === "ready").map((d) => d.fileHash));
   for (const d of s.docs) {
     if (d.status !== "ready") continue;
-    const r = await mapRow(ctx, d.fileHash);
+    const r = maps.get(d.fileHash);
     if (r && (r.status === "ready" || live(r))) continue;
     const t = now();
     const lease = new Date(Date.now() + LEASE_MS).toISOString();
@@ -137,8 +143,9 @@ export async function view(ctx: RequestContext, user: CurrentUser, id: string) {
   const docs: { id: string; name: string; status: string; stage: string | null; error: string | null }[] = [];
   const concepts = new Map<string, Concept>();
   const relations = new Map<string, { source: string; target: string; label: string }>();
+  const maps = await mapRows(ctx, s.docs.filter((d) => d.status === "ready").map((d) => d.fileHash));
   for (const d of s.docs) {
-    const r = d.status === "ready" ? await mapRow(ctx, d.fileHash) : undefined;
+    const r = d.status === "ready" ? maps.get(d.fileHash) : undefined;
     let status = r ? r.status : d.status === "ready" ? "none" : "not_ready";
     if (r && (r.status === "queued" || r.status === "running") && !live(r)) status = "stalled";
     docs.push({ id: d.id, name: d.filename, status, stage: r?.stage ?? null, error: r?.error ?? null });

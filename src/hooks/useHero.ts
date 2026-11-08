@@ -135,6 +135,7 @@ export function afterUse(shop: ShopState, itemId: string): ShopState {
 
 let reconciling: Promise<void> | null = null;
 let reconcileAgain = false;
+let shopLoad: Promise<void> | null = null;
 
 export const useHeroStore = create<HeroState>((set, get) => {
   /** A change was made locally: older answers still on their way are out of date. */
@@ -180,9 +181,12 @@ export const useHeroStore = create<HeroState>((set, get) => {
     pending: {},
     _shopEpoch: 0,
 
-    loadShop: async () => {
-      await readShop();
-      set({ loading: false });
+    // Shares a load already in flight (the user menu and the Hero area both load it when the app opens). A change
+    // made meanwhile moves _shopEpoch on, and readShop drops the old answer, so sharing never shows stale coins.
+    loadShop: () => {
+      if (shopLoad) return shopLoad;
+      shopLoad = readShop().then(() => set({ loading: false })).finally(() => { shopLoad = null; });
+      return shopLoad;
     },
 
     reconcile: async () => {
@@ -304,7 +308,7 @@ export const useHeroStore = create<HeroState>((set, get) => {
     },
 
     reset: () => {
-      reconciling = null; reconcileAgain = false;
+      reconciling = null; reconcileAgain = false; shopLoad = null;
       set({ shop: null, loading: true, previewId: null, pending: {} });
     },
   };

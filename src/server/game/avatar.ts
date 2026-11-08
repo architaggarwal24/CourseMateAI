@@ -1,12 +1,14 @@
 // The avatar (port of backend/routers/avatar.py): the player's pixel champion and the skins it wears, plus the
 // profile, HUD and achievements views (routers/progression.py).
+import { bestiaryStats } from "./tome";
 import { eq } from "drizzle-orm";
 import type { RequestContext } from "../context";
-import { championProgress, userAchievements } from "../db/schema";
+import { userAchievements } from "../db/schema";
 import { HttpError } from "../http";
 import { ACHIEVEMENTS, CHAMPIONS, DEFAULT_CHAMPION, LOADOUT_SLOTS, achievementRow, isChampion, xpProgress, type Champion } from "./content";
 import { canEquipInSlot, EQUIP_SLOTS, masteryChampion } from "./items";
-import { KITS, LEVEL_XP, masteryUnlocks, nextLevelXp } from "./kits";
+import { KITS, LEVEL_XP, SIGNATURES, hasSignature, masteryUnlocks, nextLevelXp } from "./kits";
+import * as roster from "./roster";
 import { activeBuffs, dailyQuestsFor } from "./progression";
 import { SHOP_LEVEL, shopState } from "./shop";
 import { getAvatar, getProgress, inventory, modifyAvatar, nowIso, progressView, type Avatar, type Player } from "./store";
@@ -39,21 +41,43 @@ export async function updateAvatar(ctx: RequestContext, userId: number, slots: u
 export async function championState(ctx: RequestContext, userId: number) {
   const a = await getAvatar(ctx, userId);
   const [champion, chosen] = championOf(a);
-  const rows = new Map((await ctx.db.select().from(championProgress).where(eq(championProgress.userId, userId)).all()).map((r) => [r.championId, r]));
+  // one round trip for the champion levels and everything the locks need (Bestiary records, level, unlock rows)
+  const reads = await roster.rosterReads(ctx, userId);
+  const rows = reads.levels;
+  // due unlocks are written here (Thorne's level, a tier finished in a run), and the champion already worn is kept
+  await roster.grantDue(ctx, userId, reads, a.championId);
+  const unlocks = roster.rosterView(reads);
   const progress = Object.fromEntries(CHAMPIONS.map((cid) => {
     const r = rows.get(cid) ?? { xp: 0, level: 1, battles: 0, wins: 0 };
+    const sig = SIGNATURES[cid];
     return [cid, {
       xp: r.xp, level: r.level, next_level_xp: nextLevelXp(r.level), level_xp: LEVEL_XP[r.level - 1], battles: r.battles, wins: r.wins,
       mastery: masteryUnlocks(cid), kit: { passive: { name: KITS[cid].passive_name, text: KITS[cid].passive_text }, ultimate: { name: KITS[cid].ultimate_name, text: KITS[cid].ultimate_text } },
+      signature: { weapon: sig.weapon, perk: { name: sig.perk_name, text: sig.perk_text }, finisher: sig.finisher, owned: a.owned.includes(sig.weapon), worn: cid === champion && hasSignature(cid, a.equipped) },
+      unlock: unlocks[cid],
     }];
   }));
   const loadout = Object.fromEntries(LOADOUT_SLOTS.map((s) => [s, a.equipped[s] || null]));
   return { champion_id: champion, chosen, champions: [...CHAMPIONS], loadout, progress };
 }
 
+/** The unlock ceremony was seen: pay its reward (once) and send the roster back. */
+export async function celebrateChampion(ctx: RequestContext, userId: number, body: Record<string, unknown>) {
+  const done = await roster.celebrate(ctx, userId, body.champion_id);
+  return { ...done, state: await championState(ctx, userId) };
+}
+
 export async function chooseChampion(ctx: RequestContext, userId: number, body: Record<string, unknown>) {
   const cid = body.champion_id;
   if (!isChampion(cid)) throw new HttpError(422, "unknown_champion", "That champion doesn't exist.", null, { champions: [...CHAMPIONS] });
+  if (cid !== DEFAULT_CHAMPION) {
+    const reads = await roster.rosterReads(ctx, userId);
+    const rows = await roster.grantDue(ctx, userId, reads, (await getAvatar(ctx, userId)).championId);
+    if (!roster.isUnlocked(cid, rows)) {
+      const p = roster.unlockProgress(cid, reads.recs, reads.level);
+      throw new HttpError(403, "champion_locked", `${cid[0].toUpperCase()}${cid.slice(1)} hasn't joined you yet. ${p.how} (${p.have} of ${p.need}).`, null, { champion_id: cid, ...p });
+    }
+  }
   const loadout = body.loadout && typeof body.loadout === "object" ? (body.loadout as Record<string, unknown>) : null;
   await modifyAvatar(ctx, userId, (eq, ow) => {
     for (const [slot, id] of Object.entries(eq)) { const owner = typeof id === "string" ? masteryChampion(id) : null; if (owner && owner !== cid) delete eq[slot]; }
@@ -84,13 +108,14 @@ export async function hud(ctx: RequestContext, p: Player | null) {
   }
   const prog = await getProgress(ctx, p.id);
   const [, into, toNext] = xpProgress(prog.totalXp);
-  const quests = await dailyQuestsFor(ctx, p, prog);
+  // Independent reads, side by side instead of one after another (the header waits on this on every screen).
+  const [quests, buffs, consumables] = await Promise.all([dailyQuestsFor(ctx, p, prog), activeBuffs(ctx, p.id), inventory(ctx, p.id)]);
   const shop = prog.currentLevel < SHOP_LEVEL
     ? { shop_unlocked: false, level: prog.currentLevel, coins: prog.coins, items: [] }
-    : await shopState(ctx, p, prog);
+    : await shopState(ctx, p, prog, { inv: consumables, buffs });
   return {
     progress: { ...progressView(prog), xp_into_level: into, xp_to_next: toNext }, quests, shop,
-    buffs: await activeBuffs(ctx, p.id), consumable_inventory: await inventory(ctx, p.id), guest_mode: false,
+    buffs, consumable_inventory: consumables, guest_mode: false,
   };
 }
 
@@ -104,6 +129,7 @@ export async function achievements(ctx: RequestContext, userId: number | null) {
     progress: {
       total_quizzes_completed: p.totalQuizzesCompleted, streak_days: p.streakDays, total_bosses_defeated: p.totalBossesDefeated,
       current_level: p.currentLevel, best_quiz_accuracy: p.bestQuizAccuracy, nightmare_bosses_defeated: p.nightmareBossesDefeated,
+      ...(await bestiaryStats(ctx, userId)),
     },
     guest_mode: false,
   };

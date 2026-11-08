@@ -10,7 +10,7 @@ import ThemeScope from "@/components/ThemeScope";
 import { areaOf } from "@/lib/routes";
 import NavSidebar from "./NavSidebar";
 import BottomNav from "./BottomNav";
-import CommandPalette from "./CommandPalette";
+import CommandPalette from "./CommandPaletteLoader";
 import "./shell.css";
 
 /**
@@ -22,14 +22,13 @@ import "./shell.css";
  */
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const { loading: authLoading, user } = useAuth();
-  const refresh = useHUDStore((s) => s.refresh);
+  const loadHud = useHUDStore((s) => s.load);
   const area = areaOf(usePathname());
   const play = area === "hero";
 
-  useEffect(() => {
-    refresh();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  // Starts GET /hud at once, alongside the sign-in check (AuthProvider reuses this request instead of asking again
+  // after /auth/me answers). Coming in from the login page, a HUD loaded seconds ago is reused.
+  useEffect(() => { void loadHud(); }, [loadHud]);
 
   // The review queue's due count (the Study badge): once signed in, and again when the user comes back to the tab or
   // the network comes back (the badge stays as it was meanwhile).

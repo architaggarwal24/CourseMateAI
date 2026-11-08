@@ -22,6 +22,8 @@ OWNER_EMAIL=
 # GOOGLE_API_KEY=
 # ANTHROPIC_API_KEY=
 # OPENAI_API_KEY=
+# Ollama on your own computer, for admins only and only under `npm run dev` (Settings -> AI -> Your model).
+# OLLAMA_BASE_URL=http://localhost:11434
 # Small jobs on Workers AI (default @cf/meta/llama-3.1-8b-instruct-fp8)
 # WORKERS_AI_MODEL=
 # US dollars per 1M tokens [in, out], from the providers' pricing pages; unpriced models are estimated at [1, 4]

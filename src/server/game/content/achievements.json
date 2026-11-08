@@ -201,6 +201,46 @@
    "reward_coins": 600,
    "reward_cosmetic_id": "badge_nightmare_champion",
    "tier": "legendary"
+  },
+  {
+   "id": "lorekeeper",
+   "name": "Lorekeeper",
+   "description": "Work out a creature's bane from its clue, before you ever beat it",
+   "unlock_type": "bestiary_banes_found",
+   "threshold": 1,
+   "reward_xp": 100,
+   "reward_coins": 50,
+   "tier": "rare"
+  },
+  {
+   "id": "bane_scholar",
+   "name": "Bane Scholar",
+   "description": "Work out five banes on your own",
+   "unlock_type": "bestiary_banes_found",
+   "threshold": 5,
+   "reward_xp": 300,
+   "reward_coins": 150,
+   "tier": "epic"
+  },
+  {
+   "id": "monster_hunter",
+   "name": "Monster Hunter",
+   "description": "Defeat five different creatures",
+   "unlock_type": "bestiary_creatures_defeated",
+   "threshold": 5,
+   "reward_xp": 200,
+   "reward_coins": 100,
+   "tier": "rare"
+  },
+  {
+   "id": "tome_complete",
+   "name": "The Complete Tome",
+   "description": "Defeat every creature in the Bestiary",
+   "unlock_type": "bestiary_creatures_defeated",
+   "threshold": 13,
+   "reward_xp": 1000,
+   "reward_coins": 500,
+   "tier": "legendary"
   }
  ]
 }

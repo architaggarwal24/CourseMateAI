@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useLayoutEffect } from "react";
 import { ArrowRight, CheckCircle2, XCircle } from "@/components/icons";
 import { motion } from "motion/react";
 import { Button, Card } from "@/components/ui";
@@ -43,7 +43,8 @@ export default function QuizQuestionView({ index, total, question, picked, resul
   // so a key pressed the instant the question appears is never lost between renders.
   const live = useRef({ canAnswer, options, onAnswer });
   live.current = { canAnswer, options, onAnswer };
-  useEffect(() => {
+  // A layout effect: bound before the screen paints, so a key pressed the moment it shows is never missed.
+  useLayoutEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const l = live.current;
       if (!l.canAnswer || e.shiftKey || shortcutBlocked(e)) return;

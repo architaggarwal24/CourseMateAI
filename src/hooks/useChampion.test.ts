@@ -1,12 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const api = vi.hoisted(() => ({ GET: vi.fn(), PUT: vi.fn() }));
+const api = vi.hoisted(() => ({ GET: vi.fn(), PUT: vi.fn(), POST: vi.fn() }));
 const toasts = vi.hoisted(() => ({ success: vi.fn(), error: vi.fn(), info: vi.fn(), apiError: vi.fn(), dismiss: vi.fn() }));
 
-vi.mock("@/lib/api", async (orig) => ({ ...(await orig<typeof import("@/lib/api")>()), rawApi: { GET: api.GET, PUT: api.PUT } }));
+vi.mock("@/lib/api", async (orig) => ({ ...(await orig<typeof import("@/lib/api")>()), rawApi: { GET: api.GET, PUT: api.PUT, POST: api.POST } }));
 vi.mock("@/components/ui/Toast", () => ({ toast: toasts }));
 
-import { CHAMPION_CACHE_KEY, LEGACY_HERO_KEY, useChampion } from "./useChampion";
+import { CHAMPION_CACHE_KEY, LEGACY_HERO_KEY, ceremonyDue, isUnlocked, useChampion } from "./useChampion";
 
 const res = (data: any, ok = true, status = 200) => ({ data: ok ? data : undefined, error: ok ? undefined : data, response: { ok, status } });
 const server = (over: Record<string, any> = {}) => ({
@@ -16,7 +16,7 @@ const server = (over: Record<string, any> = {}) => ({
 
 beforeEach(() => {
   localStorage.clear();
-  api.GET.mockReset(); api.PUT.mockReset();
+  api.GET.mockReset(); api.PUT.mockReset(); api.POST.mockReset();
   Object.values(toasts).forEach((f) => f.mockReset());
   useChampion.getState().reset();
 });
@@ -117,5 +117,30 @@ describe("useChampion", () => {
     expect(useChampion.getState().progress.kaien.level).toBe(2);
     useChampion.getState().reset();
     expect(useChampion.getState().progress).toEqual({});
+  });
+});
+
+// Stage C1: locked champions and the unlock ceremony
+const lock = (unlocked: boolean, celebrated = true) => ({ unlock: { unlocked, celebrated, source: unlocked ? "tier1" : null, how: "Beat every creature in Bestiary tier I", have: 2, need: 4, reward: { xp: 150, coins: 100 } } });
+describe("useChampion locks", () => {
+  it("a locked champion can't be picked: it says what is left and asks the server nothing", async () => {
+    api.GET.mockResolvedValue(res(server({ progress: { kaien: lock(true), asha: lock(false) } })));
+    await useChampion.getState().load({ signedIn: true });
+    expect(isUnlocked(useChampion.getState().progress, "asha")).toBe(false);
+    expect(isUnlocked(useChampion.getState().progress, "thorne")).toBe(true);           // unknown: not locked
+    expect(await useChampion.getState().choose("asha")).toBe(false);
+    expect(api.PUT).not.toHaveBeenCalled();
+    expect(toasts.info).toHaveBeenCalledWith(expect.stringContaining("Asha hasn't joined you yet. Beat every creature in Bestiary tier I (2 of 4)"));
+    expect(useChampion.getState().championId).toBe("kaien");
+  });
+
+  it("the ceremony is due once; celebrating claims it on the server", async () => {
+    api.GET.mockResolvedValue(res(server({ progress: { kaien: lock(true), asha: lock(true, false) } })));
+    await useChampion.getState().load({ signedIn: true });
+    expect(ceremonyDue(useChampion.getState().progress)).toBe("asha");
+    api.POST.mockResolvedValue(res({ reward: { xp: 150, coins: 100 }, state: server({ progress: { kaien: lock(true), asha: lock(true, true) } }) }));
+    expect(await useChampion.getState().celebrate("asha")).toEqual({ xp: 150, coins: 100 });
+    expect(api.POST).toHaveBeenCalledWith("/avatar/champion/celebrate", { body: { champion_id: "asha" } });
+    expect(ceremonyDue(useChampion.getState().progress)).toBeNull();
   });
 });

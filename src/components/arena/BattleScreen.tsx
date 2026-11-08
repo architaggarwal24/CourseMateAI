@@ -14,6 +14,7 @@ import FocusPips from "./FocusPips";
 import Hearts from "./Hearts";
 import Intent from "./Intent";
 import MechanicHud from "./MechanicHud";
+import BaneHud from "./BaneHud";
 import MovePicker from "./MovePicker";
 import PixelArena, { type Floater } from "./pixel/PixelArena";
 import PixelSprite from "./pixel/PixelSprite";
@@ -46,7 +47,8 @@ function useFloaters(outcome: Arena["outcome"], show: boolean): Floater[] {
     if (!show || !outcome) { setFloaters([]); return; }
     const next: Floater[] = [];
     if (outcome.damage_dealt > 0) {
-      next.push({ id: `d${id}`, side: "boss", text: `-${outcome.damage_dealt}`, kind: outcome.weakness ? "crit" : "hit", sub: outcome.weakness ? "Weakness!" : outcome.move === "heavy" ? "Heavy!" : undefined });
+      next.push({ id: `d${id}`, side: "boss", text: `-${outcome.damage_dealt}`, kind: outcome.weakness || outcome.bane?.landed ? "crit" : "hit",
+        sub: outcome.bane?.landed ? "Bane!" : outcome.weakness ? "Weakness!" : outcome.move === "heavy" ? "Heavy!" : undefined });
       if ((outcome.pet_strike ?? 0) > 0) next.push({ id: `p${id}`, side: "boss", text: `+${outcome.pet_strike}`, kind: "pet", sub: "Pet strike" });
     }
     if ((outcome.shield_absorbed ?? 0) > 0) next.push({ id: `s${id}`, side: "boss", text: `${outcome.shield_absorbed}`, kind: "shield", sub: "Shielded" });
@@ -109,8 +111,12 @@ export function beatsFor(o: Outcome, battle: Battle): Beat[] {
   const pick = (group: readonly string[]) => events.filter((t) => group.includes(t) && known(t)).map(effect);
 
   out.push(...pick(BEFORE_STRIKE));
+  // fighting with the champion's own mastery weapon: their own strike animation, and a finisher for the KO
+  const sig = battle.kit?.signature ?? null;
   const struck = o.correct && (o.damage_dealt > 0 || (o.shield_absorbed ?? 0) > 0);
-  if (struck) out.push({ kind: "hero-strike", heavy: o.move === "heavy", crit: !!o.weakness, shielded: o.damage_dealt === 0 });
+  if (struck) out.push({ kind: "hero-strike", heavy: o.move === "heavy", crit: !!o.weakness || !!o.bane?.landed, shielded: o.damage_dealt === 0, ...(sig ? { signature: true } : {}) });
+  // the bane staggers it: the same reel as a stunned creature
+  if (o.bane?.landed && "stunned" in MECHANIC_FX) out.push(effect("stunned"));
   const heroSide = events.filter((t) => known(t) && ![...BEFORE_STRIKE, ...AFTER_BLOW, ...BOSS_SIDE].includes(t));
   out.push(...heroSide.map(effect));
   if (o.phase_changed) out.push({ kind: "rage" });
@@ -128,7 +134,7 @@ export function beatsFor(o: Outcome, battle: Battle): Beat[] {
     if ((o.riposte ?? 0) > 0) out.push({ kind: "riposte" });
     out.push(...pick(BOSS_SIDE));
   }
-  if (won) out.push({ kind: "boss-ko" });
+  if (won) out.push(sig ? { kind: "finisher", text: sig.finisher.toUpperCase() } : { kind: "boss-ko" });
   else if (battle.status === "lost") out.push({ kind: "hero-ko" });
   return out;
 }
@@ -209,7 +215,7 @@ export default function BattleScreen({ arena, context }: { arena: Arena; context
   // keyed on the answer, not the view: a timed-out question seen first as a notice, then as a verdict, plays once
   const beatKey = casting || ultKey || ((showingVerdict || outcome?.timed_out) && outcome ? `o${outcome.question_id}` : "");
   const beats: Beat[] = casting ? [{ kind: "hero-cast" }]
-    : ultKey ? [{ kind: "ultimate", text: arena.ultimateCast!.name.toUpperCase() }]
+    : ultKey ? [{ kind: "ultimate", text: arena.ultimateCast!.name.toUpperCase(), ...(battle.kit?.signature ? { signature: true } : {}) }]
     : beatKey && outcome ? beatsFor(outcome, battle) : [];
   const intentTint: IntentTint = !over && (stage === "choosing" || stage === "fetching" || stage === "asking") ? (battle.intent?.kind ?? null) : null;
 
@@ -300,6 +306,7 @@ export default function BattleScreen({ arena, context }: { arena: Arena; context
               Time ran out on the last question{outcome.damage_taken > 0 ? `, and the boss struck for ${outcome.damage_taken}` : ""}.
             </p>
           )}
+          <BaneHud bane={battle.bane} />
           <MovePicker battle={battle} onPick={arena.chooseMove} disabled={confirmRetreat} />
         </motion.div>
       )}
@@ -384,6 +391,11 @@ export default function BattleScreen({ arena, context }: { arena: Arena; context
             <p className="arena-verdict__line">
               You hit {battle.boss.name} for {outcome.damage_dealt}
               {outcome.weakness ? ", right on its weakness" : ""}{outcome.combo > 1 ? ` (combo x${outcome.combo})` : ""}.
+            </p>
+          )}
+          {outcome.bane?.landed && (
+            <p className="arena-verdict__line arena-verdict__line--bane">
+              {outcome.bane.found ? `You found the ${battle.boss.name}'s bane! It staggers and loses its turn.` : `Bane! The ${battle.boss.name} staggers and loses its turn.`}
             </p>
           )}
           {(outcome.gear_bonus ?? 0) - (outcome.pet_strike ?? 0) > 0 && (

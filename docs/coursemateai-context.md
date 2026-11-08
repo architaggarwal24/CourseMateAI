@@ -2,7 +2,7 @@
 
 > Paste this file at the start of a new chat. It covers how the owner works, what the app is, the journey so far,
 > where it stands now and the weak spots we know about.
-> Last updated: 6 Nov 2026 (after the Ink redesign, Stage 6 and its test fix).
+> Last updated: 8 Nov 2026 (after the performance pass, stages P1 to P5).
 > The long version (every stage in detail, the file map, all gotchas) is in `docs/archive/coursemateai-context-full.md`.
 
 ---
@@ -29,6 +29,14 @@ test" checklist after each stage; deleted files go into remove-old-files.mjs; TD
    - a short **"what to test"** checklist.
 6. **Deleted files** go into `scripts/remove-old-files.mjs`, because unzipping can't delete. Tell the owner to run it.
 7. **Commit** each stage on `master` with the attribution lines the session gives.
+
+**Hand-over rules (the owner's words, 8 Nov):**
+- Never commit, push or ask about either. The owner commits and pushes, always.
+- Deliver one zip with only the updated files, no extra files. With it: the commands to run (if any) and a
+  "what to test" list.
+- No unnecessary information: only what matters, short, in simple language.
+- **Stages run back to back:** finish a stage, hand it over (zip, commands, what to test), then start the next one
+  at once. Don't wait for input; keep going until the owner says stop.
 
 **Communication:**
 - **Caveman mode:** terse chat (fragments are fine). Code, commits and docs stay in normal, full sentences.
@@ -119,6 +127,21 @@ Each step was a set of stages with zips and checklists. Dates are 2026.
       tracks; Profile no longer duplicates the Settings form; tighter phone headers; empty chat opens at the top;
       sentence-case login wording. Then a fix for a flaky QuizView test.
 
+8. **Performance pass (7 to 8 Nov).** Measured first (a Playwright harness, `perf/`, and a D1 round-trip counter),
+   then:
+   - P1 network: one GET /hud at start-up instead of three (none for a signed-out visitor), shared shop load, no
+     duplicate API calls left; the first page paints from the server HTML (the 250 ms rise only on in-app moves); the
+     login entrance is CSS, not motion.
+   - P2 server: D1 round trips on the hot routes 141 -> 97 (session row reused, plan read once per request, review
+     stats / queue, course progress and the concept map batched); exam answers and arena questions saved in one batch;
+     HUD reads in parallel; a 10 s timeout on Resend.
+   - P3 bundle: the command palette loads on idle or first use; Geist Mono subset (71 -> 40 KB) and not preloaded
+     (fonts per page 176 -> 107 KB); highlighting carries 21 languages instead of 37; unused packages removed.
+   - P4: skeletons keep their size (a class like h-[360px] used to lose to the 1rem default); courses load with the
+     documents; `public/_headers` caches hashed build files for a year on Cloudflare; earlier chat answers are not
+     re-parsed per streamed token; Web Vitals through Sentry (`NEXT_PUBLIC_SENTRY_TRACES_SAMPLE_RATE`).
+   - P5: quiz and exam keys bound before paint.
+
 **Zip extract order for the redesign:** stages 1 to 4, then `redesign-fixes.zip`, then 5, then 6, then
 `redesign-6-fix.zip`.
 
@@ -129,7 +152,57 @@ Each step was a set of stages with zips and checklists. Dates are 2026.
 - The redesign is complete. The owner's last run: unit tests green after the QuizView fix, 252 e2e passed,
   the Cloudflare build completed.
 - The Worker was last measured at **2.71 MB gzip** (limit 3 MB on the free plan).
-- Nothing is in progress. Ideas waiting in the backlog: chiptune sound, sharing a KO clip, campaign mode, more inputs
+- The performance pass is done: `perf-pass.zip` (or `perf-1` to `perf-6` in order); run
+  `node scripts/remove-old-files.mjs` once (it deletes the empty `src/hooks/useApi.ts`) and `npm install` (packages
+  changed). Worker after it: 2.72 MB gzip.
+- **Admin AI (8 Nov):** Admin -> AI models sets the fast / strong / premium / small models for everyone (saved in
+  D1 over the LLM_* settings); Settings -> AI -> Your model lets an admin try a model on their own requests first
+  (Ollama only under `npm run dev`). Settings: the index stays put and only the sections scroll.
+- **Bestiary (agreed 8 Nov; built: Stage 1 engine, Stage 2 book):**
+  - A real book: painted, aged-paper look (an exception to the flat rule, for the book only); pages turn with the
+    arrow keys or a mouse/finger drag.
+  - 4 tiers. I: Minotaur, Cyclops, Oni, Kitsune. II: Naga, Rakshasa, Sphinx, Fenrir. III: Hydra, Kraken, Ammit.
+    IV: Simurgh, Jörmungandr. Beating any 2 in a tier opens the next. Higher tiers: more HP, shorter timers, harsher
+    abilities. Locked creatures are dark silhouettes.
+  - A topic whose creature is locked gets the closest unlocked creature; the locked page teases it.
+  - Each page: art, lore (the myth plus real facts), weakness, tactics, battle record, concepts it tested you on.
+  - Weakness = a move combo. A clue shows first; finding the combo yourself gives an achievement and a bonus; after
+    the first win the combo is written in for good, and using it in a fight gives a bonus (stagger, extra damage).
+  - Rewards: first defeat (page + XP/coins by tier), weakness found alone (achievement + bonus), mastery per
+    creature (bronze 1 win, silver 5, gold flawless or nightmare: a creature-themed skin), tier finished (a champion).
+  - From God of War's Codex (2018, Ragnarök; read on the GoW wiki): entries are written in a character's voice
+    (Atreus: curious, his mother's stories; Mimir in Ragnarök: dry, scholarly asides) with a sketch, then two short
+    tactics lines naming the counter ("disrupt the haymaker for an opening"). Ragnarök adds notes in two voices
+    (Kratos and Atreus) and variant entries of one creature family. For us:
+    - a Scribe voice for the lore, plus a margin note in your current champion's voice;
+    - variants: each creature gains a harder form at higher tiers (e.g. Elder Hydra), as a sub-page;
+    - tactics: two lines, one of them the weakness clue;
+    - lost pages: extra lore pages found through quests and rewards.
+- **Champions (agreed 8 Nov; built in Stage 3):** Kaien free; finishing Bestiary tiers I-IV unlocks Asha, Brak, Mira, Vex;
+  Thorne at level 25; each unlock is a ceremony with a reward; anyone who already picked a champion keeps it.
+  A champion using their own mastery weapon gets exclusive attack/ultimate animations, one small perk and a KO
+  finisher.
+- **Quests (agreed 8 Nov; built in Stage 4):** quests are sealed scrolls; "Answer the call" opens the exact place; done = the seal
+  breaks and the reward is claimed. Keep the daily quests and add Hunts (Bestiary; rewards include lost pages),
+  weekly trials and a short story quest per champion.
+- **Build order:** 1 Bestiary engine (tiers, unlocks, stand-ins, records, weakness combos, rewards) -> 2 the book
+  -> 3 champions (locks, ceremonies, weapons, finishers) -> 4 quests (scrolls, hunts, trials, champion quests).
+- **How Stage 3 works:** `server/game/roster.ts` (rules, `champion_unlocks` table, migration 0010 keeps every
+  champion already picked or fought with). "Finished" = every creature of the tier beaten; Ammit (Nemesis) does not
+  count. Unlocks are written after the winning fight (`result.champions_unlocked`) and also lazily on
+  GET /avatar/champion (Thorne's level). The ceremony (`ChampionCeremony`) shows on Hero tabs except the arena (there
+  the result panel has "Meet ..."); POST /avatar/champion/celebrate pays once. Signature weapon = the champion's own
+  level-10 mastery weapon worn: perk in `kits.ts SIGNATURES`, animations + finisher beat in `lib/pixel/fight.ts`.
+  CSS gotcha: use `--color-text` / `--color-text-secondary`, not `--color-fg*` (those resolve at :root and ignore the
+  dark Play scope inside modals).
+- **How Stage 4 works:** `server/game/scrolls.ts` + `quest_scrolls` table (migration 0011, which also adds
+  `bestiary_records.lost_page`). Daily quests stay in `daily_quests` (claim unchanged). Weekly trials: 3 per ISO week,
+  picked from the user id + week (no randomness, so no duplicates). Hunts: up to 2 at once, first defeats then Elder
+  (nightmare) forms; claiming one finds the creature's lost page (`LOST_PAGES` in lib/bestiary/content.ts, shown in
+  the book). Story: 3 chapters per champion, for the champion you fight as. Every scroll moves by an `event` string
+  (`scrollEvent`): actions from `questsOnAction`, fight events from `arena.end` (`fightEvents`), banes from resolve.
+  UI: `components/hero/QuestsTab.tsx` + `QuestScroll.tsx` (seal splits on claim); links in `lib/quests/board.ts`.
+- Nothing is in progress (all 4 hero stages delivered). Ideas waiting in the backlog: chiptune sound, sharing a KO clip, campaign mode, more inputs
   (YouTube, slides, OCR), ghost duels and other multiplayer, teacher mode.
 
 ---
@@ -139,9 +212,8 @@ Each step was a set of stages with zips and checklists. Dates are 2026.
 From this work only; nobody has gone looking for more.
 
 **Tests**
-- **Key-press tests can flake under load.** The quiz and exam screens bind their key handlers in an effect, so a test
-  that presses a key straight after rendering can land before the handler. Tests now retry until the result shows;
-  the root cause (late binding) is still there.
+- **Key-press tests can flake under load.** Tests retry until the result shows. The quiz and exam now bind their keys
+  in a layout effect (before paint), which removes the main cause; other screens still bind in effects.
 - **Tests that pass here can fail on the owner's PC.** Timing differs between the sandbox and Windows; this caused most
   of the back-and-forth rounds.
 - **e2e runs against a mocked API**, and Workers AI and Vectorize can't run locally, so real search, embeddings and
@@ -156,6 +228,12 @@ From this work only; nobody has gone looking for more.
 - **OpenNext warns it is not fully compatible with Windows**; WSL is the safer way to build there.
 - `next start` warns about `output: standalone` during e2e. It works, but it is noise.
 - **Payments have never run against live Razorpay**; only the stub is tested.
+
+- **Speed on a slow phone is bound by the sign-in check.** Every app screen waits for the JS, then /auth/me (and the
+  HUD in parallel), before it shows content (about 5 s on "fast 3G" with 4x CPU). The next big win is rendering the
+  shell and the screen's skeleton without waiting for /auth/me, or checking the session on the server.
+- **Small layout shifts remain** (measured on 3G): the course overview ~0.13 (the header changes when the course
+  arrives), the admin page 0.045, Today and Champion ~0.04. All but the course are under the 0.1 "good" line.
 
 **Product and code**
 - **"Continue" on Today reads saved sessions from this browser** (localStorage), so it differs per device.
@@ -191,3 +269,13 @@ From this work only; nobody has gone looking for more.
 - D1 migrations only add, and are generated with `npm run db:generate`.
 - Turbopack can't follow a symlinked `node_modules` in a git worktree; check the commit out directly instead.
 - After changing the logo, re-run `node scripts/brand-assets.mjs`.
+- **Local settings:** `.dev.vars` values reach `process.env` through `getEnv()` (`fillProcessEnv`); `.env.local` wins
+  when both set a key. Before this, OWNER_EMAIL from `.dev.vars` never applied under `npm run dev`.
+- **Query budgets:** `src/server/queries.test.ts` counts D1 round trips on 20 hot routes. A change that adds one fails
+  there; lower the number if you remove one. Batch independent reads with `ctx.db.batch([...])` (one round trip; one
+  statement per row for writes: D1 allows 100 bound parameters per statement). `tierFor` is cached per request: call
+  `forgetTier` after changing a plan in the same request.
+- **Measure speed:** `npm run build`, then `npx playwright test -c playwright.perf.config.ts` (add `PERF_THROTTLE=1`
+  for 3G and a slow CPU; `PERF_LABEL=name` names the file in `perf/results/`). Kill a stale `next-server` first.
+- `Skeleton`: size it with a Tailwind class or the height prop; `perf.test.ts` guards fonts, the login entrance and
+  `public/_headers` (static files on Cloudflare never get next.config.ts headers).

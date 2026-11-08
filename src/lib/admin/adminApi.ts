@@ -56,6 +56,19 @@ export interface AiReport {
   routes: Record<Tier, { small: string[]; strong: string[] }>;
 }
 
+export type SlotName = "fast" | "strong" | "premium" | "small";
+/** Admin -> AI models (GET /admin/ai/models). */
+export interface AiModels {
+  /** What admins saved for everyone (a missing slot uses its setting, shown in `defaults`). */
+  slots: Partial<Record<SlotName, string>>;
+  defaults: Record<SlotName, string>;
+  providers: { id: string; configured: boolean; key_env: string | null }[];
+  /** This admin's own model, or null for the normal ones. */
+  mine: string | null;
+  /** Ollama: only while the app runs on the admin's computer (npm run dev). */
+  ollama: { enabled: boolean; base: string | null; models: string[] };
+}
+
 async function call<T>(path: string, init: { method?: string; body?: unknown; headers?: Record<string, string> } = {}): Promise<T> {
   let res: Response;
   try {
@@ -91,6 +104,9 @@ export const adminApi = {
   },
   ai: () => call<AiReport>("/ai"),
   setCap: (usd: number) => call<AiReport>("/ai", { method: "PUT", body: { cap_usd: usd } }),
+  aiModels: () => call<AiModels>("/ai/models"),
+  setAiSlots: (slots: Partial<Record<SlotName, string | null>>) => call<AiModels>("/ai/models", { method: "PUT", body: { slots } }),
+  setMyModel: (spec: string | null) => call<{ spec: string | null }>("/ai/mine", { method: "PUT", body: { spec } }),
   revokeInvite: (code: string) => call<{ ok: true }>(`/invites/${encodeURIComponent(code)}`, { method: "DELETE" }),
 };
 

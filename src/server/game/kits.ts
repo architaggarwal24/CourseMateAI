@@ -29,6 +29,27 @@ export const KITS: Record<Champion, Kit> = {
             ultimate_name: "Last Chapter", ultimate_text: `+${LAST_CHAPTER_HEARTS} hearts now, and the next turn's blow is fully blocked.` },
 };
 
+/**
+ * A champion fighting with their own mastery weapon (the level 10 skin): one small perk, exclusive attack and
+ * ultimate animations, and a finisher on the KO (Stage C1). The perks are deliberately small.
+ */
+export const SIGNATURE_RIPOSTE = 0.75;
+export const SIGNATURE_JAB = 0.9;
+export const SIGNATURE_HEAVY = 1.1;
+export const SIGNATURE_METER = 5;
+export const SIGNATURE_DODGE = 0.05;
+export interface Signature { weapon: string; perk_name: string; perk_text: string; finisher: string }
+export const SIGNATURES: Record<Champion, Signature> = {
+  kaien: { weapon: "mastery_kaien_weapon", perk_name: "Edge of the Ninth Page", perk_text: `Riposte hits back for ${SIGNATURE_RIPOSTE * 100}% of a Strike (not half).`, finisher: "Final Cut" },
+  asha: { weapon: "mastery_asha_weapon", perk_name: "Dawnpiercer", perk_text: `Your Jab hits x${SIGNATURE_JAB} (not x${ASHA_JAB_MULT}).`, finisher: "Sunfall" },
+  brak: { weapon: "mastery_brak_weapon", perk_name: "Iron Knuckles", perk_text: `A right Heavy hits ${Math.round((SIGNATURE_HEAVY - 1) * 100)}% harder.`, finisher: "Thousand Fists" },
+  mira: { weapon: "mastery_mira_weapon", perk_name: "Ink Reserve", perk_text: `Each right answer charges your ultimate ${SIGNATURE_METER} more.`, finisher: "Last Word" },
+  vex: { weapon: "mastery_vex_weapon", perk_name: "Ghost Edge", perk_text: `${SIGNATURE_DODGE * 100}% more chance to slip past a blow.`, finisher: "Eclipse" },
+  thorne: { weapon: "mastery_thorne_weapon", perk_name: "Oathshield", perk_text: "The first blow of every fight is fully blocked.", finisher: "Closing Chapter" },
+};
+export const hasSignature = (champion: string, equipped: Record<string, string | undefined>) =>
+  !!SIGNATURES[champion as Champion] && equipped.weapon === SIGNATURES[champion as Champion].weapon;
+
 export const LEVEL_XP = [0, 100, 250, 450, 700, 1000, 1350, 1750, 2200, 2700];
 export const MAX_LEVEL = LEVEL_XP.length;
 const MASTERY: [string, string, number][] = [["outfit", "armor", 3], ["head", "headgear", 6], ["weapon", "weapon", 10]];
@@ -50,7 +71,11 @@ const XP_PER_RIGHT = 10, XP_PER_WIN = 50;
 export class NotReady extends Error {}
 export class AlreadyActive extends Error {}
 
-export interface KitState { champion: Champion; meter: number; armed: string | null; wall: number; vanish: number; fortress: number; spent: Record<string, number>; library_pending?: boolean }
+export interface KitState {
+  champion: Champion; meter: number; armed: string | null; wall: number; vanish: number; fortress: number; spent: Record<string, number>; library_pending?: boolean;
+  /** Fighting with the champion's own mastery weapon (SIGNATURES); `oath`: Thorne's first blow still to block. */
+  signature?: boolean; oath?: number;
+}
 
 export class KitTurn {
   mult = 1; ignoreShield = false; jabMult: number | null = null; comboExtra = 0; riposte = 0; divisor = 2;
@@ -65,12 +90,15 @@ export class KitTurn {
 }
 
 export const kitFor = (champion: unknown): Kit => KITS[(champion as Champion)] ?? KITS.kaien;
-export function initKit(champion: unknown): KitState {
-  return { champion: kitFor(champion).champion, meter: 0, armed: null, wall: 0, vanish: 0, fortress: 0, spent: {} };
+export function initKit(champion: unknown, signature = false): KitState {
+  const s: KitState = { champion: kitFor(champion).champion, meter: 0, armed: null, wall: 0, vanish: 0, fortress: 0, spent: {} };
+  if (signature) { s.signature = true; if (s.champion === "thorne") s.oath = 1; }
+  return s;
 }
 export const meterGain = (correct: boolean, combo: number) => (correct ? METER_PER_RIGHT + (combo >= METER_STREAK_FROM ? METER_STREAK_BONUS : 0) : 0);
 export function charge(s: KitState, correct: boolean, combo: number): number {
-  const gain = Math.min(METER_MAX - (s.meter || 0), meterGain(correct, combo));
+  const extra = correct && s.signature && s.champion === "mira" ? SIGNATURE_METER : 0;
+  const gain = Math.min(METER_MAX - (s.meter || 0), meterGain(correct, combo) + extra);
   s.meter = (s.meter || 0) + gain;
   return gain;
 }
@@ -101,10 +129,11 @@ export function spent(s: KitState, seq: number, focus: number) {
 
 export function prepare(t: KitTurn) {
   const s = t.state, cid = t.champion;
-  if (cid === "kaien" && t.correct && t.move === "guard" && t.damaging) t.riposte = RIPOSTE_RATIO;
-  if (cid === "asha" && t.move === "jab") t.jabMult = ASHA_JAB_MULT;
+  const sig = !!s.signature;
+  if (cid === "kaien" && t.correct && t.move === "guard" && t.damaging) t.riposte = sig ? SIGNATURE_RIPOSTE : RIPOSTE_RATIO;
+  if (cid === "asha" && t.move === "jab") t.jabMult = sig ? SIGNATURE_JAB : ASHA_JAB_MULT;
   if (cid === "brak" && t.correct) t.comboExtra = Math.min(t.combo, BRAK_COMBO_CAP) * BRAK_COMBO_STEP - Math.min(t.combo, BASE_COMBO_CAP) * BASE_COMBO_STEP;
-  if (cid === "vex" && t.damaging && t.rng() < VEX_DODGE[t.d]) t.dodge = true;
+  if (cid === "vex" && t.damaging && t.rng() < VEX_DODGE[t.d] + (sig ? SIGNATURE_DODGE : 0)) t.dodge = true;
   const armed = s.armed;
   if (t.correct && armed === "cut") { t.mult = CUT_MULT; t.ignoreShield = true; }
   else if (t.correct && armed === "rush") t.mult = 1 + RUSH_PER_COMBO * t.combo;
@@ -113,6 +142,8 @@ export function prepare(t: KitTurn) {
   if ((s.wall || 0) > 0 && t.damaging) t.halveAfter = true;
   if ((s.vanish || 0) > 0 && t.damaging) { t.dodge = true; t.vanished = true; }
   if ((s.fortress || 0) > 0) t.block = true;
+  if (sig && cid === "brak" && t.correct && t.move === "heavy") t.mult *= SIGNATURE_HEAVY;
+  if ((s.oath || 0) > 0 && t.damaging) t.block = true;
 }
 
 export function settle(t: KitTurn) {
@@ -127,6 +158,7 @@ export function settle(t: KitTurn) {
   if (t.vanished) { s.vanish = Math.max(0, (s.vanish || 0) - 1); t.event("vanish", "The blow passes through a shadow."); }
   else if (t.dodge) t.event("shadowstep", "Shadowstep: you slip past the blow.");
   if ((s.fortress || 0) > 0) { s.fortress = 0; t.event("fortress", "The Last Chapter holds: nothing gets through."); }
+  else if ((s.oath || 0) > 0 && t.damaging) { s.oath = 0; t.event("fortress", "Oathshield: the first blow breaks on Thorne's shield."); }
 }
 
 export function kitHud(s: KitState) {
@@ -135,6 +167,7 @@ export function kitHud(s: KitState) {
     champion: kit.champion, meter: s.meter || 0, max: METER_MAX, ready: ready(s), active: active(s),
     passive: { name: kit.passive_name, text: kit.passive_text }, ultimate: { name: kit.ultimate_name, text: kit.ultimate_text },
     effects: Object.fromEntries((["armed", "wall", "vanish", "fortress"] as const).filter((k) => s[k]).map((k) => [k, s[k]])),
+    signature: s.signature ? { name: SIGNATURES[kit.champion].perk_name, text: SIGNATURES[kit.champion].perk_text, finisher: SIGNATURES[kit.champion].finisher } : null,
   };
 }
 

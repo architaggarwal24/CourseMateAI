@@ -187,6 +187,18 @@
 .arena-verdict[data-correct="false"] .arena-verdict__head { color: var(--color-danger-text); }
 .arena-verdict__line { margin: 0; max-width: var(--measure); line-height: var(--line-height-body); color: var(--color-text-secondary); font-size: 0.9375rem; }
 .arena-verdict__line--gear { color: var(--color-reward); }
+.arena-verdict__line--bane { color: var(--color-reward); font-weight: 600; }
+
+/* The creature's bane, above the move buttons (Stage B1): the clue, or the combo with the landed moves lit. */
+.arena-bane { margin: 0 0 var(--space-2); display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-1); font-size: 0.8rem; color: var(--color-text-secondary); }
+.arena-bane--clue { font-style: italic; }
+.arena-bane__label { font-family: var(--font-label); font-style: normal; font-size: 0.6rem; color: var(--color-reward); margin-right: var(--space-1); }
+.arena-bane__step { padding: 0.1rem 0.45rem; border: 1px solid var(--color-border); border-radius: var(--radius-sm); font-variant-numeric: tabular-nums; }
+.arena-bane__step[data-done] { border-color: var(--color-reward); color: var(--color-reward); }
+.arena-result__bestiary { display: grid; gap: var(--space-1); justify-items: center; text-align: center; font-size: 0.9rem; color: var(--color-text); }
+.arena-result__bestiary p { margin: 0; }
+.arena-result__joined { display: grid; gap: var(--space-2); justify-items: center; text-align: center; color: var(--color-text); }
+.arena-result__joined p { margin: 0; font-size: 0.85rem; }
 .arena-verdict__actions { display: flex; flex-wrap: wrap; gap: var(--space-2); margin-top: var(--space-1); }
 
 /* ── Items and retreat ───────────────────────────────────────────────────────────────────────────────────────── */

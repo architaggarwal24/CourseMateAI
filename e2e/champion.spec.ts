@@ -97,3 +97,38 @@ test("without reduced motion the champion idles (the frames change)", async ({ p
   await page.waitForTimeout(300);
   expect(await distinctFrames(page)).toBeGreaterThan(1);
 });
+
+// Stage C1: champions join through the Bestiary (and Thorne at level 25), each with a ceremony.
+test("a locked champion is a silhouette that says what brings them, and can't be picked", async ({ page }) => {
+  await mockApi(page);
+  await page.goto("/hero?tab=champion");
+  const vex = roster(page).getByRole("radio", { name: /Vex/ });
+  await expect(vex).toHaveAttribute("aria-disabled", "true");
+  await expect(vex).toContainText("Beat every creature in Bestiary tier IV");
+  let put = false;
+  page.on("request", (r) => { if (r.url().endsWith("/avatar/champion") && r.method() === "PUT") put = true; });
+  await vex.click({ force: true });                                         // (aria-disabled: Playwright would wait for it)
+  await expect(page.getByText("Vex hasn't joined you yet.", { exact: false })).toBeVisible();
+  expect(put).toBe(false);
+  await expect(roster(page).getByRole("radio", { checked: true })).toContainText("Kaien");
+  await expect(page.getByTestId("champion-signature")).toContainText("Ninth Page Cut Finale");
+});
+
+test("a champion who just joined gets a ceremony; Fight as picks them", async ({ page }) => {
+  await mockApi(page, { ceremony: "asha" });
+  await page.goto("/hero?tab=champion");
+  const dialog = page.getByRole("dialog", { name: "Asha joins you" });
+  await expect(dialog).toBeVisible();
+  await expect(dialog).toContainText("You finished Bestiary tier I.");
+  await settle(page);
+  const results = await new AxeBuilder({ page }).include("[role=dialog]").analyze();
+  expect(results.violations.map((v) => `${v.id}: ${v.nodes.map((n) => n.target.join(" ") + " " + (n.any[0]?.message ?? "")).join(", ")}`)).toEqual([]);
+  const claimed = page.waitForRequest((r) => r.url().endsWith("/avatar/champion/celebrate"));
+  await dialog.getByRole("button", { name: "Fight as Asha" }).click();
+  expect((await claimed).postDataJSON()).toEqual({ champion_id: "asha" });
+  await expect(dialog).toBeHidden();
+  await expect(header(page)).toHaveAttribute("aria-label", /^Your champion, Asha/);
+  await page.reload();
+  await expect(roster(page)).toBeVisible();
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+});

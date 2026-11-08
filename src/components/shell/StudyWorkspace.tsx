@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import { useRouter, useSearchParams } from "next/navigation";
 import { FileX } from "@/components/icons";
@@ -8,6 +8,7 @@ import { Button, EmptyState } from "@/components/ui";
 import { DOCUMENT_GONE_EVENT } from "@/lib/api/client";
 import { useDocumentUpload } from "@/hooks/useDocumentUpload";
 import { useDocuments, useSessionStore } from "@/hooks/useSessions";
+import { useAuth } from "@/contexts/AuthContext";
 import { dueBadge, useReview } from "@/hooks/useReview";
 import { courseById, useCourses } from "@/hooks/useCourses";
 import { useRevalidate } from "@/hooks/useRevalidate";
@@ -57,8 +58,9 @@ export default function StudyWorkspace() {
   const { courses, loaded: coursesLoaded, locked: coursesLocked, load: loadCourses } = useCourses();
   const [editor, setEditor] = useState<{ course: Course | null } | null>(null);
 
-  // The courses load once the documents have (both are the signed-in user's).
-  useEffect(() => { if (loaded) loadCourses().catch(() => {}); }, [loaded, loadCourses]);
+  // The courses load alongside the documents (not after them): a course link (?doc=<course>) waited for both in turn.
+  const { user } = useAuth();
+  useEffect(() => { if (user) loadCourses().catch(() => {}); }, [user, loadCourses]);
   const course = courseById(courses, requestedDocId) ?? null;
   const tab: StudyTab = isStudyTab(tabParam) && (tabParam !== "overview" || course) ? tabParam : DEFAULT_STUDY_TAB;
 
@@ -72,8 +74,13 @@ export default function StudyWorkspace() {
   const gone = loaded && !!requestedDocId && !doc && !course && coursesLoaded;
 
   // A course is seen by the tools through the documents API (its record: name, status, chunks over its PDFs).
+  // When each document was last asked about: the course's record arriving flips `doc` on, and the open-a-tab recheck
+  // below would ask for the same record again straight away.
+  const checkedAt = useRef<{ id: string; at: number } | null>(null);
   useEffect(() => {
-    if (course) refreshDocument(course.id).catch(() => { /* offline: the overview still shows */ });
+    if (!course) return;
+    checkedAt.current = { id: course.id, at: Date.now() };
+    refreshDocument(course.id).catch(() => { /* offline: the overview still shows */ });
   }, [course?.id, course?.updated_at, refreshDocument]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // On a course a dropped PDF becomes a new document (a course isn't replaced by one file).
@@ -95,7 +102,10 @@ export default function StudyWorkspace() {
   };
   useEffect(() => {
     if (!canRecheck) return;
-    recheckDocument();
+    const last = checkedAt.current;
+    const justAsked = !!last && last.id === documentId && Date.now() - last.at < 2000;
+    checkedAt.current = { id: documentId!, at: Date.now() };
+    if (!justAsked) recheckDocument();
     window.addEventListener(DOCUMENT_GONE_EVENT, recheckDocument);
     return () => window.removeEventListener(DOCUMENT_GONE_EVENT, recheckDocument);
     // eslint-disable-next-line react-hooks/exhaustive-deps

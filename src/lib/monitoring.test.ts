@@ -23,3 +23,27 @@ describe("error reports carry no secrets", () => {
     expect(await initMonitoring()).toBe(false);
   });
 });
+
+// Performance pass (Stage P4): real-user Web Vitals go to the existing Sentry project (only when a DSN is set).
+describe("speed reports (Web Vitals through Sentry)", () => {
+  it("sample one visit in ten by default; the env var can change or switch it off", async () => {
+    const { tracesSampleRate } = await import("./monitoring");
+    expect(tracesSampleRate(undefined)).toBe(0.1);
+    expect(tracesSampleRate("0")).toBe(0);
+    expect(tracesSampleRate("0.5")).toBe(0.5);
+    expect(tracesSampleRate("7")).toBe(1);
+    expect(tracesSampleRate("nonsense")).toBe(0.1);
+  });
+
+  it("carry no query strings (document ids) and no email", async () => {
+    const { scrubTransaction } = await import("./monitoring");
+    const out = scrubTransaction({
+      type: "transaction", transaction: "/study?doc=abc",
+      request: { url: "https://app.example/study?tab=chat&doc=abc", method: "GET" },
+      user: { id: "7", email: "a@b.c" },
+      spans: [{ description: "GET /api/v1/concept-map?session_id=abc", data: { url: "/api/v1/concept-map?session_id=abc" } }],
+    } as never);
+    expect(JSON.stringify(out)).not.toMatch(/abc|a@b\.c/);
+    expect(out.transaction).toBe("/study");
+  });
+});

@@ -20,6 +20,7 @@ export const PAGES: PageCase[] = [
   { name: "study: exam", path: "/study?tab=exam&doc=doc-1", auth: true, ready: "role=heading[name='Mock exam']" },
   { name: "hero: quests", path: "/hero", auth: true, ready: "main" },
   { name: "hero: arena", path: "/hero?tab=arena", auth: true, ready: "main" },
+  { name: "hero: bestiary", path: "/hero?tab=bestiary", auth: true, ready: "text=pages written in full" },
   { name: "hero: shop", path: "/hero?tab=shop", auth: true, ready: "main" },
   { name: "hero: inventory", path: "/hero?tab=inventory", auth: true, ready: "main" },
   { name: "hero: champion", path: "/hero?tab=champion", auth: true, ready: "role=radiogroup[name='Choose your champion']" },

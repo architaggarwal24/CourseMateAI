@@ -20,8 +20,13 @@ const ALLOWED = [
   /linear-gradient\(90deg, var\(--color-accent-text\) var\(--fill[^)]*\)[^;]*/g,      // range slider: hard-edged fill
 ];
 
+// The Bestiary book is painted on purpose (aged paper, a shaded spine, a curling page): the owner's call, Stage B2.
+// Only its own stylesheet may do it.
+// (paths compared with forward slashes: on Windows `relative` gives components\bestiary\book.css)
+const PAINTED = (file: string) => file.replace(/\\/g, "/").endsWith("components/bestiary/book.css");
+
 describe("flat Ink surfaces", () => {
-  it.each(ALL.map((f) => [f.file, f.text]))("%s paints no gradients", (_file, text) => {
+  it.each(ALL.filter((f) => !PAINTED(f.file)).map((f) => [f.file, f.text]))("%s paints no gradients", (_file, text) => {
     let t = text as string;
     for (const re of ALLOWED) t = t.replace(re, "");
     expect(t).not.toMatch(/(?:linear|radial|conic)-gradient\(/);

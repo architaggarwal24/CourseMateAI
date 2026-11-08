@@ -7,6 +7,7 @@ import type { Tier } from "../plans";
 import { route, type Job, type Target } from "./models";
 import { apiLlm, DEFAULT_MAX_OUTPUT } from "./providers";
 import { checkQuota, isCapped, recordCall } from "./usage";
+import { aiSettings, overrideTarget, withSlots } from "./config";
 
 export interface ChatMessage { role: "system" | "user" | "assistant"; content: string }
 export interface CallOptions {
@@ -14,7 +15,8 @@ export interface CallOptions {
   /** Ask for a JSON answer where the provider has a switch for it (Gemini, OpenAI). The prompt must ask too. */
   json?: boolean;
 }
-export interface Caller { id: number; owner: boolean; tier: Tier }
+/** `admin`: their own model (ai/config.ts) is tried first on their requests. */
+export interface Caller { id: number; owner: boolean; tier: Tier; admin?: boolean }
 
 export interface Llm {
   generate(messages: ChatMessage[], opts: CallOptions): Promise<{ text: string; tokensIn?: number; tokensOut?: number }>;
@@ -69,7 +71,15 @@ interface Ctx { db: Db; env: { AI?: unknown } }
 
 async function targets(ctx: Ctx, caller: Caller, job: Job): Promise<Target[]> {
   await checkQuota(ctx.db, caller);
-  const list = route(caller.tier, job, { capped: await isCapped(ctx.db) });
+  const [capped, saved] = await Promise.all([isCapped(ctx.db), aiSettings(ctx.db, caller.admin ? caller.id : undefined)]);
+  // The models admins saved for everyone, over the LLM_* settings.
+  const list = route(caller.tier, job, { capped, env: withSlots(process.env, saved.slots) });
+  // An admin's own model goes first (the normal ones stay behind it). Past the spend cap only a free one still does.
+  const mine = caller.admin ? overrideTarget(saved.override) : null;
+  if (mine && (!capped || mine.provider === "ollama" || mine.provider === "workers-ai")) {
+    list.unshift(mine);
+    for (let i = list.length - 1; i > 0; i--) if (list[i].provider === mine.provider && list[i].model === mine.model) list.splice(i, 1);
+  }
   if (!list.length) throw new HttpError(503, "ai_not_configured", "This server has no AI model set up yet (LLM_FAST and a provider key).", "retry");
   return list;
 }

@@ -26,7 +26,23 @@ export interface ChampionProgress {
   xp: number; level: number; level_xp: number; next_level_xp: number | null; battles: number; wins: number;
   mastery: { id: string; slot: string; level: number }[];
   kit: { passive: { name: string; text: string }; ultimate: { name: string; text: string } };
+  /** The champion's own mastery weapon (the level 10 skin): its perk, its finisher, and whether it is owned / worn. */
+  signature?: { weapon: string; perk: { name: string; text: string }; finisher: string; owned: boolean; worn: boolean };
+  /** Stage C1 locks: how the champion joins, how far along that is, and whether its ceremony was seen. */
+  unlock?: ChampionUnlock;
 }
+
+export interface ChampionUnlock {
+  unlocked: boolean; source: string | null; celebrated: boolean; how: string; have: number; need: number;
+  reward: { xp: number; coins: number };
+}
+
+/** Whether a champion may be picked (unknown, e.g. for a visitor or an older server: yes). */
+export const isUnlocked = (progress: Record<string, ChampionProgress>, id: string) => progress[id]?.unlock?.unlocked ?? true;
+
+/** The first champion who joined and has not had a ceremony yet. */
+export const ceremonyDue = (progress: Record<string, ChampionProgress>): string | null =>
+  HEROES.map((h) => h.id).find((id) => progress[id]?.unlock?.unlocked && progress[id]?.unlock?.celebrated === false) ?? null;
 
 interface ChampionState {
   championId: string;
@@ -40,6 +56,8 @@ interface ChampionState {
   progress: Record<string, ChampionProgress>;
   load: (opts: { signedIn: boolean; force?: boolean }) => Promise<void>;
   choose: (id: string) => Promise<boolean>;
+  /** The unlock ceremony was seen: claims its reward (once). Resolves with what was paid, or null. */
+  celebrate: (id: string) => Promise<{ xp: number; coins: number } | null>;
   reset: () => void;
 }
 
@@ -108,6 +126,12 @@ export const useChampion = create<ChampionState>()(
 
         choose: async (id) => {
           if (!isChampion(id)) return false;
+          const lock = get().progress[id]?.unlock;
+          if (lock && !lock.unlocked) {
+            const name = HEROES.find((h) => h.id === id)!.name;
+            toast.info(`${name} hasn't joined you yet. ${lock.how} (${lock.have} of ${lock.need}).`);
+            return false;
+          }
           const before = { championId: get().championId, chosen: get().chosen };
           changeSeq++;
           set({ championId: id, chosen: true });
@@ -124,6 +148,19 @@ export const useChampion = create<ChampionState>()(
             toast.apiError(e, { onRetry: () => { void get().choose(id); } });
             return false;
           }
+        },
+
+        celebrate: async (id) => {
+          // seen at once (the ceremony doesn't come back), whatever the network does
+          set((s) => s.progress[id]?.unlock ? { progress: { ...s.progress, [id]: { ...s.progress[id], unlock: { ...s.progress[id].unlock!, celebrated: true } } } } : s);
+          if (!get().signedIn) return null;
+          try {
+            const { data, response } = await rawApi.POST("/avatar/champion/celebrate" as never, { body: { champion_id: id } } as never);
+            if (!response.ok || !data) return null;
+            const d = data as { reward?: { xp: number; coins: number }; state?: Answer };
+            if (d.state) apply(d.state);
+            return d.reward ?? null;
+          } catch { return null; }
         },
 
         reset: () => { inflight = null; pendingChoice = null; changeSeq++; set({ championId: DEFAULT_HERO, chosen: false, loaded: false, signedIn: null, progress: {} }); },

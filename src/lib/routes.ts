@@ -7,7 +7,7 @@ export type StudyTab = (typeof STUDY_TABS)[number];
 export const DEFAULT_STUDY_TAB: StudyTab = "chat";
 
 /** The Hero area is one page with tabs: /hero?tab=<tab>. */
-export const HERO_TABS = ["quests", "arena", "shop", "inventory", "champion", "achievements"] as const;
+export const HERO_TABS = ["quests", "arena", "bestiary", "shop", "inventory", "champion", "achievements"] as const;
 export type HeroTab = (typeof HERO_TABS)[number];
 export const DEFAULT_HERO_TAB: HeroTab = "quests";
 /** Retired tabs and the tab that replaced them (the Avatar tab and the Hero Forge became the Champion tab). */

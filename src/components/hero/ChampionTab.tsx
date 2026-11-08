@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useReducedMotionConfig } from "motion/react";
 import { ChevronDown, Crown, Lock, PawPrint, Shield, ShoppingBag, Sparkles, Swords, X, Zap } from "@/components/icons";
 import { xpPct } from "@/components/arena/pixel/Roster";
-import { useChampion } from "@/hooks/useChampion";
+import { useChampion, type ChampionProgress } from "@/hooks/useChampion";
 import PixelSprite from "@/components/arena/pixel/PixelSprite";
 import { Roster } from "@/components/arena/pixel/Roster";
 import GearChips from "@/components/champion/GearChips";
@@ -132,6 +132,29 @@ function KitAndMastery({ championId, name, shop }: { championId: string; name: s
           );
         })}
       </ul>
+      {p.signature && <SignatureWeapon name={name} sig={p.signature} shop={shop} />}
+    </div>
+  );
+}
+
+/**
+ * The champion's own mastery weapon (Stage C1): worn by that champion it gives a small perk, their own attack and
+ * ultimate animations, and a finisher on the KO. Says whether it is earned yet and whether it is worn.
+ */
+function SignatureWeapon({ name, sig, shop }: { name: string; sig: NonNullable<ChampionProgress["signature"]>; shop: NonNullable<ReturnType<typeof useHeroStore.getState>["shop"]> }) {
+  const item = shop.items.find((i) => i.id === sig.weapon);
+  const owned = !!item?.owned || sig.owned;
+  const worn = shop.equipped?.weapon === sig.weapon;
+  const status = worn ? "Worn: active in battle" : owned ? `Wear ${item?.name ?? "it"} as ${name}'s weapon finish to wake it` : "Unlocks at Lv 10";
+  return (
+    <div className="champ-signature" data-worn={worn || undefined} data-testid="champion-signature">
+      <ItemArt itemId={sig.weapon} size={44} />
+      <div className="min-w-0">
+        <p className="hero-label m-0">Signature weapon · {item?.name ?? "Mastery weapon"}</p>
+        <p className="m-0 text-sm"><strong>{sig.perk.name}.</strong> {sig.perk.text}</p>
+        <p className="m-0 text-sm text-fg-2">Own attack and ultimate animations, and a finisher: <span className="pixel-font">{sig.finisher}</span>.</p>
+        <p className="m-0 text-xs text-fg-muted">{worn ? null : !owned && <Lock size={10} className="inline" aria-hidden="true" />} {status}</p>
+      </div>
     </div>
   );
 }

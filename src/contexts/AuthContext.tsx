@@ -46,7 +46,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
-  const hudRefresh = useHUDStore((s) => s.refresh);
   const setUserIdAsync = useHUDStore((s) => s.setUserIdAsync);
 
   const refresh = useCallback(async (): Promise<User | null> => {
@@ -56,10 +55,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (response.ok && data) next = data as unknown as User;
     } catch { /* offline: signed out */ }
     setUser(next);
-    try {
-      await setUserIdAsync(next ? String(next.user_id) : "guest");
-      await hudRefresh();
-    } catch { /* the HUD isn't on the Worker yet; it fills in later */ }
+    // One GET /hud at most: it shares the request AppShell started on mount (in parallel with /auth/me), and a
+    // signed-out visitor gets the guest HUD without asking.
+    try { await setUserIdAsync(next ? String(next.user_id) : "guest"); } catch { /* it fills in later */ }
     setLoading(false);
     return next;
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -85,10 +83,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     useChampion.getState().reset();             // the next person on this browser starts from the default
     useReview.getState().reset();
     useCourses.getState().reset();
-    try {
-      await setUserIdAsync("guest");
-      await hudRefresh();
-    } catch { /* see refresh */ }
+    try { await setUserIdAsync("guest"); } catch { /* see refresh */ }
     router.push(ROUTES.study);
   }
 

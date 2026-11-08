@@ -77,7 +77,7 @@ describe("routes", () => {
 
   it("the Hero area is one page: every tab is /hero?tab=, and every old Hero URL redirects into a tab", () => {
     expect(served.filter(p => p.startsWith("/hero"))).toEqual(["/hero"]);
-    expect([...HERO_TABS]).toEqual(["quests", "arena", "shop", "inventory", "champion", "achievements"]);
+    expect([...HERO_TABS]).toEqual(["quests", "arena", "bestiary", "shop", "inventory", "champion", "achievements"]);
     for (const tab of HERO_TABS) expect(ROUTES.heroTab(tab)).toBe(`/hero?tab=${tab}`);
     expect(ROUTES.heroShop).toBe(ROUTES.heroTab("shop"));
     expect(isHeroTab("shop")).toBe(true);
