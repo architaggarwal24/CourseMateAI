@@ -87,6 +87,8 @@ export interface MockOptions {
   documents?: typeof DOCUMENT[];
   /** Stage C1: a champion who just joined and is waiting for their unlock ceremony. */
   ceremony?: string;
+  /** Stage S1: an item made unlocked and affordable, to buy in the shop. */
+  buyable?: string;
 }
 
 const ADMIN_USERS = [
@@ -102,10 +104,11 @@ const INVITES = [
 ];
 
 /** Installs the mock. Returns the list of GET paths nothing answered, so a test can say a new call needs a fixture. */
-export async function mockApi(page: Page, { signedIn = true, advanced = true, documents = [DOCUMENT], ceremony }: MockOptions = {}) {
+export async function mockApi(page: Page, { signedIn = true, advanced = true, documents = [DOCUMENT], ceremony, buyable }: MockOptions = {}) {
   const unanswered: string[] = [];
   const progress = { ...hud.progress, current_level: advanced ? 7 : 1, total_xp: advanced ? 1450 : 0, coins: advanced ? 320 : 0, xp_into_level: advanced ? 150 : 0, xp_to_next: 400, streak_days: advanced ? 4 : 0 };
-  const shopData = { ...shop, shop_unlocked: advanced, level: progress.current_level, coins: progress.coins };
+  const shopData = { ...shop, shop_unlocked: advanced, level: progress.current_level, coins: progress.coins,
+    items: shop.items.map((i) => (i.id === buyable ? { ...i, locked: false, owned: false, can_afford: true, price: 120 } : { ...i })) };
   // The account's champion (GET / PUT /avatar/champion): one per page, like the server keeps one per account.
   const champion = { champion_id: "kaien", chosen: false };
   const worn = shop.equipped as Record<string, string | undefined>;
@@ -149,6 +152,7 @@ export async function mockApi(page: Page, { signedIn = true, advanced = true, do
       scroll: scroll({ id: "story:kaien:1", kind: "story", title: "Kaien · The Ninth Page", text: "A book with eight pages and a gap where the ninth should be. Win a fight as Kaien.", reward: { xp: 100, coins: 60 } }) },
   };
 
+  let chestOpened = false;
   const entitlements = { tier: "archmage", tier_name: "Archmage", features: {
     review_queue: { enabled: true, name: "Spaced-repetition review", required_tier: "scholar", required_tier_name: "Scholar" },
     exam_mode: { enabled: true, name: "Exam mode", required_tier: "sage", required_tier_name: "Sage" },
@@ -217,6 +221,30 @@ export async function mockApi(page: Page, { signedIn = true, advanced = true, do
     if (path === "/avatar") return json(route, 200, { ...avatar, champion_id: champion.champion_id, champion_chosen: champion.chosen });
     // The quest board (Stage Q1): a trial half done, a hunt ready to claim (it finds the Minotaur's lost page),
     // and Kaien's first chapter.
+    if (path === "/shop/purchase" && method === "POST") {
+      const id = (route.request().postDataJSON() as { item_id: string }).item_id;
+      const item = shopData.items.find((i) => i.id === id);
+      if (!item || item.locked || item.owned) return json(route, 200, { ok: false, reason: "Can't buy that" });
+      item.owned = true;
+      progress.coins -= Number(item.price);
+      shopData.coins = progress.coins;
+      return json(route, 200, { ok: true, item_id: id, coins: progress.coins, message: "Purchased" });
+    }
+    // Stage R3: the daily chest (ready to open; opening it pays coins and a potion)
+    if (path === "/chest") return json(route, 200, { available: !chestOpened, day: "2026-11-08", streak: chestOpened ? 3 : 2, bonus_pct: 20 });
+    if (path === "/chest/open" && method === "POST") {
+      if (chestOpened) return json(route, 409, { error: { code: "chest_opened", message: "You've opened today's chest.", action: null, details: null } });
+      chestOpened = true;
+      progress.coins += 54;
+      return json(route, 200, { ok: true, streak: 3, bonus_pct: 20, coins: 54, items: [{ id: "potion_health_small", name: "Health Potion", kind: "potion" }], totals: { coins: progress.coins, total_xp: 1450, level: 7 } });
+    }
+    // Stage A2: victory emotes (three free, one bought, the rest locked)
+    if (path === "/emotes") return json(route, 200, { emotes: [
+      ...["emote_gg", "emote_bow", "emote_flex"].map((id) => ({ id, name: id.slice(6).toUpperCase(), owned: true, how: "Free" })),
+      { id: "emote_laugh", name: "Laugh", owned: true, how: "Shop · 150 coins" },
+      { id: "emote_dance", name: "Victory Dance", owned: false, how: "Shop · 300 coins" },
+      { id: "emote_crown", name: "Crown", owned: false, how: "Defeat 10 bosses" },
+    ] });
     if (path === "/quests") return json(route, 200, questBoard);
     if (path === "/quests/claim" && method === "POST") {
       const id = (route.request().postDataJSON() as { id: string }).id;

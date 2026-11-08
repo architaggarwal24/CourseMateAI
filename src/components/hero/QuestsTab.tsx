@@ -12,6 +12,8 @@ import { BOSSES } from "@/lib/pixel/bosses";
 import { claimScroll, dailyScroll, fetchBoard, type Board, type Scroll } from "@/lib/quests/board";
 import { ROUTES } from "@/lib/routes";
 import QuestScroll from "./QuestScroll";
+import DailyChest from "./DailyChest";
+import { announceAchievements, coinRain, type Achievement } from "@/lib/fx/celebrate";
 import "./quests.css";
 
 function Section({ id, title, note, children, empty }: { id: string; title: string; note?: React.ReactNode; children: React.ReactNode[]; empty: string }) {
@@ -62,6 +64,8 @@ export default function QuestsTab() {
         </span>,
       );
       useHUDStore.setState({ coins: r.totals.coins });
+      coinRain(r.reward.coins);
+      announceAchievements((r as { new_achievements?: Achievement[] }).new_achievements);
       void refreshHud();
       load();
     } catch (e) {
@@ -76,6 +80,7 @@ export default function QuestsTab() {
   return (
     <div className="qboard max-w-5xl mx-auto p-4 md:p-6">
       <div className="qboard__main">
+        {!guest && <DailyChest />}
         <Section id="daily" title="Today's quests" empty={guest ? "Sign in to get daily quests." : "No quests today."}>
           {daily.map((s) => <QuestScroll key={s.id} scroll={s} onClaim={claim} busy={!!pending[`quest:${s.id.slice(6)}`]} />)}
         </Section>

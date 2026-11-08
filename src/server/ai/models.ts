@@ -39,6 +39,8 @@ export interface Target {
   model: string;
   /** The provider key (none for Workers AI). */
   apiKey?: string;
+  /** Ollama: where it answers (localhost in development, an admin's tunnel URL on the live site). */
+  baseUrl?: string;
 }
 
 type Env = Record<string, string | undefined>;

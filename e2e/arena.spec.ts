@@ -23,6 +23,7 @@ async function battleServer(page: Page, opts: { signature?: boolean; joins?: str
     battle.result = { grade: status === "won" ? "A" : "F", accuracy: Math.round((battle.correct / Math.max(1, battle.answered)) * 100), time_seconds: 42, new_personal_best: status === "won" };
     battle.rewards = { arena_round_complete: null, boss_defeat: status === "won" ? { ok: true, xp_gained: 50, coins_gained: 25 } : null };
     if (status === "won" && opts.joins) battle.result.champions_unlocked = [opts.joins];
+    if (status === "won" && battle.taunted) battle.result.taunt_bonus = { xp: 13, coins: 6 };
   };
   // Registered after mockApi, so it answers first.
   await page.route("**/api/v1/arena/battles**", async (route) => {
@@ -66,6 +67,12 @@ async function battleServer(page: Page, opts: { signature?: boolean; joins?: str
     if (path.endsWith("/ultimate")) {
       battle.kit = { ...battle.kit, meter: 0, ready: false, active: true, effects: { armed: "cut" } };
       return json(route, { ok: true, ultimate: { name: battle.kit.ultimate.name, text: battle.kit.ultimate.text, hearts: 0, insight: false, timewarp: false }, battle, question: null });
+    }
+    if (path.endsWith("/taunt")) {
+      if (battle.taunted) return json(route, { error: { code: "taunt_used", message: "Once a fight is enough.", action: null, details: null } }, 409);
+      battle.taunted = true; battle.rage = true; battle.phase = 2;
+      battle.kit = { ...battle.kit, meter: Math.min(100, (battle.kit?.meter ?? 0) + 50), ready: (battle.kit?.meter ?? 0) + 50 >= 100 };
+      return json(route, { ok: true, taunt: { meter_gain: 50, enraged: true, bonus_pct: 25 }, battle });
     }
     if (path.endsWith("/forfeit")) { end("lost"); return json(route, { ok: true, battle, rewards: battle.rewards }); }
     return json(route, { error: { code: "not_found", message: "Not found.", action: null, details: null } }, 404);
@@ -229,4 +236,79 @@ test("the signature weapon's finisher ends the fight, and a champion who joins i
   await dialog.getByRole("button", { name: "Claim reward" }).click();
   await expect(dialog).toBeHidden();
   expect(errors).toEqual([]);
+});
+
+// Stage A2: the taunt (once a fight: the boss rages), then a victory emote from the wheel.
+test("taunt the boss mid-fight, win, and act out a victory emote", async ({ page }) => {
+  await battleServer(page);
+  await page.addInitScript(() => {
+    const seen: string[] = ((window as unknown as { __banners: string[] }).__banners = []);
+    new MutationObserver(() => document.querySelectorAll(".px-arena__banner").forEach((b) => { const t = b.textContent ?? ""; if (!seen.includes(t)) seen.push(t); }))
+      .observe(document, { subtree: true, childList: true, characterData: true });
+  });
+  await summon(page);
+  const tauntBtn = page.getByRole("button", { name: /^Taunt/ });
+  await expect(tauntBtn).toBeEnabled();
+  const sent = page.waitForRequest((r) => r.url().endsWith("/taunt"));
+  await page.keyboard.press("t");
+  await sent;
+  await expect(page.getByRole("button", { name: /^Taunted/ })).toBeDisabled();
+  await expect.poll(() => page.evaluate(() => (window as unknown as { __banners: string[] }).__banners), { timeout: 10_000 }).toContain("ENRAGED!");
+
+  await page.keyboard.press("2");
+  await page.getByRole("button", { name: /Continue/ }).click();
+  await strike(page);
+  await expect(page.getByText("Where is DNA stored?")).toBeVisible();
+  await page.keyboard.press("2");
+  await page.getByRole("button", { name: "See result" }).click();
+  await expect(page.getByRole("heading", { name: "Victory!" })).toBeVisible();
+  await expect(page.getByLabel("Taunt bonus")).toContainText("+13 XP");
+  const wheel = page.getByRole("list", { name: "Emotes" });
+  await expect(wheel.getByRole("button", { name: /Victory Dance, locked/ })).toBeDisabled();
+  await wheel.getByRole("button", { name: "GG", exact: true }).click();
+  await expect(page.getByRole("status").filter({ hasText: "GG!" })).toBeVisible();
+  await axeClean(page, "result: emote");
+});
+
+test("chiptune: the fight has music and effects, the music switch stops it, and the sound switch is remembered", async ({ page }) => {
+  await battleServer(page);
+  // count every synthesized note (oscillators and noise) the page starts
+  await page.addInitScript(() => {
+    const w = window as unknown as { __notes: number };
+    w.__notes = 0;
+    for (const P of [OscillatorNode.prototype, AudioBufferSourceNode.prototype] as unknown as { start: (...a: unknown[]) => void }[]) {
+      const start = P.start;
+      P.start = function (this: unknown, ...a: unknown[]) { w.__notes++; return start.apply(this, a); };
+    }
+  });
+  const notes = () => page.evaluate(() => (window as unknown as { __notes: number }).__notes);
+  await summon(page);
+  await expect.poll(notes, { timeout: 5_000 }).toBeGreaterThan(20);              // the arena loop is playing
+
+  const musicBtn = page.getByTestId("sound-music");
+  await expect(musicBtn).toHaveAttribute("aria-pressed", "true");
+  await musicBtn.click();
+  await expect(musicBtn).toHaveAttribute("aria-pressed", "false");
+  await page.waitForTimeout(400);
+  const after = await notes();
+  await page.waitForTimeout(900);
+  expect(await notes()).toBe(after);                                             // quiet now
+
+  await page.keyboard.press("2");                                                // a hit still makes a sound
+  await expect.poll(notes, { timeout: 5_000 }).toBeGreaterThan(after);
+
+  await page.goto("/hero?tab=quests");
+  const soundBtn = page.getByRole("button", { name: "Sound", exact: true });
+  await expect(soundBtn).toHaveAttribute("aria-pressed", "true");
+  await soundBtn.click();
+  await expect(soundBtn).toHaveAttribute("aria-pressed", "false");
+  await page.reload();
+  await expect(page.getByRole("button", { name: "Sound", exact: true })).toHaveAttribute("aria-pressed", "false");
+});
+
+test("chiptune: off by default for reduced motion", async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await battleServer(page);
+  await page.goto("/hero?tab=quests");
+  await expect(page.getByRole("button", { name: "Sound", exact: true })).toHaveAttribute("aria-pressed", "false");
 });

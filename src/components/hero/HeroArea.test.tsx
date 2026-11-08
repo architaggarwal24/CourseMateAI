@@ -135,6 +135,13 @@ describe("<HeroArea />", () => {
     const shopReads = () => api.GET.mock.calls.filter(([p]) => p === "/shop").length;
     const readsBefore = shopReads();
     fireEvent.click(within(card()).getByRole("button", { name: "Buy" }));
+    // Stage S1: a "Buy it?" screen first (what it costs, what's left), then a reveal once it's bought
+    const ask = await screen.findByRole("dialog", { name: "Buy New Hat?" });
+    expect(within(ask).getByTestId("buy-confirm").textContent).toMatch(/After/);
+    fireEvent.click(within(ask).getByRole("button", { name: /^Buy for/ }));
+    const done = await screen.findByTestId("buy-done");
+    expect(done.textContent).toContain("New Hat");
+    fireEvent.click(screen.getByRole("button", { name: "Done" }));
 
     // Coins, the card and the preview change from the purchase's own answer ...
     await vi.waitFor(() => expect(coins()).toBe("50"));

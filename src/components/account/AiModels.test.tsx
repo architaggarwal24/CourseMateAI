@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 
-const api = vi.hoisted(() => ({ aiModels: vi.fn(), setAiSlots: vi.fn(), setMyModel: vi.fn() }));
+const api = vi.hoisted(() => ({ aiModels: vi.fn(), setAiSlots: vi.fn(), setMyModel: vi.fn(), setOllamaUrl: vi.fn() }));
 vi.mock("@/lib/admin/adminApi", async (orig) => ({ ...(await orig<typeof import("@/lib/admin/adminApi")>()), adminApi: api }));
 vi.mock("@/components/ui/Toast", () => ({ toast: { success: vi.fn(), error: vi.fn(), info: vi.fn(), apiError: vi.fn() } }));
 
@@ -49,5 +49,29 @@ describe("Settings -> AI: your model (admins)", () => {
     fireEvent.change(await screen.findByLabelText("Provider"), { target: { value: "" } });
     fireEvent.click(screen.getByRole("button", { name: "Save" }));
     await waitFor(() => expect(api.setMyModel).toHaveBeenCalledWith(null));
+  });
+});
+
+describe("Ollama: any model, and a tunnel for the live site", () => {
+  it("saves a tunnel address and shows what that Ollama has", async () => {
+    api.aiModels.mockResolvedValue({ ...DATA, ollama: { enabled: false, base: null, models: [], tunnel: null, local: false } });
+    api.setOllamaUrl.mockResolvedValue({ ...DATA, ollama: { enabled: true, base: "https://o.trycloudflare.com", models: ["phi4"], tunnel: "https://o.trycloudflare.com", local: false } });
+    render(<AiModelsCard />);
+    expect((await screen.findByText(/cloudflared tunnel --url/)).textContent).toContain("--http-host-header");
+    fireEvent.change(screen.getByLabelText("Tunnel address"), { target: { value: "https://o.trycloudflare.com" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    await waitFor(() => expect(api.setOllamaUrl).toHaveBeenCalledWith("https://o.trycloudflare.com"));
+    expect((await screen.findByRole("status")).textContent).toContain("phi4");
+  });
+
+  it("a model Ollama hasn't listed can be typed in", async () => {
+    api.aiModels.mockResolvedValue(DATA);
+    api.setMyModel.mockResolvedValue({ spec: "ollama:my-model:q4" });
+    render(<MyModel />);
+    fireEvent.change(await screen.findByLabelText("Provider"), { target: { value: "ollama" } });
+    fireEvent.change(screen.getByLabelText("Model"), { target: { value: "__other" } });
+    fireEvent.change(screen.getByLabelText("Model"), { target: { value: "my-model:q4" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    await waitFor(() => expect(api.setMyModel).toHaveBeenCalledWith("ollama:my-model:q4"));
   });
 });

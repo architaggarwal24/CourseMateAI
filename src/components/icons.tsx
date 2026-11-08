@@ -5,6 +5,9 @@
 import { forwardRef, type ComponentType, type SVGProps } from "react";
 import {
   AcademicCapIcon as HAcademicCap,
+  MusicalNoteIcon as HMusicalNote,
+  SpeakerWaveIcon as HSpeakerWave,
+  SpeakerXMarkIcon as HSpeakerXMark,
   ArrowDownIcon as HArrowDown,
   ArrowDownTrayIcon as HArrowDownTray,
   ArrowLeftIcon as HArrowLeft,
@@ -189,6 +192,9 @@ export const FileText = hero(HDocumentText, "FileText");
 export const FileUp = hero(HDocumentArrowUp, "FileUp");
 export const Flag = hero(HFlag, "Flag");
 export const Flame = hero(HFire, "Flame");
+export const Music = hero(HMusicalNote, "Music");
+export const Volume2 = hero(HSpeakerWave, "Volume2");
+export const VolumeX = hero(HSpeakerXMark, "VolumeX");
 export const FlaskConical = hero(HBeaker, "FlaskConical");
 export const FolderPlus = hero(HFolderPlus, "FolderPlus");
 export const GraduationCap = hero(HAcademicCap, "GraduationCap");

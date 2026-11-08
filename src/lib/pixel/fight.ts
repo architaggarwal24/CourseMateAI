@@ -16,6 +16,7 @@ import { PET_FPS, PET_FRAME, PET_OFFSET, petById, petFrame } from "./pets";
 import { bossFrame, heroFrame, type Frame } from "./sprites";
 import { GROUND_Y, STAGES, STAGE_H, STAGE_W, stageBackdrop, type ParticleKind } from "./stages";
 import type { PixelBuffer } from "./buffer";
+import { sfx, type Sfx } from "../sound/chip";
 
 export type BeatKind =
   | "intro" | "hero-strike" | "hero-cast" | "boss-strike" | "boss-shield" | "boss-heal" | "boss-drain"
@@ -23,7 +24,9 @@ export type BeatKind =
   // Phase 3 Stage 2: creature mechanics and champion kits
   | "mechanic" | "ultimate" | "riposte" | "dodge"
   // Stage C1: a champion with their own mastery weapon ends the fight with a finisher
-  | "finisher";
+  | "finisher"
+  // Stage A2: the champion taunts the boss (it rages)
+  | "taunt";
 
 /**
  * What a creature's mechanic or a champion's kit did on a turn, one per server event type (backend
@@ -103,6 +106,8 @@ export interface Beat {
   projectile?: boolean;
   /** hero-strike / ultimate: the champion fights with their own mastery weapon (their own animation). */
   signature?: boolean;
+  /** taunt: the boss was not raging before (it goes into rage now). */
+  enraged?: boolean;
   /** The turn this beat belongs to - echoed back by onImpact. */
   key?: string | number;
 }
@@ -140,6 +145,8 @@ export interface FightOptions {
   onBanner?: (text: string, tone: "fight" | "ko" | "rage" | "lose" | "mech" | "ult") => void;
 }
 
+const BANNER_SFX: Record<"fight" | "ko" | "rage" | "lose" | "mech" | "ult", Sfx> = { fight: "fight", ko: "ko", rage: "rage", lose: "lose", mech: "cast", ult: "ult" };
+
 const easeOut = (t: number) => 1 - (1 - t) * (1 - t);
 const tweenAt = (tw: Tween, now: number) => {
   const t = Math.max(0, Math.min(1, (now - tw.start) / Math.max(1, tw.dur)));
@@ -171,6 +178,12 @@ export class FightScene {
   private shield = 0;
   private stormAt = 0;
   private flashSky = 0;
+  // Stage A2 juice: hit-stop (time stands still a moment), slow motion, a white crit flash, a camera punch
+  private lastReal = 0;
+  private hitstopUntil = 0;
+  private slowmoUntil = 0;
+  private critFlashUntil = 0;
+  private punchUntil = 0;
   private heroSheet: LoadedSheet | null = null;
   private bossSheet: LoadedSheet | null = null;
   private stageImg: HTMLImageElement | null = null;
@@ -264,6 +277,12 @@ export class FightScene {
 
   private shake(amp: number, ms: number) { if (!this.reduced) { this.shakeAmp = amp; this.shakeUntil = this.now + ms; } }
 
+  /** A banner over the stage, with its sound. */
+  private banner(text: string, tone: "fight" | "ko" | "rage" | "lose" | "mech" | "ult") {
+    sfx(BANNER_SFX[tone]);
+    this.opts.onBanner?.(text, tone);
+  }
+
   private heroFps(anim: string) { return ANIM_FPS[anim as AnimName] ?? 8; }
   private impactAfterFrames(n: number, fps: number) { return Math.round((n * 1000) / fps); }
 
@@ -275,25 +294,29 @@ export class FightScene {
         this.setAnim(this.h, "dash");
         this.b.flashUntil = this.now + 300;
         this.after(650, () => { this.setAnim(this.h, "idle"); });
-        this.opts.onBanner?.(beat.text ?? "FIGHT!", beat.text === "NEMESIS" ? "rage" : "fight");
+        this.banner(beat.text ?? "FIGHT!", beat.text === "NEMESIS" ? "rage" : "fight");
         this.after(250, () => this.shake(3, 250));
         return 900;
       }
       case "hero-strike": {
         if (style === "mage") return this.heroProjectile(beat);
         const reach = Math.max(30, this.bossFront - HERO_X - (style === "lance" ? 62 : 38));
-        this.setAnim(this.h, "dash"); this.move(this.h, reach, 200);
+        // wind-up: a small step back, then the dash (dust at the feet)
+        const wind = this.reduced ? 0 : 90;
+        if (wind) { this.setAnim(this.h, "guard"); this.move(this.h, -8, wind); }
+        this.after(wind, () => { this.setAnim(this.h, "dash"); this.move(this.h, reach, 200); this.dust(HERO_X, -1); sfx("swing"); });
         const fps = this.heroFps("attack");
-        this.after(200, () => this.setAnim(this.h, "attack"));
-        const hit = 200 + this.impactAfterFrames(2, fps);
+        this.after(wind + 200, () => this.setAnim(this.h, "attack"));
+        const hit = wind + 200 + this.impactAfterFrames(2, fps);
         this.after(hit, () => { this.bossHurt(beat); if (beat.signature && !beat.shielded) this.signatureStrike(); });
         if (style === "twin" || style === "fist") this.after(hit + 120, () => this.bossHurt({ ...beat, heavy: false }, true));
         this.after(hit + 380, () => { this.setAnim(this.h, "dash"); this.move(this.h, 0, 260); });
-        this.after(hit + 640, () => this.setAnim(this.h, "idle"));
+        this.after(hit + 640, () => { this.setAnim(this.h, "idle"); this.dust(HERO_X + 6, 1); });
         return hit + 700;
       }
       case "hero-cast": {
         this.setAnim(this.h, "cast");
+        sfx("cast");
         if (!this.reduced) for (let i = 0; i < 18; i++) this.mote(HERO_X + (Math.random() - 0.5) * 30, GROUND_Y - 10 - Math.random() * 50, "#67e8f9");
         this.after(700, () => this.setAnim(this.h, "idle"));
         return 600;
@@ -310,18 +333,21 @@ export class FightScene {
       }
       case "boss-shield": {
         this.setAnim(this.b, "cast");
+        sfx("shield");
         this.fx.push({ kind: "ring", x: this.bossCenter()[0], y: this.bossCenter()[1], start: this.now, dur: 500, color: "#38bdf8", size: 70 });
         this.after(600, () => this.setAnim(this.b, "idle"));
         return 600;
       }
       case "boss-heal": {
         this.setAnim(this.b, "cast");
+        sfx("heal");
         if (!this.reduced) for (let i = 0; i < 22; i++) { const [x, y] = this.bossCenter(); this.mote(x + (Math.random() - 0.5) * 80, y + 30 + Math.random() * 30, "#4ade80"); }
         this.after(650, () => this.setAnim(this.b, "idle"));
         return 650;
       }
       case "boss-drain": {
         this.setAnim(this.b, "cast");
+        sfx("cast");
         if (!this.reduced) for (let i = 0; i < 16; i++) {
           const x = HERO_X + (Math.random() - 0.5) * 24, y = GROUND_Y - 30 - Math.random() * 40;
           const [bx, by] = this.bossCenter();
@@ -334,7 +360,7 @@ export class FightScene {
         this.setAnim(this.b, "cast");
         this.shake(5, 600);
         this.fx.push({ kind: "ring", x: this.bossCenter()[0], y: this.bossCenter()[1], start: this.now, dur: 700, color: "#ef4444", size: 140 });
-        this.opts.onBanner?.("ENRAGED", "rage");
+        this.banner("ENRAGED", "rage");
         this.after(900, () => this.setAnim(this.b, "idle"));
         return 1000;
       }
@@ -342,7 +368,9 @@ export class FightScene {
         this.setAnim(this.b, "ko", true);
         this.b.flashUntil = this.now + 120;
         this.shake(6, 500);
-        this.opts.onBanner?.("K.O.", "ko");
+        this.slowmo(650);
+        this.critFlash();
+        this.banner("K.O.", "ko");
         this.after(750, () => this.dissolve());
         this.after(1000, () => this.setAnim(this.h, "win", true));
         return 1400;
@@ -357,15 +385,39 @@ export class FightScene {
         this.after(200, () => this.fx.push({ kind: "ring", x, y, start: this.now, dur: 500, color: "#facc15", size: 60 }));
         if (!this.reduced) for (let i = 0; i < 30; i++) this.mote(x + (Math.random() - 0.5) * 40, GROUND_Y - Math.random() * 60, i % 3 ? accent : "#ffffff");
         this.shake(3, 300);
-        this.opts.onBanner?.(beat.text ?? "ULTIMATE", "ult");
+        this.banner(beat.text ?? "ULTIMATE", "ult");
         if (beat.signature) { this.after(300, () => this.signatureUltimate()); this.after(1300, () => this.setAnim(this.h, "idle")); return 1400; }
         this.after(900, () => this.setAnim(this.h, "idle"));
         return 1000;
       }
+      case "taunt": {
+        // the champion beckons (a hop and a pose); the boss answers in rage
+        const [x, y] = this.heroCenter();
+        this.setAnim(this.h, "win");
+        sfx("taunt");
+        if (!this.reduced) {
+          this.h.dx = { from: 0, to: 10, start: this.now, dur: 120 };
+          this.after(120, () => { this.h.dx = { from: 10, to: 0, start: this.now, dur: 160 }; this.dust(HERO_X, 1); });
+          for (let i = 0; i < 16; i++) this.mote(x + (Math.random() - 0.5) * 30, GROUND_Y - Math.random() * 50, this.hero.accent);
+        }
+        this.after(420, () => {
+          const [bx, by] = this.bossCenter();
+          this.setAnim(this.b, "cast");
+          this.b.flashUntil = this.now + 160;
+          this.fx.push({ kind: "ring", x: bx, y: by, start: this.now, dur: 600, color: "#ef4444", size: 120 });
+          this.after(120, () => this.fx.push({ kind: "ring", x: bx, y: by, start: this.now, dur: 500, color: "#f97316", size: 80 }));
+          this.burst(bx, by - 20, "#ef4444", 24, 2);
+          this.shake(6, 500);
+          this.banner(beat.enraged === false ? "TAUNTED!" : "ENRAGED!", "rage");
+        });
+        this.after(1200, () => { this.setAnim(this.h, "idle"); this.setAnim(this.b, "idle"); });
+        void y;
+        return 1300;
+      }
       case "finisher": {
         // the champion's own last blow, then the KO as usual
         const reach = Math.max(30, this.bossFront - HERO_X - (style === "lance" ? 62 : 38));
-        this.opts.onBanner?.(beat.text ?? "FINISHER", "ult");
+        this.banner(beat.text ?? "FINISHER", "ult");
         this.flashSky = this.now;
         if (style !== "mage") { this.setAnim(this.h, "dash"); this.move(this.h, reach, 220); }
         else this.setAnim(this.h, "cast");
@@ -374,6 +426,7 @@ export class FightScene {
           this.after(240 + i * 110, () => {
             this.setAnim(this.h, style === "mage" ? "cast" : "attack");
             this.signatureStrike(i === blows - 1);
+            sfx(i === blows - 1 ? "crit" : "hit");
             this.b.flashUntil = this.now + 70;
             this.setAnim(this.b, "hit");
           });
@@ -382,7 +435,9 @@ export class FightScene {
         this.after(end, () => {
           this.setAnim(this.b, "ko", true);
           this.shake(8, 600);
-          this.opts.onBanner?.("K.O.", "ko");
+          this.slowmo(650);
+          this.critFlash();
+          this.banner("K.O.", "ko");
           if (style !== "mage") { this.move(this.h, 0, 300); this.setAnim(this.h, "dash"); }
         });
         this.after(end + 650, () => this.dissolve());
@@ -400,6 +455,7 @@ export class FightScene {
         // the blow comes as usual and finds nothing: the hero hops back, see-through for a moment
         const sidestep = () => {
           this.opts.onImpact?.("hero", this.turn);
+          sfx("dodge");
           this.h.ghostUntil = this.now + 420;
           this.setAnim(this.h, "dash");
           this.h.dx = { from: 0, to: this.reduced ? 0 : -28, start: this.now, dur: this.reduced ? 1 : 140 };
@@ -418,7 +474,7 @@ export class FightScene {
         this.setAnim(this.h, "ko", true);
         this.h.flashUntil = this.now + 120;
         this.shake(5, 400);
-        this.opts.onBanner?.("DEFEATED", "lose");
+        this.banner("DEFEATED", "lose");
         this.after(700, () => this.setAnim(this.b, "cast"));
         this.after(1400, () => this.setAnim(this.b, "idle"));
         return 1400;
@@ -428,6 +484,7 @@ export class FightScene {
 
   private heroProjectile(beat: Beat): number {
     this.setAnim(this.h, "attack");
+    sfx("cast");
     const fps = this.heroFps("attack");
     const launch = this.impactAfterFrames(2, fps);
     const flight = 320;
@@ -505,7 +562,7 @@ export class FightScene {
       case "flash": this.b.flashUntil = this.now + 220; ring(bx, by, 110, 0, 600); if (!this.reduced) for (let i = 0; i < 18; i++) this.mote(bx + (Math.random() - 0.5) * 90, by + Math.random() * 60, spec.color); break;
     }
     if (spec.shake) this.shake(spec.shake, 220);
-    if (spec.banner) this.opts.onBanner?.(spec.banner, "mech");
+    if (spec.banner) this.banner(spec.banner, "mech");
     return spec.ms;
   }
 
@@ -513,6 +570,7 @@ export class FightScene {
     const [x, y] = this.bossCenter();
     const sx = this.bossFront + 18 + (Math.random() - 0.5) * 16, sy = y + (Math.random() - 0.5) * 30;
     if (!followUp) this.opts.onImpact?.("boss", this.turn);
+    sfx(beat.shielded ? "block" : beat.crit ? "crit" : "hit");
     if (beat.shielded) {
       this.fx.push({ kind: "ring", x, y, start: this.now, dur: 300, color: "#38bdf8", size: 60 });
       this.burst(sx, sy, "#7dd3fc", 10, 2);
@@ -527,6 +585,8 @@ export class FightScene {
     this.burst(sx, sy, beat.crit ? "#facc15" : this.boss.accent, beat.heavy || beat.crit ? 26 : 14, beat.heavy ? 3 : 2);
     if (beat.crit) this.fx.push({ kind: "ring", x: sx, y: sy, start: this.now, dur: 260, color: "#facc15", size: 46 });
     this.shake(beat.heavy || beat.crit ? 6 : 3, beat.heavy ? 260 : 160);
+    if (!followUp && (beat.heavy || beat.crit)) this.hitstop(beat.crit ? 110 : 70);
+    if (!followUp && beat.crit) this.critFlash();
     this.after(380, () => { if (this.b.anim === "hit") this.setAnim(this.b, "idle"); });
     void x;
   }
@@ -534,6 +594,7 @@ export class FightScene {
   private heroHurt(beat: Beat) {
     const sx = HERO_X + 14, sy = GROUND_Y - 52;
     this.opts.onImpact?.("hero", this.turn);
+    sfx(beat.blocked ? "block" : "hurt");
     if (beat.blocked) {
       this.setAnim(this.h, "guard");
       this.fx.push({ kind: "ring", x: sx + 10, y: sy, start: this.now, dur: 320, color: "#93c5fd", size: 40 });
@@ -711,16 +772,31 @@ export class FightScene {
   // ── the loop ───────────────────────────────────────────────────────────────
   private loop(t: number) {
     this.raf = requestAnimationFrame(this.loop);
-    const dt = Math.min(50, t - (this.last || t));
+    const real = Math.min(50, t - (this.last || t));
     this.last = t;
-    this.now = t;
+    this.lastReal = t;
+    // the scene's own clock: it stops during a hit-stop and crawls in slow motion (everything reads this.now)
+    const dt = t < this.hitstopUntil ? 0 : t < this.slowmoUntil ? real * 0.35 : real;
+    this.now += dt;
     if (this.timers.length) {
-      const due = this.timers.filter((x) => x.at <= t);
-      this.timers = this.timers.filter((x) => x.at > t);
+      const due = this.timers.filter((x) => x.at <= this.now);
+      this.timers = this.timers.filter((x) => x.at > this.now);
       for (const d of due) d.fn();
     }
     this.step(dt / 16.67);
     this.draw();
+  }
+
+  /** Freeze the scene for a moment on a big hit (real milliseconds). */
+  private hitstop(ms: number) { if (!this.reduced) this.hitstopUntil = Math.max(this.hitstopUntil, (this.lastReal || performance.now()) + ms); }
+  /** Slow the scene down (the final blow). */
+  private slowmo(ms: number) { if (!this.reduced) this.slowmoUntil = (this.lastReal || performance.now()) + ms; }
+  /** A crit: the screen flashes white and the camera punches in. */
+  private critFlash() { if (!this.reduced) { this.critFlashUntil = this.now + 70; this.punchUntil = this.now + 140; } }
+  /** Dust kicked up from the ground. */
+  private dust(x: number, dir: 1 | -1) {
+    if (this.reduced) return;
+    for (let i = 0; i < 8; i++) this.particles.push({ x: x + (Math.random() - 0.5) * 10, y: GROUND_Y - 1 - Math.random() * 3, vx: dir * (0.4 + Math.random() * 1.2), vy: -0.3 - Math.random() * 0.6, life: 18 + Math.random() * 10, max: 28, color: "#a8a29e", size: 2, g: 0.03, kind: "dust" });
   }
 
   private step(k: number) {
@@ -745,6 +821,10 @@ export class FightScene {
   private draw() {
     const ctx = this.ctx, now = this.now;
     ctx.save();
+    if (now < this.punchUntil) {
+      const k = 1 + 0.05 * ((this.punchUntil - now) / 140);
+      ctx.translate(STAGE_W / 2, STAGE_H / 2); ctx.scale(k, k); ctx.translate(-STAGE_W / 2, -STAGE_H / 2);
+    }
     if (now < this.shakeUntil) {
       const a = this.shakeAmp * ((this.shakeUntil - now) / 300);
       ctx.translate(Math.round((Math.random() - 0.5) * a), Math.round((Math.random() - 0.5) * a));
@@ -786,6 +866,7 @@ export class FightScene {
     for (const f of this.fx) this.drawFx(f);
     for (const p of this.particles) this.dot(p, Math.min(1, p.life / (p.max * 0.4)));
     for (const p of this.ambient) if (!(p.kind === "fireflies" || p.kind === "wisps" || p.kind === "embers")) this.dot(p, p.kind === "rain" ? 0.55 : 0.9, p.kind === "rain");
+    if (now < this.critFlashUntil) { ctx.fillStyle = "rgba(255,255,255,0.55)"; ctx.fillRect(0, 0, STAGE_W, STAGE_H); }
     ctx.restore();
   }
 

@@ -2,7 +2,10 @@
 
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { motion } from "motion/react";
-import { Brain, ChevronRight, Flag, FlaskConical, Hourglass, Scissors, ShieldCheck, Zap } from "@/components/icons";
+import { Brain, ChevronRight, Flag, Flame, FlaskConical, Hourglass, Scissors, ShieldCheck, Zap } from "@/components/icons";
+import { tauntLine } from "@/lib/arena/emotes";
+import { music } from "@/lib/sound/chip";
+import SoundToggle from "@/components/fx/SoundToggle";
 import GearChips from "@/components/champion/GearChips";
 import { Badge, Button, Modal } from "@/components/ui";
 import { type useArenaBattle } from "@/hooks/useArenaBattle";
@@ -61,6 +64,17 @@ function useFloaters(outcome: Arena["outcome"], show: boolean): Floater[] {
     return () => clearTimeout(timer);
   }, [id, show]); // eslint-disable-line react-hooks/exhaustive-deps
   return floaters;
+}
+
+/** What the announcer shouts after a right answer (nothing for an ordinary hit). */
+export function comboCallout(combo: number, bane?: boolean, weakness?: boolean): string | undefined {
+  if (bane) return "BANE!";
+  if (combo >= 10) return `UNSTOPPABLE x${combo}!`;
+  if (combo >= 8) return `RAMPAGE x${combo}!`;
+  if (combo >= 5) return `COMBO x${combo}!`;
+  if (combo === 3) return "COMBO x3!";
+  if (weakness) return "WEAK SPOT!";
+  return undefined;
 }
 
 /** Waiting for a question. The first batch of a fight is written by the LLM from the PDF and can take a while on a
@@ -173,14 +187,16 @@ export default function BattleScreen({ arena, context }: { arena: Arena; context
   // Keyboard: 1-4 answer the question in the order the options are listed. One listener for the whole fight that
   // reads the current state from a ref, so there is never a moment between questions when a key press is lost.
   const ultReady = !!battle?.kit?.ready && !battle?.kit?.active && (stage === "choosing" || asking);
-  const keys = useRef({ asking, confirmRetreat, question, answer, ultReady, ultimate: arena.ultimate });
-  keys.current = { asking, confirmRetreat, question, answer, ultReady, ultimate: arena.ultimate };
+  const tauntReady = !!battle && battle.status === "active" && !battle.taunted && (stage === "choosing" || asking) && arena.itemBusy === null;
+  const keys = useRef({ asking, confirmRetreat, question, answer, ultReady, ultimate: arena.ultimate, tauntReady, taunt: arena.taunt });
+  keys.current = { asking, confirmRetreat, question, answer, ultReady, ultimate: arena.ultimate, tauntReady, taunt: arena.taunt };
   // A layout effect: bound as the screen appears, so a key pressed the moment it shows is never missed.
   useLayoutEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const k = keys.current;
       if (k.confirmRetreat || shortcutBlocked(e)) return;
       if (e.key.toLowerCase() === "u" && k.ultReady) { e.preventDefault(); void k.ultimate(); return; }
+      if (e.key.toLowerCase() === "t" && k.tauntReady) { e.preventDefault(); void k.taunt(); return; }
       if (!k.asking) return;
       const index = ["1", "2", "3", "4"].indexOf(e.key);
       const option = index >= 0 ? k.question?.options[index] : undefined;
@@ -201,6 +217,10 @@ export default function BattleScreen({ arena, context }: { arena: Arena; context
   useEffect(() => { if (stage === "asking" && question) questionRef.current?.focus({ preventScroll: true }); }, [stage, question?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const floaters = useFloaters(outcome, showingVerdict);
+  // arena music while the fight is on (faster drums once the boss rages)
+  const fighting = !!battle && battle.status === "active";
+  useEffect(() => { if (!fighting) return; music.play("arena"); return () => music.stop(); }, [fighting]);
+  useEffect(() => { music.intensity(!!battle?.rage); }, [battle?.rage]);
   if (!battle || !boss) return null;
   if (outcome?.taunt) lastTaunt.current = outcome.taunt;
   const speech = outcome?.taunt ?? lastTaunt.current ?? boss.intro_taunt;
@@ -212,9 +232,11 @@ export default function BattleScreen({ arena, context }: { arena: Arena; context
   const creature = bossById(boss.species ?? battle.boss.species);
   const casting = (itemBusy === "insight" || itemBusy === "timewarp") && question ? `c${question.id}-${itemBusy}` : "";
   const ultKey = arena.ultimateCast ? `u${arena.ultimateCast.key}` : "";
+  const tauntKey = arena.tauntCast ? `t${arena.tauntCast.key}` : "";
   // keyed on the answer, not the view: a timed-out question seen first as a notice, then as a verdict, plays once
-  const beatKey = casting || ultKey || ((showingVerdict || outcome?.timed_out) && outcome ? `o${outcome.question_id}` : "");
+  const beatKey = casting || tauntKey || ultKey || ((showingVerdict || outcome?.timed_out) && outcome ? `o${outcome.question_id}` : "");
   const beats: Beat[] = casting ? [{ kind: "hero-cast" }]
+    : tauntKey ? [{ kind: "taunt", enraged: arena.tauntCast!.enraged }]
     : ultKey ? [{ kind: "ultimate", text: arena.ultimateCast!.name.toUpperCase(), ...(battle.kit?.signature ? { signature: true } : {}) }]
     : beatKey && outcome ? beatsFor(outcome, battle) : [];
   const intentTint: IntentTint = !over && (stage === "choosing" || stage === "fetching" || stage === "asking") ? (battle.intent?.kind ?? null) : null;
@@ -253,6 +275,7 @@ export default function BattleScreen({ arena, context }: { arena: Arena; context
             <span className="arena-stat__label">Combo</span>
             <span className="pixel-font">x{battle.combo}</span>
           </span>
+          <SoundToggle kind="music" className="arena-hud__music" />
         </div>
 
         <div className="arena-hud__boss ff-hud__side ff-hud__side--boss">
@@ -293,6 +316,10 @@ export default function BattleScreen({ arena, context }: { arena: Arena; context
       <PixelArena
         hero={fighter} pet={pet} bossId={creature.id} rage={battle.rage} intent={intentTint} shield={battle.shield ?? 0}
         beats={beats} beatKey={beatKey} floaters={floaters} speech={speech}
+        heroSpeech={arena.tauntCast ? { text: tauntLine(fighter.id, arena.tauntCast.key), key: arena.tauntCast.key } : undefined}
+        callout={showingVerdict && outcome && outcome.correct ? comboCallout(outcome.combo, outcome.bane?.landed, outcome.weakness) : undefined}
+        calloutKey={outcome?.question_id}
+        intro={battle.answered === 0 ? { name: battle.boss.name, title: battle.boss.title ?? creature.name, tier: battle.tier ?? 1, origin: creature.origin } : undefined}
         label={`${battle.boss.name}, the boss, a ${creature.name} of ${creature.origin} myth, faces ${fighter.name}`}
         introText={battle.mode === "nemesis" ? "NEMESIS" : battle.answered > 0 ? "RESUME" : "FIGHT!"}
       />
@@ -442,6 +469,13 @@ export default function BattleScreen({ arena, context }: { arena: Arena; context
         </Button>
         {!over && <UltimateMeter kit={battle.kit} onCast={() => void arena.ultimate()} busy={itemBusy === "ultimate"}
                                  disabled={!(stage === "choosing" || asking) || (itemBusy !== null && itemBusy !== "ultimate")} />}
+        {!over && (
+          <Button variant="danger" className="arena-taunt" disabled={!tauntReady} loading={itemBusy === "taunt"} aria-keyshortcuts="T"
+            onClick={() => void arena.taunt()} title="Once a fight: the boss rages and hits harder; your ultimate gets +50% and the win pays +25%.">
+            <Flame size={16} aria-hidden="true" />{battle.taunted ? "Taunted" : "Taunt"}
+            <span className="arena-item-count pixel-font">{battle.taunted ? "+25%" : "T"}</span>
+          </Button>
+        )}
         <span className="arena-items__spacer" />
         {!over && <Button variant="ghost" onClick={() => setConfirmRetreat(true)}><Flag size={16} aria-hidden="true" />Retreat</Button>}
       </div>

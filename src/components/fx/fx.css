@@ -57,3 +57,44 @@ html.reduce-animations .fx-spark { display: none; }
 @keyframes fx-word {
   from { opacity: 0; transform: translateY(0.45em); filter: blur(8px); }
 }
+
+/* ── reward ceremonies (Stage R3) ──────────────────────────────────────────────────────────────────────────── */
+.fx-coin-rain { position: fixed; inset: 0; width: 100vw; height: 100vh; pointer-events: none; z-index: 90; image-rendering: pixelated; }
+.fx-ach { position: fixed; top: 0.75rem; left: 50%; transform: translateX(-50%); z-index: 95; width: min(92vw, 26rem); pointer-events: none; }
+.fx-ach__card {
+  pointer-events: auto; width: 100%; display: flex; align-items: center; gap: 0.75rem; padding: 0.7rem 0.9rem; text-align: left; cursor: pointer;
+  background: #151a3d; color: #ffffff; border: 3px solid #f5b942; box-shadow: 0 0 0 3px #03040d, 6px 6px 0 #03040d;
+}
+.fx-ach__medal { display: grid; place-items: center; width: 2.6rem; height: 2.6rem; flex: none; color: #1a1300; background: #f5b942; border: 2px solid #03040d; animation: fx-medal 900ms steps(4, end) 2; }
+.fx-ach__text { display: grid; gap: 0.1rem; min-width: 0; }
+.fx-ach__label { font-family: var(--font-label); font-size: 0.55rem; letter-spacing: 0.06em; text-transform: uppercase; color: #f5b942; }
+.fx-ach__name { font-weight: 700; font-size: 0.95rem; }
+.fx-ach__desc { font-size: 0.8rem; color: #dfe1f5; }
+@keyframes fx-medal { 50% { transform: rotate(-12deg) scale(1.1); } }
+
+.fx-level { position: relative; display: grid; justify-items: center; gap: var(--space-2); overflow: hidden; }
+.fx-level__confetti { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 2; }
+.fx-level__stage { position: relative; width: 9rem; height: 9rem; flex: none; }
+.fx-level .fx-level__sprite { position: absolute; inset: 0; width: 100%; height: 100%; image-rendering: pixelated; object-fit: contain; object-position: 50% 100%; animation: fx-hop 500ms steps(3, end) 3; }
+.fx-level__num { margin: 0; font-size: 1.6rem; color: var(--color-reward); }
+.fx-level__from { color: var(--color-text-secondary); font-size: 1rem; }
+.fx-level__to { display: inline-block; animation: fx-pop 600ms steps(5, end) both; }
+.fx-level__reward { display: flex; flex-wrap: wrap; justify-content: center; gap: var(--space-2); margin: 0; }
+@keyframes fx-hop { 50% { transform: translateY(-12px); } }
+@keyframes fx-pop { 0% { transform: scale(0.2); } 60% { transform: scale(1.5); } 100% { transform: none; } }
+@media (prefers-reduced-motion: reduce) { .fx-ach__medal, .fx-level__sprite, .fx-level__to { animation: none; } }
+html.reduce-animations :is(.fx-ach__medal, .fx-level__sprite, .fx-level__to) { animation: none; }
+
+/* ── the sound switch (Stage S1) ──────────────────────────────────────────────────────────────────────────── */
+.sound-toggle {
+  position: relative; display: inline-grid; place-items: center; width: 2.75rem; height: 2.75rem; flex: none; cursor: pointer;
+  color: var(--color-text); background: var(--color-elevated); border: 2px solid var(--color-border-strong);
+}
+.sound-toggle:hover { color: var(--color-accent-text); background: var(--color-elevated-hover); }
+.sound-toggle:focus-visible { outline: 2px solid var(--color-accent-text); outline-offset: 2px; }
+.sound-toggle[data-off] { color: var(--color-text-secondary); }
+/* music off: a slash across the note */
+.sound-toggle[data-kind="music"][data-off]::after { content: ""; position: absolute; width: 1.4rem; height: 2px; background: currentColor; transform: rotate(-45deg); }
+.sound-toggle:disabled { opacity: 0.6; cursor: default; }
+[data-theme="play"] .sound-toggle { border-radius: 0; box-shadow: 2px 2px 0 var(--px-ink, #03040d); }
+[data-theme="play"] .sound-toggle:active { transform: translate(2px, 2px); box-shadow: none; }

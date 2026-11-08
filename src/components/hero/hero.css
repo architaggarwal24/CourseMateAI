@@ -13,7 +13,9 @@
 
 /* ── Persistent header ───────────────────────────────────────────────────────────────────────────────────────── */
 /* the Hero area's panel: the Study workspace's glass, tinted for Play (see components/study/study.css .ws) */
-.ws--play { box-shadow: var(--glass-shadow); }
+/* The Hero area's own frame: it must not depend on the Study stylesheet (that one only loads on Study pages, so
+   opening /hero directly left the panel unbounded and nothing scrolled). The tab's content scrolls inside it. */
+.ws--play { flex: 1; min-height: 0; display: flex; flex-direction: column; overflow: hidden; box-shadow: var(--glass-shadow); }
 .hero-tabs { margin: var(--space-3) var(--space-4) 0; }
 
 .hero-header {
@@ -50,6 +52,7 @@
 .hero-header__streak:not([data-idle="true"]) svg { animation: hero-flicker 1.6s ease-in-out infinite; }
 @keyframes hero-flicker { 0%, 100% { transform: scale(1) rotate(0); } 40% { transform: scale(1.12) rotate(-4deg); } 70% { transform: scale(0.96) rotate(3deg); } }
 .hero-header__streak[data-idle="true"] { color: var(--color-muted); }
+.hero-header__sound { margin-left: auto; }
 .hero-header__preview {
   display: inline-flex;
   align-items: center;

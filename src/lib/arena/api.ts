@@ -4,7 +4,7 @@ import { api } from "@/lib/api/client";
 import type {
   ActiveBattle, AnswerResponse, BattleGetResponse, ChooseResponse, CreateResponse, Difficulty, ForfeitResponse, ItemId,
   ItemResponse, LeaderboardResponse, Move, QuestionResponse, Run, RunBoardEntry, RunResponse, Spell, SpellResponse,
-  TravelResponse, UltimateResponse, WeakConceptsResponse, BestiaryPage, BestiaryResponse,
+  TravelResponse, UltimateResponse, WeakConceptsResponse, BestiaryPage, BestiaryResponse, TauntResponse, EmoteEntry,
 } from "./types";
 import { API_BASE_URL, throwForResponse } from "@/lib/api/client";
 
@@ -111,6 +111,17 @@ async function getJson<T>(path: string): Promise<T> {
   if (!res.ok) await throwForResponse(res);
   return (await res.json()) as T;
 }
+
+async function postJson<T>(path: string, body: unknown = {}): Promise<T> {
+  const res = await fetch(`${API_BASE_URL}${path}`, { method: "POST", credentials: "include", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
+  if (!res.ok) await throwForResponse(res);
+  return (await res.json()) as T;
+}
+
+/** Taunt the boss (once a fight): it rages, the ultimate charges +50, the win pays +25% (409 taunt_used). */
+export const tauntBoss = (battleId: string) => postJson<TauntResponse>(`/arena/battles/${encodeURIComponent(battleId)}/taunt`);
+/** Every victory emote and whether the player has it. */
+export const fetchEmotes = () => getJson<{ emotes: EmoteEntry[] }>("/emotes");
 
 /** The Bestiary: every page and the tiers (signed-in players). */
 export const fetchBestiary = () => getJson<BestiaryResponse>("/bestiary");

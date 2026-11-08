@@ -1,5 +1,6 @@
 "use client";
 
+import { announceAchievements } from "@/lib/fx/celebrate";
 import { useState, useCallback, useEffect, useRef } from "react";
 import { motion, useMotionValue, useTransform } from "motion/react";
 import { ChevronLeft, ChevronRight, RotateCcw, Shuffle, CheckCircle2, XCircle, Sparkles, Minus, Plus, Layers, Repeat } from "@/components/icons";
@@ -131,11 +132,7 @@ export default function FlashcardView({ documentId, restoreSessionId, initialTop
   useEffect(() => {
     if (done && pendingRewards) {
       toast.success(`+${pendingRewards.xp_gained} XP | +${pendingRewards.coins_gained} Coins`, { icon: "🃏" });
-      if ((pendingRewards as any).new_achievements?.length) {
-        for (const ach of (pendingRewards as any).new_achievements) {
-          toast.success(`🏆 Achievement Unlocked: ${ach.name}`, { description: ach.description, duration: 5000 });
-        }
-      }
+      announceAchievements((pendingRewards as { new_achievements?: { id: string; name: string; description?: string }[] }).new_achievements);
       refreshIfStale(5_000);
       setPendingRewards(null);
     }

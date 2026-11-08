@@ -75,7 +75,7 @@ async function targets(ctx: Ctx, caller: Caller, job: Job): Promise<Target[]> {
   // The models admins saved for everyone, over the LLM_* settings.
   const list = route(caller.tier, job, { capped, env: withSlots(process.env, saved.slots) });
   // An admin's own model goes first (the normal ones stay behind it). Past the spend cap only a free one still does.
-  const mine = caller.admin ? overrideTarget(saved.override) : null;
+  const mine = caller.admin ? overrideTarget(saved.override, process.env, saved.ollamaUrl) : null;
   if (mine && (!capped || mine.provider === "ollama" || mine.provider === "workers-ai")) {
     list.unshift(mine);
     for (let i = list.length - 1; i > 0; i--) if (list[i].provider === mine.provider && list[i].model === mine.model) list.splice(i, 1);

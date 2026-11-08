@@ -11,6 +11,9 @@ import { heroById } from "@/lib/pixel/heroes";
 import { ROUTES } from "@/lib/routes";
 import { Badge, Button } from "@/components/ui";
 import PixelSprite from "./pixel/PixelSprite";
+import EmoteWheel from "./EmoteWheel";
+import { announceAchievements } from "@/lib/fx/celebrate";
+import { sfx } from "@/lib/sound/chip";
 import { useFighter, useFighterPet } from "./pixel/useFighter";
 import { fetchLeaderboard } from "@/lib/arena/api";
 import type { Battle, BattleRewards, LeaderboardEntry } from "@/lib/arena/types";
@@ -44,6 +47,8 @@ export default function ResultPanel({ battle, rewards, retreated, bossName, onAg
   const [entries, setEntries] = useState<LeaderboardEntry[]>([]);
   const heading = useRef<HTMLHeadingElement>(null);
   useEffect(() => { heading.current?.focus({ preventScroll: true }); }, []);
+  // achievements this fight unlocked get their banner (Stage R3)
+  useEffect(() => { sfx(won ? "win" : "lose"); announceAchievements(result.new_achievements); }, [battle.battle_id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (!won) return;
@@ -62,7 +67,9 @@ export default function ResultPanel({ battle, rewards, retreated, bossName, onAg
 
   return (
     <section className="arena-result" data-outcome={won ? "won" : "lost"} aria-labelledby="arena-result-title">
-      <div className="arena-result__figure"><PixelSprite hero={fighter} pet={pet} anim={won ? "win" : "hit"} label={won ? `${fighter.name} celebrates` : `${fighter.name}, beaten`} className="arena-result__sprite" /></div>
+      {won ? <EmoteWheel hero={fighter} pet={pet} /> : (
+        <div className="arena-result__figure"><PixelSprite hero={fighter} pet={pet} anim="hit" label={`${fighter.name}, beaten`} className="arena-result__sprite" /></div>
+      )}
       <h2 id="arena-result-title" ref={heading} tabIndex={-1} className="arena-result__headline pixel-font">{headline}</h2>
       <p className="arena__text">{line} <span className="text-muted">({battle.topic}, {DIFFICULTY_LABEL[battle.difficulty]})</span></p>
       {won && result.grade && <span className="arena-result__grade pixel-font" role="img" aria-label={`Grade ${result.grade}`}>{result.grade}</span>}
@@ -82,6 +89,13 @@ export default function ResultPanel({ battle, rewards, retreated, bossName, onAg
         </p>
       )}
 
+      {result.taunt_bonus && (
+        <p className="arena-result__rewards" aria-label="Taunt bonus">
+          <Badge tone="danger">Taunt bonus</Badge>
+          {result.taunt_bonus.xp > 0 && <Badge tone="accent"><Sparkles size={12} aria-hidden="true" />+{result.taunt_bonus.xp} XP</Badge>}
+          {result.taunt_bonus.coins > 0 && <Badge tone="reward"><Coins size={12} aria-hidden="true" />+{result.taunt_bonus.coins} coins</Badge>}
+        </p>
+      )}
       <ChampionXpLine battle={battle} />
       <BestiaryLine battle={battle} />
       <JoinedLine battle={battle} />

@@ -97,6 +97,8 @@ export interface BattleResult {
   bestiary?: BestiaryFight | null;
   /** Champions this win brought (a Bestiary tier finished); the unlock ceremony follows. */
   champions_unlocked?: string[];
+  /** The taunt's extra +25% of the win's reward. */
+  taunt_bonus?: { xp: number; coins: number };
   new_achievements?: { id: string; name: string; description: string }[];
 }
 
@@ -166,6 +168,8 @@ export interface Battle {
   /** The creature's Bestiary tier (1-4) and its bane. */
   tier?: number;
   bane?: BaneHud | null;
+  /** The boss was taunted this fight (once a fight: it rages, the win pays +25%). */
+  taunted?: boolean;
   /** Only once the battle is over. */
   result?: Partial<BattleResult>;
   rewards?: BattleRewards | null;
@@ -245,6 +249,9 @@ export interface AnswerResponse extends Outcome { ok: boolean; replayed: boolean
 export interface QuestionResponse { ok: boolean; battle: Battle; question: Question | null; previous: Outcome | null; stock?: Stock }
 export interface ItemResponse { ok: boolean; item: ItemId; battle: Battle; question: Question | null; stock: Stock }
 export interface ForfeitResponse { ok: boolean; battle: Battle; rewards: BattleRewards | null }
+export interface TauntResponse { ok: boolean; taunt: { meter_gain: number; enraged: boolean; bonus_pct: number }; battle: Battle }
+export interface EmoteEntry { id: string; name: string; owned: boolean; how: string }
+
 export interface UltimateResponse {
   ok: boolean; ultimate: { name: string; text: string; hearts: number; insight: boolean; timewarp: boolean };
   battle: Battle; question: Question | null;

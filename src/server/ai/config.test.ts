@@ -9,7 +9,7 @@ import { route } from "./models";
 import { generate, setLlmFactoryForTests } from "./run";
 import { setCapUsd } from "./usage";
 import {
-  aiSettings, effectiveEnv, ollamaEnabled, ollamaModels, overrideTarget, providerStatus, saveOverride, saveSlots,
+  aiSettings, checkOllamaUrl, effectiveEnv, ollamaEnabled, ollamaModels, overrideTarget, providerStatus, saveOllamaUrl, saveOverride, saveSlots,
 } from "./config";
 
 let p: LocalPlatform;
@@ -113,6 +113,39 @@ describe("Ollama (local development only)", () => {
     const down = vi.fn(async () => { throw new Error("ECONNREFUSED"); });
     expect(await ollamaModels(env, down as unknown as typeof fetch)).toEqual([]);
     expect(await ollamaModels({ NODE_ENV: "production" }, ok as unknown as typeof fetch)).toEqual([]);
+  });
+});
+
+describe("Ollama on the live site, through an admin's tunnel", () => {
+  const TUNNEL = "https://my-ollama.trycloudflare.com";
+  it("a saved https tunnel turns it on anywhere; plain http is refused outside development", async () => {
+    vi.stubEnv("NODE_ENV", "production");
+    expect(ollamaEnabled(process.env, TUNNEL)).toBe(true);
+    expect(() => checkOllamaUrl("http://1.2.3.4:11434")).toThrow(/https/);
+    expect(() => checkOllamaUrl("not a url")).toThrow();
+    expect(checkOllamaUrl(`${TUNNEL}/`)).toBe(TUNNEL);
+    expect(await saveOllamaUrl(db, `${TUNNEL}/`)).toBe(TUNNEL);
+    expect((await aiSettings(db)).ollamaUrl).toBe(TUNNEL);
+    await saveOverride(db, 1, "ollama:my-custom-model:q4", process.env, TUNNEL);            // any model name
+    expect(overrideTarget("ollama:my-custom-model:q4", process.env, TUNNEL)).toMatchObject({ provider: "ollama", model: "my-custom-model:q4", baseUrl: TUNNEL });
+    expect(providerStatus(process.env, TUNNEL).some((x) => x.id === "ollama")).toBe(true);
+    expect(await saveOllamaUrl(db, null)).toBeNull();
+    expect((await aiSettings(db)).ollamaUrl).toBeNull();
+  });
+
+  it("an admin's Ollama answers their requests through the tunnel; the list comes from it too", async () => {
+    vi.stubEnv("NODE_ENV", "production");
+    const tags = vi.fn(async () => new Response(JSON.stringify({ models: [{ name: "phi4" }] })));
+    expect(await ollamaModels(process.env, tags as unknown as typeof fetch, TUNNEL)).toEqual(["phi4"]);
+    expect((tags.mock.calls[0] as unknown[])[0]).toBe(`${TUNNEL}/api/tags`);
+    await saveOllamaUrl(db, TUNNEL);
+    await saveOverride(db, 1, "ollama:phi4", process.env, TUNNEL);
+    const llms = fakeLlms({ "*": () => "from my ollama" });
+    setLlmFactoryForTests(llms.factory);
+    const admin = { id: 1, owner: false, admin: true, tier: "archmage" as const };
+    const r = await generate(ctx(), admin, "strong", [{ role: "user", content: "hi" }]);
+    expect(r.target).toMatchObject({ provider: "ollama", model: "phi4", baseUrl: TUNNEL });
+    expect((await generate(ctx(), student, "strong", [{ role: "user", content: "hi" }])).target.provider).not.toBe("ollama");
   });
 });
 

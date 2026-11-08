@@ -27,7 +27,7 @@ import { ITEMS } from "./content";
 import * as kits from "./kits";
 import { DAMAGING_KINDS, forBoss, illusionOption, key as mkey, Turn } from "./mechanics";
 import { award, activeBuffs, checkAchievements, consumeCharge } from "./progression";
-import { consumeInventory, getAvatar, inventory, modifyAvatar, type Player } from "./store";
+import { consumeInventory, getAvatar, inventory, modifyAvatar, recordRewardEvent, type Player } from "./store";
 
 export const PLAYER_MAX_HP = 10;
 const SECONDS_PER_QUESTION = 30;
@@ -122,7 +122,7 @@ export function state(b: Row) {
     focus_cap: b.focusCap, shield: b.shield, intent: b.intentJson && b.status === "active" ? J(b.intentJson, null) : null,
     relics: [...relicsOf(boss)].sort(), heavy_cost: heavyCost(boss), question_issued: b.status === "active" && b.currentSeq !== null,
     free_timewarp: relicsOf(boss).has("hourglass") && !boss.mods?.hourglass_used, mechanic: mechanicHud(boss, b.difficulty),
-    kit: boss.kit ? kits.kitHud(boss.kit) : null, tier: boss.tier ?? 1, bane: tome.baneHud(boss),
+    kit: boss.kit ? kits.kitHud(boss.kit) : null, tier: boss.tier ?? 1, bane: tome.baneHud(boss), taunted: !!boss.mods?.taunted,
     ...(b.status !== "active" ? { result: J(b.resultJson, {}), rewards: J(b.rewardsJson, null) } : {}),
   };
 }
@@ -697,6 +697,13 @@ export async function end(ctx: RequestContext, player: Player, battleId: string,
     if (status === "won") {
       paid.boss_defeat = await award(ctx, player, "boss_defeat", { accuracy: ratio, difficulty: BOSS_DEFEAT_DIFFICULTY[b.difficulty] ?? 1.2, combo: Math.max(b.maxCombo, 1), sourceId: battleId });
       result.new_personal_best = await recordScore(ctx, b, grade, accuracy, seconds, now);
+      // the taunt's promise: +25% of what the win paid, once
+      const won = paid.boss_defeat as { xp_gained?: number; coins_gained?: number } | null;
+      if (J<Boss>(b.bossJson, {}).mods?.taunted && won) {
+        const bonus = { xp: Math.round(Number(won.xp_gained ?? 0) * TAUNT_BONUS), coins: Math.round(Number(won.coins_gained ?? 0) * TAUNT_BONUS) };
+        const res = await recordRewardEvent(ctx, player.id, "taunt_bonus", bonus.xp, bonus.coins, battleId, `u${player.id}:taunt:${battleId}`);
+        if (res.applied && (bonus.xp || bonus.coins)) result.taunt_bonus = bonus;
+      }
     }
   }
   await ctx.db.update(arenaBattles).set({ rewardsJson: JSON.stringify(paid), resultJson: JSON.stringify(result) }).where(eq(arenaBattles.id, battleId));
@@ -770,6 +777,32 @@ export async function useUltimate(ctx: RequestContext, player: Player, battleId:
   if ((fx.insight || fx.timewarp) && open) await freeSpells(ctx, battleId, q!.seq, boss, J(b.intentJson, null));
   b = await need(ctx, battleId, player.id);
   return { ok: true, ultimate: { ...fx, hearts }, battle: state(b), question: open ? publicQuestion((await qrow(ctx, battleId, q!.seq))!, b) : null };
+}
+
+// ── the taunt (Stage A2): once a fight, enrage the boss for a charged ultimate and a bigger reward ───────────────
+export const TAUNT_METER = 50;
+export const TAUNT_BONUS = 0.25;
+
+/** Taunt the boss: it rages for the rest of the fight (it hits harder); the ultimate gets +50; the win pays +25%. */
+export async function taunt(ctx: RequestContext, player: Player, battleId: string) {
+  await need(ctx, battleId, player.id);
+  await settleTimeout(ctx, battleId, player.id, player);
+  const b = await need(ctx, battleId, player.id);
+  if (b.status !== "active") throw err("battle_finished", "That battle is over.");
+  const boss: Boss = J(b.bossJson, {});
+  const mods = (boss.mods ??= {});
+  if (mods.taunted) throw err("taunt_used", "You already taunted this one. Once a fight is enough.");
+  mods.taunted = true;
+  const enraged = !boss.rage;
+  boss.rage = true;
+  boss.phase = 2;
+  const ks: kits.KitState = (boss.kit ??= kits.initKit(null));
+  const gain = Math.min(kits.METER_MAX - (ks.meter || 0), TAUNT_METER);
+  ks.meter = (ks.meter || 0) + gain;
+  const done = await ctx.db.update(arenaBattles).set({ bossJson: JSON.stringify(boss), phase: 2, updatedAt: iso() })
+    .where(and(eq(arenaBattles.id, battleId), eq(arenaBattles.updatedAt, b.updatedAt))).returning({ id: arenaBattles.id }).all();
+  if (!done.length) throw err("taunt_used", "You already taunted this one. Once a fight is enough.");
+  return { ok: true, taunt: { meter_gain: gain, enraged, bonus_pct: Math.round(TAUNT_BONUS * 100) }, battle: state((await need(ctx, battleId, player.id))) };
 }
 
 export async function castSpell(ctx: RequestContext, player: Player, battleId: string, spell: unknown) {

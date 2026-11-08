@@ -16,6 +16,7 @@ import InstallApp from "@/components/pwa/InstallApp";
 import ThemeSwitch from "@/components/account/ThemeSwitch";
 import SectionIndex from "@/components/account/SectionIndex";
 import MyModel from "@/components/account/MyModel";
+import SoundSettings from "@/components/account/SoundSettings";
 import { ROUTES } from "@/lib/routes";
 
 
@@ -336,6 +337,8 @@ export default function SettingsPage() {
             onChange={e => setReduceAnimations(e.target.checked)}
             label={<span className="flex items-center gap-2"><Zap size={14} className="text-ink-gold" />Reduce Animations — {reduceAnimations ? "Animations disabled" : "Animations enabled"}</span>}
             description="Disables pixel sparkles, screen shakes, and transitions" />
+
+          <SoundSettings />
 
           <Button block onClick={handleAppearanceSave}>
             <Save size={15} />Apply Appearance

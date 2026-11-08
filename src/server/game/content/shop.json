@@ -42,6 +42,13 @@
    "name": "Titles",
    "icon": "🏆",
    "description": "Prestige titles — rare ones grant small stat bonuses"
+  },
+  {
+   "id": "emote",
+   "unlock_level": 5,
+   "name": "Emotes",
+   "icon": "💬",
+   "description": "Victory emotes your champion acts out over a beaten creature. Three are free; more here and from achievements."
   }
  ],
  "tiers": [
@@ -1195,6 +1202,67 @@
       "champion": "thorne",
       "level": 10
      }
+    }
+   ]
+  },
+  {
+   "id": "emotes",
+   "category": "emote",
+   "unlocks_at_level": 5,
+   "items": [
+    {
+     "id": "emote_gg",
+     "type": "emote",
+     "name": "GG",
+     "description": "Raise a fist: good game.",
+     "price": 0,
+     "sprite": "💬",
+     "rarity": "common"
+    },
+    {
+     "id": "emote_bow",
+     "type": "emote",
+     "name": "Bow",
+     "description": "A deep bow to a worthy foe.",
+     "price": 0,
+     "sprite": "💬",
+     "rarity": "common"
+    },
+    {
+     "id": "emote_flex",
+     "type": "emote",
+     "name": "Flex",
+     "description": "Show off a little. Sparkles included.",
+     "price": 0,
+     "sprite": "💬",
+     "rarity": "common"
+    },
+    {
+     "id": "emote_laugh",
+     "type": "emote",
+     "name": "Laugh",
+     "description": "Hop up and down laughing at the beaten creature.",
+     "price": 150,
+     "sprite": "💬",
+     "rarity": "rare"
+    },
+    {
+     "id": "emote_taunt",
+     "type": "emote",
+     "name": "Come At Me",
+     "description": "Beckon the next challenger.",
+     "price": 250,
+     "sprite": "💬",
+     "rarity": "rare"
+    },
+    {
+     "id": "emote_dance",
+     "type": "emote",
+     "name": "Victory Dance",
+     "description": "A little pixel jig, left and right.",
+     "price": 300,
+     "sprite": "💬",
+     "rarity": "epic"
     }
    ]
   }

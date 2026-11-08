@@ -11,6 +11,12 @@ import { areaOf } from "@/lib/routes";
 import NavSidebar from "./NavSidebar";
 import BottomNav from "./BottomNav";
 import CommandPalette from "./CommandPaletteLoader";
+import dynamic from "next/dynamic";
+import CoinRain from "@/components/fx/CoinRain";
+import AchievementBanner from "@/components/fx/AchievementBanner";
+
+// the level-up screen draws the champion (the pixel engine): loaded on its own, only for a signed-in player
+const LevelUpCeremony = dynamic(() => import("@/components/fx/LevelUpCeremony"), { ssr: false });
 import "./shell.css";
 
 /**
@@ -53,6 +59,10 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       </main>
       <BottomNav />
       <CommandPalette />
+      {/* reward ceremonies, from anywhere in the app (Stage R3) */}
+      <CoinRain />
+      <AchievementBanner />
+      {user && <LevelUpCeremony />}
     </div>
     </ThemeScope>
   );

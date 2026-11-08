@@ -3,7 +3,9 @@
 //     LLM_FAST, LLM_STRONG, LLM_PREMIUM and WORKERS_AI_MODEL; clearing one goes back to the setting
 //   - each admin's own model ("ai_override:<user id>"): tried first on that admin's own requests (to test a model),
 //     the normal models still behind it; students never get it
-//   - Ollama (a model on the admin's computer): only under `next dev`, only as an admin's own model
+//   - Ollama (a model on an admin's computer), only ever as an admin's own model: on that computer under `next dev`
+//     (http://localhost:11434, or OLLAMA_BASE_URL), and on the live site through a tunnel URL an admin saves
+//     ("ollama_url": a Cloudflare Tunnel or ngrok address in front of their Ollama). Any model name may be used.
 import { eq, inArray } from "drizzle-orm";
 import type { Db } from "../db";
 import { appSettings } from "../db/schema";
@@ -21,12 +23,38 @@ const overrideKey = (userId: number) => `ai_override:${userId}`;
 /** The setting each slot stands in for. */
 export const SLOT_ENV: Record<SlotName, string> = { fast: "LLM_FAST", strong: "LLM_STRONG", premium: "LLM_PREMIUM", small: "WORKERS_AI_MODEL" };
 
-/** Ollama is for local development only: `next dev` (NODE_ENV=development). */
-export function ollamaEnabled(env: Env = process.env): boolean {
-  return env.NODE_ENV === "development";
+const OLLAMA_URL_KEY = "ollama_url";
+/** Ollama answers under `next dev` (this computer), or anywhere once an admin has saved a tunnel URL. */
+export function ollamaEnabled(env: Env = process.env, tunnel?: string | null): boolean {
+  return env.NODE_ENV === "development" || !!tunnel;
 }
-export function ollamaBase(env: Env = process.env): string {
-  return (env.OLLAMA_BASE_URL || "http://localhost:11434").replace(/\/+$/, "");
+/** Where Ollama answers: the saved tunnel URL first, then OLLAMA_BASE_URL, then this computer. */
+export function ollamaBase(env: Env = process.env, tunnel?: string | null): string {
+  return (tunnel || env.OLLAMA_BASE_URL || "http://localhost:11434").replace(/\/+$/, "");
+}
+
+/** A tunnel URL checked: https (or http://localhost in development), no path tricks. */
+export function checkOllamaUrl(raw: string, env: Env = process.env): string {
+  let u: URL;
+  try { u = new URL(raw.trim()); } catch { throw invalid("Paste the whole address, such as https://my-ollama.trycloudflare.com.", "url"); }
+  const local = u.hostname === "localhost" || u.hostname === "127.0.0.1";
+  if (u.protocol !== "https:" && !(local && env.NODE_ENV === "development")) {
+    throw invalid("The live site can only reach Ollama over https (a tunnel address).", "url");
+  }
+  if (u.username || u.password) throw invalid("Leave the user name and password out of the address.", "url");
+  return `${u.origin}${u.pathname.replace(/\/+$/, "")}`;
+}
+
+/** Save (or with null clear) the Ollama tunnel URL. */
+export async function saveOllamaUrl(db: Db, url: string | null, env: Env = process.env): Promise<string | null> {
+  if (url === null || url.trim() === "") {
+    await db.delete(appSettings).where(eq(appSettings.key, OLLAMA_URL_KEY));
+    return null;
+  }
+  const value = checkOllamaUrl(url, env);
+  await db.insert(appSettings).values({ key: OLLAMA_URL_KEY, value: JSON.stringify({ url: value }), updatedAt: nowIso() })
+    .onConflictDoUpdate({ target: appSettings.key, set: { value: JSON.stringify({ url: value }), updatedAt: nowIso() } });
+  return value;
 }
 
 const nowIso = () => new Date().toISOString().replace(/\.\d{3}Z$/, "Z");
@@ -35,14 +63,15 @@ function parseJson<T>(raw: string | undefined | null, fallback: T): T {
   try { return raw ? (JSON.parse(raw) as T) : fallback; } catch { return fallback; }
 }
 
-/** The saved slots and (for `userId`) that admin's own model, in one read. */
-export async function aiSettings(db: Db, userId?: number): Promise<{ slots: Slots; override: string | null }> {
-  const keys = userId ? [SLOTS_KEY, overrideKey(userId)] : [SLOTS_KEY];
+/** The saved slots, the Ollama tunnel URL and (for `userId`) that admin's own model, in one read. */
+export async function aiSettings(db: Db, userId?: number): Promise<{ slots: Slots; override: string | null; ollamaUrl: string | null }> {
+  const keys = userId ? [SLOTS_KEY, OLLAMA_URL_KEY, overrideKey(userId)] : [SLOTS_KEY, OLLAMA_URL_KEY];
   const rows = await db.select().from(appSettings).where(inArray(appSettings.key, keys)).all();
   const get = (k: string) => rows.find((r) => r.key === k)?.value;
   const slots = parseJson<Slots>(get(SLOTS_KEY), {});
   const override = userId ? parseJson<{ spec?: string } | null>(get(overrideKey(userId)), null)?.spec ?? null : null;
-  return { slots: typeof slots === "object" && slots ? slots : {}, override };
+  const ollamaUrl = parseJson<{ url?: string } | null>(get(OLLAMA_URL_KEY), null)?.url ?? null;
+  return { slots: typeof slots === "object" && slots ? slots : {}, override, ollamaUrl };
 }
 
 /** The environment with the saved slots laid over it (what models.ts route() reads). */
@@ -95,26 +124,26 @@ export async function saveSlots(db: Db, change: Partial<Record<SlotName, string 
   return next;
 }
 
-/** An admin's own model as a target, or null when it can't be used here (Ollama outside dev, a missing key). */
-export function overrideTarget(spec: string | null | undefined, env: Env = process.env): Target | null {
+/** An admin's own model as a target, or null when it can't be used here (Ollama with no way to reach it, no key). */
+export function overrideTarget(spec: string | null | undefined, env: Env = process.env, tunnel?: string | null): Target | null {
   const s = parseSpec(spec ?? undefined);
   if (!s) return null;
-  if (s.provider === "ollama") return ollamaEnabled(env) ? { slot: "strong", provider: "ollama", model: s.model } : null;
+  if (s.provider === "ollama") return ollamaEnabled(env, tunnel) ? { slot: "strong", provider: "ollama", model: s.model, baseUrl: ollamaBase(env, tunnel) } : null;
   if (s.provider === "workers-ai") return { slot: "small", provider: "workers-ai", model: s.model };
   const apiKey = (env[KEY_ENV[s.provider]] || "").trim();
   return apiKey ? { slot: "strong", provider: s.provider, model: s.model, apiKey } : null;
 }
 
 /** Set (or with null clear) an admin's own model. */
-export async function saveOverride(db: Db, userId: number, spec: string | null, env: Env = process.env): Promise<string | null> {
+export async function saveOverride(db: Db, userId: number, spec: string | null, env: Env = process.env, tunnel?: string | null): Promise<string | null> {
   const key = overrideKey(userId);
   if (spec === null || spec.trim() === "") {
     await db.delete(appSettings).where(eq(appSettings.key, key));
     return null;
   }
   const s = parseSpec(spec);
-  if (!s || (s.provider === "ollama" && !ollamaEnabled(env))) {
-    throw invalid(s?.provider === "ollama" ? "Ollama works only while running the app on your computer (npm run dev)." : "Write it as provider:model.", "spec");
+  if (!s || (s.provider === "ollama" && !ollamaEnabled(env, tunnel))) {
+    throw invalid(s?.provider === "ollama" ? "Ollama works under npm run dev, or on the live site once a tunnel URL is saved in Admin → AI." : "Write it as provider:model.", "spec");
   }
   if (s.provider !== "ollama" && s.provider !== "workers-ai" && !configured(s.provider, env)) {
     throw new HttpError(400, "provider_not_configured", `The server has no ${KEY_ENV[s.provider]} set, so ${s.provider} can't answer.`, null, { field: "spec" });
@@ -125,20 +154,21 @@ export async function saveOverride(db: Db, userId: number, spec: string | null, 
   return `${s.provider}:${s.model}`;
 }
 
-/** Each provider and whether the server can use it (a key set; Workers AI always; Ollama only in development). */
-export function providerStatus(env: Env = process.env): { id: string; configured: boolean; key_env: string | null }[] {
-  return PROVIDERS.filter((p) => p !== "ollama" || ollamaEnabled(env)).map((p) => ({
+/** Each provider and whether the server can use it (a key set; Workers AI always; Ollama when it can be reached). */
+export function providerStatus(env: Env = process.env, tunnel?: string | null): { id: string; configured: boolean; key_env: string | null }[] {
+  return PROVIDERS.filter((p) => p !== "ollama" || ollamaEnabled(env, tunnel)).map((p) => ({
     id: p,
     configured: p === "workers-ai" || p === "ollama" ? true : configured(p, env),
     key_env: p === "workers-ai" || p === "ollama" ? null : KEY_ENV[p],
   }));
 }
 
-/** The models the local Ollama has pulled ([] when it isn't running, or outside development). */
-export async function ollamaModels(env: Env = process.env, fetchImpl: typeof fetch = fetch): Promise<string[]> {
-  if (!ollamaEnabled(env)) return [];
+/** The models that Ollama has pulled ([] when it isn't answering, or can't be reached from here). */
+export async function ollamaModels(env: Env = process.env, fetchImpl: typeof fetch = fetch, tunnel?: string | null): Promise<string[]> {
+  if (!ollamaEnabled(env, tunnel)) return [];
   try {
-    const res = await fetchImpl(`${ollamaBase(env)}/api/tags`, { signal: AbortSignal.timeout(2000) });
+    // ngrok's free tunnels show a warning page to browsers unless asked not to
+    const res = await fetchImpl(`${ollamaBase(env, tunnel)}/api/tags`, { signal: AbortSignal.timeout(tunnel ? 5000 : 2000), headers: { "ngrok-skip-browser-warning": "1" } });
     if (!res.ok) return [];
     const j = (await res.json()) as { models?: { name?: string }[] };
     return (j.models ?? []).map((m) => m.name).filter((n): n is string => !!n);

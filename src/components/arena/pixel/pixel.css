@@ -23,6 +23,20 @@ button .pixel-canvas, [role="radio"] .pixel-canvas { pointer-events: none; }
   animation: px-speech 0.25s steps(3) both;
 }
 @keyframes px-speech { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
+/* Stage A2: the champion's taunt, the announcer, the boss's title card */
+.px-arena__speech--hero { right: auto; left: 6%; top: 18%; border-color: var(--color-reward); color: var(--color-reward); }
+.px-arena__callout {
+  position: absolute; left: 0; right: 0; top: 18%; margin: 0; text-align: center; pointer-events: none; z-index: 5;
+  font-size: clamp(1rem, 4vw, 2rem); color: #fff3c4; letter-spacing: 0.04em;
+  text-shadow: 3px 3px 0 #000, -2px -2px 0 #000, 2px -2px 0 #000, -2px 2px 0 #000;
+}
+.px-arena__card {
+  position: absolute; left: 0; right: 0; bottom: 14%; z-index: 5; display: grid; justify-items: center; gap: 0.2rem;
+  padding: 0.55rem 1rem; background: rgba(6, 7, 26, 0.88); border-top: 3px solid var(--color-reward); border-bottom: 3px solid var(--color-reward);
+}
+.px-arena__card-tier { font-size: 0.55rem; color: var(--color-text-secondary); letter-spacing: 0.08em; }
+.px-arena__card-name { font-size: clamp(0.95rem, 3.5vw, 1.5rem); color: var(--color-reward); text-shadow: 3px 3px 0 #000; }
+.px-arena__card-title { font-size: 0.8rem; color: var(--color-text); }
 .px-arena__banner {
   position: absolute; inset: 0; display: grid; place-items: center; margin: 0; pointer-events: none;
   font-size: clamp(2rem, 8vw, 4.5rem); letter-spacing: 0.06em; color: var(--color-reward);

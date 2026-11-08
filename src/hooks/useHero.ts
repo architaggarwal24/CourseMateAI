@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { announceAchievements, coinRain } from "@/lib/fx/celebrate";
 import { toast } from "@/components/ui/Toast";
 import { claimQuest, parseApiError, rawApi } from "@/lib/api";
 import { useHUDStore } from "@/hooks/useHUD";
@@ -45,7 +46,8 @@ interface HeroState {
   setPreview: (id: string | null) => void;
   togglePreview: (id: string) => void;
 
-  purchase: (item: ShopItem) => Promise<boolean>;
+  /** Buy one. `quiet`: no toast (the purchase screen celebrates it instead). */
+  purchase: (item: ShopItem, opts?: { quiet?: boolean }) => Promise<boolean>;
   equip: (item: ShopItem) => Promise<boolean>;
   unequip: (slot: string, name?: string) => Promise<boolean>;
   toggleEquip: (item: ShopItem) => Promise<boolean>;
@@ -81,6 +83,7 @@ export const INVENTORY_TABS = [
   { id: "pets", name: "Pets", icon: "🐱", match: (i: ShopItem) => i.category === "pet" },
   { id: "consumables", name: "Consumables", icon: "🧪", match: (i: ShopItem) => ["potion", "special"].includes(i.category) && !!i.consumable && (i.quantity ?? 0) > 0 },
   { id: "titles", name: "Titles", icon: "🏆", match: (i: ShopItem) => i.category === "title" },
+  { id: "emotes", name: "Emotes", icon: "💬", match: (i: ShopItem) => i.category === "emote" },
 ] as const;
 
 export function ownedItems(shop: ShopState | null): ShopItem[] {
@@ -203,7 +206,7 @@ export const useHeroStore = create<HeroState>((set, get) => {
     setPreview: (id) => set({ previewId: id }),
     togglePreview: (id) => set((s) => ({ previewId: s.previewId === id ? null : id })),
 
-    purchase: async (item) => {
+    purchase: async (item, opts) => {
       const { guestMode, coins } = hud();
       if (guestMode) { toast.error("Please login to purchase items"); return false; }
       if (coins < Number(item.price)) { toast.error(`Not enough coins! Need ${Number(item.price) - coins} more 🪙`); return false; }
@@ -213,7 +216,7 @@ export const useHeroStore = create<HeroState>((set, get) => {
           const { data, error, response } = await rawApi.POST("/shop/purchase", { body: { item_id: item.id }, headers: once.headers });
           if (response.ok) once.done();
           return settle(response, data, error, (result) => {
-            toast.success(`${item.name} purchased! 🎉`);
+            if (!opts?.quiet) toast.success(`${item.name} purchased! 🎉`);
             const shop = get().shop;
             if (shop) {
               changed();
@@ -293,6 +296,8 @@ export const useHeroStore = create<HeroState>((set, get) => {
 
         if (result?.ok) {
           toast.success(`🎉 Claimed! +${result.xp_gained} XP | +${result.coins_gained} 🪙`, { icon: "✅", duration: 3000 });
+          coinRain(Number(result.coins_gained) || 0);
+          announceAchievements(result.new_achievements);
           markClaimed({ xp: Number(result.xp_gained) || 0, coins: Number(result.coins_gained) || 0 });
           await get().reconcile();
           return true;

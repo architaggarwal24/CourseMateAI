@@ -1,5 +1,6 @@
 "use client";
 
+import { announceAchievements } from "@/lib/fx/celebrate";
 import { useState, useRef, useEffect, useLayoutEffect, useCallback } from "react";
 import { ArrowDown, ArrowUp, Check, Copy, FileText, History, Lightbulb, ListChecks, MessageSquare, Plus, Sparkles, Trash2 } from "@/components/icons";
 import { motion } from "motion/react";
@@ -182,11 +183,7 @@ export default function ChatView({ documentId, restoreSessionId }: { documentId?
       refreshIfStale(5_000);
       if (answer.rewards?.ok) {
         toast.success(`+${answer.rewards.xp_gained} XP | +${answer.rewards.coins_gained} Coins`, { icon: "🎉" });
-        if (answer.rewards.new_achievements?.length) {
-          for (const ach of answer.rewards.new_achievements) {
-            toast.success(`🏆 Achievement Unlocked: ${ach.name}`, { description: ach.description, duration: 5000 });
-          }
-        }
+        announceAchievements(answer.rewards.new_achievements);
       }
     } catch (e) {
       if (isAbortError(e) || controller.signal.aborted) return;   // the user left / started over: nothing to show

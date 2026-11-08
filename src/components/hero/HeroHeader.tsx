@@ -7,6 +7,7 @@ import { useChampionLook } from "@/components/champion/useChampionLook";
 import { Button } from "@/components/ui";
 import { useHUDStore } from "@/hooks/useHUD";
 import { useHeroStore } from "@/hooks/useHero";
+import SoundToggle from "@/components/fx/SoundToggle";
 
 /**
  * Always on top of the Hero area, whatever tab is open: the champion (with its pet and whatever is being tried on), level, XP bar,
@@ -72,6 +73,8 @@ export default function HeroHeader() {
           </span>
         )}
       </div>
+
+      <SoundToggle className="hero-header__sound" />
 
       {previewItem && (
         <div className="hero-header__preview">

@@ -167,8 +167,9 @@ export function apiLlm(t: Target, fetchImpl: typeof fetch = fetch): Llm {
     case "openai": return openaiCompatible(t, fetchImpl, (process.env.OPENAI_BASE_URL || OPENAI_BASE).replace(/\/+$/, ""), true);
     case "nvidia": return openaiCompatible(t, fetchImpl, NVIDIA_BASE, false);
     case "claude": return claude(t, fetchImpl);
-    // Ollama speaks the OpenAI chat API at /v1 (no key). Only ever reached in local development (ai/config.ts).
-    case "ollama": return openaiCompatible(t, fetchImpl, `${(process.env.OLLAMA_BASE_URL || "http://localhost:11434").replace(/\/+$/, "")}/v1`, false);
+    // Ollama speaks the OpenAI chat API at /v1 (no key): on this computer under `next dev`, or through an admin's
+    // tunnel URL on the live site (ai/config.ts). Only ever an admin's own model.
+    case "ollama": return openaiCompatible(t, fetchImpl, `${(t.baseUrl || process.env.OLLAMA_BASE_URL || "http://localhost:11434").replace(/\/+$/, "")}/v1`, false);
     default: throw new Error(`no API client for ${t.provider}`);
   }
 }

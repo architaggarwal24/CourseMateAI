@@ -1,4 +1,5 @@
 "use client";
+import { announceAchievements } from "@/lib/fx/celebrate";
 import { useState, useEffect, useCallback } from "react";
 import { HelpCircle, Brain, Zap, Target, TrendingUp, History, Plus, Minus, ListChecks } from "@/components/icons";
 import HistoryPanel from "./HistoryPanel";
@@ -115,11 +116,7 @@ export default function QuizView({ documentId, restoreSessionId, initialTopic }:
         const res = done?.rewards;
         if (res?.ok) {
           toast.success(`+${res.xp_gained} XP | +${res.coins_gained} Coins`, { icon: "🎉" });
-          if (res.new_achievements?.length) {
-            for (const ach of res.new_achievements) {
-              toast.success(`🏆 Achievement Unlocked: ${ach.name}`, { description: ach.description, duration: 5000 });
-            }
-          }
+          announceAchievements(res.new_achievements);
           refreshIfStale(5_000);
         }
       } catch (e) {

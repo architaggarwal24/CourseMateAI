@@ -8,7 +8,7 @@ import relicsFile from "./content/relics.json";
 import rewardsFile from "./content/rewards.json";
 import shopFile from "./content/shop.json";
 
-export const ITEM_TYPES = ["armor", "headgear", "weapon", "pet", "potion", "title"] as const;
+export const ITEM_TYPES = ["armor", "headgear", "weapon", "pet", "potion", "title", "emote"] as const;
 export const KNOWN_EFFECTS = ["heal_1", "hint_charge", "fifty_fifty", "xp_boost_1h", "xp_boost_2h", "coin_boost_1h", "streak_freeze", "reset_daily_quests"];
 export const KNOWN_UNLOCK_TYPES = ["total_quizzes_completed", "streak_days", "total_bosses_defeated", "current_level", "best_quiz_accuracy", "nightmare_bosses_defeated",
   "bestiary_banes_found", "bestiary_creatures_defeated"];

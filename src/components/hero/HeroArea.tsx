@@ -8,10 +8,12 @@ import { useAuth } from "@/contexts/AuthContext";
 import { ceremonyDue, useChampion } from "@/hooks/useChampion";
 import { useHUDStore } from "@/hooks/useHUD";
 import { useHeroStore } from "@/hooks/useHero";
+import { sfx } from "@/lib/sound/chip";
 import { DEFAULT_HERO_TAB, LEGACY_HERO_TABS, ROUTES, isHeroTab, type HeroTab } from "@/lib/routes";
 import ChampionTab from "./ChampionTab";
 import HeroHeader from "./HeroHeader";
 import InventoryTab from "./InventoryTab";
+import PurchaseFlow from "./PurchaseFlow";
 import QuestsTab from "./QuestsTab";
 import ShopTab from "./ShopTab";
 import "./hero.css";
@@ -70,7 +72,7 @@ export default function HeroArea() {
         onNavigate={(item, e) => {
           const next = TABS.find((t) => ROUTES.heroTab(t.id) === item.href)?.id;
           if (!next || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) return;
-          if (next === tab) e.preventDefault();
+          if (next === tab) e.preventDefault(); else sfx("select");
         }}
       />
 
@@ -85,6 +87,7 @@ export default function HeroArea() {
       </div>
       {/* not over a fight: the arena's result panel offers the ceremony itself ("Meet ...") */}
       {ceremony && tab !== "arena" && <ChampionCeremony />}
+      <PurchaseFlow />
     </div>
   );
 }

@@ -11,13 +11,13 @@
  * Every icon is a square buffer (cropped to the art, then centred), so CSS can scale it with nearest neighbour.
  */
 import { PixelBuffer } from "./buffer";
-import { hex, ramp, type Material } from "./color";
+import { hex, ramp, shift, type Material } from "./color";
 import { heroById } from "./heroes";
 import { petFrame } from "./pets";
 import { drawHeroHead, drawWeaponAt, HERO_BUILD, type HumanoidLook, type Skeleton } from "./rig";
 import { ARMOR_SKINS, HEAD_SKINS, RARITY_GLOW, WEAPON_SKINS, dressed, masteryOwner } from "./skins";
 
-export type ItemKind = "headgear" | "armor" | "weapon" | "pet" | "potion" | "title" | "none";
+export type ItemKind = "headgear" | "armor" | "weapon" | "pet" | "potion" | "title" | "emote" | "none";
 
 const POTIONS: Record<string, { liquid: string; shape: "round" | "tall" | "big" | "split" | "swirl" }> = {
   potion_health_small: { liquid: "#ef4444", shape: "round" },
@@ -39,6 +39,7 @@ export function kindOf(id: string): ItemKind {
   if (id.startsWith("pet_")) return "pet";
   if (id.startsWith("title_")) return "title";
   if (id in POTIONS || id.startsWith("potion_")) return "potion";
+  if (id.startsWith("emote_")) return "emote";
   return "none";
 }
 
@@ -119,6 +120,33 @@ function titleIcon(b: PixelBuffer, rarity?: string | null) {
   b.poly([[24, 25.5], [25.4, 28.6], [28.6, 29], [26.1, 31.2], [26.8, 34.4], [24, 32.8], [21.2, 34.4], [21.9, 31.2], [19.4, 29], [22.6, 28.6]], ramp("#fef3c7"));
 }
 
+// ── emotes (Stage A2): a speech bubble with a small glyph, in the emote's colour ──────────────────────────────────
+/** 7x7 glyphs, one string per row ("#" = ink). */
+const GLYPHS: Record<string, { color: string; rows: string[] }> = {
+  emote_gg: { color: "#4ade80", rows: ["###.###", "#...#..", "#.#.#.#", "#.#.#.#", "###.###", ".......", "......."] },
+  emote_bow: { color: "#93c5fd", rows: ["..###..", "..###..", "...#...", "######.", "#####..", ".#...#.", "#.....#"] },
+  emote_flex: { color: "#facc15", rows: ["...#...", "..###..", "#######", ".#####.", "..###..", ".##.##.", "##...##"] },
+  emote_laugh: { color: "#fb923c", rows: [".#####.", "#.#.#.#", "#######", "#.....#", "#.###.#", ".#...#.", "..###.."] },
+  emote_taunt: { color: "#f87171", rows: ["...##..", "...##..", "...##..", "...##..", "...##..", ".......", "...##.."] },
+  emote_dance: { color: "#c084fc", rows: ["..####.", "..#..#.", "..#..#.", "..#..#.", "###.###", "###.###", "......."] },
+  emote_heart: { color: "#f43f5e", rows: [".##.##.", "#######", "#######", "#######", ".#####.", "..###..", "...#..."] },
+  emote_book: { color: "#fbbf24", rows: ["##...##", "###.###", "###.###", "###.###", "###.###", "##...##", "#.....#"] },
+  emote_crown: { color: "#facc15", rows: ["#..#..#", "##.#.##", "#######", "#######", "#######", ".......", "#######"] },
+  emote_skull: { color: "#e5e7eb", rows: [".#####.", "#######", "#.###.#", "#######", ".##.##.", ".#####.", ".#.#.#."] },
+};
+function emoteIcon(b: PixelBuffer, id: string) {
+  const g = GLYPHS[id] ?? GLYPHS.emote_gg;
+  const paper = ramp("#f8fafc");
+  // the bubble, with its tail at the bottom left
+  b.ellipse(24, 21, 16, 13, paper, { bias: -0.2 });
+  b.poly([[14, 29], [20, 32], [11, 38]], paper);
+  const mid = hex(g.color), dark = shift(g.color, -0.2);
+  g.rows.forEach((row, y) => [...row].forEach((ch, x) => {
+    if (ch !== "#") return;
+    for (let dy = 0; dy < 2; dy++) for (let dx = 0; dx < 2; dx++) b.set(17 + x * 2 + dx, 14 + y * 2 + dy, dy === 0 ? mid : dark);
+  }));
+}
+
 const cache = new Map<string, PixelBuffer>();
 
 /** Crop to what was drawn and centre it in a square (so CSS scaling keeps the art in the middle). */
@@ -152,6 +180,7 @@ export function itemIcon(itemId: string, opts: { heroId?: string; rarity?: strin
   else if (kind === "weapon") weaponIcon(b, itemId, opts.heroId ?? "kaien", glow || null);
   else if (kind === "potion") potionIcon(b, itemId);
   else if (kind === "title") titleIcon(b, opts.rarity);
+  else if (kind === "emote") emoteIcon(b, itemId);
   else if (kind === "pet") {
     const f = petFrame(itemId, 0);
     if (f) b = new PixelBuffer(f.w, f.h), b.blit(f, 0, 0);

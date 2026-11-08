@@ -69,8 +69,8 @@ export interface AiModels {
   providers: { id: string; configured: boolean; key_env: string | null }[];
   /** This admin's own model, or null for the normal ones. */
   mine: string | null;
-  /** Ollama: only while the app runs on the admin's computer (npm run dev). */
-  ollama: { enabled: boolean; base: string | null; models: string[] };
+  /** Ollama: on this computer under npm run dev, or anywhere through the saved tunnel URL (admins' own model only). */
+  ollama: { enabled: boolean; base: string | null; models: string[]; tunnel?: string | null; local?: boolean };
 }
 
 async function call<T>(path: string, init: { method?: string; body?: unknown; headers?: Record<string, string> } = {}): Promise<T> {
@@ -112,6 +112,7 @@ export const adminApi = {
   setCap: (usd: number) => call<AiReport>("/ai", { method: "PUT", body: { cap_usd: usd } }),
   aiModels: () => call<AiModels>("/ai/models"),
   setAiSlots: (slots: Partial<Record<SlotName, string | null>>) => call<AiModels>("/ai/models", { method: "PUT", body: { slots } }),
+  setOllamaUrl: (url: string | null) => call<AiModels>("/ai/models", { method: "PUT", body: { ollama_url: url } }),
   setMyModel: (spec: string | null) => call<{ spec: string | null }>("/ai/mine", { method: "PUT", body: { spec } }),
   revokeInvite: (code: string) => call<{ ok: true }>(`/invites/${encodeURIComponent(code)}`, { method: "DELETE" }),
 };

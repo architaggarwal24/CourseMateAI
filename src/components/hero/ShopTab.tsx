@@ -8,6 +8,7 @@ import { Badge, Button, EmptyState } from "@/components/ui";
 import { useHUDStore } from "@/hooks/useHUD";
 import { useHeroStore, type ShopItem, type ShopState } from "@/hooks/useHero";
 import { CategoryIcon } from "./icons";
+import { usePurchase } from "./PurchaseFlow";
 import ItemCard, { Price } from "./ItemCard";
 
 // Shop categories come from the API (GET /shop -> category_status, in display order); nothing about them is
@@ -47,7 +48,7 @@ function ShopPreview() {
 
 /** Everything that can be bought and then worn or used. */
 function ShopItemCard({ item }: { item: ShopItem }) {
-  const purchase = useHeroStore((s) => s.purchase);
+  const askPurchase = usePurchase((s) => s.ask);
   const toggleEquip = useHeroStore((s) => s.toggleEquip);
   const useItem = useHeroStore((s) => s.useItem);
   const togglePreview = useHeroStore((s) => s.togglePreview);
@@ -60,7 +61,7 @@ function ShopItemCard({ item }: { item: ShopItem }) {
   const previewed = previewId === item.id;
   const qty = item.quantity ?? 0;
   const canAfford = !locked && !(owned && !item.consumable) && !!item.can_afford;
-  const wearable = !item.consumable;
+  const wearable = !item.consumable && item.category !== "emote";
   const canPreview = wearable && !equipped;
 
   const previewButton = wearable && (
@@ -93,10 +94,12 @@ function ShopItemCard({ item }: { item: ShopItem }) {
       ) : !owned || (item.consumable && qty === 0) ? (
         <>
           {previewButton}
-          <Button variant="primary" size="sm" disabled={!canAfford} loading={busy} onClick={() => { void purchase(item); }}>
+          <Button variant="primary" size="sm" disabled={!canAfford} loading={busy} onClick={() => askPurchase(item)}>
             <ShoppingBag size={14} aria-hidden="true" />{canAfford ? "Buy" : "Can't afford"}
           </Button>
         </>
+      ) : owned && item.category === "emote" ? (
+        <p className="hero-item__note w-full"><Check size={11} className="inline mr-1" aria-hidden="true" />Yours: pick it on the wheel after a win</p>
       ) : owned && !item.consumable ? (
         <>
           {!equipped && previewButton}
@@ -113,7 +116,7 @@ function ShopItemCard({ item }: { item: ShopItem }) {
 
 /** Arena-only potions: used mid-battle, so they can be stacked up to a cap (never "equipped" or "activated" here). */
 function ArenaPotionCard({ item }: { item: ShopItem }) {
-  const purchase = useHeroStore((s) => s.purchase);
+  const askPurchase = usePurchase((s) => s.ask);
   const busy = useHeroStore((s) => !!s.pending[item.id]);
   const coins = useHUDStore((s) => s.coins);
 
@@ -140,7 +143,7 @@ function ArenaPotionCard({ item }: { item: ShopItem }) {
       ) : atMax ? (
         <p className="hero-item__note w-full">Max stack — use one first</p>
       ) : (
-        <Button variant="primary" size="sm" disabled={!canBuy} loading={busy} onClick={() => { void purchase(item); }}>
+        <Button variant="primary" size="sm" disabled={!canBuy} loading={busy} onClick={() => askPurchase(item)}>
           <ShoppingBag size={14} aria-hidden="true" />
           {canBuy ? (totalAvail > 0 ? `Buy more (${totalAvail} owned)` : "Buy") : coins < item.price ? "Can't afford" : "Can't buy"}
         </Button>

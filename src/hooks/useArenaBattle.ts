@@ -5,7 +5,7 @@ import { toast } from "@/components/ui/Toast";
 import { ApiError } from "@/lib/api/errors";
 import { useHeroStore } from "@/hooks/useHero";
 import {
-  castSpell, castUltimate, fetchActiveBattle, fetchBattle, fetchQuestion, forfeitBattle, startBattle, submitAnswer, consumeItem as postItem,
+  castSpell, castUltimate, tauntBoss, fetchActiveBattle, fetchBattle, fetchQuestion, forfeitBattle, startBattle, submitAnswer, consumeItem as postItem,
 } from "@/lib/arena/api";
 import type {
   Battle, BattleRewards, BossProfile, Difficulty, ItemId, Move, Outcome, Question, Spell,
@@ -57,9 +57,11 @@ export interface ArenaState {
   /** When the verdict on screen moves on by itself (ms since epoch); null = it waits (paused). */
   advanceAt: number | null;
   stock: { heal: number; fifty_fifty: number };
-  itemBusy: ItemId | Spell | "ultimate" | null;
+  itemBusy: ItemId | Spell | "ultimate" | "taunt" | null;
   /** The ultimate just cast (name and what it did), for the stage and the screen reader; cleared on the next turn. */
   ultimateCast: { name: string; text: string; key: number } | null;
+  /** The taunt just thrown (the stage plays it). */
+  tauntCast: { key: number; enraged: boolean; meter: number } | null;
   rewards: BattleRewards | null;
   retreated: boolean;
 }
@@ -89,6 +91,7 @@ export function useArenaBattle({ autoResume = true, documentId }: { autoResume?:
     phase: "loading", stage: "choosing", sessionId: "", battle: null, boss: null, question: null, deadline: null,
     outcome: null, advanceAt: null, stock: { heal: 0, fifty_fifty: 0 }, itemBusy: null, rewards: null, retreated: false,
     ultimateCast: null,
+    tauntCast: null,
   }));
   const patch = useCallback((p: Partial<ArenaState> | ((s: ArenaState) => Partial<ArenaState>)) => {
     setState((s) => ({ ...s, ...(typeof p === "function" ? p(s) : p) }));
@@ -268,7 +271,7 @@ export function useArenaBattle({ autoResume = true, documentId }: { autoResume?:
       if (!alive.current || gen !== generation.current) return;
       const over = r.battle.status !== "active";
       patch({
-        battle: r.battle, outcome: r, stage: "feedback", deadline: null, ultimateCast: null,
+        battle: r.battle, outcome: r, stage: "feedback", deadline: null, ultimateCast: null, tauntCast: null,
         rewards: r.rewards ?? r.battle.rewards ?? null,
         advanceAt: Date.now() + (over ? AUTO_ADVANCE_MS.over : r.correct ? AUTO_ADVANCE_MS.correct : AUTO_ADVANCE_MS.wrong),
       });
@@ -387,6 +390,22 @@ export function useArenaBattle({ autoResume = true, documentId }: { autoResume?:
     }
   }, [patch]);
 
+  /** Taunt the boss: once a fight, before picking a move or while a question is open. */
+  const taunt = useCallback(async () => {
+    const { battle, stage, itemBusy } = latest.current;
+    if (!battle || battle.taunted || itemBusy || battle.status !== "active" || (stage !== "choosing" && stage !== "asking")) return;
+    patch({ itemBusy: "taunt" });
+    try {
+      const r = await tauntBoss(battle.battle_id);
+      if (!alive.current) return;
+      patch({ battle: r.battle, itemBusy: null, tauntCast: { key: Date.now(), enraged: r.taunt.enraged, meter: r.taunt.meter_gain } });
+    } catch (e) {
+      if (!alive.current) return;
+      patch({ itemBusy: null });
+      toast.apiError(e);
+    }
+  }, [patch]);
+
   const retreat = useCallback(async () => {
     const { battle } = latest.current;
     if (!battle) return;
@@ -407,7 +426,7 @@ export function useArenaBattle({ autoResume = true, documentId }: { autoResume?:
     patch({ phase: "summon", battle: null, boss: null, question: null, deadline: null, outcome: null, advanceAt: null, rewards: null, retreated: false });
   }, [patch]);
 
-  return { ...state, summon, chooseMove, answer, next, holdVerdict, retryQuestion, applyItem, cast, ultimate, retreat, playAgain, enterById };
+  return { ...state, summon, chooseMove, answer, next, holdVerdict, retryQuestion, applyItem, cast, ultimate, taunt, retreat, playAgain, enterById };
 }
 
 /** Whole seconds left until `deadline` (ms since epoch); null when there is no clock. Ticks four times a second. */
