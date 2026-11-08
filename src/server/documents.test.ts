@@ -151,6 +151,29 @@ describe("uploading", () => {
     expect((await json(big)).error.details).toMatchObject({ limit: "pdf_mb", allowed: 10 });
   });
 
+  it("parallel uploads can't pass the plan's document count (security fix #11)", async () => {
+    const b = await person("racer@example.com", "racer");
+    for (const n of ["a", "b"]) await uploadPdf(b, `${n}.pdf`);
+    const starts = await Promise.all(["1", "2", "3", "4", "5"].map((n) =>
+      upload.POST(b.request("/api/v1/upload", { body: { filename: `${n}.pdf`, size: 100, pages: 1, file_hash: n.repeat(64) } }))));
+    expect(starts.filter((r) => r.status === 200).length).toBeLessThanOrEqual(1);
+    for (const r of starts) if (r.status !== 200) expect((await json(r)).error.code).toBe("plan_limit");
+    const u = await json(await usage.GET(b.request("/api/v1/account/usage")));
+    expect(u.used.documents).toBeLessThanOrEqual(3);
+  });
+
+  it("a new document id from the browser must be a UUID (it goes into the storage key; security fix #15)", async () => {
+    const b = await person("ids@example.com", "ids");
+    for (const bad of ["../7/secret", "a/b", "x".repeat(300)]) {
+      const r = await upload.POST(b.request("/api/v1/upload", { body: { filename: "a.pdf", size: 100, pages: 1, file_hash: "d".repeat(64), session_id: bad } }));
+      expect(r.status).toBe(400);
+      expect((await json(r)).error.code).toBe("invalid_input");
+    }
+    const id = crypto.randomUUID();
+    const ok = await upload.POST(b.request("/api/v1/upload", { body: { filename: "a.pdf", size: 100, pages: 1, file_hash: "d".repeat(64), session_id: id } }));
+    expect((await json(ok)).session_id).toBe(id);
+  });
+
   it("other people's documents look missing", async () => {
     const a = await person("owner@example.com", "boss");
     const { id } = await uploadPdf(a, "Mine.pdf");

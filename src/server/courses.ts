@@ -88,6 +88,13 @@ export async function createCourse(ctx: RequestContext, user: CurrentUser, body:
   const id = crypto.randomUUID();
   const now = nowIso();
   await ctx.db.insert(courses).values({ id, userId: user.id, name, description: cleanDescription(body.description), createdAt: now, updatedAt: now });
+  // Security fix #11: parallel requests can all pass the count above; count again with the row in, and take it back
+  // if this one went over (two racing for the last slot may both be refused, never both kept).
+  const after = (await ctx.db.select({ n: count() }).from(courses).where(eq(courses.userId, user.id)).get())?.n ?? 0;
+  if (after > allowed) {
+    await ctx.db.delete(courses).where(eq(courses.id, id));
+    throw planLimit(tier, "courses", after - 1, allowed, `Your plan holds ${allowed} courses and you have ${after - 1}. Delete one, or upgrade for more.`);
+  }
   await setMembers(ctx, id, ids, now);
   return getCourse(ctx, user, id);
 }

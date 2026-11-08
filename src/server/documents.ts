@@ -24,6 +24,7 @@ const STALE_MESSAGE = "The upload stopped before it finished. Upload the PDF aga
 export type DocumentRow = typeof documents.$inferSelect;
 
 export const r2Key = (userId: number, documentId: string) => `pdfs/${userId}/${documentId}.pdf`;
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export function notFound(): HttpError {
   return new HttpError(404, "document_not_found", "That document couldn't be found. It may have been deleted.", "reupload");
@@ -158,6 +159,9 @@ export async function startUpload(ctx: RequestContext, deps: SearchDeps | null, 
     }
     existing = await ctx.db.select().from(documents).where(eq(documents.id, sessionId)).get();
     if (existing && existing.userId !== user.id) throw new HttpError(403, "forbidden", "That document belongs to another account.");
+    // Security fix #15: a new document's id becomes part of its storage key (pdfs/<user>/<id>.pdf), so a new id from
+    // the browser must be a plain UUID (as the app makes them); an existing document keeps the id it has.
+    if (!existing && !UUID_RE.test(sessionId)) throw new HttpError(400, "invalid_input", "That document id isn't valid.", "reupload");
   }
   if (existing && existing.fileHash === hash && (existing.status === "ready" || IN_FLIGHT.has(existing.status))) {
     const settled = await settleStale(ctx, existing);
@@ -193,6 +197,14 @@ export async function startUpload(ctx: RequestContext, deps: SearchDeps | null, 
   } else {
     id = sessionId ?? crypto.randomUUID();
     await ctx.db.insert(documents).values({ id, userId: user.id, createdAt: now, ...fields });
+    // Security fix #11: the count above can be passed by parallel uploads, so count again now that the row is in and
+    // take it back if this one went over (two racing for the last slot may both be refused, never both kept).
+    const after = (await ctx.db.select({ n: count() }).from(documents).where(eq(documents.userId, user.id)).get())?.n ?? 0;
+    if (after > lim.documents) {
+      await ctx.db.delete(documents).where(eq(documents.id, id));
+      throw planLimit(tier, "documents", after - 1, lim.documents,
+        `Your plan holds ${lim.documents} documents and you have ${after - 1}. Delete one, or upgrade for more.`);
+    }
   }
   const row = (await ctx.db.select().from(documents).where(eq(documents.id, id)).get())!;
   return { ok: true, message: `'${filename}' received - it is being processed`, session_id: id, reused: false, document: publicView(row) };

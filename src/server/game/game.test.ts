@@ -221,6 +221,24 @@ describe("the shop, potions and the avatar", () => {
     expect((await json(await shopRoute.GET(b.request("/api/v1/shop")))).coins).toBe(40);
   });
 
+  it("parallel purchases can't pass a stack limit or a once-a-day item (security fix #11)", async () => {
+    const b = await person(mail, "free@example.com", "free");
+    await pay(b, 50_000, 2000);                                                     // past level 9 (the shield)
+    const start = (await json(await shopRoute.GET(b.request("/api/v1/shop")))).coins as number;
+    const buys = await Promise.all(Array.from({ length: 6 }, () => purchase.POST(post(b, "/api/v1/shop/purchase", { item_id: "potion_health_small" }))));
+    const kept = (await Promise.all(buys.map((r) => json(r)))).filter((r) => r.ok && r.message === "Purchased").length;
+    const shop = await json(await shopRoute.GET(b.request("/api/v1/shop")));
+    const held = shop.items.find((i: any) => i.id === "potion_health_small").quantity;
+    expect(held).toBeLessThanOrEqual(3);
+    expect(held).toBe(kept);
+    expect(shop.coins).toBe(start - 80 * held);                                   // the refused ones were refunded
+
+    const shields = await Promise.all(Array.from({ length: 4 }, () => purchase.POST(post(b, "/api/v1/shop/purchase", { item_id: "potion_streak_shield" }))));
+    const bought = (await Promise.all(shields.map((r) => json(r)))).filter((r) => r.ok && r.message === "Purchased").length;
+    expect(bought).toBe(1);
+    expect((await json(await shopRoute.GET(b.request("/api/v1/shop")))).coins).toBe(start - 80 * held - 250);
+  });
+
   it("a potion is bought, used once, and its effect waits for the arena", async () => {
     const b = await person(mail, "free@example.com", "free");
     await pay(b, 1300, 200);

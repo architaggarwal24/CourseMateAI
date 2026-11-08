@@ -47,15 +47,20 @@ export function costMicroUsd(provider: string, model: string, tokensIn: number, 
   return Math.round(tokensIn * rate[0] + tokensOut * rate[1]);         // (tokens / 1e6) * usd * 1e6
 }
 
-export async function recordCall(db: Db, call: { userId: number; target: Target; job: Job; tokensIn: number; tokensOut: number; fallback: boolean }, now = new Date()) {
+/**
+ * Meter one call. `reserved`: the call was already counted by reserveCall (only its tokens are added now); without it
+ * the call is counted here too (an owner, who has no quota, or old callers).
+ */
+export async function recordCall(db: Db, call: { userId: number; target: Target; job: Job; tokensIn: number; tokensOut: number; fallback: boolean; reserved?: boolean }, now = new Date()) {
   const day = dayOf(now);
   const tokensIn = Math.max(0, Math.round(call.tokensIn));
   const tokensOut = Math.max(0, Math.round(call.tokensOut));
   const cost = costMicroUsd(call.target.provider, call.target.model, tokensIn, tokensOut);
-  await db.insert(usageDaily).values({ userId: call.userId, day, aiCalls: 1, tokensIn, tokensOut })
+  const calls = call.reserved ? 0 : 1;
+  await db.insert(usageDaily).values({ userId: call.userId, day, aiCalls: calls, tokensIn, tokensOut })
     .onConflictDoUpdate({
       target: [usageDaily.userId, usageDaily.day],
-      set: { aiCalls: sql`${usageDaily.aiCalls} + 1`, tokensIn: sql`${usageDaily.tokensIn} + ${tokensIn}`, tokensOut: sql`${usageDaily.tokensOut} + ${tokensOut}` },
+      set: { aiCalls: sql`${usageDaily.aiCalls} + ${calls}`, tokensIn: sql`${usageDaily.tokensIn} + ${tokensIn}`, tokensOut: sql`${usageDaily.tokensOut} + ${tokensOut}` },
     });
   await db.insert(aiUsage).values({
     day, provider: call.target.provider, model: call.target.model, job: call.job, calls: 1, fallbacks: call.fallback ? 1 : 0,
@@ -92,21 +97,42 @@ export async function usageHistory(db: Db, userId: number, days = 30, now = new 
 function nextDay(now: Date) { return nowIso(new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1))); }
 function nextMonth(now: Date) { return nowIso(new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1))); }
 
-/** 429 plan_limit once today's calls or this month's tokens are used up (the owner has no quota). */
-export async function checkQuota(db: Db, who: { id: number; owner: boolean; tier: Tier }, now = new Date()) {
-  if (who.owner) return;
+/**
+ * Security fix #11: take one of today's AI calls before the model is asked, in one atomic upsert that only counts
+ * while under the plan's limit, so parallel requests can't all pass a check and then overshoot it. true: a call was
+ * reserved (meter it with `reserved: true`, or give it back with releaseCall if no model answered); false: an owner
+ * (no quota, nothing reserved). Over the limit: 429 plan_limit, as before. The month's tokens are still checked first
+ * (they are only known once a call is done, so in-flight calls can pass that line by one answer each).
+ */
+export async function reserveCall(db: Db, who: { id: number; owner: boolean; tier: Tier }, now = new Date()): Promise<boolean> {
+  if (who.owner) return false;
   const lim = limits(who.tier);
-  const today = await usedToday(db, who.id, now);
-  if (today.ai_calls >= lim.ai_calls_day) {
-    throw planLimit(who.tier, "ai_calls_day", today.ai_calls, lim.ai_calls_day,
-      `You've used today's ${lim.ai_calls_day} AI calls. They come back at midnight (UTC), or upgrade for more.`,
-      { status: 429, resetsAt: nextDay(now) });
-  }
   const month = await usedThisMonth(db, who.id, now);
   if (month.tokens >= lim.tokens_month) {
     throw planLimit(who.tier, "tokens_month", month.tokens, lim.tokens_month,
       "You've used this month's AI allowance. It renews on the 1st, or upgrade for more.", { status: 429, resetsAt: nextMonth(now) });
   }
+  const day = dayOf(now);
+  const row = lim.ai_calls_day > 0
+    ? await db.insert(usageDaily).values({ userId: who.id, day, aiCalls: 1, tokensIn: 0, tokensOut: 0 })
+      .onConflictDoUpdate({
+        target: [usageDaily.userId, usageDaily.day],
+        set: { aiCalls: sql`${usageDaily.aiCalls} + 1` },
+        setWhere: sql`${usageDaily.aiCalls} < ${lim.ai_calls_day}`,
+      }).returning({ calls: usageDaily.aiCalls }).get()
+    : undefined;
+  if (!row) {
+    throw planLimit(who.tier, "ai_calls_day", lim.ai_calls_day, lim.ai_calls_day,
+      `You've used today's ${lim.ai_calls_day} AI calls. They come back at midnight (UTC), or upgrade for more.`,
+      { status: 429, resetsAt: nextDay(now) });
+  }
+  return true;
+}
+
+/** Give back a reserved call that no model answered. */
+export async function releaseCall(db: Db, userId: number, now = new Date()): Promise<void> {
+  await db.update(usageDaily).set({ aiCalls: sql`max(${usageDaily.aiCalls} - 1, 0)` })
+    .where(and(eq(usageDaily.userId, userId), eq(usageDaily.day, dayOf(now))));
 }
 
 /** The hard ceiling on the daily cap: AI_DAILY_CAP_MAX_USD (US dollars), default 20. */

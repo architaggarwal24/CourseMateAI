@@ -4,6 +4,7 @@ import { createAuth, isOwner, type Auth, type AuthSettings } from "./auth";
 import { createMailer, type Mailer } from "./auth/mailer";
 import { getDb, type Db } from "./db";
 import { user as userTable } from "./db/schema";
+import { getCloudflareContext } from "@opennextjs/cloudflare";
 import { getEnv } from "./env";
 import { HttpError } from "./http";
 
@@ -18,7 +19,7 @@ export function authSettings(env: Record<string, unknown> = process.env): AuthSe
   return {
     BETTER_AUTH_SECRET: s("BETTER_AUTH_SECRET"), BETTER_AUTH_URL: s("BETTER_AUTH_URL"), OWNER_EMAIL: s("OWNER_EMAIL"),
     GOOGLE_CLIENT_ID: s("GOOGLE_CLIENT_ID"), GOOGLE_CLIENT_SECRET: s("GOOGLE_CLIENT_SECRET"),
-    PASSWORD_HASH_ITERATIONS: s("PASSWORD_HASH_ITERATIONS"), EMAIL_FROM: s("EMAIL_FROM"), RESEND_API_KEY: s("RESEND_API_KEY"),
+    PASSWORD_HASH_ITERATIONS: s("PASSWORD_HASH_ITERATIONS"), PASSWORD_BREACH_CHECK: s("PASSWORD_BREACH_CHECK"), EMAIL_DAILY_CAP: s("EMAIL_DAILY_CAP"), EMAIL_FROM: s("EMAIL_FROM"), RESEND_API_KEY: s("RESEND_API_KEY"),
     NODE_ENV: s("NODE_ENV"),
   };
 }
@@ -37,10 +38,21 @@ export async function requestContext(req: Request): Promise<RequestContext> {
   const settings = authSettings();
   const email = (env as unknown as { EMAIL?: MailerBinding }).EMAIL;
   const mailer = testMailer ?? createMailer({ ...settings, EMAIL: email });
-  const auth = createAuth(env.DB, settings, { origin: new URL(req.url).origin, mailer });
+  const auth = createAuth(env.DB, settings, { origin: new URL(req.url).origin, mailer, runInBackground: workerWaitUntil() });
   return { env, db: getDb(env.DB), auth, settings, mailer };
 }
 type MailerBinding = Parameters<typeof createMailer>[0]["EMAIL"];
+
+/** The Worker request's waitUntil, so codes are sent after the reply (security fix #20); none outside a Worker. */
+function workerWaitUntil(): ((work: Promise<unknown>) => void) | undefined {
+  if (testMailer) return undefined;                   // tests read the codes straight after the reply
+  try {
+    const c = getCloudflareContext().ctx;
+    return typeof c?.waitUntil === "function" ? (work) => c.waitUntil(work) : undefined;
+  } catch {
+    return undefined;
+  }
+}
 
 export type UserRow = typeof userTable.$inferSelect;
 export interface CurrentUser {

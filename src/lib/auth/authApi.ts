@@ -15,6 +15,7 @@ const FIELD_FOR_CODE: Record<string, AuthFailure["field"]> = {
   USER_ALREADY_EXISTS_USE_ANOTHER_EMAIL: "email",
   INVALID_EMAIL: "email",
   USERNAME_IS_ALREADY_TAKEN: "username",
+  PASSWORD_COMPROMISED: "password",
   USERNAME_IS_ALREADY_TAKEN_PLEASE_TRY_ANOTHER: "username",
   INVALID_USERNAME: "username",
   USERNAME_TOO_SHORT: "username",
@@ -50,16 +51,20 @@ const MESSAGE_FOR_CODE: Record<string, string> = {
   INVALID_TWO_FACTOR_CODE: "That code isn't right. Check it and try again.",
   INVALID_BACKUP_CODE: "That backup code isn't right, or it has been used.",
   INVALID_PASSWORD: "That password isn't right.",
+  PASSWORD_COMPROMISED: "That password has appeared in a data breach. Please choose a different one.",
 };
 
 export async function failureFrom(res: Response): Promise<AuthFailure> {
   let body: { code?: string; message?: string; error?: { code?: string; message?: string; details?: { field?: string } } } = {};
   try { body = await res.json(); } catch { /* not JSON */ }
+  const code = (body.code || body.error?.code || "").toUpperCase();
   if (res.status === 429) {
     const retry = Number(res.headers.get("x-retry-after") || res.headers.get("retry-after")) || undefined;
+    if (code === "ACCOUNT_SIGN_IN_PAUSED") {
+      return { message: "Too many wrong passwords for this account. Wait a few minutes, or reset your password.", code, retryAfter: retry };
+    }
     return { message: "Too many tries. Please wait a moment and try again.", code: "RATE_LIMITED", retryAfter: retry };
   }
-  const code = (body.code || body.error?.code || "").toUpperCase();
   const message = MESSAGE_FOR_CODE[code] || body.message || body.error?.message || "Something went wrong. Please try again.";
   return { message, code: code || undefined, field: FIELD_FOR_CODE[code] };
 }

@@ -68,6 +68,8 @@ Sign-up, sign-in, email codes, two-step sign-in, Google, and the admin page all 
 | `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` (Secret) | for Google sign-in | See below. Without them there's no Google button. |
 | `EMAIL_FROM` | to send codes | e.g. `CourseMate <no-reply@study.example.com>` |
 | `RESEND_API_KEY` (Secret) | one way to send codes | See *Emails*. |
+| `EMAIL_DAILY_CAP` | optional | Emails a day for the whole site (default 100). Also at most 5 codes an hour go to one address. |
+| `PASSWORD_BREACH_CHECK` | optional | `off` stops checking new passwords against Have I Been Pwned (on by default). |
 | `PASSWORD_HASH_ITERATIONS` | no | Default 20000, which fits the free plan's CPU limit. On Workers Paid, set `100000` (the most Workers allows). Each password is re-hashed at the user's next sign-in. |
 
 **Making yourself the owner:**

@@ -8,7 +8,7 @@ import { canEquipInSlot, SLOT_BY_TYPE } from "./items";
 import { activeBuffs, applyBuff, BUFF_DURATION } from "./progression";
 import {
   addInventory, consumeInventory, countRewardEvents, dailyCount, getAvatar, getProgress, inventory, localDate, modifyAvatar, recordRewardEvent,
-  takeDailySlot, type Player, type Progress,
+  releaseDailySlot, takeDailySlot, type Player, type Progress,
 } from "./store";
 
 export const SHOP_LEVEL = 5;
@@ -73,11 +73,24 @@ export async function purchase(ctx: RequestContext, p: Player, itemId: string) {
       if (await dailyCount(ctx, p.id, today, onceKey) >= 1) return { ok: false, reason: "You can only buy this once per day!" };
     }
   }
+  // Security fix #11: the checks above can be passed by parallel requests. A once-a-day item takes its day's slot
+  // atomically (capped at 1) before paying; a stacked potion is counted again once added, and refunded if over.
+  if (onceKey && await takeDailySlot(ctx, p.id, today, onceKey, 1) === null) return { ok: false, reason: "You can only buy this once per day!" };
   const key = it.consumable ? `u${p.id}:purchase:${itemId}:${await countRewardEvents(ctx, p.id, "shop_purchase", itemId) + 1}` : `u${p.id}:purchase:${itemId}`;
   const paid = await recordRewardEvent(ctx, p.id, "shop_purchase", 0, -it.price, itemId, key);
-  if (!paid.applied) return paid.reason === "duplicate" ? { ok: true, message: "Already owned" } : { ok: false, reason: "Not enough coins", need: Math.max(0, it.price - coins) };
-  if (onceKey) await takeDailySlot(ctx, p.id, today, onceKey);
+  if (!paid.applied) {
+    if (onceKey) await releaseDailySlot(ctx, p.id, today, onceKey);
+    return paid.reason === "duplicate" ? { ok: true, message: "Already owned" } : { ok: false, reason: "Not enough coins", need: Math.max(0, it.price - coins) };
+  }
   if (it.consumable) await addInventory(ctx, p.id, itemId);
+  if (it.consumable && itemId in STACK_LIMITS) {
+    const held = ((await inventory(ctx, p.id))[itemId] ?? 0) + Number((await activeBuffs(ctx, p.id))[ITEM_TO_BUFF[itemId]]?.count ?? 0);
+    if (held > STACK_LIMITS[itemId]) {
+      await consumeInventory(ctx, p.id, itemId);
+      await recordRewardEvent(ctx, p.id, "shop_refund", 0, it.price, itemId, `${key}:refund`);
+      return { ok: false, reason: `Max stack of ${STACK_LIMITS[itemId]} reached — use one in arena first!` };
+    }
+  }
   await modifyAvatar(ctx, p.id, (_e, owned) => { if (!owned.includes(itemId)) owned.push(itemId); });
   return { ok: true, message: "Purchased", item: it };
 }

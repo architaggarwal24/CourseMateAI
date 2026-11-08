@@ -1,6 +1,6 @@
 // Small pieces every Worker route shares: an error that becomes the API's error shape, JSON bodies, the
 // same-site check for changes, and fixed-window rate limits kept in D1 (so every Worker instance shares them).
-import { sql } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import type { ApiErrorAction } from "@/lib/api/errors";
 import type { Db } from "./db";
 import { apiRateLimits } from "./db/schema";
@@ -55,9 +55,11 @@ export function clientIp(req: Request): string {
   return (req.headers.get("cf-connecting-ip") || req.headers.get("x-forwarded-for")?.split(",")[0] || "unknown").trim();
 }
 
-/** Allow `limit` hits per `windowSeconds` for `key`; over that, 429 rate_limited with retry_after_seconds. */
-export async function rateLimit(db: Db, key: string, limit: number, windowSeconds: number, now = Date.now()): Promise<void> {
-  const windowStart = Math.floor(now / 1000 / windowSeconds) * windowSeconds;
+const windowOf = (now: number, windowSeconds: number) => Math.floor(now / 1000 / windowSeconds) * windowSeconds;
+
+/** Count one more hit for `key` in the current fixed window (one atomic upsert); the new count. */
+export async function bumpCounter(db: Db, key: string, windowSeconds: number, now = Date.now()): Promise<number> {
+  const windowStart = windowOf(now, windowSeconds);
   const row = await db.insert(apiRateLimits).values({ key, windowStart, count: 1 })
     .onConflictDoUpdate({
       target: apiRateLimits.key,
@@ -67,7 +69,27 @@ export async function rateLimit(db: Db, key: string, limit: number, windowSecond
       },
     })
     .returning({ count: apiRateLimits.count }).get();
-  if (row && row.count > limit) {
+  return row?.count ?? 1;
+}
+
+/** The hits counted for `key` in the current window, without counting one. */
+export async function peekCounter(db: Db, key: string, windowSeconds: number, now = Date.now()): Promise<number> {
+  const row = await db.select().from(apiRateLimits).where(eq(apiRateLimits.key, key)).get();
+  return row && row.windowStart === windowOf(now, windowSeconds) ? row.count : 0;
+}
+
+export async function clearCounter(db: Db, key: string): Promise<void> {
+  await db.delete(apiRateLimits).where(eq(apiRateLimits.key, key));
+}
+
+/** Seconds until the current window for `windowSeconds` ends. */
+export const windowLeft = (windowSeconds: number, now = Date.now()) => windowOf(now, windowSeconds) + windowSeconds - Math.floor(now / 1000);
+
+/** Allow `limit` hits per `windowSeconds` for `key`; over that, 429 rate_limited with retry_after_seconds. */
+export async function rateLimit(db: Db, key: string, limit: number, windowSeconds: number, now = Date.now()): Promise<void> {
+  const windowStart = windowOf(now, windowSeconds);
+  const count = await bumpCounter(db, key, windowSeconds, now);
+  if (count > limit) {
     const retry = windowStart + windowSeconds - Math.floor(now / 1000);
     throw new HttpError(429, "rate_limited", "Too many tries. Please wait a moment and try again.", "retry",
       { retry_after_seconds: retry }, { "retry-after": String(retry) });

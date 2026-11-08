@@ -13,6 +13,7 @@ import { eq } from "drizzle-orm";
 import { getDb } from "../db";
 import * as schema from "../db/schema";
 import { codeMail, createMailer, type Mailer, type MailerEnv } from "./mailer";
+import { authGuards, emailDailyCap, limitedMailer, pwnedCheck, type BreachCheck } from "./guards";
 import { hashPassword, iterationsFrom, verifyPassword } from "./password";
 
 export interface AuthSettings extends MailerEnv {
@@ -22,6 +23,10 @@ export interface AuthSettings extends MailerEnv {
   GOOGLE_CLIENT_ID?: string;
   GOOGLE_CLIENT_SECRET?: string;
   PASSWORD_HASH_ITERATIONS?: string;
+  /** Emails the site may send a day (default 100). */
+  EMAIL_DAILY_CAP?: string;
+  /** "off" turns the breached-password check off (it is also off under tests). */
+  PASSWORD_BREACH_CHECK?: string;
   NODE_ENV?: string;
 }
 
@@ -42,10 +47,18 @@ export function googleEnabled(settings: AuthSettings): boolean {
   return !!(settings.GOOGLE_CLIENT_ID && settings.GOOGLE_CLIENT_SECRET);
 }
 
-function secretFrom(settings: AuthSettings): string {
+/** Only `next dev` and the tests may run without a real secret. */
+const DEV_SECRET_OK = new Set(["development", "test"]);
+
+/**
+ * The secret that signs sessions. Fails closed: on Cloudflare Workers NODE_ENV is not set at run time (OpenNext only
+ * copies the Worker's own variables), so anything but an explicit "development" or "test" counts as the live site,
+ * and a missing or short secret stops sign-in instead of falling back to the public placeholder below.
+ */
+export function secretFrom(settings: AuthSettings): string {
   const secret = (settings.BETTER_AUTH_SECRET || "").trim();
   if (secret.length >= 32) return secret;
-  if (settings.NODE_ENV === "production") {
+  if (!DEV_SECRET_OK.has((settings.NODE_ENV || "").trim())) {
     throw new Error("BETTER_AUTH_SECRET must be set (32+ random characters) in the Worker's settings.");
   }
   return "coursemate-dev-only-secret-change-me-0123456789";
@@ -69,13 +82,23 @@ export interface CreateAuthOptions {
   /** The site's own origin (from the request): cookies, redirects and the allowed Origin header. */
   origin?: string;
   mailer?: Mailer;
+  /** Tests: the breached-password check to use (default: Have I Been Pwned, unless switched off). */
+  breachCheck?: BreachCheck | null;
+  /**
+   * Security fix #20: where Better Auth's background work goes (the Worker's ctx.waitUntil). Codes are then sent after
+   * the reply, so asking for one takes as long whether or not the account exists (otherwise only a real account
+   * waited for the email to be handed over, and the time gave it away). Without it (tests), the send is awaited.
+   */
+  runInBackground?: (work: Promise<unknown>) => void;
 }
 
-export function authOptions(d1: D1Database, settings: AuthSettings, { origin, mailer }: CreateAuthOptions = {}) {
+export function authOptions(d1: D1Database, settings: AuthSettings, { origin, mailer, breachCheck, runInBackground }: CreateAuthOptions = {}) {
   const db = getDb(d1);
-  const mail = mailer ?? createMailer(settings);
+  const mail = limitedMailer(db, mailer ?? createMailer(settings), emailDailyCap(settings.EMAIL_DAILY_CAP));
   const baseURL = (settings.BETTER_AUTH_URL || origin || "").replace(/\/+$/, "") || undefined;
   const iterations = iterationsFrom(settings as Record<string, unknown>);
+  const breachOff = (settings.PASSWORD_BREACH_CHECK || "").trim().toLowerCase() === "off" || settings.NODE_ENV === "test";
+  const guards = authGuards({ db, breachCheck: breachCheck !== undefined ? breachCheck : breachOff ? null : pwnedCheck });
 
   async function syncOwner(user: { id: string | number; email: string; emailVerified?: boolean | null; role?: string | null }) {
     if (isOwner(user, settings) && user.role !== "admin") {
@@ -103,6 +126,7 @@ export function authOptions(d1: D1Database, settings: AuthSettings, { origin, ma
       cookiePrefix: "coursemate",
       database: { generateId: "serial" },
       ipAddress: { ipAddressHeaders: ["cf-connecting-ip", "x-forwarded-for"] },
+      ...(runInBackground ? { backgroundTasks: { handler: runInBackground } } : {}),
     },
     disabledPaths: ["/sign-in/email-otp", ...ADMIN_PLUGIN_PATHS],
     emailAndPassword: {
@@ -131,6 +155,7 @@ export function authOptions(d1: D1Database, settings: AuthSettings, { origin, ma
       max: 100,
       customRules: {
         "/sign-in/email": { window: 60, max: 5 },
+        "/sign-in/username": { window: 60, max: 5 },
         "/sign-up/email": { window: 3600, max: 10 },
         "/email-otp/send-verification-otp": { window: 60, max: 3 },
         "/email-otp/verify-email": { window: 60, max: 10 },
@@ -142,6 +167,8 @@ export function authOptions(d1: D1Database, settings: AuthSettings, { origin, ma
         "/two-factor/verify-backup-code": { window: 60, max: 10 },
       },
     },
+    // per-account sign-in pause and breached-password check (./guards.ts)
+    hooks: { before: guards.before, after: guards.after },
     databaseHooks: {
       user: {
         create: {

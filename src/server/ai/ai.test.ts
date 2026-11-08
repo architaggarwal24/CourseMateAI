@@ -96,6 +96,22 @@ describe("calling a model", () => {
     await expect(generate(ctx(), { id: 1, owner: true, tier: "archmage" }, "strong", [{ role: "user", content: "hi" }])).resolves.toBeTruthy();
   });
 
+  it("parallel calls can't overshoot the daily calls (each takes its call atomically before the model is asked)", async () => {
+    setLlmFactoryForTests(fakeLlms({ "*": "ok" }).factory);
+    await p.env.DB.prepare("INSERT INTO usage_daily (user_id, day, ai_calls, tokens_in, tokens_out) VALUES (1, ?, 23, 0, 0)").bind(new Date().toISOString().slice(0, 10)).run();
+    const results = await Promise.allSettled(Array.from({ length: 10 }, () => generate(ctx(), free, "strong", [{ role: "user", content: "hi" }])));
+    expect(results.filter((r) => r.status === "fulfilled")).toHaveLength(2);
+    expect(results.filter((r) => r.status === "rejected").every((r) => (r as PromiseRejectedResult).reason.code === "plan_limit")).toBe(true);
+    expect(await usedToday(db, 1)).toEqual({ ai_calls: 25 });
+  });
+
+  it("a call no model answered is given back", async () => {
+    setLlmFactoryForTests(fakeLlms({ "*": new Error("down") }).factory);
+    await expect(generate(ctx(), free, "strong", [{ role: "user", content: "hi" }])).rejects.toMatchObject({ code: "ai_unavailable" });
+    await expect(stream(ctx(), free, "strong", [{ role: "user", content: "hi" }])).rejects.toMatchObject({ code: "ai_unavailable" });
+    expect(await usedToday(db, 1)).toEqual({ ai_calls: 0 });
+  });
+
   it("once the day's spend reaches the cap, only Workers AI answers", async () => {
     const f = fakeLlms({ "*": "fine" });
     setLlmFactoryForTests(f.factory);

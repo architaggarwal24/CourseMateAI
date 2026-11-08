@@ -12,6 +12,10 @@ OWNER_EMAIL=
 # Optional: the sender for verification / reset codes. Without an email service codes only go to the log.
 # EMAIL_FROM=CourseMate <no-reply@your-domain>
 # RESEND_API_KEY=
+# Emails the site may send a day (codes stop for the day past it; the log says so). Default 100 (Resend's free plan).
+# EMAIL_DAILY_CAP=100
+# New passwords are checked against Have I Been Pwned (only 5 characters of the password's SHA-1 leave the Worker).
+# PASSWORD_BREACH_CHECK=off
 # PBKDF2 work for passwords: 20000 fits the free plan's CPU limit; raise to 100000 on Workers Paid.
 # PASSWORD_HASH_ITERATIONS=20000
 

@@ -16,6 +16,9 @@ describe("failureFrom: Better Auth's refusals in CourseMateAI's words", () => {
   });
   it("too many tries, with the wait", async () => {
     expect(await failureFrom(res({ message: "Too many requests" }, 429, { "x-retry-after": "42" }))).toMatchObject({ code: "RATE_LIMITED", retryAfter: 42 });
+    expect(await failureFrom(res({ code: "ACCOUNT_SIGN_IN_PAUSED", message: "x" }, 429, { "retry-after": "300" })))
+      .toMatchObject({ code: "ACCOUNT_SIGN_IN_PAUSED", retryAfter: 300, message: expect.stringMatching(/reset your password/) });
+    expect(await failureFrom(res({ code: "PASSWORD_COMPROMISED", message: "x" }, 400))).toMatchObject({ field: "password", message: expect.stringMatching(/data breach/) });
   });
   it("our own error shape too, and anything else", async () => {
     expect((await failureFrom(res({ error: { code: "x", message: "Nope" } }, 400))).message).toBe("Nope");

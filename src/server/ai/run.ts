@@ -6,7 +6,7 @@ import { HttpError } from "../http";
 import type { Tier } from "../plans";
 import { route, type Job, type Target } from "./models";
 import { apiLlm, DEFAULT_MAX_OUTPUT } from "./providers";
-import { checkQuota, isCapped, recordCall } from "./usage";
+import { isCapped, recordCall, releaseCall, reserveCall } from "./usage";
 import { aiSettings, overrideTarget, withSlots } from "./config";
 
 export interface ChatMessage { role: "system" | "user" | "assistant"; content: string }
@@ -69,8 +69,18 @@ export function noModel(): HttpError {
 
 interface Ctx { db: Db; env: { AI?: unknown } }
 
-async function targets(ctx: Ctx, caller: Caller, job: Job): Promise<Target[]> {
-  await checkQuota(ctx.db, caller);
+/** The models to try, in order. Reserves one of today's calls first (see reserveCall); `reserved` says if it did. */
+async function targets(ctx: Ctx, caller: Caller, job: Job): Promise<{ list: Target[]; reserved: boolean }> {
+  const reserved = await reserveCall(ctx.db, caller);
+  try {
+    return { list: await pickTargets(ctx, caller, job), reserved };
+  } catch (e) {
+    if (reserved) await releaseCall(ctx.db, caller.id).catch(() => {});
+    throw e;
+  }
+}
+
+async function pickTargets(ctx: Ctx, caller: Caller, job: Job): Promise<Target[]> {
   const [capped, saved] = await Promise.all([isCapped(ctx.db), aiSettings(ctx.db, caller.admin ? caller.id : undefined)]);
   // The models admins saved for everyone, over the LLM_* settings.
   const list = route(caller.tier, job, { capped, env: withSlots(process.env, saved.slots) });
@@ -86,14 +96,14 @@ async function targets(ctx: Ctx, caller: Caller, job: Job): Promise<Target[]> {
 
 /** One answer, whole. */
 export async function generate(ctx: Ctx, caller: Caller, job: Job, messages: ChatMessage[], opts: CallOptions = {}) {
-  const list = await targets(ctx, caller, job);
+  const { list, reserved } = await targets(ctx, caller, job);
   let lastError: unknown;
   for (let i = 0; i < list.length; i++) {
     const t = list[i];
     try {
       const r = await llmFor(t, ctx.env).generate(messages, opts);
       if (!r.text?.trim()) throw new Error("empty answer");
-      await recordCall(ctx.db, { userId: caller.id, target: t, job, tokensIn: r.tokensIn ?? promptTokens(messages), tokensOut: r.tokensOut ?? estimateTokens(r.text), fallback: i > 0 });
+      await recordCall(ctx.db, { userId: caller.id, target: t, job, tokensIn: r.tokensIn ?? promptTokens(messages), tokensOut: r.tokensOut ?? estimateTokens(r.text), fallback: i > 0, reserved });
       return { text: r.text, target: t };
     } catch (e) {
       lastError = e;
@@ -101,6 +111,7 @@ export async function generate(ctx: Ctx, caller: Caller, job: Job, messages: Cha
     }
   }
   void lastError;
+  if (reserved) await releaseCall(ctx.db, caller.id).catch(() => {});      // nobody answered: the call isn't spent
   throw noModel();
 }
 
@@ -109,7 +120,7 @@ export async function generate(ctx: Ctx, caller: Caller, job: Job, messages: Cha
  * before that is an ordinary error. `pieces` then yields the rest; `done` resolves with the whole text (metered).
  */
 export async function stream(ctx: Ctx, caller: Caller, job: Job, messages: ChatMessage[], opts: CallOptions = {}) {
-  const list = await targets(ctx, caller, job);
+  const { list, reserved } = await targets(ctx, caller, job);
   for (let i = 0; i < list.length; i++) {
     const t = list[i];
     const it = llmFor(t, ctx.env).stream(messages, opts)[Symbol.asyncIterator]();
@@ -139,16 +150,17 @@ export async function stream(ctx: Ctx, caller: Caller, job: Job, messages: ChatM
           if (r.value.tokensIn !== undefined) tokensIn = r.value.tokensIn;
           if (r.value.tokensOut !== undefined) tokensOut = r.value.tokensOut;
         }
-        await recordCall(ctx.db, { userId: caller.id, target: t, job, tokensIn: tokensIn ?? promptTokens(messages), tokensOut: tokensOut ?? estimateTokens(text), fallback });
+        await recordCall(ctx.db, { userId: caller.id, target: t, job, tokensIn: tokensIn ?? promptTokens(messages), tokensOut: tokensOut ?? estimateTokens(text), fallback, reserved });
         resolveDone({ text });
       } catch (e) {
         // what was said still counts: the provider charges for it
-        await recordCall(ctx.db, { userId: caller.id, target: t, job, tokensIn: promptTokens(messages), tokensOut: estimateTokens(text), fallback }).catch(() => {});
+        await recordCall(ctx.db, { userId: caller.id, target: t, job, tokensIn: promptTokens(messages), tokensOut: estimateTokens(text), fallback, reserved }).catch(() => {});
         rejectDone(e);
         throw e;
       }
     }
     return { target: t, pieces: pieces(), done };
   }
+  if (reserved) await releaseCall(ctx.db, caller.id).catch(() => {});
   throw noModel();
 }

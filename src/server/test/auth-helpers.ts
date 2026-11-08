@@ -1,5 +1,5 @@
 // Helpers for tests that sign people up and in through the real Better Auth handler on a local D1.
-import { createAuth, type AuthSettings } from "../auth";
+import { createAuth, type AuthSettings, type CreateAuthOptions } from "../auth";
 import type { Mail, Mailer } from "../auth/mailer";
 
 export const ORIGIN = "https://study.example.com";
@@ -25,10 +25,11 @@ export const SETTINGS: AuthSettings = {
   BETTER_AUTH_SECRET: "test-secret-test-secret-test-secret-0123",
   OWNER_EMAIL: "owner@example.com",
   PASSWORD_HASH_ITERATIONS: "10000",
+  PASSWORD_BREACH_CHECK: "off",
 };
 
-export function testAuth(db: D1Database, mailer: Mailer, settings: AuthSettings = SETTINGS) {
-  return createAuth(db, settings, { origin: ORIGIN, mailer });
+export function testAuth(db: D1Database, mailer: Mailer, settings: AuthSettings = SETTINGS, opts: Pick<CreateAuthOptions, "breachCheck" | "runInBackground"> = {}) {
+  return createAuth(db, settings, { origin: ORIGIN, mailer, ...opts });
 }
 
 /** A tiny cookie jar for one browser. */

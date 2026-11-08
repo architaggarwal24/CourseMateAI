@@ -143,6 +143,12 @@ export async function takeDailySlot(ctx: RequestContext, userId: number, day: st
   return row ? row.c : null;
 }
 
+/** Give back one count taken with takeDailySlot (the thing it was for didn't happen). */
+export async function releaseDailySlot(ctx: RequestContext, userId: number, day: string, action: string): Promise<void> {
+  await ctx.db.update(dailyActionCounts).set({ count: sql`max(${dailyActionCounts.count} - 1, 0)` })
+    .where(and(eq(dailyActionCounts.userId, userId), eq(dailyActionCounts.day, day), eq(dailyActionCounts.actionType, action)));
+}
+
 // ── avatar and inventory ─────────────────────────────────────────────────────────────────────────────────────
 export interface Avatar { equipped: Record<string, string>; owned: string[]; championId: string | null; championSetAt: string | null; updatedAt: string }
 
