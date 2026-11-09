@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { json } from "@/test/sse";
 
 const toasts = vi.hoisted(() => ({ success: vi.fn(), error: vi.fn(), info: vi.fn(), apiError: vi.fn() }));
@@ -123,5 +123,40 @@ describe("NotesView memory", () => {
     cleanup();
     render(<NotesView documentId="d1" />);
     expect((screen.getByRole("textbox") as HTMLInputElement).value).toBe("half-typed");
+  });
+});
+
+describe("NotesView in the background", () => {
+  it("keeps writing when you leave; the notes are on screen when you come back, and a toast says so meanwhile", async () => {
+    const { resetBackgroundForTests } = await import("@/lib/study/background");
+    const { activeSession } = await import("@/lib/study/memory");
+    resetBackgroundForTests();
+    let finish!: () => void;
+    vi.stubGlobal("fetch", vi.fn(async () => { await new Promise<void>((r) => { finish = r; }); return json(200, { mode: "notes", content: NOTES, sources: [], citations: [], rewards: null }); }));
+    const first = render(<NotesView documentId="d1" />);
+    fireEvent.change(screen.getByRole("textbox"), { target: { value: "cells" } });
+    fireEvent.click(screen.getByRole("button", { name: "Generate notes" }));
+    expect(await screen.findByRole("heading", { name: /Writing summary notes on “cells”/ })).toBeTruthy();
+    first.unmount();                                             // off to Chat
+    await act(async () => { finish(); await new Promise((r) => setTimeout(r, 0)); });
+    expect(toasts.success).toHaveBeenCalledWith(expect.stringMatching(/notes on “cells” are ready/));
+    render(<NotesView documentId="d1" restoreSessionId={activeSession("notes", "d1")} />);
+    expect(await screen.findByRole("heading", { level: 1, name: "Cell energy" })).toBeTruthy();
+  });
+
+  it("coming back while it is still writing shows the progress, then the notes", async () => {
+    const { resetBackgroundForTests } = await import("@/lib/study/background");
+    resetBackgroundForTests();
+    let finish!: () => void;
+    vi.stubGlobal("fetch", vi.fn(async () => { await new Promise<void>((r) => { finish = r; }); return json(200, { mode: "notes", content: NOTES, sources: [], citations: [], rewards: null }); }));
+    const first = render(<NotesView documentId="d1" />);
+    fireEvent.change(screen.getByRole("textbox"), { target: { value: "cells" } });
+    fireEvent.click(screen.getByRole("button", { name: "Generate notes" }));
+    await screen.findByRole("heading", { name: /Writing/ });
+    first.unmount();
+    render(<NotesView documentId="d1" />);
+    expect(screen.getByRole("heading", { name: /Writing summary notes on “cells”/ })).toBeTruthy();
+    await act(async () => { finish(); await new Promise((r) => setTimeout(r, 0)); });
+    expect(await screen.findByRole("heading", { level: 1, name: "Cell energy" })).toBeTruthy();
   });
 });

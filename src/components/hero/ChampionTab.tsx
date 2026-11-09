@@ -123,7 +123,7 @@ function KitAndMastery({ championId, name, shop }: { championId: string; name: s
             <li key={m.id} className="champ-mastery__item" data-owned={have || undefined}>
               <ItemArt itemId={m.id} size={44} />
               <span className="min-w-0">
-                <span className="block text-sm font-semibold truncate">{item?.name ?? m.id}</span>
+                <span className="block text-sm font-semibold truncate">{item?.name ?? `Mastery skin ${p.mastery.indexOf(m) + 1}`}</span>
                 <span className="block text-xs text-fg-muted">
                   {have ? "Unlocked" : <><Lock size={10} className="inline" aria-hidden="true" /> Unlocks at Lv {m.level}</>}
                 </span>

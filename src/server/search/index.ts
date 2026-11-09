@@ -2,7 +2,7 @@
 // (bge-small-en-v1.5, the same model the Python backend ran locally). The text of each chunk is in D1.
 // Picks are MMR (relevant and not repetitive, like the Python backend), and in a course every document that is
 // nearly as relevant as the best one gets at least one passage.
-import { and, eq, inArray, or } from "drizzle-orm";
+import { and, eq, inArray, like, or } from "drizzle-orm";
 import type { Db } from "../db";
 import { documentChunks } from "../db/schema";
 
@@ -123,10 +123,36 @@ export interface Passage {
  * The k best passages for `question` among `docs` (one document, or a course's ready documents), best first.
  * Every document nearly as relevant as the best one gets at least one passage (VOICE_SHARE).
  */
+// ── Keywords (round 7) ─────────────────────────────────────────────────────────────────────────────────────────
+// A small embedding model is weak on a bare name ("dbscan", "Apriori"): its score for the passage that defines it can
+// fall under the "not in your PDFs" line. So the words of the question are also looked up in the text itself, and a
+// passage that contains them counts as relevant whatever its vector score.
+const STOP = new Set(("a an and are as at be by can could did do does explain for from give how i in into is it its me my " +
+  "of on or please show tell than that the their them then there these this to us use used using was we what when where " +
+  "which who whom why will with would you your about define definition describe difference between example examples " +
+  "meaning mean means notes summary summarize vs versus").split(" "));
+/** The question's meaningful words, rarest-looking first (longest), at most 6. */
+export function keywordTerms(question: string): string[] {
+  const words = (question.toLowerCase().match(/[\p{L}\p{N}][\p{L}\p{N}+#.-]*[\p{L}\p{N}+#]|[\p{L}\p{N}]/gu) ?? [])
+    .filter((w) => w.length >= 3 && !STOP.has(w) && !/^\d+$/.test(w));
+  return [...new Set(words)].sort((a, b) => b.length - a.length).slice(0, 6);
+}
+const escapeLike = (t: string) => t.replace(/[\\%_]/g, (c) => `\\${c}`);
+const hasWord = (text: string, term: string) =>
+  new RegExp(`(^|[^\\p{L}\\p{N}])${term.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}([^\\p{L}\\p{N}]|$)`, "iu").test(text);
+/** How much of the question a passage spells out: 0..1 (the share of its keywords it contains). */
+export function keywordShare(text: string, terms: string[]): number {
+  return terms.length ? terms.filter((t) => hasWord(text, t)).length / terms.length : 0;
+}
+/** The score a passage gets for containing the keywords (all of them: comfortably "covered"). */
+export const lexicalScore = (share: number) => (share >= 0.5 ? 0.4 + 0.3 * share : 0);
+
 export async function searchPassages(
   db: Db, deps: SearchDeps, docs: { id: string; name: string }[], question: string, k = 5,
+  opts: { keywords?: string } = {},
 ): Promise<Passage[]> {
   if (!docs.length || !question.trim()) return [];
+  const terms = keywordTerms(`${opts.keywords ?? ""} ${question}`);
   const [q] = await deps.embedder.embed([question]);
   const names = new Map(docs.map((d) => [d.id, d.name]));
   const filter = docs.length === 1 ? { doc: docs[0].id } : { doc: { $in: docs.map((d) => d.id) } };
@@ -150,16 +176,31 @@ export async function searchPassages(
     top = [...top].sort((a, b) => b.score - a.score);
   }
   const keys = top.map((m) => parseId(m.id)!).filter(Boolean);
-  if (!keys.length) return [];
-  const rows = await db.select().from(documentChunks).where(
+  const rows = keys.length ? await db.select().from(documentChunks).where(
     or(...keys.map((key) => and(eq(documentChunks.documentId, key.documentId), eq(documentChunks.idx, key.idx)))),
-  ).all();
+  ).all() : [];
+  // the passages that spell out the question's words (a LIKE over the chunk text: at most 40, then checked by word)
+  const lexical = terms.length ? (await db.select().from(documentChunks).where(and(
+    inArray(documentChunks.documentId, docs.map((d) => d.id)),
+    or(...terms.map((t) => like(documentChunks.text, `%${escapeLike(t)}%`))),
+  )).limit(40).all()).map((r) => ({ r, share: keywordShare(r.text, terms) })).filter((x) => lexicalScore(x.share) > 0) : [];
   const byKey = new Map(rows.map((r) => [vectorId(r.documentId, r.idx), r]));
-  return top.flatMap((m) => {
+  const scored = new Map<string, { r: typeof rows[number]; score: number }>();
+  for (const m of top) {
     const r = byKey.get(m.id);
-    return r ? [{ documentId: r.documentId, documentName: names.get(r.documentId) ?? "", idx: r.idx, page: r.page, text: r.text,
-                  score: Math.max(0, Math.min(1, m.score)) }] : [];
-  });
+    if (r) scored.set(m.id, { r, score: Math.max(0, Math.min(1, m.score), lexicalScore(keywordShare(r.text, terms))) });
+  }
+  // keyword passages join (or lift) the picks: the ones naming every keyword first, earlier pages first
+  for (const { r, share } of lexical.sort((a, b) => b.share - a.share || a.r.idx - b.r.idx)) {
+    const id = vectorId(r.documentId, r.idx);
+    const s = lexicalScore(share);
+    const had = scored.get(id);
+    if (had) had.score = Math.max(had.score, s);
+    else scored.set(id, { r, score: s });
+  }
+  return [...scored.values()].sort((a, b) => b.score - a.score).slice(0, k).map(({ r, score }) => ({
+    documentId: r.documentId, documentName: names.get(r.documentId) ?? "", idx: r.idx, page: r.page, text: r.text, score,
+  }));
 }
 
 /** Every chunk of the documents, in reading order (quizzes, notes and maps read whole documents). */

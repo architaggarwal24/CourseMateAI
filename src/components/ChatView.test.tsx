@@ -45,7 +45,7 @@ const ask = (text: string) => { fireEvent.change(box(), { target: { value: text 
 const conversation = () => screen.getByRole("log", { name: "Conversation" });
 const answers = () => screen.getAllByRole("article", { name: "Assistant" });
 
-beforeEach(() => { localStorage.clear(); });
+beforeEach(async () => { localStorage.clear(); (await import("@/lib/study/background")).resetBackgroundForTests(); });
 afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
 
 describe("ChatView: streaming", () => {
@@ -167,17 +167,24 @@ describe("ChatView: input", () => {
 });
 
 describe("ChatView: leaving and failing", () => {
-  it("cancels the request when the user leaves, and does not fall back to the plain endpoint", async () => {
+  it("keeps writing the answer when the user leaves, and shows it (still streaming) when they come back", async () => {
+    const { activeSession } = await import("@/lib/study/memory");
     const body = sseBody();
     const log = server({ streams: [() => sse(body)] });
     const { unmount } = render(<ChatView documentId="d1" />);
     ask("What is ATP?");
     await waitFor(() => expect(log.signals).toHaveLength(1));
-    expect(log.signals[0]?.aborted).toBe(false);
+    const id = activeSession("chat", "d1")!;                   // the question is saved at once: coming back finds it
+    expect(id).toBeTruthy();
     unmount();
-    expect(log.signals[0]?.aborted).toBe(true);
-    await new Promise((r) => setTimeout(r, 20));
+    expect(log.signals[0]?.aborted).toBe(false);               // leaving doesn't stop it
+    await act(async () => { body.push(frame("token", { text: "ATP is the energy" })); });
+    render(<ChatView documentId="d1" restoreSessionId={id} />);
+    expect(await screen.findByText(/ATP is the energy/)).toBeTruthy();
+    await act(async () => { body.push(frame("token", { text: " currency." }) + frame("sources", FINAL)); body.close(); });
+    await waitFor(() => expect(screen.getByText(/ATP is the energy currency\./)).toBeTruthy());
     expect(log.paths).toEqual(["/api/v1/chat/stream"]);
+    expect(JSON.stringify(JSON.parse(localStorage.getItem(`cmai_session_${id}`)!))).toContain("energy currency");
   });
 
   it("falls back to the plain endpoint when the stream fails, and shows the full answer", async () => {

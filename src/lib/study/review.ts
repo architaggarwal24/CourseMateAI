@@ -1,5 +1,6 @@
 // The spaced-repetition review queue (backend routers/review.py, FSRS) and the plan entitlements.
-import { api, rawApi } from "@/lib/api/client";
+import { API_BASE_URL, api, rawApi } from "@/lib/api/client";
+import { parseApiError } from "@/lib/api/errors";
 import type { components } from "@/lib/api/generated/schema";
 
 export type ReviewItem = components["schemas"]["ReviewItem"];
@@ -41,6 +42,12 @@ export async function addToReview(sessionId: string, cards: { front: string; bac
 
 export async function removeFromReview(id: number) {
   await api.DELETE("/review/cards/{item_id}", { params: { path: { item_id: id } } });
+}
+
+/** Undo a remove (the route's POST; not in the generated schema). */
+export async function restoreToReview(id: number) {
+  const res = await fetch(`${API_BASE_URL}/review/cards/${encodeURIComponent(id)}`, { method: "POST", credentials: "same-origin" });
+  if (!res.ok) throw parseApiError(res.status, await res.json().catch(() => null), "Couldn't put the card back");
 }
 
 /** The due count for the nav badge. Never throws (null when signed out or offline). */

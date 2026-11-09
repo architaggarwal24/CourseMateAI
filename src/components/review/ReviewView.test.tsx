@@ -7,7 +7,6 @@ vi.mock("@/components/ui/Toast", async (orig) => ({ ...(await orig<typeof import
 vi.mock("@/hooks/useHUD", () => ({ useHUDStore: (sel: (s: unknown) => unknown) => sel({ refreshIfStale: vi.fn() }) }));
 
 import ReviewView from "./ReviewView";
-import { flushUndoables } from "@/lib/undo";
 import { useReview } from "@/hooks/useReview";
 
 const IV = { "1": 60, "2": 330, "3": 600, "4": 8 * 86400 };
@@ -22,7 +21,7 @@ const stats = (over: Record<string, unknown> = {}) => ({
 });
 
 function server(opts: { queues?: unknown[][]; locked?: boolean; stale?: boolean; reward?: boolean } = {}) {
-  const log = { calls: [] as string[], grades: [] as any[], deletes: [] as string[] };
+  const log = { calls: [] as string[], grades: [] as any[], deletes: [] as string[], restores: [] as string[] };
   const queues = [...(opts.queues ?? [[item(1), item(2)], []])];
   let reviewed = 0;
   vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
@@ -49,6 +48,7 @@ function server(opts: { queues?: unknown[][]; locked?: boolean; stale?: boolean;
                          ...(opts.reward && last ? { rewards: { ok: true, xp_gained: 80, coins_gained: 20 } } : {}) });
     }
     if (path.startsWith("/review/cards/") && method === "DELETE") { log.deletes.push(path); return json(200, { ok: true }); }
+    if (path.startsWith("/review/cards/") && method === "POST") { log.restores.push(path); return json(200, { ok: true }); }
     return json(404, { error: { code: "not_found", message: "nope", action: null, details: null } });
   }));
   return log;
@@ -115,25 +115,19 @@ describe("ReviewView: the daily review, keyboard first", () => {
     expect(log.calls[0]).toBe("GET /review/queue?limit=20");
   });
 
-  it("Remove takes a card out at once with an Undo toast; Undo brings it back, otherwise it is removed for good", async () => {
+  it("Remove takes a card out at once and tells the server straight away; Undo puts it back", async () => {
     const log = server();
     render(<ReviewView />);
     await screen.findByText("Question 1?");
     fireEvent.click(screen.getByRole("button", { name: /Remove/ }));
     await screen.findByText("Question 2?");
-    expect(log.deletes).toEqual([]);                                                  // not yet: undo window
+    await waitFor(() => expect(log.deletes).toEqual(["/review/cards/1"]));          // sent at once: a reload can't lose it
     const [message, options] = toasts.success.mock.calls.at(-1)!;
-    expect(message).toBe("Card removed from your review queue");
+    expect(message).toMatch(/comes back only if you miss that question again/);
     const undo = render(<>{options.action}</>);
     fireEvent.click(undo.getByRole("button", { name: "Undo" }));
     await screen.findByText("Question 1?");                                         // back on top
-    await act(async () => { flushUndoables(); });
-    expect(log.deletes).toEqual([]);
-
-    fireEvent.click(screen.getByRole("button", { name: /Remove/ }));
-    await screen.findByText("Question 2?");
-    await act(async () => { flushUndoables(); });
-    await waitFor(() => expect(log.deletes).toEqual(["/review/cards/1"]));
+    expect(log.restores).toEqual(["/review/cards/1"]);
   });
 });
 

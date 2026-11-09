@@ -10,10 +10,10 @@ import { useHUDStore } from "@/hooks/useHUD";
 import { useReview } from "@/hooks/useReview";
 import { ApiError } from "@/lib/api";
 import { shortcutBlocked } from "@/lib/keys";
-import { undoable } from "@/lib/undo";
+import { UNDO_MS } from "@/lib/undo";
 import { ROUTES } from "@/lib/routes";
 import {
-  RATINGS, SOURCE_LABEL, fetchReviewQueue, formatInterval, gradeReview, removeFromReview,
+  RATINGS, SOURCE_LABEL, fetchReviewQueue, formatInterval, gradeReview, removeFromReview, restoreToReview,
   type Rating, type ReviewItem, type ReviewStats,
 } from "@/lib/study/review";
 import "./review.css";
@@ -108,25 +108,44 @@ export default function ReviewView({ documentId }: { documentId?: string }) {
     requestAnimationFrame(() => cardRef.current?.focus({ preventScroll: true }));
   };
 
-  // Remove: out of the queue at once, with an Undo toast; the request goes when the undo window closes.
+  // Remove: out of the queue at once (until its question is missed again), with an Undo toast that puts it back.
+  // The request goes straight away, so leaving the page or reloading can't lose it.
   const remove = () => {
     if (!item || busy) return;
     const card = item;
     removing.current.add(card.id);
     advance();
-    undoable({
-      message: "Card removed from your review queue",
-      undo: () => {
-        removing.current.delete(card.id);
-        setItems((list) => [card, ...list.filter((i) => i.id !== card.id)]);
-        setRevealed(false);
-        shownAt.current = Date.now();
-        setPhase("reviewing");
-      },
-      commit: async () => {
-        await removeFromReview(card.id);
-        removing.current.delete(card.id);
-      },
+    const bump = (d: number) => {                         // the counts and the nav badge follow at once
+      const now = useReview.getState().stats;
+      if (now) setStats({ ...now, total: Math.max(0, now.total + d), due: Math.max(0, now.due + d) });
+    };
+    bump(-1);
+    const sent = removeFromReview(card.id).then(() => true, (e) => {
+      removing.current.delete(card.id);
+      setItems((list) => [card, ...list.filter((i) => i.id !== card.id)]);
+      setPhase("reviewing");
+      bump(1);
+      toast.apiError(e);
+      return false;
+    });
+    let id = 0;
+    id = toast.success("Card removed. It comes back only if you miss that question again.", {
+      duration: UNDO_MS,
+      action: (
+        <Button size="sm" variant="secondary" onClick={async () => {
+          toast.dismiss(id);
+          if (!(await sent)) return;
+          try {
+            await restoreToReview(card.id);
+            removing.current.delete(card.id);
+            setItems((list) => [card, ...list.filter((i) => i.id !== card.id)]);
+            setRevealed(false);
+            shownAt.current = Date.now();
+            setPhase("reviewing");
+            bump(1);
+          } catch (e) { toast.apiError(e); }
+        }}>Undo</Button>
+      ),
     });
   };
 

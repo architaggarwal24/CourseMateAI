@@ -55,3 +55,16 @@ test("on a phone the answer is tapped open and swiped right for Good", async ({ 
   expect((await grade).postDataJSON()).toMatchObject({ item_id: 1, rating: 3, reps: 0 });
   await expect(card).toContainText("What does osmosis move across a membrane?");
 });
+
+// Round 7: Remove is sent at once - a reload straight after doesn't bring the card back; Undo does.
+test("a removed card stays gone after a reload, and Undo brings it back", async ({ page }) => {
+  await mockApi(page);
+  await page.goto("/study?tab=review&doc=doc-1");
+  const card = page.getByTestId("review-card");
+  const first = (await card.locator("h2, h3, p").first().textContent())!;
+  await page.getByRole("button", { name: /Remove/ }).click();
+  await expect(page.getByText(/comes back only if you miss that question again/)).toBeVisible();
+  await page.reload();
+  await expect(page.getByTestId("review-card").or(page.getByRole("heading", { name: /caught up|empty/i })).first()).toBeVisible();
+  await expect(page.getByText(first, { exact: true })).toHaveCount(0);
+});

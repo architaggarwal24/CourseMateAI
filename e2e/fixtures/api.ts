@@ -168,6 +168,7 @@ export async function mockApi(page: Page, { signedIn = true, advanced = true, do
       state: "review", due: "2026-11-04T09:00:00+00:00", reps: 3, lapses: 0, document: { session_id: DOCUMENT.id, name: DOCUMENT.filename }, intervals: iv },
   ] : [];
   let reviewedToday = 0;
+  const removedCards = new Map<number, (typeof reviewQueue)[number]>();
   const reviewStats = () => ({ due: reviewQueue.length, learning: 0, review: reviewQueue.filter((i) => i.reps > 0).length,
     new: reviewQueue.filter((i) => !i.reps).length, new_waiting: 0, new_left_today: 19, reviewed_today: reviewedToday,
     total: 2, by_source: { flashcard: 0, arena: 1, quiz: 1, exam: 0 }, next_due_at: "2026-11-12T09:00:00+00:00", locked: false });
@@ -346,6 +347,14 @@ export async function mockApi(page: Page, { signedIn = true, advanced = true, do
     if (path === "/entitlements") return json(route, 200, entitlements);
     if (path === "/review/stats") return json(route, 200, reviewStats());
     if (path === "/review/queue") return json(route, 200, { ok: true, items: reviewQueue, stats: reviewStats() });
+    // Round 7: Remove hides a card (until it's missed again); POST puts it back (Undo)
+    const cardPath = path.match(/^\/review\/cards\/(\d+)$/);
+    if (cardPath && (method === "DELETE" || method === "POST")) {
+      const id = Number(cardPath[1]);
+      if (method === "DELETE") { removedCards.set(id, reviewQueue.find((i) => i.id === id)!); reviewQueue = reviewQueue.filter((i) => i.id !== id); }
+      else if (removedCards.has(id)) { reviewQueue = [removedCards.get(id)!, ...reviewQueue]; removedCards.delete(id); }
+      return json(route, 200, { ok: true });
+    }
     // Exam mode: one 3-question exam, graded on submit.
     if (path === "/exams/active") return json(route, 200, { exam: activeExam });
     if (path === "/exams/options") return json(route, 200, { lengths: [10, 20, 30], difficulties: ["easy", "medium", "hard", "mixed"],

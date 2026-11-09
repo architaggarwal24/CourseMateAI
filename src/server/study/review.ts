@@ -4,7 +4,7 @@
 // Grades: 1 Again, 2 Hard, 3 Good, 4 Easy. New cards per (UTC) day are limited; a learning card due within
 // LEARN_AHEAD shows now, so a session can finish. A grade names the card's `reps` as the client saw it: a double
 // submit is refused with 409 review_stale instead of counting twice.
-import { and, count, desc, eq, gt, inArray, lte, min, sql, sum } from "drizzle-orm";
+import { and, count, desc, eq, gt, inArray, isNull, lte, min, sql, sum } from "drizzle-orm";
 import { createEmptyCard, fsrs, generatorParameters, type Card, type Grade, type State } from "ts-fsrs";
 import type { CurrentUser, RequestContext } from "../context";
 import { courses, documents, reviewItems, reviewLogs } from "../db/schema";
@@ -30,10 +30,14 @@ export const itemKey = (front: string) => questionKey(front).slice(0, 500);
 export const conceptKey = (concept: unknown) => questionKey(String(concept ?? "")).slice(0, MAX_CONCEPT);
 const today = (now: Date) => stamp(now).slice(0, 10);
 
-/** Put a card in the queue or, if it is already there, bring it due now (a fresh miss). Its id, or null. */
+/**
+ * Put a card in the queue or, if it is already there, bring it due now (a fresh miss). Its id, or null.
+ * `revive`: a card the student removed comes back (a miss: true, the default). A card that is only seen again (a
+ * flashcard got right) stays removed.
+ */
 export async function upsertItem(ctx: RequestContext, userId: number, docHash: string, card: {
   front: unknown; back: unknown; source: string; explanation?: unknown; concept?: unknown;
-}, now = new Date()): Promise<number | null> {
+}, now = new Date(), revive = true): Promise<number | null> {
   const front = cleanText(card.front, MAX_FRONT), back = cleanText(card.back, MAX_BACK);
   const key = itemKey(front);
   if (!front || !back || !key || !docHash || !(SOURCES as readonly string[]).includes(card.source)) return null;
@@ -51,6 +55,7 @@ export async function upsertItem(ctx: RequestContext, userId: number, docHash: s
       concept: sql`COALESCE(excluded.concept, ${reviewItems.concept})`,
       conceptKey: sql`COALESCE(excluded.concept_key, ${reviewItems.conceptKey})`,
       due: sql`MIN(${reviewItems.due}, excluded.due)`,
+      ...(revive ? { removedAt: null } : {}),
     },
   }).returning({ id: reviewItems.id }).get();
   return row?.id ?? null;
@@ -120,7 +125,7 @@ async function getItem(ctx: RequestContext, userId: number, id: number): Promise
 export async function queue(ctx: RequestContext, userId: number, { limit = 20, hashes, now = new Date() }: { limit?: number; hashes?: string[] | null; now?: Date } = {}) {
   const n = Math.max(1, Math.min(Math.trunc(limit) || 20, 100));
   const scope = hashes?.length ? inArray(reviewItems.docHash, hashes) : undefined;
-  const base = (...c: unknown[]) => and(eq(reviewItems.userId, userId), ...(c as never[]), ...(scope ? [scope] : []));
+  const base = (...c: unknown[]) => and(eq(reviewItems.userId, userId), isNull(reviewItems.removedAt), ...(c as never[]), ...(scope ? [scope] : []));
   // Learning, due reviews and today's counts in one round trip (a D1 batch); the new cards depend on the counts.
   const [learning, review, todayRows] = await ctx.db.batch([
     ctx.db.select().from(reviewItems)
@@ -152,8 +157,9 @@ export async function stats(ctx: RequestContext, userId: number, now = new Date(
       learning: n(sql`${reviewItems.reps} > 0 AND ${reviewItems.state} IN (1, 3) AND ${reviewItems.due} <= ${learnBy}`),
       review: n(sql`${reviewItems.reps} > 0 AND ${reviewItems.state} = 2 AND ${reviewItems.due} <= ${t}`),
       next: sql<string | null>`MIN(CASE WHEN ${reviewItems.due} > ${t} THEN ${reviewItems.due} END)`,
-    }).from(reviewItems).where(eq(reviewItems.userId, userId)),
-    ctx.db.select({ source: reviewItems.source, n: count() }).from(reviewItems).where(eq(reviewItems.userId, userId)).groupBy(reviewItems.source),
+    }).from(reviewItems).where(and(eq(reviewItems.userId, userId), isNull(reviewItems.removedAt))),
+    ctx.db.select({ source: reviewItems.source, n: count() }).from(reviewItems)
+      .where(and(eq(reviewItems.userId, userId), isNull(reviewItems.removedAt))).groupBy(reviewItems.source),
   ]);
   const todayCounts = countsFrom(todayRows[0]);
   const newLeft = Math.max(0, NEW_PER_DAY - todayCounts.new);
@@ -215,16 +221,25 @@ export async function grade(ctx: RequestContext, userId: number, itemId: number,
 
 /** A flashcard graded in the Flashcards tab joins the queue; the first time only, that grade is its first review. */
 export async function gradeFirst(ctx: RequestContext, userId: number, docHash: string, card: Record<string, unknown>, correct: boolean, now = new Date()) {
-  const id = await upsertItem(ctx, userId, docHash, { front: card.front, back: card.back, explanation: card.explanation, concept: card.concept, source: "flashcard" }, now);
+  const id = await upsertItem(ctx, userId, docHash, { front: card.front, back: card.back, explanation: card.explanation, concept: card.concept, source: "flashcard" }, now, !correct);
   if (id === null) return null;
   const row = await getItem(ctx, userId, id);
   if (row.reps === 0) return (await grade(ctx, userId, id, correct ? 3 : 1, { reps: 0, now })).item;
   return (await publicItems(ctx, userId, [row], now, false))[0];
 }
 
-export async function removeItem(ctx: RequestContext, userId: number, id: number) {
+/** Out of the queue until the question is missed again (round 7: it used to be deleted, and came straight back). */
+export async function removeItem(ctx: RequestContext, userId: number, id: number, now = new Date()) {
   await getItem(ctx, userId, id);
-  await ctx.db.delete(reviewItems).where(and(eq(reviewItems.id, id), eq(reviewItems.userId, userId)));
+  await ctx.db.update(reviewItems).set({ removedAt: stamp(now), updatedAt: stamp(now) })
+    .where(and(eq(reviewItems.id, id), eq(reviewItems.userId, userId)));
+}
+
+/** Undo a remove. */
+export async function restoreItem(ctx: RequestContext, userId: number, id: number, now = new Date()) {
+  await getItem(ctx, userId, id);
+  await ctx.db.update(reviewItems).set({ removedAt: null, updatedAt: stamp(now) })
+    .where(and(eq(reviewItems.id, id), eq(reviewItems.userId, userId)));
 }
 
 

@@ -307,6 +307,8 @@ export const reviewItems = sqliteTable("review_items", {
   lapses: integer("lapses").notNull().default(0),
   createdAt: text("created_at").notNull(),
   updatedAt: text("updated_at").notNull(),
+  /** Removed from the queue (round 7): hidden until the question is missed again. */
+  removedAt: text("removed_at"),
 }, (t) => [uniqueIndex("review_items_unique").on(t.userId, t.docHash, t.itemKey), index("review_items_due_idx").on(t.userId, t.due)]);
 
 export const reviewLogs = sqliteTable("review_logs", {

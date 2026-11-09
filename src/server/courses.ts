@@ -2,7 +2,7 @@
 // user's documents, studied together. A course id stands wherever a document id does (GET /documents/{id} answers
 // with the course seen as one document). Deleting a course leaves its documents. Every plan has courses (round 7:
 // Study works inside a course); someone with PDFs from before gets them gathered into a first course.
-import { and, count, desc, eq, inArray, sql } from "drizzle-orm";
+import { and, count, desc, eq, inArray, isNull, sql } from "drizzle-orm";
 import type { CurrentUser, RequestContext } from "./context";
 import { conceptMastery, courseDocuments, courses, documents, exams, reviewItems } from "./db/schema";
 import { courseMembers, MAX_COURSE_DOCUMENTS } from "./documents";
@@ -150,7 +150,7 @@ export async function courseProgress(ctx: RequestContext, user: CurrentUser, id:
       correct: sql<number>`SUM(${conceptMastery.correct})`, streak: sql<number>`MAX(${conceptMastery.wrongStreak})`,
     }).from(conceptMastery).where(and(eq(conceptMastery.userId, user.id), inArray(conceptMastery.docHash, hashes))).groupBy(conceptMastery.conceptKey),
     ctx.db.select({ total: count(), due: sql<number>`COALESCE(SUM(CASE WHEN ${reviewItems.due} <= ${t} AND ${reviewItems.reps} > 0 THEN 1 ELSE 0 END), 0)` })
-      .from(reviewItems).where(and(eq(reviewItems.userId, user.id), inArray(reviewItems.docHash, hashes))),
+      .from(reviewItems).where(and(eq(reviewItems.userId, user.id), inArray(reviewItems.docHash, hashes), isNull(reviewItems.removedAt))),
     ctx.db.select({ id: exams.id, accuracy: exams.accuracy, submitted_at: exams.submittedAt }).from(exams)
       .where(and(eq(exams.userId, user.id), inArray(exams.docHash, hashes), eq(exams.status, "graded"))).orderBy(desc(exams.submittedAt)).limit(5),
     ctx.db.select({ hash: conceptMastery.docHash, n: count(), seen: sql<number>`COALESCE(SUM(${conceptMastery.seen}), 0)`, correct: sql<number>`COALESCE(SUM(${conceptMastery.correct}), 0)` })

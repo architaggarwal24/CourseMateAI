@@ -69,3 +69,28 @@ test("notes and a half-typed question are still there after going to Hero and ba
   await page.reload();
   await expect(page.getByRole("button", { name: "Generate notes" })).toBeVisible();
 });
+
+// Round 7: notes keep being written while you are on another tool; the writing panel shows meanwhile.
+test("notes keep generating after switching to Chat, and are on screen when you come back", async ({ page }, info) => {
+  await mockApi(page);
+  let release!: () => void;
+  const ready = new Promise<void>((r) => { release = r; });
+  await page.route("**/api/v1/notes", async (route) => {
+    await ready;
+    await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({
+      mode: "notes", format: "outline", sources: [], citations: [], rewards: null, content: "# Spectral biclustering\n\nRows and columns clustered together.",
+    }) });
+  });
+  await page.goto("/study?tab=notes&doc=doc-1");
+  await page.getByRole("textbox", { name: /notes on/ }).fill("Spectral Biclustering");
+  await page.getByText("Outline", { exact: true }).click();
+  await page.getByRole("button", { name: "Generate notes" }).click();
+  await expect(page.getByRole("heading", { name: /Writing outline notes on “Spectral Biclustering”/ })).toBeVisible();
+  if (process.env.SHOT_DIR) await page.screenshot({ path: `${process.env.SHOT_DIR}/notes-writing-${info.project.name}.png` });
+  await page.getByRole("link", { name: "Chat", exact: true }).first().click();
+  await expect(page.getByRole("textbox", { name: "Message" })).toBeVisible();
+  release();
+  await expect(page.getByText(/notes on “Spectral Biclustering” are ready/)).toBeVisible();
+  await page.getByRole("link", { name: "Notes", exact: true }).first().click();
+  await expect(page.getByRole("heading", { level: 1, name: "Spectral biclustering" })).toBeVisible();
+});

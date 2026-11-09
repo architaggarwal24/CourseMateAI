@@ -5,6 +5,7 @@ import { HelpCircle, Brain, Zap, Target, TrendingUp, History, Plus, Minus, ListC
 import HistoryPanel from "./HistoryPanel";
 import QuizQuestionView from "./quiz/QuizQuestionView";
 import QuizReview from "./quiz/QuizReview";
+import Writing from "./study/Writing";
 import { normalizeAnswer } from "./quiz/answers";
 import { Button, Input, Select } from "@/components/ui";
 import { generateQuiz, answerQuizQuestion, finishQuiz, retryMissedQuiz } from "@/lib/api";
@@ -12,6 +13,7 @@ import { useHUDStore } from "@/hooks/useHUD";
 import { QuizData, QuizFeedback, QuizQuestion } from "@/types";
 import { saveSessionData, loadSessionData } from "@/lib/sessions";
 import { forgetSession, rememberSession, useDraft } from "@/lib/study/memory";
+import { NothingMade, clearJob, jobErrorToast, startJob, useJob } from "@/lib/study/background";
 import { toast } from "@/components/ui/Toast";
 
 // FIX BUG 44: Quick-suggestion type strings must map through TYPE_MAP to reach
@@ -55,7 +57,6 @@ export default function QuizView({ documentId, restoreSessionId, initialTopic }:
   // after finishing: what was missed went to Review, and the weak spots (round 7)
   const [summary, setSummary] = useState<{ missed: number[]; added_to_review: number; weak_concepts: string[] } | null>(null);
   const [retrying, setRetrying] = useState(false);
-  const [loading, setLoading] = useState(false);
   const [quiz, setQuiz] = useState<QuizData | null>(null);
   const [currentQ, setCurrentQ] = useState(0);
   const [answers, setAnswers] = useState<Record<number, string>>({});
@@ -153,37 +154,35 @@ export default function QuizView({ documentId, restoreSessionId, initialTopic }:
     setShowHistory(false);
   };
 
+  // Writing a quiz carries on when you leave this screen (lib/study/background.ts): the job saves it as a new quiz in
+  // History and remembers it as this tool's open quiz; this view opens it when it finishes (now, or when you return).
+  const job = useJob("quiz", documentId);
+  const loading = job?.status === "running";
   const handleGenerate = async (customTopic?: string, customType?: string, customNum?: number) => {
     const finalTopic = customTopic || topic;
     const finalType = TYPE_MAP[customType || qType] || "MCQ";
     const finalNum = customNum || numQ;
     if (!finalTopic.trim()) { toast.error("Please enter a topic"); return; }
-    // FIX BUG-F01: Wrap in try/catch so setLoading(false) always runs.
-    // Without this, any thrown error (network, 500, quota) leaves the spinner
-    // spinning forever and the button permanently disabled.
-    setLoading(true);
-    try {
+    const scope = documentId, level = difficulty;
+    startJob("quiz", scope, finalTopic, async () => {
       // Use existing sessionId so the PDF uploaded to this session is found on the backend
-      const data = await generateQuiz(finalTopic, finalNum, finalType, sessionId, difficulty);
-      setLoading(false);
-      if (data?.content?.questions?.length) {
-        setQuiz(data.content);
-        setQuizId(data.quiz_id ?? null);
-        setFeedback({});
-        setTopic(finalTopic);
-        setCurrentQ(0);
-        setAnswers({});
-        setShowExplanation(false);
-        setRewarded(false);
-        setSummary(null);
-      } else {
-        toast.error("Quiz generation failed. Make sure a PDF is uploaded.");
-      }
-    } catch (e) {
-      setLoading(false);
-      toast.apiError(e, { onRetry: () => handleGenerate(finalTopic, customType, customNum) });
-    }
+      const data = await generateQuiz(finalTopic, finalNum, finalType, sessionId, level);
+      if (!data?.content?.questions?.length) throw new NothingMade("Quiz generation failed. Make sure a PDF is uploaded.");
+      const id = crypto.randomUUID();
+      saveSessionData(id, "quiz", `${finalTopic} · 0/${data.content.questions.length} answered`, {
+        quiz: data.content, topic: finalTopic, answers: {}, currentQ: 0, score: 0, quizId: data.quiz_id ?? undefined, feedback: {},
+      } as SavedQuiz, finalTopic);
+      rememberSession("quiz", scope, id);
+      return id;
+    }, {
+      onError: (e) => jobErrorToast(e, toast, () => handleGenerate(finalTopic, customType, customNum)),
+      ready: (label) => toast.success(`Your quiz on “${label}” is ready. Open Quiz to start it.`),
+    });
   };
+  useEffect(() => {
+    if (job?.status === "done" && job.sessionId) { setSummary(null); loadHistorySession(job.sessionId); clearJob("quiz", documentId); }
+    else if (job?.status === "failed") clearJob("quiz", documentId);
+  }, [job?.status]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleAnswer = useCallback(async (option: string) => {
     if (!quiz || checking) return;
@@ -278,7 +277,11 @@ export default function QuizView({ documentId, restoreSessionId, initialTopic }:
               </div>
             </div>
 
-            <form className="study-card space-y-5 mb-8" onSubmit={(e) => { e.preventDefault(); void handleGenerate(); }}>
+            {loading && job && (
+              <Writing what="a quiz" topic={job.label} startedAt={job.startedAt}
+                steps={["Finding the passages about it in your PDFs…", "Writing the questions…", "Checking every answer against your PDFs…", "Shuffling the options…", "Almost done…"]} />
+            )}
+            <form hidden={loading} className="study-card space-y-5 mb-8" onSubmit={(e) => { e.preventDefault(); void handleGenerate(); }}>
               <Input label="What topic would you like to be quizzed on?" value={topic} onChange={(e) => setTopic(e.target.value)}
                      placeholder="e.g. Machine learning basics, Chapter 5, Neural networks" />
               <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
@@ -311,8 +314,7 @@ export default function QuizView({ documentId, restoreSessionId, initialTopic }:
                 {loading ? "Generating quiz…" : <><Zap size={16} aria-hidden="true" />Generate quiz</>}
               </Button>
             </form>
-
-            <div>
+            <div hidden={loading}>
               <p className="study-suggest-label">Or start with a ready-made quiz:</p>
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 {QUIZ_SUGGESTIONS.map((s) => (

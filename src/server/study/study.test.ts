@@ -352,6 +352,31 @@ describe("the review queue", () => {
 
     expect((await reviewCard.DELETE(b.request(`/api/v1/review/cards/${card.id}`, { method: "DELETE" }), params({ id: String(card.id) }))).status).toBe(200);
     expect((await json(await reviewStats.GET(b.request("/api/v1/review/stats")))).total).toBe(1);
+    // removed stays removed: adding the same flashcard again doesn't bring it back...
+    expect((await json(await reviewCards.POST(post(b, "/api/v1/review/cards", { session_id: id, cards: [{ front: card.front, back: "M" }] })))).existing).toBe(1);
+    expect((await json(await reviewQueue.GET(b.request(`/api/v1/review/queue?session_id=${id}`)))).items.map((i: { id: number }) => i.id)).not.toContain(card.id);
+    // ...Undo does
+    expect((await reviewCard.POST(post(b, `/api/v1/review/cards/${card.id}`, {}), params({ id: String(card.id) }))).status).toBe(200);
+    expect((await json(await reviewStats.GET(b.request("/api/v1/review/stats")))).total).toBe(2);
+  });
+
+  it("a removed card comes back only when its question is missed again", async () => {
+    const b = await person(mail, "owner@example.com", "boss");
+    const id = await uploadPdf(b, "Bio.pdf", BIO);
+    const ctx = await import("@/server/context");
+    const { upsertItem, removeItem, gradeFirst } = await import("./review");
+    const c = await ctx.requestContext(b.request("/api/v1/review/stats"));
+    const row = await c.env.DB.prepare("SELECT id FROM user WHERE email = ?").bind("owner@example.com").first<{ id: number }>();
+    const hash = (await c.env.DB.prepare("SELECT file_hash FROM documents WHERE id = ?").bind(id).first<{ file_hash: string }>())!.file_hash;
+    const card = { front: "What is DBSCAN?", back: "Density clustering", source: "quiz" };
+    const itemId = (await upsertItem(c, row!.id, hash, card))!;
+    await removeItem(c, row!.id, itemId);
+    const live = async () => (await c.env.DB.prepare("SELECT removed_at FROM review_items WHERE id = ?").bind(itemId).first<{ removed_at: string | null }>())!.removed_at;
+    expect(await live()).not.toBeNull();
+    await gradeFirst(c, row!.id, hash, { front: card.front, back: card.back }, true);     // seen and got right: stays out
+    expect(await live()).not.toBeNull();
+    await upsertItem(c, row!.id, hash, card);                                             // missed again: back
+    expect(await live()).toBeNull();
   });
 });
 

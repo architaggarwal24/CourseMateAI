@@ -85,6 +85,13 @@
       "when": 1794095139076,
       "tag": "0011_quest_scrolls",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "6",
+      "when": 1794218754492,
+      "tag": "0012_review_removed",
+      "breakpoints": true
     }
   ]
 }

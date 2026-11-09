@@ -143,7 +143,7 @@ export async function planChat(ctx: RequestContext, user: CurrentUser, body: Rec
     : await standaloneQuestion(question, history,
       async (messages) => (await generate(ctx, caller, "small", messages, { maxOutputTokens: 120, temperature: 0 })).text,
       { enabled: (process.env.QUERY_REWRITE ?? "true") !== "false", maxMessages: num(process.env.QUERY_REWRITE_TURNS, 6) });
-  const found = toRetrieval(await searchPassages(ctx.db, deps, study.docs, rewrite.query, topK));
+  const found = toRetrieval(await searchPassages(ctx.db, deps, study.docs, rewrite.query, topK, { keywords: question }));
   const quality = assessRelevance(found);
   // Not covered: the tutor still answers (honestly) instead of a canned line. In Quiz me, the student's answer to the
   // tutor's question is judged against the passages found for it, whatever their score.

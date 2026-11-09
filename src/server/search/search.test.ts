@@ -41,3 +41,15 @@ describe("mmr", () => {
     expect(picked[0].score).toBeCloseTo(0.994, 2);
   });
 });
+
+describe("keywords", () => {
+  it("picks the question's meaningful words and scores a passage by how many it spells out", async () => {
+    const { keywordTerms, keywordShare, lexicalScore } = await import("./index");
+    expect(keywordTerms("What is DBSCAN?")).toEqual(["dbscan"]);
+    expect(keywordTerms("explain the k-means algorithm vs PCA")).toEqual(["algorithm", "k-means", "pca"]);
+    expect(keywordShare("DBSCAN (Density-Based ...) finds clusters", ["dbscan"])).toBe(1);
+    expect(keywordShare("dbscanner is not it", ["dbscan"])).toBe(0);                  // whole words only
+    expect(lexicalScore(1)).toBeCloseTo(0.7);
+    expect(lexicalScore(0.4)).toBe(0);
+  });
+});

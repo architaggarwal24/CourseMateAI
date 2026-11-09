@@ -282,6 +282,27 @@ describe("courses", () => {
     expect((await ask()).error.message).toMatch(/None of this course's PDFs could be read/);
   });
 
+  it("a bare name the embedding model misses is still found by its words (DBSCAN), and counts as covered", async () => {
+    const b = await person("owner@example.com", "boss");
+    const ML = [
+      { page: 1, text: "Introduction to unsupervised learning. Clustering groups similar points without labels." },
+      { page: 2, text: "Hierarchical clustering builds a dendrogram. Advantages: no need to choose the number of clusters." },
+      { page: 3, text: "DBSCAN (Density-Based Spatial Clustering of Applications with Noise) finds clusters of arbitrary shape. A core point has at least MinPts neighbours within Eps." },
+    ];
+    const { id } = await uploadPdf(b, "unit 1.pdf", ML);
+    // an embedder that understands nothing: every text points somewhere unrelated
+    setSearchForTests({ embedder: { model: "m", async embed(texts) { return texts.map((t) => {
+      const v = new Array(512).fill(0); for (let i = 0; i < 8; i++) v[(t.length * 31 + i * 97) % 512] = 1; return v;
+    }); } }, vectors });
+    const { searchPassages, searchDeps } = await import("./search");
+    const { getDb } = await import("./db");
+    const found = await searchPassages(getDb(p.env.DB), searchDeps(p.env)!, [{ id, name: "unit 1.pdf" }], "dbscan", 3);
+    expect(found[0]).toMatchObject({ page: 3 });
+    expect(found[0].score).toBeGreaterThanOrEqual(0.45);                  // over the "covered" line: the tutor cites it
+    const two = await searchPassages(getDb(p.env.DB), searchDeps(p.env)!, [{ id, name: "unit 1.pdf" }], "advantages of hierarchical clustering", 3);
+    expect(two[0]).toMatchObject({ page: 2 });
+  });
+
   it("PDFs from before courses were needed are gathered into a first course, once", async () => {
     const b = await person("old@example.com", "oldie");
     const a = await uploadPdf(b, "A.pdf");

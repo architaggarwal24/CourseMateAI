@@ -193,10 +193,13 @@ export default function DocumentHeader({ doc, gone, loaded, upload, tabs, course
         <div className="ws-top__end">
           {course ? (
             <>
-              <Button size="sm" variant="primary" onClick={pick} disabled={busy} loading={uploading}>
-                {!uploading && <Upload size={14} aria-hidden="true" />}Add PDFs
+              {/* on a phone just the icons, so the course's name keeps its room */}
+              <Button size="sm" variant="primary" onClick={pick} disabled={busy} loading={uploading} aria-label="Add PDFs" title="Add PDFs" className="max-sm:min-w-11">
+                {!uploading && <Upload size={14} aria-hidden="true" />}<span className="max-sm:hidden">Add PDFs</span>
               </Button>
-              <Button size="sm" onClick={onEditCourse}><Pencil size={14} aria-hidden="true" />Edit course</Button>
+              <Button size="sm" onClick={onEditCourse} aria-label="Edit course" title="Edit course" className="max-sm:min-w-11">
+                <Pencil size={14} aria-hidden="true" /><span className="max-sm:hidden">Edit course</span>
+              </Button>
             </>
           ) : doc ? (
             <>

@@ -1,0 +1,1 @@
+ALTER TABLE `review_items` ADD `removed_at` text;

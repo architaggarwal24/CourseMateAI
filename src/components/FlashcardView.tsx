@@ -6,6 +6,7 @@ import { motion, useMotionValue, useTransform } from "motion/react";
 import { ChevronLeft, ChevronRight, RotateCcw, Shuffle, CheckCircle2, XCircle, Sparkles, Minus, Plus, Layers, Repeat } from "@/components/icons";
 import HistoryPanel from "./HistoryPanel";
 import StudyToolbar from "./study/StudyToolbar";
+import Writing from "./study/Writing";
 import { Badge, Button, ButtonLink, Card, Input } from "@/components/ui";
 import { ApiError, fetchReviewDeck, generateFlashcards, reviewFlashcard, type ReviewCard } from "@/lib/api";
 import { addToReview } from "@/lib/study/review";
@@ -13,6 +14,7 @@ import { useReview } from "@/hooks/useReview";
 import { ROUTES } from "@/lib/routes";
 import { saveSessionData, loadSessionData } from "@/lib/sessions";
 import { forgetSession, rememberSession, useDraft } from "@/lib/study/memory";
+import { NothingMade, clearJob, jobErrorToast, startJob, useJob } from "@/lib/study/background";
 import { useHUDStore } from "@/hooks/useHUD";
 import { toast } from "@/components/ui/Toast";
 import { shortcutBlocked } from "@/lib/keys";
@@ -32,6 +34,8 @@ interface SavedFlashcardSession {
   results: Record<number, CardResult>;
   currentIndex: number;
   topic: string;
+  /** What finishing the deck pays (shown once, at the end). */
+  rewards?: { xp_gained: number; coins_gained: number } | null;
 }
 
 /** `documentId` is the workspace's active document (what the cards are about); `historyId` is just this saved deck. */
@@ -50,7 +54,6 @@ export default function FlashcardView({ documentId, restoreSessionId, initialTop
   const [currentIndex, setCurrentIndex] = useState(0);
   const [flipped, setFlipped] = useState(false);
   const [results, setResults] = useState<Record<number, CardResult>>({});
-  const [loading, setLoading] = useState(false);
   const [done, setDone] = useState(false);
   const [pendingRewards, setPendingRewards] = useState<{xp_gained:number;coins_gained:number}|null>(null);
 
@@ -66,6 +69,7 @@ export default function FlashcardView({ documentId, restoreSessionId, initialTop
     setResults(saved.results ?? {});
     setFlipped(false);
     setDone(false);
+    setPendingRewards(saved.rewards ?? null);
     setShowHistory(false);
   }, [documentId, setTopic]);
   useEffect(() => {
@@ -110,27 +114,30 @@ export default function FlashcardView({ documentId, restoreSessionId, initialTop
     setCurrentIndex(0); setFlipped(false); setResults({}); setDone(false); setPendingRewards(null);
   };
 
+  // Writing a deck carries on when you leave this screen (lib/study/background.ts): the job saves it as a new deck in
+  // History and remembers it as this tool's open deck; this view opens it when it finishes (now, or when you return).
+  const job = useJob("flashcards", documentId);
+  const loading = job?.status === "running";
   const handleGenerate = async () => {
     if (!topic.trim()) { toast.error("Enter a topic first"); return; }
-    setLoading(true);
-    try {
-      const data = await generateFlashcards(topic.trim(), sessionId, numCards);
-      if (data?.cards?.length) {
-        setHistoryId(crypto.randomUUID());                 // a new deck is a new History entry
-        setCards(data.cards);
-        setCurrentIndex(0);
-        setFlipped(false);
-        setResults({});
-        setDone(false);
-        setPendingRewards(data.rewards?.ok ? data.rewards : null);
-      } else {
-        toast.error("No flashcards generated. Make sure a PDF is uploaded.");
-      }
-    } catch (e) {
-      toast.apiError(e, { onRetry: handleGenerate });
-    }
-    setLoading(false);
+    const scope = documentId, t = topic.trim(), n = numCards;
+    startJob("flashcards", scope, t, async () => {
+      const data = await generateFlashcards(t, sessionId, n);
+      if (!data?.cards?.length) throw new NothingMade("No flashcards generated. Make sure a PDF is uploaded.");
+      const id = crypto.randomUUID();                       // a new deck is a new History entry
+      saveSessionData(id, "flashcards", `${t} · 1/${data.cards.length}`,
+        { cards: data.cards, results: {}, currentIndex: 0, topic: t, rewards: data.rewards?.ok ? data.rewards : null } as SavedFlashcardSession, t);
+      rememberSession("flashcards", scope, id);
+      return id;
+    }, {
+      onError: (e) => jobErrorToast(e, toast, handleGenerate),
+      ready: (label) => toast.success(`Your flashcards on “${label}” are ready. Open Flashcards to study them.`),
+    });
   };
+  useEffect(() => {
+    if (job?.status === "done" && job.sessionId) { openDeck(job.sessionId); clearJob("flashcards", documentId); }
+    else if (job?.status === "failed") clearJob("flashcards", documentId);
+  }, [job?.status]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const flip = () => setFlipped((f) => !f);
 
@@ -270,7 +277,11 @@ export default function FlashcardView({ documentId, restoreSessionId, initialTop
                   <p>Pick a topic from your document and flip through the cards.</p>
                 </div>
               </div>
-              <form className="study-card space-y-5" onSubmit={(e) => { e.preventDefault(); void handleGenerate(); }}>
+              {loading && job && (
+                <Writing what="flashcards" topic={job.label} startedAt={job.startedAt}
+                    steps={["Finding the passages about it in your PDFs…", "Picking what's worth remembering…", "Writing the cards…", "Almost done…"]} />
+              )}
+              <form hidden={loading} className="study-card space-y-5" onSubmit={(e) => { e.preventDefault(); void handleGenerate(); }}>
                 <Input label="Topic" value={topic} onChange={(e) => setTopic(e.target.value)}
                        placeholder="e.g. Machine learning, The French Revolution" />
                 <div>
@@ -289,7 +300,7 @@ export default function FlashcardView({ documentId, restoreSessionId, initialTop
                   {loading ? "Generating cards…" : <><Sparkles size={16} aria-hidden="true" />Generate {numCards} cards</>}
                 </Button>
               </form>
-              {reviewDeck.length > 0 && (
+              {reviewDeck.length > 0 && !loading && (
                 <div className="mt-6">
                   <p className="study-suggest-label">Or review what you got wrong:</p>
                   <button type="button" className="study-prompt" onClick={() => startReview()}>

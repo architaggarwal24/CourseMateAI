@@ -19,6 +19,7 @@ import { useHUDStore } from "@/hooks/useHUD";
 import { useStickToBottom } from "@/hooks/useStickToBottom";
 import { saveSession, loadSession } from "@/lib/sessions";
 import { forgetSession, rememberSession, useDraft } from "@/lib/study/memory";
+import { chatWatched, liveChat, setLiveChat, useLiveChat } from "@/lib/study/background";
 import { toast } from "@/components/ui/Toast";
 
 interface Message {
@@ -34,20 +35,23 @@ interface Message {
   outside?: boolean;
 }
 
-function parseFollowUps(content: string): { main: string; followUps: string[] } {
-  const parts = content.split("\n---\n");
-  if (parts.length < 2) return { main: content, followUps: [] };
-  const main = parts.slice(0, -1).join("\n---\n").trim();
-  const last = parts[parts.length - 1];
-  const followUps: string[] = [];
-  for (const line of last.split("\n")) {
-    const trimmed = line.trim();
-    if (trimmed.startsWith("- ") && trimmed.length > 10) {
-      const q = trimmed.slice(2).replace(/^\[/, "").replace(/\]$/, "").trim();
-      if (q.length > 5) followUps.push(q);
-    }
-  }
-  return { main, followUps };
+/**
+ * The tutor ends with a rule ("---", also "***" / "___") and 2-3 short next questions as a list ("- ", "* ", "• ",
+ * "1."), sometimes under a small heading. Those become chips under the answer, not part of it. A rule followed by
+ * anything else stays in the answer.
+ */
+export function parseFollowUps(content: string): { main: string; followUps: string[] } {
+  const text = content.replace(/\r\n?/g, "\n");
+  const rules = [...text.matchAll(/^[ \t]*(?:-{3,}|\*{3,}|_{3,})[ \t]*$/gm)];
+  const rule = rules[rules.length - 1];
+  if (!rule || rule.index === undefined) return { main: content, followUps: [] };
+  const tail = text.slice(rule.index + rule[0].length).split("\n").map((l) => l.trim()).filter(Boolean);
+  const bullet = /^(?:[-*•]|\d+[.)])\s+(.+)$/;
+  const heading = /^(?:#{1,4}\s*)?\**[^*]{0,40}(?:question|ask|next|explore|follow)[^*]{0,40}\**:?$/i;
+  const items = tail.filter((l) => !heading.test(l) || bullet.test(l));
+  if (!items.length || items.length > 5 || !items.every((l) => bullet.test(l))) return { main: content, followUps: [] };
+  const followUps = items.map((l) => l.match(bullet)![1].replace(/^\[|\]$/g, "").replace(/^\*\*(.*)\*\*$/, "$1").trim()).filter((q) => q.length > 5);
+  return { main: text.slice(0, rule.index).trim(), followUps };
 }
 
 /** How the tutor teaches (round 7). The student switches any time; the next answer follows it. */
@@ -76,10 +80,14 @@ const MAX_INPUT_PX = 160;
 // pdf.js is heavy: the viewer (and pdf.js with it) loads only when a citation is first opened
 const PdfViewer = dynamic(() => import("./pdf/PdfViewer"), { ssr: false });
 
+type LiveChatState = { messages: Message[]; followUps: string[]; failure: { error: unknown; question: string } | null; loading: boolean };
+
 export default function ChatView({ documentId, restoreSessionId }: { documentId?: string; restoreSessionId?: string }) {
   const [chatId, setChatId] = useState(() => restoreSessionId || crypto.randomUUID());
   const sessionId = documentId ?? chatId;
   const [messages, setMessages] = useState<Message[]>(() => {
+    const live = restoreSessionId ? liveChat<Message>(restoreSessionId) : undefined;   // an answer still being written
+    if (live) return live.messages;
     if (restoreSessionId) {
       try {
         const saved = loadSession(restoreSessionId);
@@ -92,9 +100,9 @@ export default function ChatView({ documentId, restoreSessionId }: { documentId?
   const { document: pdf } = useDocument(documentId);
   const uploadedFile = pdf?.status === "ready" ? pdf.filename : null;   // what the server says is usable
   const [input, setInput] = useDraft("chat", documentId);          // typed but not sent: kept (lib/study/memory.ts)
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(() => !!(restoreSessionId && liveChat(restoreSessionId)?.loading));
   const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
-  const [followUps, setFollowUps] = useState<string[]>([]);
+  const [followUps, setFollowUps] = useState<string[]>(() => (restoreSessionId && liveChat(restoreSessionId)?.followUps) || []);
   const [mode, setModeState] = useState<TutorMode>("explain");
   useEffect(() => { setModeState(savedMode()); }, []);
   const setMode = (m: TutorMode) => { setModeState(m); try { localStorage.setItem(MODE_KEY, m); } catch { /* private mode */ } };
@@ -120,8 +128,11 @@ export default function ChatView({ documentId, restoreSessionId }: { documentId?
   const refreshIfStale = useHUDStore((s) => s.refreshIfStale);
   const scroll = useStickToBottom<HTMLDivElement>();
 
-  // Leaving the screen cancels the request in flight (the server stops the model and records nothing).
-  useEffect(() => () => requestRef.current?.abort(), []);
+  // An answer keeps being written when you leave the screen (lib/study/background.ts): this view follows the
+  // conversation's live copy while it is open. (New chat / Clear stop it.)
+  useLiveChat<Message>(chatId, (c) => {
+    setMessages(c.messages); setFollowUps(c.followUps); setFailure(c.failure); setLoading(c.loading);
+  });
 
   // Keep the newest text in view - only while the reader is at the bottom.
   // an empty chat stays at the top (its heading and starter questions); once there is a conversation, follow it
@@ -144,8 +155,9 @@ export default function ChatView({ documentId, restoreSessionId }: { documentId?
     el.style.height = `${Math.min(el.scrollHeight, MAX_INPUT_PX)}px`;
   }, [input]);
 
+  /** Leave the conversation on screen (New chat, Clear, another from History). An answer still being written for it
+   * carries on in the background and is saved to History when done. */
   const cancelRequest = useCallback(() => {
-    requestRef.current?.abort();
     requestRef.current = null;
     setLoading(false);
   }, []);
@@ -177,20 +189,24 @@ export default function ChatView({ documentId, restoreSessionId }: { documentId?
   /** `base` is the conversation the question is added to (a retry passes the one without the failed question). */
   const sendMessage = useCallback(async (question: string, base: Message[] = messages) => {
     if (!question.trim() || loading) return;
-    setFollowUps([]);
-    setFailure(null);
-    setLoading(true);
+    const id = chatId, scope = documentId;
     setAnnouncement("The assistant is answering.");
     scroll.jump();                                          // sending is asking to see the answer
 
     const history = base.map((m) => ({ role: m.role, content: m.content }));
-    // The answer starts as an empty message that fills in as the text arrives.
-    setMessages([...base, { role: "user", content: question }, { role: "assistant", content: "" }]);
+    // The conversation lives outside this view while the answer is written, so leaving the screen doesn't stop it.
+    // The question is saved at once: coming back reopens this conversation (lib/study/memory.ts).
+    let live: LiveChatState = { messages: [...base, { role: "user", content: question }, { role: "assistant", content: "" }], followUps: [], failure: null, loading: true };
+    const put = (patch: Partial<LiveChatState>) => { live = { ...live, ...patch }; setLiveChat(id, live); };
+    put({});
+    saveSession(id, [...base, { role: "user", content: question }].map((m) => ({ ...m, type: "chat" })) as any);
+    rememberSession("chat", scope, id);
     const patchAnswer = (patch: (m: Message) => Message) =>
-      setMessages((prev) => (prev.length ? [...prev.slice(0, -1), patch(prev[prev.length - 1])] : prev));
+      put({ messages: live.messages.length ? [...live.messages.slice(0, -1), patch(live.messages[live.messages.length - 1])] : live.messages });
 
     const controller = new AbortController();
     requestRef.current = controller;
+    let answered = false;
     try {
       const answer = await askChat({
         question, sessionId, history, signal: controller.signal, mode,
@@ -201,7 +217,8 @@ export default function ChatView({ documentId, restoreSessionId }: { documentId?
       patchAnswer(() => answer.blocked
         ? { role: "assistant", content: answer.content, notFound: { question } }
         : { role: "assistant", content: main, sources: answer.sources, citations: answer.citations, ...(answer.coverage === "none" ? { outside: true } : {}) });
-      if (parsed.length > 0 && !answer.blocked) setFollowUps(parsed);
+      if (parsed.length > 0 && !answer.blocked) put({ followUps: parsed });
+      answered = true;
       setAnnouncement(answer.blocked ? "The document doesn't cover that question." : "Answer complete.");
       refreshIfStale(5_000);
       if (answer.rewards?.ok) {
@@ -209,14 +226,21 @@ export default function ChatView({ documentId, restoreSessionId }: { documentId?
         announceAchievements(answer.rewards.new_achievements);
       }
     } catch (e) {
-      if (isAbortError(e) || controller.signal.aborted) return;   // the user left / started over: nothing to show
-      setMessages((prev) => prev.slice(0, -1));                   // the empty (or half-written) answer goes; the question stays
-      setFailure({ error: e, question });
+      if (isAbortError(e) || controller.signal.aborted) { setLiveChat(id, undefined); return; }   // New chat / Clear: dropped
+      put({ messages: live.messages.slice(0, -1), failure: { error: e, question } });   // the half-written answer goes; the question stays
       setAnnouncement("");                                        // the error below announces itself (role="alert")
     } finally {
-      if (requestRef.current === controller) { requestRef.current = null; setLoading(false); }
+      if (requestRef.current === controller) requestRef.current = null;
+      if (!controller.signal.aborted) {
+        if (answered) {
+          saveSession(id, live.messages.map((m) => ({ ...m, type: "chat" })) as any);
+          if (!chatWatched(id)) toast.success("Your tutor answered. Open Chat to read it.");
+        }
+        put({ loading: false });
+        setLiveChat(id, undefined);
+      }
     }
-  }, [loading, messages, sessionId, refreshIfStale, scroll, mode]);
+  }, [loading, messages, sessionId, refreshIfStale, scroll, mode, chatId, documentId]);
 
   /** Ask the failed question again (the conversation without it, so it isn't in the history twice). */
   const retryFailed = () => {

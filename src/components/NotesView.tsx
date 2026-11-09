@@ -4,6 +4,7 @@ import dynamic from "next/dynamic";
 import { Download, RefreshCw, Sparkles, FileText, Zap, Brain, NotebookPen, TableCells, List, KeyRound, ScrollText, Printer, Copy } from "@/components/icons";
 import HistoryPanel from "./HistoryPanel";
 import StudyToolbar from "./study/StudyToolbar";
+import Writing from "./study/Writing";
 import ChatMarkdown from "./chat/ChatMarkdown";
 import CitationList from "./chat/CitationList";
 import { Button, Input, Tabs } from "@/components/ui";
@@ -11,6 +12,7 @@ import { generateNotes } from "@/lib/api";
 import { useHUDStore } from "@/hooks/useHUD";
 import { saveSessionData, loadSessionData } from "@/lib/sessions";
 import { forgetSession, rememberSession, useDraft } from "@/lib/study/memory";
+import { NothingMade, clearJob, jobErrorToast, startJob, useJob } from "@/lib/study/background";
 import { citedFirst, citationText, type Citation } from "@/lib/study/citations";
 import { toast } from "@/components/ui/Toast";
 
@@ -60,7 +62,6 @@ export default function NotesView({ documentId, restoreSessionId }: { documentId
   const refreshIfStale = useHUDStore((s) => s.refreshIfStale);
   const [topic, setTopic] = useDraft("notes", documentId);         // typed but not sent: kept (lib/study/memory.ts)
   const [format, setFormat] = useState("summary");
-  const [loading, setLoading] = useState(false);
   const [notes, setNotes] = useState<string | null>(null);
   const [citations, setCitations] = useState<Citation[]>([]);
   const [tab, setTab] = useState<"full" | "outline">("full");
@@ -86,37 +87,38 @@ export default function NotesView({ documentId, restoreSessionId }: { documentId
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Writing notes carries on when you leave this screen (lib/study/background.ts): the job saves them to History and
+  // remembers them as this tool's open notes; this view shows them when it finishes (now, or when you come back).
+  const job = useJob("notes", documentId);
+  const loading = job?.status === "running";
   const handleGenerate = async (customTopic?: string) => {
     const finalTopic = customTopic || topic;
     if (!finalTopic.trim()) { toast.error("Please enter a topic"); return; }
-    setLoading(true);
-    let data: Awaited<ReturnType<typeof generateNotes>> | undefined;
-    try {
+    const id = historyId, scope = documentId, fmt = format;
+    startJob("notes", scope, finalTopic, async () => {
       // Use existing sessionId so the PDF uploaded to this session is found on the backend
-      data = await generateNotes(finalTopic, format, sessionId);
-    } catch (e) {
-      setLoading(false);
-      toast.apiError(e, { onRetry: () => handleGenerate(finalTopic) });
-      return;
-    }
-    setLoading(false);
-    if (typeof data?.content === "string" && data.content) {
+      const data = await generateNotes(finalTopic, fmt, sessionId);
+      if (typeof data?.content !== "string" || !data.content) throw new NothingMade("Notes generation failed. Make sure a PDF is uploaded.");
       const cites = Array.isArray(data.citations) ? data.citations : [];
-      setNotes(data.content);
-      setCitations(cites);
-      setTopic(finalTopic);
-      setTab("full");
-      saveSessionData(historyId, "notes", `${finalTopic} · ${formatLabel(format)}`,
-        { notes: data.content, topic: finalTopic, format, citations: cites } as SavedNotes, finalTopic);
-      rememberSession("notes", documentId, historyId);     // these notes reopen here next time
+      saveSessionData(id, "notes", `${finalTopic} · ${formatLabel(fmt)}`,
+        { notes: data.content, topic: finalTopic, format: fmt, citations: cites } as SavedNotes, finalTopic);
+      rememberSession("notes", scope, id);                 // these notes reopen here next time
       if (data.rewards?.ok) {
         toast.success(`+${data.rewards.xp_gained} XP | +${data.rewards.coins_gained} Coins`, { icon: "🎉" });
         refreshIfStale(5_000);
       }
-    } else {
-      toast.error("Notes generation failed. Make sure a PDF is uploaded.");
-    }
+      return id;
+    }, {
+      onError: (e) => jobErrorToast(e, toast, () => handleGenerate(finalTopic)),
+      ready: (label) => toast.success(`Your notes on “${label}” are ready. Open Notes to read them.`),
+      meta: `${formatLabel(fmt).toLowerCase()} notes`,
+    });
   };
+  // a finished job (started here, or before you left and came back): show its notes
+  useEffect(() => {
+    if (job?.status === "done" && job.sessionId) { loadHistorySession(job.sessionId); clearJob("notes", documentId); }
+    else if (job?.status === "failed") clearJob("notes", documentId);
+  }, [job?.status]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const loadHistorySession = (id: string) => {
     const data = loadSessionData<SavedNotes>(id);
@@ -208,7 +210,11 @@ export default function NotesView({ documentId, restoreSessionId }: { documentId
                 </div>
               </div>
 
-              <form className="study-card space-y-5 mb-8" onSubmit={(e) => { e.preventDefault(); void handleGenerate(); }}>
+              {loading && job && (
+                <Writing what={job.meta ?? "notes"} topic={job.label} startedAt={job.startedAt}
+                  steps={["Finding the passages about it in your PDFs…", "Reading them closely…", "Writing the notes…", "Adding page links to every fact…", "Almost done…"]} />
+              )}
+              <form hidden={loading} className="study-card space-y-5 mb-8" onSubmit={(e) => { e.preventDefault(); void handleGenerate(); }}>
                 <Input label="What would you like notes on?" value={topic} onChange={(e) => setTopic(e.target.value)}
                        placeholder="e.g. Machine learning basics, Chapter 3 summary, Key definitions" />
                 <fieldset className="note-formats">
@@ -230,8 +236,7 @@ export default function NotesView({ documentId, restoreSessionId }: { documentId
                   {loading ? "Generating notes…" : <><Sparkles size={16} aria-hidden="true" />Generate notes</>}
                 </Button>
               </form>
-
-              <div>
+              <div hidden={loading}>
                 <p className="study-suggest-label">Or start with one of these:</p>
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                   {TOPIC_SUGGESTIONS.map((s) => (
