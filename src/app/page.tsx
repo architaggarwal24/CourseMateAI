@@ -7,11 +7,9 @@ import Landing from "@/components/landing/Landing";
 import { hasSessionCookie } from "@/lib/auth/session-cookie";
 import { ROUTES } from "@/lib/routes";
 import { plansCatalog } from "@/server/plans";
+import { jsonLdScript, pageMetadata, siteJsonLd } from "@/lib/site";
 
-export const metadata: Metadata = {
-  title: "CourseMateAI: your PDFs, turned into a tutor",
-  description: "Upload your course notes and get a tutor that cites the page, quizzes and flashcards from your own material, spaced-repetition review and a pixel hero that levels up as you study.",
-};
+export const metadata: Metadata = pageMetadata("/", { absoluteTitle: true });
 
 export default async function Home() {
   const jar = await cookies();
@@ -20,5 +18,11 @@ export default async function Home() {
     tier: p.tier, name: p.name, tagline: p.tagline, price_month: p.price_month, highlights: p.highlights,
     limits: { documents: p.limits.documents, ai_calls_day: p.limits.ai_calls_day, courses: p.limits.courses, pdf_mb: p.limits.pdf_mb },
   }));
-  return <Landing plans={plans} />;
+  return (
+    <>
+      {/* Organization + WebSite, only verified facts (src/lib/site.ts) */}
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLdScript(siteJsonLd()) }} />
+      <Landing plans={plans} />
+    </>
+  );
 }

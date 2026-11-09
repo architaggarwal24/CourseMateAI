@@ -6,16 +6,23 @@ import { geistMono } from "@/fonts/geist";
 import { bricolage, onest } from "@/fonts/brand";
 import { THEME_SCRIPT } from "@/lib/theme";
 import { SIDEBAR_SCRIPT } from "@/lib/sidebar";
+import { SHARE_IMAGE, SITE_NAME, siteOrigin } from "@/lib/site";
 import "@/styles/tokens.css";
 import "@/styles/retro.css";
 import "@/components/ui/ui.css";
 import "@/components/fx/fx.css";
 import "./globals.css";
 
+// Every page inherits these; public pages set their own title, description, canonical and social tags
+// (src/lib/site.ts pageMetadata), private ones noindex. The canonical origin is NEXT_PUBLIC_SITE_URL (validated).
 export const metadata: Metadata = {
-  title: "CourseMateAI",
-  description: "AI-powered study companion with gamification",
-  appleWebApp: { capable: true, title: "CourseMateAI", statusBarStyle: "black-translucent" },
+  metadataBase: siteOrigin(),
+  applicationName: SITE_NAME,
+  title: { default: SITE_NAME, template: `%s | ${SITE_NAME}` },
+  description: "Turn your PDFs into a study companion: a tutor that cites the page, quizzes, flashcards, notes, spaced-repetition review and a pixel hero that levels up as you study.",
+  appleWebApp: { capable: true, title: SITE_NAME, statusBarStyle: "black-translucent" },
+  openGraph: { type: "website", siteName: SITE_NAME, locale: "en_IN", images: [SHARE_IMAGE] },
+  twitter: { card: "summary_large_image", images: [SHARE_IMAGE.url] },
 };
 
 export const viewport: Viewport = {

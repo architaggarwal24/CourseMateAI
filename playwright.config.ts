@@ -40,6 +40,8 @@ export default defineConfig({
   ],
   webServer: process.env.PW_BASE_URL ? undefined : {
     command: `npm run build && npx next start -p ${PORT}`,
+    // a production build needs the canonical address (src/lib/site.ts); the tests check it is used everywhere
+    env: { NEXT_PUBLIC_SITE_URL: process.env.NEXT_PUBLIC_SITE_URL ?? "https://coursemateai.architaggarwal.workers.dev" },
     url: `http://localhost:${PORT}/login`,
     reuseExistingServer: !process.env.CI,
     timeout: 600_000,

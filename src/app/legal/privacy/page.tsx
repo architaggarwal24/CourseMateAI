@@ -1,6 +1,7 @@
+import { pageMetadata } from "@/lib/site";
 import { OPERATOR, UPDATED } from "../legal";
 
-export const metadata = { title: "Privacy Policy · CourseMateAI" };
+export const metadata = pageMetadata("/legal/privacy");
 
 export default function PrivacyPage() {
   return (

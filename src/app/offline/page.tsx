@@ -1,6 +1,8 @@
+import { NOINDEX } from "@/lib/site";
 import { WifiOff } from "@/components/icons";
 
-export const metadata = { title: "Offline · CourseMateAI" };
+// A utility page for the installed app: never indexed.
+export const metadata = { title: "Offline", robots: NOINDEX };
 
 // What the installed app shows when there is no connection (public/sw.js caches this page).
 export default function OfflinePage() {

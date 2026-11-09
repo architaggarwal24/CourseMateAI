@@ -49,6 +49,9 @@ jobs:
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
       WRANGLER_SEND_METRICS: "false"
       NEXT_TELEMETRY_DISABLED: "1"
+      # The canonical address for search and link previews (src/lib/site.ts), read at build time. A production build
+      # without it fails. Change it here if the site moves to its own domain.
+      NEXT_PUBLIC_SITE_URL: https://coursemateai.architaggarwal.workers.dev
     steps:
       - uses: actions/checkout@v4
       - name: Cloudflare is set up

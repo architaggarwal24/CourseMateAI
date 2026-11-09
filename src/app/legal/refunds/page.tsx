@@ -1,6 +1,7 @@
+import { pageMetadata } from "@/lib/site";
 import { OPERATOR, UPDATED } from "../legal";
 
-export const metadata = { title: "Cancellation & Refund Policy · CourseMateAI" };
+export const metadata = pageMetadata("/legal/refunds");
 
 export default function RefundsPage() {
   return (

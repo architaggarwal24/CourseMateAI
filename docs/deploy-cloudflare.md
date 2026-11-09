@@ -229,6 +229,13 @@ The webhook URL is `https://<address>/api/v1/billing/webhook`. Migration `0007_b
 
 `/legal/terms`, `/legal/privacy` and `/legal/refunds`, linked from the sign-in page. Razorpay asks for these (plus a contact) when it reviews the site. The operator's name, email and the "last updated" date are in `src/app/legal/legal.ts`. Read them through before going live: they are a sensible starting point, not legal advice.
 
+## Search engines and link previews (SEO P0)
+
+- **`NEXT_PUBLIC_SITE_URL`** (build time, not a Worker setting): the one canonical address, e.g. `https://coursemateai.architaggarwal.workers.dev`. Canonical tags, Open Graph/Twitter tags, `robots.txt`, `sitemap.xml` and the homepage JSON-LD all use it. It's read when the app is **built**, so set it where `opennextjs-cloudflare build` runs: the deploy job in `.github/workflows/ci.yml` already sets it; for a deploy from your computer put `NEXT_PUBLIC_SITE_URL=https://...` in `.env.production` (not committed). A production build without a valid https address **fails on purpose**. If you move to your own domain, change it there, set `BETTER_AUTH_URL` to match, and redeploy.
+- **Indexed:** only the pages in `src/lib/site.ts` `PUBLIC_PAGES` (the homepage and the three policies), and only they are in `/sitemap.xml`.
+- **Never indexed:** the app (`/today`, `/study`, `/hero`, `/account`), `/login`, `/offline` and `/api/*`. They carry `noindex` in the page and an `X-Robots-Tag` header. `robots.txt` skips only `/api/`: blocking the app pages would stop crawlers from seeing their noindex, and sign-in is what keeps them private.
+- **Check after a deploy:** `https://<site>/robots.txt`, `https://<site>/sitemap.xml`, `https://<site>/opengraph-image.png` (all 200), and that the Cloudflare dashboard has no bot challenge on those paths (Security → Bots).
+
 ## Working on it locally
 
 | Command (in the project folder) | What it does |

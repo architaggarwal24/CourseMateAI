@@ -1,6 +1,7 @@
+import { pageMetadata } from "@/lib/site";
 import { OPERATOR, UPDATED } from "../legal";
 
-export const metadata = { title: "Terms of Service · CourseMateAI" };
+export const metadata = pageMetadata("/legal/terms");
 
 export default function TermsPage() {
   return (
