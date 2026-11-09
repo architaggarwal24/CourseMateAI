@@ -6,7 +6,7 @@
   "main": ".open-next/worker.js",
   "compatibility_date": "2026-10-01",
   "compatibility_flags": ["nodejs_compat"],
-  "assets": { "directory": ".open-next/assets", "binding": "ASSETS" },
+  "assets": { "directory": ".open-next/assets", "binding": "ASSETS", "html_handling": "none" },
   "observability": { "enabled": true },
   // Settings typed into the Cloudflare dashboard (OWNER_EMAIL, LLM_FAST, ...) survive a deploy.
   "keep_vars": true,
