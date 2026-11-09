@@ -12,6 +12,12 @@ import { LOST_PAGES, PAGES, SCRIBE, SEALED_LINES } from "@/lib/bestiary/content"
 import { heroById } from "@/lib/pixel/heroes";
 import { shortcutBlocked } from "@/lib/keys";
 import { tome, tomeCaps } from "@/fonts/tome";
+import Link from "next/link";
+import { ROUTES } from "@/lib/routes";
+import {
+  fightNotes, huntTotals, markSeen, nextQuarry, pendingRituals, readSeen, seenNow, tierMap, writeSeen, type Rituals, type Seen,
+} from "@/lib/bestiary/desk";
+import { DeskProps, HuntRecordPanel, TierMapPanel } from "./DeskPanels";
 import "./book.css";
 
 // ── pages ─────────────────────────────────────────────────────────────────────────────────────────────────────
@@ -138,7 +144,30 @@ function ContentsPage({ data, goTo, pageOf }: { data: BestiaryResponse; goTo: (s
   );
 }
 
-function ArtPage({ c, nextTierHint }: { c: BestiaryEntry; nextTierHint: string | null }) {
+/** How much tougher a tier makes a creature: "+15% HP", "base". */
+const scaleText = (x: number, what: string, more: boolean) => (x === 1 ? `base ${what}` : `${more ? "+" : "−"}${Math.round(Math.abs(x - 1) * 100)}% ${what}`);
+
+/**
+ * A creature's sketch, alive (round 7): drawn in brown ink on the page, it takes its colours when you point at it,
+ * and tapping it provokes it into a strike. Only on the open page (not on a leaf that's turning).
+ */
+function LiveSketch({ c }: { c: BestiaryEntry }) {
+  const [anim, setAnim] = useState<"idle" | "attack" | "cast">("idle");
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => () => { if (timer.current) clearTimeout(timer.current); }, []);
+  const provoke = () => {
+    setAnim((a) => (a === "attack" ? "cast" : "attack"));
+    if (timer.current) clearTimeout(timer.current);
+    timer.current = setTimeout(() => setAnim("idle"), 1100);
+  };
+  return (
+    <button type="button" className="tome-art__sketch tome-art__sketch--live" onClick={provoke} aria-label={`Provoke the ${c.name}`} data-anim={anim}>
+      <PixelSprite boss={c.species} flip anim={anim} className="tome-art__sprite" />
+    </button>
+  );
+}
+
+function ArtPage({ c, nextTierHint, live, canHunt }: { c: BestiaryEntry; nextTierHint: string | null; live?: boolean; canHunt?: boolean }) {
   const text = PAGES[c.species];
   if (!c.open) {
     return (
@@ -154,10 +183,13 @@ function ArtPage({ c, nextTierHint }: { c: BestiaryEntry; nextTierHint: string |
     );
   }
   const r = c.record;
+  const notes = fightNotes(c);
   return (
     <div className="tome-art">
       <p className="tome-tier">Tier {ROMAN[c.tier]} · {c.origin} myth</p>
-      <div className="tome-art__sketch" aria-hidden="true"><PixelSprite boss={c.species} flip className="tome-art__sprite" /></div>
+      {live ? <LiveSketch c={c} /> : (
+        <div className="tome-art__sketch" aria-hidden="true"><PixelSprite boss={c.species} flip anim="idle" className="tome-art__sprite" /></div>
+      )}
       <h3 className="tome-art__name">{c.name}</h3>
       <p className="tome-art__epithet">{text?.epithet}</p>
       {c.mastery !== "none" && <p className="tome-seal" data-mastery={c.mastery}>{MASTERY[c.mastery]}</p>}
@@ -167,10 +199,38 @@ function ArtPage({ c, nextTierHint }: { c: BestiaryEntry; nextTierHint: string |
         <div><dt>Best time</dt><dd>{mmss(r?.best_seconds ?? null)}</dd></div>
         <div><dt>Best aim</dt><dd>{r?.best_accuracy !== null && r?.best_accuracy !== undefined ? `${r.best_accuracy}%` : "-"}</dd></div>
       </dl>
-      {!c.defeated && <p className="tome-art__hint">Defeat it to finish this page.</p>}
+      {c.stats && (
+        <div className="tome-stats">
+          <p><span className="tome-label">Hide.</span> {scaleText(c.stats.hp_scale, "HP", true)} · {scaleText(c.stats.time_scale, "time per question", false)}</p>
+          <p><span className="tome-label">Blows.</span> {c.stats.attacks.join(", ")}. <span className="tome-label">Special.</span> {c.stats.special}.</p>
+        </div>
+      )}
+      {notes.length > 0 && (
+        <ul className="tome-notes" aria-label="Fight notes">
+          {notes.map((n) => <li key={n}>{n}</li>)}
+        </ul>
+      )}
+      {canHunt && (
+        <Link className="tome-hunt" href={ROUTES.heroHunt(c.species)}>{c.defeated ? "Hunt it again" : "Hunt it"}</Link>
+      )}
     </div>
   );
 }
+
+/** The unlock rituals (round 7): a newly written page burns its ink in; a newly unsealed tier's wax seal cracks. */
+function Ritual({ kind, reduce, onDone }: { kind: "burn" | "seal"; reduce: boolean; onDone: () => void }) {
+  useEffect(() => {
+    const t = setTimeout(onDone, reduce ? 0 : kind === "seal" ? RITUAL_MS.seal : RITUAL_MS.burn);
+    return () => clearTimeout(t);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  if (reduce) return null;
+  return kind === "burn" ? (
+    <div className="tome-burn" aria-hidden="true"><span className="tome-burn__edge" /></div>
+  ) : (
+    <div className="tome-wax" aria-hidden="true"><span className="tome-wax__half" data-half="l" /><span className="tome-wax__half" data-half="r" /></div>
+  );
+}
+export const RITUAL_MS = { burn: 2300, seal: 1700 } as const;
 
 function TextPage({ c, page, champion }: { c: BestiaryEntry; page: BestiaryPage | null; champion: string }) {
   const text = PAGES[c.species];
@@ -328,12 +388,29 @@ export default function BestiaryBook() {
   const leafEls = useRef<(HTMLDivElement | null)[]>([]);
   const raf = useRef(0);
 
+  // the unlock rituals still to play (pages written, tiers unsealed since this device last opened the book)
+  const [rituals, setRituals] = useState<Rituals>({ burn: [], seals: [] });
+  const seen = useRef<Seen | null>(null);
+  const [announce, setAnnounce] = useState("");
   useEffect(() => {
     if (guest) return;
     let alive = true;
-    fetchBestiary().then((d) => { if (alive) setData(d); }).catch(() => { /* the visitor's book stays */ });
+    fetchBestiary().then((d) => {
+      if (!alive) return;
+      setData(d);
+      const before = readSeen();
+      if (!before) { seen.current = seenNow(d); writeSeen(seen.current); return; }   // first visit: nothing to replay
+      seen.current = before;
+      setRituals(pendingRituals(d, before));
+    }).catch(() => { /* the visitor's book stays */ });
     return () => { alive = false; };
   }, [guest]);
+  const finishRitual = useCallback((done: { species?: string; tier?: number }, line: string) => {
+    seen.current = markSeen(seen.current ?? { written: [], tiers: [] }, done);
+    writeSeen(seen.current);
+    setRituals((r) => ({ burn: r.burn.filter((x) => x !== done.species), seals: r.seals.filter((t) => t !== done.tier) }));
+    setAnnounce(line);
+  }, []);
 
   const all = useMemo(() => leaves(data.creatures), [data.creatures]);
   const pages: [Leaf, Leaf | null][] = useMemo(() => (wide ? spreads(all) : all.map((l) => [l, null] as [Leaf, Leaf | null])), [all, wide]);
@@ -423,6 +500,9 @@ export default function BestiaryBook() {
     const i = artIndex(species);
     if (i >= 0) turnTo(wide ? Math.floor(i / 2) : i);
   }, [artIndex, turnTo, wide]);
+  /** The tier's first page (the tier map). */
+  const firstOfTier = useCallback((tier: number) => data.creatures.find((c) => c.tier === tier)?.species, [data.creatures]);
+  const goToTier = useCallback((tier: number) => { const sp = firstOfTier(tier); if (sp) goTo(sp); }, [firstOfTier, goTo]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -465,7 +545,8 @@ export default function BestiaryBook() {
   };
 
   const folioOf = (l: Leaf) => all.indexOf(l) + 1;
-  const render = (l: Leaf | null, side: "left" | "right" | "single"): ReactNode => {
+  /** `live`: the page lies open (not on a turning leaf): its creature moves, and its ritual plays. */
+  const render = (l: Leaf | null, side: "left" | "right" | "single", live = false): ReactNode => {
     if (!l) return <Paper side={side} seed={seedOf(`blank-${side}`)} />;
     const seed = seedOf(`${l.kind}-${"species" in l ? l.species : ""}`);
     const folio = folioOf(l);
@@ -474,12 +555,19 @@ export default function BestiaryBook() {
     if (l.kind === "end") return <Paper side={side} seed={seed} folio={folio}><EndPage /></Paper>;
     const c = byId.get(l.species)!;
     const label = c.open ? `${c.name}${l.kind === "art" ? "" : ", its page"}` : "A sealed page";
+    const sealHere = live && l.kind === "art" && rituals.seals.includes(c.tier) && firstOfTier(c.tier) === c.species;
+    const burnHere = live && !sealHere && rituals.burn.includes(c.species);
+    const ritual = sealHere ? (
+      <Ritual key={`seal-${c.tier}`} kind="seal" reduce={reduce} onDone={() => finishRitual({ tier: c.tier }, `The seal breaks: tier ${ROMAN[c.tier]} is open.`)} />
+    ) : burnHere ? (
+      <Ritual key={`burn-${c.species}-${l.kind}`} kind="burn" reduce={reduce} onDone={() => finishRitual({ species: c.species }, `The ${c.name}'s page is written in full.`)} />
+    ) : null;
     if (l.kind === "art") {
       const prev = data.tiers.find((t) => t.tier === c.tier - 1);
       const hint = !c.open && prev ? `Beat ${prev.opens_next_at ?? 2} creatures of tier ${ROMAN[prev.tier]} to break this seal (${prev.beaten} so far).` : null;
-      return <Paper side={side} label={label} seed={seed} folio={folio}><ArtPage c={c} nextTierHint={hint} /></Paper>;
+      return <Paper side={side} label={label} seed={seed} folio={folio}><ArtPage c={c} nextTierHint={hint} live={live} canHunt={live && !guest} />{ritual}</Paper>;
     }
-    return <Paper side={side} label={label} seed={seed} folio={folio}><TextPage c={c} page={details[l.species] ?? null} champion={champion} /></Paper>;
+    return <Paper side={side} label={label} seed={seed} folio={folio}><TextPage c={c} page={details[l.species] ?? null} champion={champion} />{ritual}</Paper>;
   };
   const blank = (side: "left" | "right" | "single", k: number) => <Paper side={side} seed={seedOf(`leaf-${k}-${side}`)} />;
 
@@ -508,31 +596,52 @@ export default function BestiaryBook() {
     }
   } else {
     const cur = pages[index];
-    base = wide ? <>{render(cur[0], "left")}{render(cur[1], "right")}</> : render(cur[0], "single");
+    base = wide ? <>{render(cur[0], "left", true)}{render(cur[1], "right", true)}</> : render(cur[0], "single", true);
   }
 
   const shown = turn ? turn.to : index;
+  const stops = tierMap(data);
+  const totals = huntTotals(data);
+  // fresh ink: what changed since you last opened the book, with a way to turn straight to it
+  const fresh = [
+    ...rituals.seals.map((t) => ({ key: `t${t}`, label: `Tier ${ROMAN[t]} unsealed`, go: () => goToTier(t) })),
+    ...rituals.burn.map((sp) => ({ key: sp, label: `${byId.get(sp)?.name ?? "A page"} written in full`, go: () => goTo(sp) })),
+  ];
   return (
-    <section className={`tome ${tome.variable} ${tomeCaps.variable}`} aria-labelledby="tome-title">
-      <h2 id="tome-title" className="sr-only">Bestiary book</h2>
-      <div ref={bookRef} className="tome-book" data-wide={wide || undefined} data-turning={turn ? "true" : undefined}
-           onPointerDown={onPointerDown} onPointerMove={onPointerMove} onPointerUp={onPointerUp} onPointerCancel={onPointerUp}>
-        <div className="tome-stack" data-side="left" aria-hidden="true" style={{ "--depth": Math.min(8, shown + 1) } as CSSProperties} />
-        <div className="tome-stack" data-side="right" aria-hidden="true" style={{ "--depth": Math.min(8, pages.length - shown) } as CSSProperties} />
-        {base}
-        {turn && <div className="tome-cast" aria-hidden="true" />}
-        {leavesNode}
+    <div className={`tome-desk ${tome.variable} ${tomeCaps.variable}`}>
+      <DeskProps />
+      <div className="tome-desk__grid">
+        <section className="tome" aria-labelledby="tome-title">
+          <h2 id="tome-title" className="sr-only">Bestiary book</h2>
+          {fresh.length > 0 && (
+            <div className="tome-fresh" role="status">
+              <span className="tome-fresh__label">Fresh ink</span>
+              {fresh.map((f) => <button key={f.key} type="button" className="tome-fresh__item" onClick={f.go}>{f.label}</button>)}
+            </div>
+          )}
+          <div ref={bookRef} className="tome-book" data-wide={wide || undefined} data-turning={turn ? "true" : undefined}
+               onPointerDown={onPointerDown} onPointerMove={onPointerMove} onPointerUp={onPointerUp} onPointerCancel={onPointerUp}>
+            <div className="tome-stack" data-side="left" aria-hidden="true" style={{ "--depth": Math.min(8, shown + 1) } as CSSProperties} />
+            <div className="tome-stack" data-side="right" aria-hidden="true" style={{ "--depth": Math.min(8, pages.length - shown) } as CSSProperties} />
+            {base}
+            {turn && <div className="tome-cast" aria-hidden="true" />}
+            {leavesNode}
+          </div>
+          <div className="tome-controls">
+            <button type="button" className="tome-turn" onClick={() => flip(-1)} disabled={index === 0 || !!turn} aria-label="Previous page">
+              <ChevronLeft size={18} aria-hidden="true" />
+            </button>
+            <span className="tome-folio" aria-live="polite">{wide ? `Pages ${index * 2 + 1}–${Math.min(all.length, index * 2 + 2)}` : `Page ${index + 1}`} of {all.length}</span>
+            <button type="button" className="tome-turn" onClick={() => flip(1)} disabled={index >= pages.length - 1 || !!turn} aria-label="Next page">
+              <ChevronRight size={18} aria-hidden="true" />
+            </button>
+          </div>
+          <p className="tome-help">Arrow keys or drag the page to turn it. Tap a creature to provoke it. Choose one in the contents to turn straight to it.</p>
+        </section>
+        <TierMapPanel stops={stops} onPick={goToTier} />
+        <HuntRecordPanel totals={totals} quarry={nextQuarry(data)} canHunt={!guest} onTurnTo={goTo} />
       </div>
-      <div className="tome-controls">
-        <button type="button" className="tome-turn" onClick={() => flip(-1)} disabled={index === 0 || !!turn} aria-label="Previous page">
-          <ChevronLeft size={18} aria-hidden="true" />
-        </button>
-        <span className="tome-folio" aria-live="polite">{wide ? `Pages ${index * 2 + 1}–${Math.min(all.length, index * 2 + 2)}` : `Page ${index + 1}`} of {all.length}</span>
-        <button type="button" className="tome-turn" onClick={() => flip(1)} disabled={index >= pages.length - 1 || !!turn} aria-label="Next page">
-          <ChevronRight size={18} aria-hidden="true" />
-        </button>
-      </div>
-      <p className="tome-help">Arrow keys or drag the page to turn it. Choose a creature in the contents to turn straight to it.</p>
-    </section>
+      <p className="sr-only" aria-live="polite">{announce}</p>
+    </div>
   );
 }

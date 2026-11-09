@@ -5,6 +5,9 @@ import { ArrowLeft, Flame, Skull, Swords, Target, Trophy } from "@/components/ic
 import GearChips from "@/components/champion/GearChips";
 import PixelSprite from "./pixel/PixelSprite";
 import { useFighter, useFighterPet } from "./pixel/useFighter";
+import { bossById } from "@/lib/pixel/bosses";
+
+const huntName = (species: string) => bossById(species)?.name ?? "creature";
 import FileUploader from "@/components/FileUploader";
 import { Badge, Button, Input } from "@/components/ui";
 import { previewEquipped, useHeroStore } from "@/hooks/useHero";
@@ -15,7 +18,7 @@ import { DIFFICULTIES, DIFFICULTY_BLURB, DIFFICULTY_LABEL, type Difficulty, type
 const mmss = (seconds: number) => `${Math.floor(seconds / 60)}m ${Math.round(seconds % 60)}s`;
 
 /** Pick a document, a topic and a difficulty; the server builds the boss. */
-export default function SummonPanel({ sessionId, starting, onSummon, mode = "quick", onBack, initialTopic }: {
+export default function SummonPanel({ sessionId, starting, onSummon, mode = "quick", onBack, initialTopic, hunt = null, onCancelHunt }: {
   sessionId: string;
   starting: boolean;
   onSummon: (topic: string, difficulty: Difficulty, mode: "quick" | "nemesis") => void;
@@ -24,6 +27,9 @@ export default function SummonPanel({ sessionId, starting, onSummon, mode = "qui
   onBack?: () => void;
   /** The boss topic to start from (the concept map's "Summon its boss"). */
   initialTopic?: string;
+  /** A Hunt (the Bestiary's Hunt button): this creature answers, whatever the topic. */
+  hunt?: string | null;
+  onCancelHunt?: () => void;
 }) {
   const nemesis = mode === "nemesis";
   const fighter = useFighter();
@@ -79,10 +85,18 @@ export default function SummonPanel({ sessionId, starting, onSummon, mode = "qui
         <div className="arena-summon__head">
           <div>
             {onBack && <Button variant="ghost" size="sm" onClick={onBack} className="-ml-2 mb-1"><ArrowLeft size={14} aria-hidden="true" />Arena</Button>}
-            <h2 id="arena-summon-title" className="arena__title">{nemesis ? "Nemesis" : "Quick Battle"}</h2>
+            <h2 id="arena-summon-title" className="arena__title">{nemesis ? "Nemesis" : hunt ? `Hunt the ${huntName(hunt)}` : "Quick Battle"}</h2>
             <p className="arena__sub">{nemesis
               ? "A boss built from the concepts you keep getting wrong - in quizzes, flashcards and the arena."
+              : hunt ? `Pick a topic from your document: the ${huntName(hunt)} will test you on it.`
               : "Summon a boss from your document and defeat it with what you know."}</p>
+            {hunt && onCancelHunt && (
+              <p className="arena-hunt">
+                <PixelSprite boss={hunt} flip className="arena-hunt__sprite" />
+                <span>Hunting <b>{huntName(hunt)}</b></span>
+                <Button size="sm" variant="ghost" onClick={onCancelHunt}>Any creature</Button>
+              </p>
+            )}
           </div>
           <FileUploader sessionId={sessionId} />
         </div>

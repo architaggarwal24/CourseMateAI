@@ -6,6 +6,9 @@
   "main": ".open-next/worker.js",
   "compatibility_date": "2026-10-01",
   "compatibility_flags": ["nodejs_compat"],
+  // html_handling "none": a file like /google<id>.html (Search Console's ownership check) is served as it is. The
+  // default ("auto-trailing-slash") answers it with a 307 to /google<id>, which the check doesn't accept. The app's
+  // own pages aren't static .html files, so nothing else changes.
   "assets": { "directory": ".open-next/assets", "binding": "ASSETS", "html_handling": "none" },
   "observability": { "enabled": true },
   // Settings typed into the Cloudflare dashboard (OWNER_EMAIL, LLM_FAST, ...) survive a deploy.

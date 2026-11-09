@@ -204,6 +204,19 @@ describe("a battle", () => {
   });
 });
 
+describe("a Hunt (the Bestiary's Hunt button)", () => {
+  it("summons the creature asked for when its page is open, and refuses a sealed one", async () => {
+    const b = await person(mail, "free@example.com", "free");
+    const id = await uploadPdf(b, "Bio.pdf", BIO);
+    const sealed = await battles.POST(post(b, "/api/v1/arena/battles", { session_id: id, topic: "mitochondria", difficulty: "easy", species: "hydra" }));
+    expect(sealed.status).toBe(409);
+    expect((await json(sealed)).error).toMatchObject({ code: "creature_sealed", details: { species: "hydra" } });
+    const want = (await summon("mitochondria", openSpecies(new Map()))).species === "oni" ? "kitsune" : "oni";   // not what the topic calls
+    const s = await start(b, id, { species: want });
+    expect(s.boss.species).toBe(want);
+  });
+});
+
 describe("an expedition", () => {
   it("draws three acts once; a fight node starts a run battle; abandoning ends both", async () => {
     const b = await person(mail, "free@example.com", "free");

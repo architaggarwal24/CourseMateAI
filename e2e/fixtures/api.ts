@@ -287,7 +287,8 @@ export async function mockApi(page: Page, { signedIn = true, advanced = true, do
           return { species, tier, open, met: beaten, defeated: beaten, name: open ? NAMES[species][0] : null, origin: open ? NAMES[species][1] : null,
             teaser_topic: species === "hydra" ? "cell biology" : null, mastery: beaten ? "bronze" : "none",
             record: beaten ? { fights: 2, wins: 1, losses: 1, flawless_wins: 0, nightmare_wins: 0, best_seconds: 140, best_accuracy: 88, first_win_at: "2026-11-05T09:00:00Z", last_fought_at: "2026-11-06T09:00:00Z" } : null,
-            bane: open ? { clue: "A clue for this creature.", moves: beaten ? ["guard", "heavy"] : null, found_alone: false, uses: 0 } : null };
+            bane: open ? { clue: "A clue for this creature.", moves: beaten ? ["guard", "heavy"] : null, found_alone: false, uses: 0 } : null,
+            stats: open ? { attacks: ["Horn Gore", "Axe Cleave", "Labyrinth Charge"], special: "Endless Labyrinth", hp_scale: 1, time_scale: 1 } : null };
         }),
       });
     }

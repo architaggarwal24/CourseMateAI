@@ -11,8 +11,10 @@ import { API_BASE_URL, throwForResponse } from "@/lib/api/client";
 // The generated schema types these bodies loosely, so the real shapes (types.ts) are asserted here, in one place.
 const as = <T,>(data: unknown) => data as T;
 
-export async function startBattle(sessionId: string, topic: string, difficulty: Difficulty, mode: "quick" | "nemesis" = "quick"): Promise<CreateResponse> {
-  const body = mode === "nemesis" ? { session_id: sessionId, difficulty, mode } : { session_id: sessionId, topic, difficulty, mode };
+/** `species`: a Hunt (the Bestiary's Hunt button) - that creature, whatever the topic would summon. */
+export async function startBattle(sessionId: string, topic: string, difficulty: Difficulty, mode: "quick" | "nemesis" = "quick", species?: string | null): Promise<CreateResponse> {
+  const body = mode === "nemesis" ? { session_id: sessionId, difficulty, mode }
+    : { session_id: sessionId, topic, difficulty, mode, ...(species ? { species } : {}) };
   const { data } = await api.POST("/arena/battles", { body: body as never });
   return as<CreateResponse>(data);
 }

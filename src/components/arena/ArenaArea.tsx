@@ -25,8 +25,11 @@ export default function ArenaArea() {
   const params = useSearchParams();
   const docParam = params?.get("doc") || undefined;
   const topicParam = params?.get("topic") || undefined;
+  // ?hunt=<species> (the Bestiary's Hunt button): a Quick Battle against that creature
+  const huntParam = params?.get("hunt") || undefined;
+  const [hunt, setHunt] = useState<string | null>(huntParam ?? null);
   const arena = useArenaBattle({ documentId: docParam });
-  const [mode, setMode] = useState<ArenaMode | null>(topicParam ? "quick" : null);
+  const [mode, setMode] = useState<ArenaMode | null>(topicParam || huntParam ? "quick" : null);
   // A course from the map isn't in the document list: fetch its record so the uploader names it.
   const refreshDocument = useSessionStore((s) => s.refreshDocument);
   useEffect(() => { if (docParam) refreshDocument(docParam).catch(() => {}); }, [docParam, refreshDocument]);
@@ -75,8 +78,10 @@ export default function ArenaArea() {
   if (mode === "quick" || mode === "nemesis") {
     return (
       <div className="arena">
-        <SummonPanel sessionId={arena.sessionId} starting={arena.phase === "starting"} onSummon={arena.summon} mode={mode} onBack={() => setMode(null)}
-          initialTopic={mode === "quick" ? topicParam : undefined} />
+        <SummonPanel sessionId={arena.sessionId} starting={arena.phase === "starting"} mode={mode} onBack={() => setMode(null)}
+          onSummon={(topic, difficulty, m) => arena.summon(topic, difficulty, m, m === "quick" ? hunt : null)}
+          initialTopic={mode === "quick" ? topicParam : undefined}
+          hunt={mode === "quick" ? hunt : null} onCancelHunt={() => setHunt(null)} />
       </div>
     );
   }

@@ -9,10 +9,10 @@ describe("sitemap.xml", () => {
   it("lists exactly the public pages, on the canonical origin", async () => {
     const { default: sitemap } = await import("./sitemap");
     const entries = sitemap();
-    expect(entries.map((e) => e.url)).toEqual([`${PROD}/`, `${PROD}/legal/terms`, `${PROD}/legal/privacy`, `${PROD}/legal/refunds`]);
+    expect(entries.map((e) => e.url)).toEqual(["/", "/features", "/features/ai-tutor", "/features/quizzes-flashcards-exams", "/features/spaced-repetition", "/features/study-game", "/legal/terms", "/legal/privacy", "/legal/refunds"].map((p) => `${PROD}${p === "/" ? "/" : p}`));
     expect(entries[0].lastModified).toBeUndefined();                     // not known: not invented
-    expect(entries[1].lastModified).toBe("2026-11-05");
-    for (const e of entries) expect(e.url).not.toMatch(/localhost|\/(today|study|hero|account|login|offline|api)/);
+    expect(entries.find((e) => e.url.endsWith("/legal/terms"))!.lastModified).toBe("2026-11-05");
+    for (const e of entries) expect(new URL(e.url).pathname).not.toMatch(/^\/(today|study|hero|account|login|offline|api)(\/|$)/);
   });
 });
 

@@ -241,6 +241,8 @@ function entry(species: string, r: RecordRow | undefined, tiers: Set<number>) {
     bane: open ? { clue: bane.clue, moves: known ? bane.moves : null, found_alone: !!r?.baneFound, uses: r?.baneUses ?? 0 } : null,
     // a Hunt's reward (scrolls.ts): the extra page of lore
     lost_page: open && !!r?.lostPage,
+    // the stat block of an open page (round 7): its blows, its special, how much tougher its tier is
+    stats: open ? { attacks: [...c.attacks], special: c.special, hp_scale: TIER_HP[tier], time_scale: TIER_TIME[tier] } : null,
   };
 }
 

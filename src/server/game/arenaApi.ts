@@ -67,8 +67,14 @@ export async function createBattle(ctx: RequestContext, user: CurrentUser, playe
     }
     throw new HttpError(409, "battle_in_progress", "You already have a battle running for this document. Finish or forfeit it first.", null, { battle_id: existing.id });
   }
-  // only creatures whose Bestiary tier is open answer a topic (a locked one sends the closest open creature)
-  const boss = await arena.newBoss(topic, difficulty, await arena.summonable(ctx, user.id));
+  // only creatures whose Bestiary tier is open answer a topic (a locked one sends the closest open creature). A Hunt
+  // (the Bestiary's Hunt button) asks for one creature: it must be open.
+  const open = await arena.summonable(ctx, user.id);
+  const hunt = mode === "quick" && typeof body.species === "string" && body.species ? body.species : null;
+  if (hunt && !open.has(hunt)) {
+    throw new HttpError(409, "creature_sealed", "That creature's page is still sealed. Beat creatures of the tier before it first.", null, { species: hunt });
+  }
+  const boss = await arena.newBoss(topic, difficulty, open, hunt);
   const b = await arena.createBattle(ctx, user.id, { sessionId, docHash: study.hash, topic, difficulty, boss, mode, targets });
   await markActive(ctx, player);
   arena.prefetch(ctx, caller, b.id, user.id);

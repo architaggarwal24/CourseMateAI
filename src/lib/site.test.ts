@@ -31,8 +31,8 @@ describe("the canonical origin", () => {
 
 describe("the public pages", () => {
   it("are an explicit allowlist with no private or utility page in it", () => {
-    expect(PUBLIC_PAGES.map((p) => p.path)).toEqual(["/", "/legal/terms", "/legal/privacy", "/legal/refunds"]);
-    for (const p of PUBLIC_PAGES) expect(p.path).not.toMatch(/^\/(today|study|hero|account|login|offline|api|dev)\b/);
+    expect(PUBLIC_PAGES.map((p) => p.path)).toEqual(["/", "/features", "/features/ai-tutor", "/features/quizzes-flashcards-exams", "/features/spaced-repetition", "/features/study-game", "/legal/terms", "/legal/privacy", "/legal/refunds"]);
+    for (const p of PUBLIC_PAGES) expect(p.path).not.toMatch(/^\/(today|study|hero|account|login|offline|api|dev)(\/|$)/);
   });
 
   it("each have their own title, description and canonical; the policies' date matches what they show", () => {

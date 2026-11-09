@@ -3,6 +3,11 @@ export interface PageCase { name: string; path: string; auth: boolean; ready: st
 
 export const PAGES: PageCase[] = [
   { name: "landing", path: "/", auth: false, ready: "role=heading[name=/turned into a/]" },
+  { name: "features", path: "/features", auth: false, ready: "role=heading[level=1]" },
+  { name: "feature: ai tutor", path: "/features/ai-tutor", auth: false, ready: "role=heading[level=1]" },
+  { name: "feature: quizzes", path: "/features/quizzes-flashcards-exams", auth: false, ready: "role=heading[level=1]" },
+  { name: "feature: review", path: "/features/spaced-repetition", auth: false, ready: "role=heading[level=1]" },
+  { name: "feature: game", path: "/features/study-game", auth: false, ready: "role=heading[level=1]" },
   { name: "offline", path: "/offline", auth: false, ready: "role=heading[name=\"You're offline\"]" },
   { name: "login", path: "/login", auth: false, ready: "role=heading[name='Welcome back']" },
   { name: "terms", path: "/legal/terms", auth: false, ready: "role=heading[name='Terms of Service']" },

@@ -118,6 +118,8 @@ export interface BestiaryEntry {
   bane: { clue: string; moves: Move[] | null; found_alone: boolean; uses: number } | null;
   /** The creature's lost page was found (a Hunt's reward). */
   lost_page?: boolean;
+  /** An open page's stat block (round 7): its blows, its special, how much tougher its tier is (HP and time). */
+  stats?: { attacks: string[]; special: string; hp_scale: number; time_scale: number } | null;
 }
 export interface BestiaryTier { tier: number; name: string; open: boolean; beaten: number; total: number; opens_next_at: number | null }
 export interface BestiaryResponse { tiers: BestiaryTier[]; creatures: BestiaryEntry[] }

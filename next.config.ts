@@ -1,7 +1,7 @@
 import type { NextConfig } from "next";
 import { initOpenNextCloudflareForDev } from "@opennextjs/cloudflare";
 import { LEGACY_REDIRECTS, STUDY_TAB_PATH_SOURCE, STUDY_UNKNOWN_TAB_SOURCE } from "./src/lib/routes";
-import { parseSiteUrl } from "./src/lib/site";
+import { parseSiteUrl } from "./src/lib/site-url";
 
 // The canonical address (src/lib/site.ts): a production build stops here, with a clear message, when
 // NEXT_PUBLIC_SITE_URL is missing, not https, local, or has a path. (`next dev` falls back to localhost.)

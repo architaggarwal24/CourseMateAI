@@ -240,3 +240,8 @@
 }
 
 .arena-wait__secs { font-size: 0.65rem; color: var(--color-muted); }
+
+/* a Hunt (the Bestiary's Hunt button): the creature asked for, shown above the topic */
+.arena-hunt { display: flex; align-items: center; gap: var(--space-2); margin: var(--space-2) 0 0; padding: var(--space-1) var(--space-2); border: 1px solid var(--color-border); border-radius: var(--radius-md); font-size: 0.875rem; }
+.arena-hunt__sprite { width: 2.5rem; height: 2.5rem; image-rendering: pixelated; }
+.arena-hunt b { color: var(--color-text); }

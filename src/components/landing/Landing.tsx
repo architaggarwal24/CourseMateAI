@@ -5,10 +5,10 @@ import dynamic from "next/dynamic";
 import {
   BookMarked, Brain, CheckCircle2, FileText, GraduationCap, Layers, Map as MapIcon, MessageSquare, ShieldCheck, Sparkles, Swords, Trophy,
 } from "@/components/icons";
-import Logo from "@/components/brand/Logo";
 import ThemeScope from "@/components/ThemeScope";
 import { ButtonLink } from "@/components/ui";
 import { ROUTES } from "@/lib/routes";
+import { SiteFooter, SiteHeader } from "./SiteChrome";
 import "./landing.css";
 
 const LandingDuel = dynamic(() => import("./LandingDuel"));
@@ -21,7 +21,7 @@ export interface LandingPlan {
 
 const FEATURES = [
   { icon: <MessageSquare size={20} />, title: "A tutor that knows your notes", text: "Ask anything about your PDFs and get a clear answer with the page it came from. If the answer isn't in your material, it says so." },
-  { icon: <CheckCircle2 size={20} />, title: "Quizzes from your own material", text: "Multiple choice, true/false or short answer, each with an explanation and the page to read again." },
+  { icon: <CheckCircle2 size={20} />, title: "Quizzes from your own material", text: "Multiple choice, true/false or a mix, each with an explanation and the page to read again." },
   { icon: <Layers size={20} />, title: "Flashcards that come back on time", text: "A daily review that brings each card back just before you'd forget it (spaced repetition)." },
   { icon: <FileText size={20} />, title: "Notes in seconds", text: "Summaries, outlines and key terms for a topic or a whole chapter, linked to the pages." },
   { icon: <MapIcon size={20} />, title: "See how it all connects", text: "A concept map of your course: open any idea to quiz yourself on it." },
@@ -47,20 +47,10 @@ const inr = (n: number) => `₹${n.toLocaleString("en-IN")}`;
 export default function Landing({ plans }: { plans: LandingPlan[] }) {
   return (
     <div className="landing">
-      <header className="landing-nav">
-        <Link href="/" className="landing-nav__brand" aria-label="CourseMateAI home"><Logo size={28} /></Link>
-        <nav aria-label="Sections" className="landing-nav__links">
-          <a href="#features">Features</a>
-          <a href="#how">How it works</a>
-          <a href="#play">The game</a>
-          <a href="#plans">Plans</a>
-          <a href="#faq">FAQ</a>
-        </nav>
-        <div className="landing-nav__cta">
-          <ButtonLink href={ROUTES.login} variant="ghost" size="sm">Log in</ButtonLink>
-          <ButtonLink href={ROUTES.signup} variant="primary" size="sm">Start free</ButtonLink>
-        </div>
-      </header>
+      <SiteHeader links={[
+        { href: "#features", label: "Features" }, { href: "#how", label: "How it works" }, { href: "#play", label: "The game" },
+        { href: "#plans", label: "Plans" }, { href: "#faq", label: "FAQ" },
+      ]} />
 
       <main id="main-content" tabIndex={-1} className="outline-none">
         <section className="landing-hero" aria-labelledby="landing-title">
@@ -125,6 +115,7 @@ export default function Landing({ plans }: { plans: LandingPlan[] }) {
               </li>
             ))}
           </ul>
+          <p className="landing-center"><Link href="/features" className="landing-more">See what each feature does, and which plan has it →</Link></p>
         </section>
 
         <section id="how" className="landing-section" aria-labelledby="how-title">
@@ -210,15 +201,7 @@ export default function Landing({ plans }: { plans: LandingPlan[] }) {
         </section>
       </main>
 
-      <footer className="landing-foot">
-        <Logo size={22} />
-        <ul className="landing-foot__links" aria-label="Legal">
-          <li><Link href="/legal/terms">Terms</Link></li>
-          <li><Link href="/legal/privacy">Privacy</Link></li>
-          <li><Link href="/legal/refunds">Refunds</Link></li>
-        </ul>
-        <p>© {new Date().getFullYear()} CourseMateAI</p>
-      </footer>
+      <SiteFooter />
     </div>
   );
 }

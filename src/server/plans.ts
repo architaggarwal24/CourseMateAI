@@ -6,9 +6,8 @@ import type { Db } from "./db";
 import { userPlans } from "./db/schema";
 import { HttpError } from "./http";
 
-export const TIERS = ["apprentice", "scholar", "sage", "archmage"] as const;
-export type Tier = (typeof TIERS)[number];
-export const TIER_NAMES: Record<Tier, string> = { apprentice: "Apprentice", scholar: "Scholar", sage: "Sage", archmage: "Archmage" };
+export { TIERS, TIER_NAMES, FEATURES, FEATURE_NAMES, type Tier, type Feature } from "@/lib/plan-tiers";
+import { TIERS, TIER_NAMES, FEATURES, FEATURE_NAMES, type Tier, type Feature } from "@/lib/plan-tiers";
 export const DEFAULT_TIER: Tier = "apprentice";
 export const OWNER_TIER: Tier = "archmage";
 
@@ -16,19 +15,6 @@ export function isTier(value: unknown): value is Tier {
   return typeof value === "string" && (TIERS as readonly string[]).includes(value);
 }
 
-/** feature -> the lowest tier that has it */
-export const FEATURES = {
-  review_queue: "scholar",
-  exam_mode: "sage",
-  courses: "apprentice",                     // every plan: Study needs a course (round 7)
-  concept_map: "sage",
-  pdf_viewer: "sage",
-} as const satisfies Record<string, Tier>;
-export type Feature = keyof typeof FEATURES;
-export const FEATURE_NAMES: Record<Feature, string> = {
-  review_queue: "Spaced-repetition review", exam_mode: "Exam mode", courses: "Courses",
-  concept_map: "The concept map", pdf_viewer: "The PDF page viewer",
-};
 
 export const LIMIT_KEYS = ["documents", "pdf_mb", "ai_calls_day", "tokens_month", "courses"] as const;
 export type Limits = Record<(typeof LIMIT_KEYS)[number], number>;

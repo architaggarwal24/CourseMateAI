@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 
 const api = vi.hoisted(() => ({ fetchBestiary: vi.fn(), fetchBestiaryPage: vi.fn() }));
 vi.mock("@/lib/arena/api", () => api);
@@ -135,5 +135,60 @@ describe("the book's paper and its turns", () => {
     expect(at(TURN_MS + 3 * STACK_GAP, 4)).toEqual([1, 1, 1, 1]);
     const back = leafProgress(0.3, 4, false);
     expect(back[3]).toBeLessThan(back[0]);                                       // the top of the left stack is already moving
+  });
+});
+
+// Round 7: the Scholar's desk - living pages, the side panels, the unlock rituals.
+describe("the Scholar's desk", () => {
+  beforeEach(() => localStorage.clear());
+  const STATS = { attacks: ["Labyrinth Charge", "Horn Gore", "Axe Cleave"], special: "Endless Labyrinth", hp_scale: 1.15, time_scale: 0.93 };
+
+  it("a creature page is alive: a stat block, fight notes, a Hunt button, and the sketch can be provoked", async () => {
+    api.fetchBestiary.mockResolvedValue({ ...DATA, creatures: [{ ...DATA.creatures[0], stats: STATS }, ...DATA.creatures.slice(1)] });
+    render(<BestiaryBook />);
+    await screen.findByText(/pages written in full/);
+    key("ArrowRight"); key("ArrowRight");
+    expect(screen.getByText(/\+15% HP · −7% time per question/)).toBeTruthy();
+    expect(screen.getByText(/Labyrinth Charge, Horn Gore, Axe Cleave/)).toBeTruthy();
+    const notes = screen.getByRole("list", { name: "Fight notes" });
+    expect(notes.textContent).toContain("Beaten 2 of 3 fights (67%).");
+    expect(notes.textContent).toContain("3 more victories for the silver seal");
+    expect(screen.getByRole("link", { name: "Hunt it again" }).getAttribute("href")).toBe("/hero?tab=arena&hunt=minotaur");
+    const sketch = screen.getByRole("button", { name: "Provoke the Minotaur" });
+    fireEvent.click(sketch);
+    expect(sketch.getAttribute("data-anim")).toBe("attack");
+  });
+
+  it("the tier map turns to a tier; the hunt record adds up the book and names the next quarry", async () => {
+    render(<BestiaryBook />);
+    await screen.findByText(/pages written in full/);
+    const map = screen.getByRole("navigation", { name: "The road through the book" });
+    expect(map.textContent).toContain("you are here");
+    expect(map.textContent).toMatch(/Beat 1 more creature of tier I to break this seal/);
+    fireEvent.click(screen.getByRole("button", { name: /^Tier III: sealed/ }));
+    expect(screen.getByText("? ? ?")).toBeTruthy();                              // hydra's sealed page
+    const ledger = screen.getByRole("region", { name: "Hunt record" });
+    expect(ledger.textContent).toMatch(/Hunts3/);
+    expect(ledger.textContent).toMatch(/Victories2/);
+    expect(ledger.textContent).toContain("1:15 · Minotaur");
+    expect(screen.getByText("Seals: 0 gold, 0 silver, 1 bronze")).toBeTruthy();
+    expect(ledger.textContent).toContain("Next quarry");
+    expect(within(ledger).getByRole("link", { name: "Hunt" }).getAttribute("href")).toBe("/hero?tab=arena&hunt=oni");
+  });
+
+  it("the first visit replays nothing; a page written since shows as fresh ink, and opening it plays (and ends) its ritual", async () => {
+    const first = render(<BestiaryBook />);
+    await screen.findByText(/pages written in full/);
+    expect(screen.queryByText("Fresh ink")).toBeNull();
+    expect(JSON.parse(localStorage.getItem("cmai_tome_seen_v1")!)).toEqual({ written: ["minotaur"], tiers: [1] });
+    first.unmount();
+
+    api.fetchBestiary.mockResolvedValue({ ...DATA, creatures: [DATA.creatures[0], { ...DATA.creatures[1], defeated: true, mastery: "bronze" }, DATA.creatures[2]] });
+    render(<BestiaryBook />);
+    const fresh = await screen.findByRole("button", { name: "Oni written in full" });
+    fireEvent.click(fresh);
+    await waitFor(() => expect(screen.queryByText("Fresh ink")).toBeNull());       // reduced motion: the ritual ends at once
+    expect(JSON.parse(localStorage.getItem("cmai_tome_seen_v1")!).written).toEqual(["minotaur", "oni"]);
+    expect(screen.getByText("The Oni's page is written in full.")).toBeTruthy();
   });
 });

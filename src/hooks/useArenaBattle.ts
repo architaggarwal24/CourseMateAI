@@ -228,13 +228,13 @@ export function useArenaBattle({ autoResume = true, documentId }: { autoResume?:
   }, [state.phase, state.stage, state.deadline, state.battle?.battle_id, settleTimeout]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Actions ───────────────────────────────────────────────────────────────────────────────────────────────────
-  const summon = useCallback(async (topic: string, difficulty: Difficulty, mode: SummonMode = "quick") => {
+  const summon = useCallback(async (topic: string, difficulty: Difficulty, mode: SummonMode = "quick", species?: string | null) => {
     const s = latest.current;
     if (s.phase === "starting") return;
     const sessionId = s.sessionId;
     patch({ phase: "starting" });
     try {
-      const r = await startBattle(sessionId, topic.trim(), difficulty, mode);
+      const r = await startBattle(sessionId, topic.trim(), difficulty, mode, species);
       if (!alive.current) return;
       if (r.resumed) toast.info("You already had this battle running. Picking it back up.");
       enter(r.battle, r.boss);

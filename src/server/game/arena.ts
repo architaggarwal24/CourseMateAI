@@ -174,8 +174,12 @@ async function docsFor(ctx: RequestContext, userId: number, sessionId: string) {
 
 // ── creating ─────────────────────────────────────────────────────────────────────────────────────────────────
 /** The boss for a fight: instant (a bestiary creature from the topic); its topic lines come later (enrich). */
-export async function newBoss(topic: string, difficulty: string, open: Set<string> | null = null): Promise<Boss> {
-  const { species, wanted } = await summon(topic, open);
+/**
+ * A boss for `topic`. `hunt` (round 7, the Bestiary's Hunt button): that creature, whatever the topic would call -
+ * only one whose page is open (the caller checks).
+ */
+export async function newBoss(topic: string, difficulty: string, open: Set<string> | null = null, hunt: string | null = null): Promise<Boss> {
+  const { species, wanted } = hunt ? { species: hunt, wanted: hunt } : await summon(topic, open);
   const boss = sanitizeBoss(baseBoss(species, topic, difficulty), difficulty);
   Object.assign(boss, { current_hp: boss.max_hp, phase: 1, rage: false, asked_concepts: [], rounds_fought: 0, total_damage_taken: 0, total_damage_dealt: 0, flavor_pending: true });
   // a locked creature the topic called for (the Bestiary page remembers it); not part of the boss shown to the player

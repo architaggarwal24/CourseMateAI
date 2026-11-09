@@ -35,6 +35,8 @@ export const ROUTES = {
   /** The arena's Quick Battle on a document (or course) with the boss topic filled in. */
   heroArenaTopic: (documentId: string, topic: string) =>
     `/hero?tab=arena&doc=${encodeURIComponent(documentId)}&topic=${encodeURIComponent(topic)}`,
+  /** A Hunt (the Bestiary's Hunt button): the arena's Quick Battle against that creature. */
+  heroHunt: (species: string) => `/hero?tab=arena&hunt=${encodeURIComponent(species)}`,
   hero: "/hero",
   /** /hero?tab=<tab> (the Hero area's tabs share one page and one header). */
   heroTab: (tab: HeroTab) => `/hero?tab=${tab}`,

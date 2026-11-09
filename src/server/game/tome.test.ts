@@ -172,7 +172,10 @@ describe("the Bestiary in play", () => {
     const v0 = await view(b);
     expect(v0.tiers.map((t: { open: boolean }) => t.open)).toEqual([true, false, false, false]);
     const hydra = v0.creatures.find((c: { species: string }) => c.species === "hydra");
-    expect(hydra).toMatchObject({ open: false, name: null, bane: null, tier: 3 });
+    expect(hydra).toMatchObject({ open: false, name: null, bane: null, tier: 3, stats: null });
+    // an open page has its stat block (round 7): its blows, its special, how much tougher its tier is
+    expect(v0.creatures.find((c: { species: string }) => c.species === "minotaur").stats).toEqual({
+      attacks: ["Labyrinth Charge", "Horn Gore", "Axe Cleave"], special: "Endless Labyrinth", hp_scale: 1, time_scale: 1 });
     const s = await start(b, id, "cell biology");
     expect(["minotaur", "cyclops", "oni", "kitsune"]).toContain(s.boss.species);
     expect(s.battle).toMatchObject({ tier: 1, bane: { known: false, moves: null } });

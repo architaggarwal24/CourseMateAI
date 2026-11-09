@@ -5,6 +5,11 @@ import { test, expect, type APIRequestContext } from "@playwright/test";
 const ORIGIN = process.env.NEXT_PUBLIC_SITE_URL ?? "https://coursemateai.architaggarwal.workers.dev";
 const PUBLIC = [
   { path: "/", title: "CourseMateAI: your PDFs, turned into a tutor", h1: /turned into a/ },
+  { path: "/features", title: "Features: AI study tools built on your own notes | CourseMateAI", h1: /Study tools built on your own notes/ },
+  { path: "/features/ai-tutor", title: "AI tutor for your PDFs: chat, notes and concept maps | CourseMateAI", h1: /An AI tutor that has read your course notes/ },
+  { path: "/features/quizzes-flashcards-exams", title: "Quizzes, flashcards and mock exams from your notes | CourseMateAI", h1: /Practice questions written from your own notes/ },
+  { path: "/features/spaced-repetition", title: "Spaced-repetition review for what you study | CourseMateAI", h1: /A daily review that brings cards back/ },
+  { path: "/features/study-game", title: "A study game: boss fights built from your notes | CourseMateAI", h1: /Boss fights where every question/ },
   { path: "/legal/terms", title: "Terms of Service | CourseMateAI", h1: /Terms of Service/ },
   { path: "/legal/privacy", title: "Privacy Policy | CourseMateAI", h1: /Privacy Policy/ },
   { path: "/legal/refunds", title: "Cancellation & Refund Policy | CourseMateAI", h1: /Cancellation/ },
@@ -49,6 +54,16 @@ test("titles and descriptions are unique across the public pages", async ({ requ
   expect(new Set(descriptions).size).toBe(PUBLIC.length);
 });
 
+test("feature pages carry a BreadcrumbList that matches their visible breadcrumb", async ({ request }) => {
+  const { body } = await html(request, "/features/spaced-repetition");
+  const ld = [...body.matchAll(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/g)].map((m) => JSON.parse(m[1]));
+  expect(ld).toHaveLength(1);
+  expect(ld[0]["@type"]).toBe("BreadcrumbList");
+  expect(ld[0].itemListElement.map((i: { name: string; item: string }) => [i.name, i.item])).toEqual([
+    ["CourseMateAI", `${ORIGIN}/`], ["Features", `${ORIGIN}/features`], ["Spaced-repetition review", `${ORIGIN}/features/spaced-repetition`]]);
+  expect(body).toContain('aria-label="Breadcrumb"');
+});
+
 test("the homepage's JSON-LD parses and claims only Organization and WebSite on the canonical origin", async ({ request }) => {
   const { body } = await html(request, "/");
   const blocks = [...body.matchAll(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/g)].map((m) => JSON.parse(m[1]));
@@ -87,7 +102,7 @@ test("robots.txt and sitemap.xml: 200, the allowlist only, the canonical origin"
   expect(map.status()).toBe(200);
   expect(map.headers()["content-type"]).toMatch(/xml/);
   const urls = [...(await map.text()).matchAll(/<loc>([^<]+)<\/loc>/g)].map((m) => m[1]);
-  expect(urls).toEqual([`${ORIGIN}/`, `${ORIGIN}/legal/terms`, `${ORIGIN}/legal/privacy`, `${ORIGIN}/legal/refunds`]);
+  expect(urls).toEqual(PUBLIC.map((p) => (p.path === "/" ? `${ORIGIN}/` : `${ORIGIN}${p.path}`)));
 });
 
 test("the share image is served", async ({ request }) => {
@@ -98,7 +113,8 @@ test("the share image is served", async ({ request }) => {
   }
 });
 
-test("an unknown page is a 404 and not indexable", async ({ request }) => {
+test("an unknown page (or feature) is a 404 and not indexable", async ({ request }) => {
+  expect((await request.get("/features/no-such-feature")).status()).toBe(404);
   const { res, body } = await html(request, "/no-such-page");
   expect(res.status()).toBe(404);
   expect(meta(body, "name", "robots").join()).toMatch(/noindex/);

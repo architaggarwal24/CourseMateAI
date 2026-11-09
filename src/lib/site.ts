@@ -6,31 +6,12 @@
 // local .env.production). A production build without a valid https address fails (next.config.ts): a wrong or
 // localhost canonical can never ship. Only `next dev` and the tests fall back to localhost.
 import type { Metadata } from "next";
+import { parseSiteUrl } from "./site-url";
+import { FEATURE_PAGES, FEATURES_HUB, featurePath } from "./features";
+
+export { parseSiteUrl };
 
 export const SITE_NAME = "CourseMateAI";
-const DEV_ORIGIN = "http://localhost:3000";
-const LOCAL = /^(localhost|127\.0\.0\.1|\[::1\]|0\.0\.0\.0)$/i;
-
-/**
- * The canonical origin from `raw` (NEXT_PUBLIC_SITE_URL): an absolute https URL with no path, query or hash, and in
- * production never a local host. Throws a clear error otherwise.
- */
-export function parseSiteUrl(raw: string | undefined, production: boolean): URL {
-  const value = (raw ?? "").trim();
-  if (!value) {
-    if (production) throw new Error("NEXT_PUBLIC_SITE_URL must be set for a production build (e.g. https://coursemateai.architaggarwal.workers.dev).");
-    return new URL(DEV_ORIGIN);
-  }
-  let url: URL;
-  try { url = new URL(value); } catch { throw new Error(`NEXT_PUBLIC_SITE_URL is not a valid URL: "${value}".`); }
-  const local = LOCAL.test(url.hostname);
-  if (production && local) throw new Error(`NEXT_PUBLIC_SITE_URL can't be a local address in production: "${value}".`);
-  if (url.protocol !== "https:" && !(url.protocol === "http:" && local)) throw new Error(`NEXT_PUBLIC_SITE_URL must use https: "${value}".`);
-  if ((url.pathname !== "/" && url.pathname !== "") || url.search || url.hash || url.username || url.password) {
-    throw new Error(`NEXT_PUBLIC_SITE_URL must be just the origin (no path, query or credentials): "${value}".`);
-  }
-  return new URL(url.origin);
-}
 
 /** The canonical origin of this build. */
 export function siteOrigin(): URL {
@@ -50,8 +31,10 @@ export const PUBLIC_PAGES: readonly PublicPage[] = [
   {
     path: "/",
     title: "CourseMateAI: your PDFs, turned into a tutor",
-    description: "Upload your course notes and get a tutor that cites the page, quizzes and flashcards from your own material, spaced-repetition review and a pixel hero that levels up as you study.",
+    description: "Upload your course notes: a tutor that cites the page, quizzes and flashcards from your own material, spaced-repetition review and a hero that levels up.",
   },
+  { path: FEATURES_HUB.path, title: FEATURES_HUB.title, description: FEATURES_HUB.description },
+  ...FEATURE_PAGES.map((f) => ({ path: featurePath(f.slug), title: f.title, description: f.description })),
   {
     path: "/legal/terms",
     title: "Terms of Service",
