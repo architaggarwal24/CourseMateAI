@@ -62,6 +62,8 @@ import {
   KeyIcon as HKey,
   LightBulbIcon as HLightBulb,
   ListBulletIcon as HListBullet,
+  PrinterIcon as HPrinter,
+  TableCellsIcon as HTableCells,
   LockClosedIcon as HLockClosed,
   MagnifyingGlassIcon as HMagnifyingGlass,
   MapIcon as HMap,
@@ -210,6 +212,8 @@ export const Lightbulb = hero(HLightBulb, "Lightbulb");
 export const List = hero(HListBullet, "List");
 export const ListChecks = hero(HQueueList, "ListChecks");
 export const Lock = hero(HLockClosed, "Lock");
+export const Printer = hero(HPrinter, "Printer");
+export const TableCells = hero(HTableCells, "TableCells");
 export const LogIn = hero(HArrowRightEndOnRectangle, "LogIn");
 export const LogOut = hero(HArrowRightStartOnRectangle, "LogOut");
 export const Mail = hero(HEnvelope, "Mail");

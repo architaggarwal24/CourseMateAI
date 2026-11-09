@@ -39,7 +39,11 @@ export function price(provider: string, model: string, env: Env = process.env): 
   if (provider === "workers-ai") return { rate: [0, 0], priced: true };
   const p = prices(env);
   const exact = p[`${provider}:${model}`.toLowerCase()] ?? p[`${provider}:*`.toLowerCase()];
-  return exact ? { rate: exact, priced: true } : { rate: ESTIMATE, priced: false };
+  if (exact) return { rate: exact, priced: true };
+  // Ollama's cloud is a plan with usage limits, not per-token billing: it doesn't count towards the dollar cap
+  // (unless MODEL_PRICES_JSON gives it a price)
+  if (provider === "ollama-cloud") return { rate: [0, 0], priced: true };
+  return { rate: ESTIMATE, priced: false };
 }
 
 export function costMicroUsd(provider: string, model: string, tokensIn: number, tokensOut: number, env: Env = process.env): number {

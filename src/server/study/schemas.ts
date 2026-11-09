@@ -15,7 +15,11 @@ const list = (data: unknown, key: string): unknown[] => {
 const obj = (v: unknown) => (v && typeof v === "object" && !Array.isArray(v) ? (v as Record<string, unknown>) : null);
 
 // ── quiz ─────────────────────────────────────────────────────────────────────────────────────────────────────
-export interface QuizQuestion { question: string; options: string[]; correct_answer: string; explanation: string; difficulty: Difficulty; concept?: string }
+export interface QuizQuestion {
+  question: string; options: string[]; correct_answer: string; explanation: string; difficulty: Difficulty; concept?: string;
+  /** The passage number the answer comes from (as written), then where that is ("Bio.pdf · p.2"). */
+  source?: number; source_label?: string;
+}
 
 export function quizQuestion(raw: unknown, questionType: string): QuizQuestion | null {
   const o = obj(raw);
@@ -26,11 +30,13 @@ export function quizQuestion(raw: unknown, questionType: string): QuizQuestion |
   if (!question || options.length < 2 || !correct) return null;
   const explanation = text(o.explanation) || "See course material.";
   const concept = text(o.concept).slice(0, 200) || undefined;
+  const n = Number(o.source);
+  const src = Number.isInteger(n) && n > 0 && n < 100 ? { source: n } : {};
   const isTf = options.length === 2 && options.every((x) => ["true", "false"].includes(x.trim().toLowerCase()));
   if (questionType === "True/False" || isTf) {
     const a = normalizeCorrectAnswer(correct, ["True", "False"], "True/False");
     if (!a) return null;
-    return { question, options: ["True", "False"], correct_answer: a, explanation, difficulty: difficulty(o.difficulty), ...(concept ? { concept } : {}) };
+    return { question, options: ["True", "False"], correct_answer: a, explanation, difficulty: difficulty(o.difficulty), ...(concept ? { concept } : {}), ...src };
   }
   if (options.length < 4) return null;
   const original = options.slice(0, 4);
@@ -40,7 +46,7 @@ export function quizQuestion(raw: unknown, questionType: string): QuizQuestion |
   if (clean.some((x) => !x) || new Set(clean.map((x) => x.toLowerCase())).size < 4) return null;
   correct = clean[original.indexOf(mapped)];
   options = clean;
-  return { question, options, correct_answer: correct, explanation, difficulty: difficulty(o.difficulty), ...(concept ? { concept } : {}) };
+  return { question, options, correct_answer: correct, explanation, difficulty: difficulty(o.difficulty), ...(concept ? { concept } : {}), ...src };
 }
 
 export function quizBatch(data: unknown, questionType: string): QuizQuestion[] {

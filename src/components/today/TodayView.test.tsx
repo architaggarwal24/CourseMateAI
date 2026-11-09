@@ -93,7 +93,7 @@ describe("Today", () => {
     const list = within(screen.getByRole("region", { name: "Your courses" })).getAllByRole("link");
     expect(list.map((a) => a.textContent)).toEqual([expect.stringContaining("Biology2 PDFs"), expect.stringContaining("Chemistry0 PDFs")]);
     expect(list[0].getAttribute("href")).toBe("/study?tab=overview&doc=c1");
-    expect(screen.getByRole("button", { name: "Add a PDF to Biology" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Add PDFs to Biology" })).toBeTruthy();
   });
 
   it("sends a visitor who isn't signed in to log in", () => {

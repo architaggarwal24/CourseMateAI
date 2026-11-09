@@ -76,6 +76,8 @@ export interface AiModels {
   mine: string | null;
   /** Ollama: on this computer under npm run dev, or anywhere through the saved tunnel URL (admins' own model only). */
   ollama: { enabled: boolean; base: string | null; models: string[]; tunnel?: string | null; local?: boolean };
+  /** Ollama's cloud API (OLLAMA_API_KEY): the models it offers. */
+  ollama_cloud?: { configured: boolean; models: string[] };
 }
 
 async function call<T>(path: string, init: { method?: string; body?: unknown; headers?: Record<string, string> } = {}): Promise<T> {

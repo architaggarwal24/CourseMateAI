@@ -1,5 +1,5 @@
 // The concept map (backend routers/concept_maps.py, services/concept_map_service.py): one cached AI pass per
-// document, merged for a course, coloured by mastery heat. Drawn as a calm star chart (components/map/*).
+// document, merged for a course, coloured by mastery heat. Drawn as a mind map (components/map/*).
 import { api } from "@/lib/api/client";
 
 export type Heat = "new" | "weak" | "learning" | "strong";
@@ -35,18 +35,8 @@ const HEAT_LABELS: Record<Heat, string> = { new: "Not tried yet", weak: "Weak", 
 export const heatLabel = (h: Heat) => HEAT_LABELS[h];
 export const HEATS: Heat[] = ["weak", "learning", "strong", "new"];
 
-// ── Layout ────────────────────────────────────────────────────────────────────────────────────────────────────
-export type Point = { x: number; y: number };
-const X_MIN = 0.06, X_MAX = 0.94, Y_MIN = 0.08, Y_MAX = 0.92;
-const RINGS = [0.13, 0.27, 0.4];
-const MIN_GAP = 0.11;
-
-const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
-function hash(s: string): number {
-  let h = 2166136261;
-  for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); }
-  return (h >>> 0) / 4294967296;
-}
+// ── Layout helpers ────────────────────────────────────────────────────────────────────────────────────────────
+/** Each relation once (either direction), between concepts that exist, in a fixed order. */
 function pairs(relations: MapRelation[], ids: Set<string>): [string, string][] {
   const seen = new Set<string>();
   const out: [string, string][] = [];
@@ -60,103 +50,7 @@ function pairs(relations: MapRelation[], ids: Set<string>): [string, string][] {
   return out.sort((p, q) => (p[0] + p[1] < q[0] + q[1] ? -1 : 1));
 }
 
-/**
- * Where each star sits, in a unit square (0..1). Deterministic - the same map always draws the same sky, whatever
- * order the server lists it in: central concepts on the inner ring, supporting ones further out, each placed near
- * the stars it is linked to, then a fixed number of relaxation steps keep linked stars close and every star apart.
- */
-export function layoutConstellation(concepts: MapConcept[], relations: MapRelation[]): Record<string, Point> {
-  const list = [...concepts].sort((a, b) => (a.id < b.id ? -1 : 1));
-  if (!list.length) return {};
-  if (list.length === 1) return { [list[0].id]: { x: 0.5, y: 0.5 } };
-  const ids = new Set(list.map((c) => c.id));
-  const links = pairs(relations, ids);
-  const degree = new Map<string, number>();
-  for (const [a, b] of links) { degree.set(a, (degree.get(a) ?? 0) + 1); degree.set(b, (degree.get(b) ?? 0) + 1); }
-  const ranked = [...list].sort((a, b) => b.importance - a.importance || (degree.get(b.id) ?? 0) - (degree.get(a.id) ?? 0) || (a.id < b.id ? -1 : 1));
-
-  // Rings: how many stars each holds, a slot every MIN_GAP or so around it.
-  const capacity = RINGS.map((r) => Math.max(3, Math.floor((2 * Math.PI * r) / (MIN_GAP * 1.15))));
-  const used = RINGS.map(() => [] as number[]);                  // slot indices taken
-  const ringOf = new Map<string, number>();
-  const pos: Record<string, Point> = {};
-  const angle = (p: Point) => Math.atan2(p.y - 0.5, p.x - 0.5);
-
-  for (const c of ranked) {
-    const want = clamp(3 - Math.round(c.importance), 0, RINGS.length - 1);
-    const order = [want, ...RINGS.map((_, i) => i).filter((i) => i !== want).sort((a, b) => Math.abs(a - want) - Math.abs(b - want) || b - a)];
-    const ring = order.find((i) => used[i].length < capacity[i]) ?? RINGS.length - 1;
-    const n = capacity[ring];
-    const offset = hash(`ring${ring}`) * 2 * Math.PI;
-    const placed = links.flatMap(([a, b]) => (a === c.id ? [b] : b === c.id ? [a] : [])).filter((o) => pos[o]);
-    let prefer = offset;
-    if (placed.length) {
-      const sx = placed.reduce((s, o) => s + Math.cos(angle(pos[o])), 0), sy = placed.reduce((s, o) => s + Math.sin(angle(pos[o])), 0);
-      if (Math.hypot(sx, sy) > 1e-6) prefer = Math.atan2(sy, sx);
-    } else {
-      prefer = offset + used[ring].length * ((2 * Math.PI) / n) * Math.floor(n / 2 + 1);   // spread the unlinked ones
-    }
-    let best = -1, bestD = Infinity;
-    for (let s = 0; s < n; s++) {
-      if (used[ring].includes(s)) continue;
-      const a = offset + (s * 2 * Math.PI) / n;
-      const d = Math.abs(Math.atan2(Math.sin(a - prefer), Math.cos(a - prefer)));
-      if (d < bestD - 1e-9) { bestD = d; best = s; }
-    }
-    used[ring].push(best);
-    ringOf.set(c.id, ring);
-    const a = offset + (best * 2 * Math.PI) / n;
-    pos[c.id] = { x: 0.5 + RINGS[ring] * Math.cos(a), y: 0.5 + RINGS[ring] * Math.sin(a) };
-  }
-
-  // Relax: springs along links, repulsion between all stars, a pull back to each star's ring.
-  const keys = list.map((c) => c.id);
-  for (let step = 0; step < 80; step++) {
-    const force: Record<string, Point> = Object.fromEntries(keys.map((k) => [k, { x: 0, y: 0 }]));
-    for (let i = 0; i < keys.length; i++) for (let j = i + 1; j < keys.length; j++) {
-      const p = pos[keys[i]], q = pos[keys[j]];
-      const dx = p.x - q.x, dy = p.y - q.y, d = Math.max(0.02, Math.hypot(dx, dy));
-      const f = 0.0009 / (d * d);
-      force[keys[i]].x += (dx / d) * f; force[keys[i]].y += (dy / d) * f;
-      force[keys[j]].x -= (dx / d) * f; force[keys[j]].y -= (dy / d) * f;
-    }
-    for (const [a, b] of links) {
-      const p = pos[a], q = pos[b];
-      const dx = q.x - p.x, dy = q.y - p.y, d = Math.max(1e-6, Math.hypot(dx, dy));
-      const f = 0.04 * (d - 0.2);
-      force[a].x += (dx / d) * f; force[a].y += (dy / d) * f;
-      force[b].x -= (dx / d) * f; force[b].y -= (dy / d) * f;
-    }
-    for (const k of keys) {
-      const p = pos[k], r = Math.max(1e-6, Math.hypot(p.x - 0.5, p.y - 0.5));
-      const f = 0.12 * (RINGS[ringOf.get(k)!] - r);
-      force[k].x += ((p.x - 0.5) / r) * f; force[k].y += ((p.y - 0.5) / r) * f;
-      const cap = 0.02;
-      p.x = clamp(p.x + clamp(force[k].x, -cap, cap), X_MIN, X_MAX);
-      p.y = clamp(p.y + clamp(force[k].y, -cap, cap), Y_MIN, Y_MAX);
-    }
-  }
-  // Last: no two stars closer than the gap (their labels need the room).
-  for (let pass = 0; pass < 60; pass++) {
-    let moved = false;
-    for (let i = 0; i < keys.length; i++) for (let j = i + 1; j < keys.length; j++) {
-      const p = pos[keys[i]], q = pos[keys[j]];
-      let dx = p.x - q.x, dy = p.y - q.y;
-      let d = Math.hypot(dx, dy);
-      if (d >= MIN_GAP * 0.92) continue;
-      if (d < 1e-6) { dx = Math.cos(i + j); dy = Math.sin(i + j); d = 1; }
-      const push = (MIN_GAP * 0.92 - Math.min(d, MIN_GAP)) / 2 + 0.002;
-      p.x = clamp(p.x + (dx / d) * push, X_MIN, X_MAX); p.y = clamp(p.y + (dy / d) * push, Y_MIN, Y_MAX);
-      q.x = clamp(q.x - (dx / d) * push, X_MIN, X_MAX); q.y = clamp(q.y - (dy / d) * push, Y_MIN, Y_MAX);
-      moved = true;
-    }
-    if (!moved) break;
-  }
-  const round = (v: number) => Math.round(v * 10000) / 10000;
-  return Object.fromEntries(keys.map((k) => [k, { x: round(pos[k].x), y: round(pos[k].y) }]));
-}
-
-// ── Keyboard ──────────────────────────────────────────────────────────────────────────────────────────────────
+// ── Links ──────────────────────────────────────────────────────────────────────────────────────────────────
 export function neighbours(id: string, relations: MapRelation[]): string[] {
   const out = new Set<string>();
   for (const r of relations) {
@@ -166,19 +60,152 @@ export function neighbours(id: string, relations: MapRelation[]): string[] {
   return [...out];
 }
 
-const DIRS: Record<string, Point> = { ArrowRight: { x: 1, y: 0 }, ArrowLeft: { x: -1, y: 0 }, ArrowUp: { x: 0, y: -1 }, ArrowDown: { x: 0, y: 1 } };
+// ── Mind map layout (round 7) ─────────────────────────────────────────────────────────────────────────────────
+// The subject in the middle; its main ideas branch out to both sides; every other concept hangs off the main idea
+// it is most directly linked to (a breadth-first walk over the relations from all the main ideas at once). Each
+// side is a tidy left-to-right tree, so nothing ever overlaps and every label is whole.
+export interface MindNode {
+  id: string;                 // a concept id, or MIND_ROOT / MIND_MORE
+  name: string;
+  depth: number;              // 0 = the subject, 1 = a main idea, 2+ = details
+  side: 1 | -1;               // right / left of the subject
+  parent: string | null;
+  branch: number;             // which main idea it belongs to (its colour); -1 for the subject
+  x: number; y: number;       // the pill's centre, px
+  w: number; h: number;
+}
+export interface MindMap {
+  nodes: MindNode[]; width: number; height: number; tree: Set<string>;
+  /** The concept drawn in the middle (the umbrella idea linked to most main ideas), or null: the subject is. */
+  rootConcept: string | null;
+}
+export const MIND_ROOT = "__subject";
+export const MIND_MORE = "__more";
+const MAX_HUBS = 8;
+const MAX_LABEL = 34;
+const ROW = 46, H_GAP = 56, MARGIN = 28, CAPTION = 26;
+const FONT: Record<number, number> = { 0: 17, 1: 15, 2: 14 };
 
-/** The star an arrow key moves to: the nearest LINKED star that way, else the nearest star that way, else stay. */
-export function starInDirection(from: string, key: string, at: Record<string, Point>, relations: MapRelation[]): string {
-  const dir = DIRS[key], p = at[from];
-  if (!dir || !p) return from;
-  const score = (id: string) => {
-    const q = at[id];
-    const dx = q.x - p.x, dy = q.y - p.y, d = Math.hypot(dx, dy);
-    if (!d) return Infinity;
-    const cos = (dx * dir.x + dy * dir.y) / d;
-    return cos < 0.5 ? Infinity : d / (cos * cos);
+export const mindLabel = (name: string) => (name.length > MAX_LABEL ? `${name.slice(0, MAX_LABEL - 1).trimEnd()}…` : name);
+/** About how wide a pill is: text at the depth's size, the heat dot and padding. */
+function pillWidth(name: string, depth: number): number {
+  const size = FONT[Math.min(depth, 2)];
+  return Math.round(mindLabel(name).length * size * 0.56 + (depth === 0 ? 40 : 46));
+}
+
+export function layoutMindMap(subject: string, concepts: MapConcept[], relations: MapRelation[]): MindMap {
+  const order = new Map(concepts.map((c, i) => [c.id, i]));
+  const byId = new Map(concepts.map((c) => [c.id, c]));
+  const adj = new Map<string, string[]>(concepts.map((c) => [c.id, []]));
+  for (const [a, b] of pairs(relations, new Set(byId.keys()))) { adj.get(a)!.push(b); adj.get(b)!.push(a); }
+  for (const list of adj.values()) list.sort((p, q) => order.get(p)! - order.get(q)!);
+  const degree = (id: string) => adj.get(id)!.length;
+  const rank = (a: MapConcept, b: MapConcept) => (b.importance - a.importance) || (degree(b.id) - degree(a.id)) || (order.get(a.id)! - order.get(b.id)!);
+
+  // main ideas: the central concepts (most linked first), then one for every group of linked concepts without one
+  let hubs = concepts.filter((c) => c.importance >= 3).sort(rank).slice(0, MAX_HUBS + 1).map((c) => c.id);
+  // an umbrella idea linked to most of the others ("Unsupervised learning" over clustering, PCA, ...) goes in the
+  // middle instead of beside them: the map reads out from it
+  const umbrella = hubs.length >= 3 ? hubs.find((h) => {
+    const near = hubs.filter((o) => o !== h && adj.get(h)!.includes(o)).length;
+    return near >= 2 && near >= (hubs.length - 1) / 2;
+  }) ?? null : null;
+  if (umbrella) {
+    hubs = hubs.filter((h) => h !== umbrella);
+    adj.delete(umbrella);
+    for (const [k, list] of adj) adj.set(k, list.filter((n) => n !== umbrella));
+  }
+  hubs = hubs.slice(0, MAX_HUBS);
+  const reach = (from: string[]) => {
+    const seen = new Set(from);
+    const queue = [...from];
+    while (queue.length) for (const n of adj.get(queue.shift()!)!) if (!seen.has(n)) { seen.add(n); queue.push(n); }
+    return seen;
   };
-  const best = (ids: string[]) => ids.map((id) => [id, score(id)] as const).filter(([, s]) => s < Infinity).sort((a, b) => a[1] - b[1] || (a[0] < b[0] ? -1 : 1))[0]?.[0];
-  return best(neighbours(from, relations).filter((id) => at[id])) ?? best(Object.keys(at).filter((id) => id !== from)) ?? from;
+  let covered = reach(hubs);
+  const loners: string[] = [];
+  const rest = concepts.filter((c) => c.id !== umbrella);
+  for (const c of [...rest].sort(rank)) {
+    if (covered.has(c.id)) continue;
+    if (!degree(c.id)) { loners.push(c.id); continue; }
+    hubs.push(c.id);
+    covered = reach(hubs);
+  }
+  if (!hubs.length && loners.length) hubs.push(loners.shift()!);
+  const useMore = loners.length > 2;
+  if (!useMore) hubs.push(...loners.splice(0));
+
+  // every concept hangs off the main idea it is nearest to (ties: the more central main idea)
+  const parent = new Map<string, string>();
+  const branchOf = new Map<string, number>();
+  hubs.forEach((h, i) => { parent.set(h, MIND_ROOT); branchOf.set(h, i); });
+  const queue = [...hubs];
+  while (queue.length) {
+    const at = queue.shift()!;
+    for (const n of adj.get(at)!) {
+      if (branchOf.has(n)) continue;
+      parent.set(n, at); branchOf.set(n, branchOf.get(at)!); queue.push(n);
+    }
+  }
+  if (useMore) {
+    parent.set(MIND_MORE, MIND_ROOT); branchOf.set(MIND_MORE, hubs.length);
+    for (const l of loners) { parent.set(l, MIND_MORE); branchOf.set(l, hubs.length); }
+  }
+  const children = new Map<string, string[]>();
+  for (const [c, p] of parent) children.set(p, [...(children.get(p) ?? []), c]);
+  const weight = (id: string) => (id === MIND_MORE ? -1 : byId.get(id)!.importance);
+  const pos = (id: string) => (id === MIND_MORE ? Infinity : order.get(id)!);
+  for (const list of children.values()) list.sort((a, b) => (weight(b) - weight(a)) || (pos(a) - pos(b)));
+
+  // two sides with about as many rows each (the biggest branches placed first), each kept in reading order
+  const leaves = (id: string): number => (children.get(id) ?? []).reduce((s, c) => s + leaves(c), 0) || 1;
+  const top = children.get(MIND_ROOT) ?? [];
+  const rows = { 1: 0, [-1]: 0 } as Record<1 | -1, number>;
+  const sideOf = new Map<string, 1 | -1>();
+  for (const b of [...top].sort((a, c) => leaves(c) - leaves(a) || top.indexOf(a) - top.indexOf(c))) {
+    const s: 1 | -1 = rows[1] <= rows[-1] ? 1 : -1;
+    sideOf.set(b, s); rows[s] += leaves(b);
+  }
+
+  const nodes = new Map<string, MindNode>();
+  const centre = umbrella ? byId.get(umbrella)!.name : subject;
+  const name = (id: string) => (id === MIND_ROOT ? centre : id === MIND_MORE ? "More ideas" : byId.get(id)!.name);
+  const rootW = pillWidth(centre, 0);
+  nodes.set(MIND_ROOT, { id: MIND_ROOT, name: centre, depth: 0, side: 1, parent: null, branch: -1, x: 0, y: 0, w: rootW, h: 44 });
+  for (const side of [1, -1] as const) {
+    const mine = top.filter((b) => sideOf.get(b) === side);
+    // the widest pill at each depth sets that column's width
+    const colW: number[] = [];
+    const walk = (id: string, depth: number) => {
+      colW[depth] = Math.max(colW[depth] ?? 0, pillWidth(name(id), depth));
+      for (const c of children.get(id) ?? []) walk(c, depth + 1);
+    };
+    for (const b of mine) walk(b, 1);
+    const colX: number[] = [0, rootW / 2 + H_GAP];
+    for (let d = 2; d < colW.length; d++) colX[d] = colX[d - 1] + colW[d - 1] + H_GAP;
+    let row = 0;
+    const place = (id: string, depth: number, p: string): number => {
+      const kids = children.get(id) ?? [];
+      const ys = kids.map((k) => place(k, depth + 1, id));
+      const y = ys.length ? (ys[0] + ys[ys.length - 1]) / 2 : (row++) * ROW;
+      const w = pillWidth(name(id), depth);
+      const edge = colX[depth];
+      nodes.set(id, { id, name: name(id), depth, side, parent: p, branch: branchOf.get(id)!, x: side * (edge + w / 2), y, w, h: depth === 1 ? 38 : 32 });
+      return y;
+    };
+    for (const b of mine) place(b, 1, MIND_ROOT);
+    // centre this side on the subject
+    const shift = ((row - 1) * ROW) / 2;
+    for (const n of nodes.values()) if (n.side === side && n.depth > 0) n.y -= shift;
+  }
+
+  const all = [...nodes.values()];
+  const minX = Math.min(...all.map((n) => n.x - n.w / 2)), maxX = Math.max(...all.map((n) => n.x + n.w / 2));
+  // (with an umbrella idea in the middle, the subject's name sits just above it: room for that line)
+  const upper = (n: MindNode) => n.y - n.h / 2 - (umbrella && n.id === MIND_ROOT ? CAPTION : 0);
+  const minY = Math.min(...all.map(upper)), maxY = Math.max(...all.map((n) => n.y + n.h / 2));
+  for (const n of all) { n.x = Math.round(n.x - minX + MARGIN); n.y = Math.round(n.y - minY + MARGIN); }
+  const tree = new Set(all.filter((n) => n.parent).map((n) => [n.id, n.parent!].sort().join("|")));
+  if (umbrella) for (const n of all) if (n.parent === MIND_ROOT) tree.add([n.id, umbrella].sort().join("|"));
+  return { nodes: all, width: Math.round(maxX - minX + MARGIN * 2), height: Math.round(maxY - minY + MARGIN * 2), tree, rootConcept: umbrella };
 }

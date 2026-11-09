@@ -348,3 +348,59 @@ pointer-events: none;
 /* an answer from outside the course material (the tutor said so) */
 .chat-ai__outside { display: inline-flex; margin: 0 0 var(--space-2); padding: 0.1rem 0.5rem; border-radius: var(--radius-full); font-size: 0.72rem; font-weight: 600;
   color: var(--color-warning-text); border: 1px solid var(--color-border); }
+
+/* Quiz (round 7): where the answer is and what the question tests; what to do after a quiz */
+.quiz-verdict__meta { display: flex; flex-wrap: wrap; gap: var(--space-1) var(--space-4); margin: var(--space-1) 0 0; font-size: 0.78rem; color: var(--color-text-secondary); }
+.quiz-next { display: grid; gap: var(--space-3); justify-items: start; }
+.quiz-next__line { display: flex; gap: var(--space-2); align-items: flex-start; margin: 0; font-size: 0.9rem; color: var(--color-text-secondary); line-height: 1.5; }
+.quiz-next__line svg { flex: none; margin-top: 0.15rem; color: var(--color-accent-text); }
+
+/* ── Notes: the format picker, the export actions, the sources, printing (round 7) ───────────────────────────── */
+.note-formats { border: 0; margin: 0; padding: 0; min-width: 0; }
+.note-formats__legend { margin-bottom: var(--space-2); font-size: 0.875rem; font-weight: 500; color: var(--color-text-secondary); }
+.note-formats__grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(13rem, 1fr)); gap: var(--space-2); }
+.note-format {
+  display: flex; align-items: flex-start; gap: var(--space-3); min-height: 3.5rem; cursor: pointer;
+  padding: var(--space-3); border-radius: var(--radius-lg);
+  border: 1px solid var(--glass-border); background: var(--glass-tint);
+  transition: border-color var(--motion-base) var(--motion-ease), background-color var(--motion-base) var(--motion-ease);
+}
+.note-format:hover { border-color: var(--glass-border-strong); }
+.note-format:has(input:checked) { border-color: var(--color-accent-text); background: color-mix(in srgb, var(--color-accent) 12%, var(--glass-bg)); }
+.note-format:has(input:focus-visible) { outline: var(--focus-ring-width) solid var(--focus-ring-color); outline-offset: var(--focus-ring-offset); }
+.note-format__icon { flex: none; margin-top: 0.1rem; color: var(--color-accent-text); }
+.note-format__text { display: flex; flex-direction: column; gap: 0.1rem; min-width: 0; }
+.note-format__name { font-size: 0.9rem; font-weight: 600; color: var(--color-text); }
+.note-format__hint { font-size: 0.78rem; line-height: 1.4; color: var(--color-muted); }
+
+.notes-action {
+  display: inline-flex; align-items: center; gap: 0.25rem; min-height: 1.5rem; padding: 0 0.25rem;
+  border: 0; background: none; color: var(--color-accent-text); font: inherit; cursor: pointer;
+}
+.notes-action:hover { text-decoration: underline; }
+@media (max-width: 767px), (pointer: coarse) { .notes-action { min-height: 2.75rem; } }
+
+.notes-sources { margin-top: var(--space-6); padding-top: var(--space-4); border-top: 1px solid var(--color-border-subtle); }
+.notes-canvas .notes-sources__title { margin-top: 0; font-size: 1rem; }
+
+/* printing the notes (or "Save as PDF" in the print dialog) shows only them, on white */
+@media print {
+  body * { visibility: hidden; }
+  [data-print="notes"], [data-print="notes"] * { visibility: visible; }
+  [data-print="notes"] { position: absolute; inset: 0 auto auto 0; width: 100%; max-width: none; padding: 0; color: #0f172a; background: #fff; }
+  [data-print="notes"] h1, [data-print="notes"] h2, [data-print="notes"] h3, [data-print="notes"] h4,
+  [data-print="notes"] strong, [data-print="notes"] th, [data-print="notes"] .cite-mark { color: #0f172a; }
+  [data-print="notes"] .cite-mark { border: 0; background: none; padding: 0; }
+  [data-print="notes"] .cite-mark::before { content: "["; } [data-print="notes"] .cite-mark::after { content: "]"; }
+  [data-print="notes"] table, [data-print="notes"] li, [data-print="notes"] pre { break-inside: avoid; }
+  [data-print="notes"] .chat-markdown { max-width: none; }
+}
+.notes-canvas .cite-list { margin: var(--space-2) 0 0; list-style: none; }
+.notes-canvas .cite-list li { margin: 0; }
+/* phones: the six formats in two short columns (name only) */
+@media (max-width: 480px) {
+  .note-formats__grid { grid-template-columns: 1fr 1fr; }
+  .note-format { align-items: center; gap: var(--space-2); min-height: 2.75rem; padding: var(--space-2); }
+  .note-format__name { white-space: nowrap; }
+  .note-format__hint { display: none; }
+}

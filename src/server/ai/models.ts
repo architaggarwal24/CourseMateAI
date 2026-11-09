@@ -23,15 +23,17 @@ export const ROUTES: Record<Tier, Record<Job, Slot[]>> = {
 };
 
 // "ollama": a model on the admin's own computer, for that admin's requests during `next dev` only (ai/config.ts).
-export const PROVIDERS = ["gemini", "openai", "claude", "nvidia", "workers-ai", "ollama"] as const;
+// "ollama-cloud": Ollama's hosted models through its API (https://ollama.com/v1, OLLAMA_API_KEY): no computer or
+// tunnel needed, usable by everyone like any other provider.
+export const PROVIDERS = ["gemini", "openai", "claude", "nvidia", "ollama-cloud", "workers-ai", "ollama"] as const;
 export type Provider = (typeof PROVIDERS)[number];
 /** Providers that take an API key from the server's settings. */
 export type KeyedProvider = Exclude<Provider, "workers-ai" | "ollama">;
 
 export const KEY_ENV: Record<KeyedProvider, string> = {
-  gemini: "GOOGLE_API_KEY", openai: "OPENAI_API_KEY", claude: "ANTHROPIC_API_KEY", nvidia: "NVIDIA_API_KEY",
+  gemini: "GOOGLE_API_KEY", openai: "OPENAI_API_KEY", claude: "ANTHROPIC_API_KEY", nvidia: "NVIDIA_API_KEY", "ollama-cloud": "OLLAMA_API_KEY",
 };
-const ALIASES: Record<string, Provider> = { google: "gemini", anthropic: "claude", "nvidia-nim": "nvidia" };
+const ALIASES: Record<string, Provider> = { google: "gemini", anthropic: "claude", "nvidia-nim": "nvidia", ollamacloud: "ollama-cloud", "ollama-com": "ollama-cloud" };
 
 export interface Target {
   slot: Slot;

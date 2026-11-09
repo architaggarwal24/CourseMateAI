@@ -69,6 +69,9 @@ export interface QuizFeedback {
   correct: boolean;
   correct_answer: string;
   explanation?: string | null;
+  /** Where the answer is in the material ("Bio.pdf · p.2"), and the idea the question tests. */
+  source?: string | null;
+  concept?: string | null;
 }
 
 export interface QuizData {

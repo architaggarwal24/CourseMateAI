@@ -123,6 +123,20 @@ describe("library menu", () => {
     fireEvent.click(within(menu).getByRole("menuitem", { name: "chemistry.pdf" }));
     expect(pick).toHaveBeenCalledWith("d2", "document");
   });
+
+  it("lists only the open course's PDFs, and each has a bin that takes it out of that course", () => {
+    const del = vi.fn();
+    const other = course({ id: "c2", name: "Physics", documents: [{ id: "d3", filename: "physics.pdf", status: "ready", chunks: 3 }] as Course["documents"] });
+    render(<LibraryMenu current="d2" courses={[course(), other]} documents={DOCS} onPick={vi.fn()} onNewCourse={vi.fn()} onDelete={del}>
+      <span>chemistry.pdf</span></LibraryMenu>);
+    const menu = openMenu();
+    expect(within(menu).getAllByRole("menuitem").map((i) => i.textContent || i.getAttribute("aria-label"))).toEqual([
+      "Life sciences2 PDFs", "biology.pdf", "Remove biology.pdf from Life sciences", "chemistry.pdf", "Remove chemistry.pdf from Life sciences",
+      "Physics1 PDF", "New course…",
+    ]);
+    fireEvent.click(within(menu).getByRole("menuitem", { name: "Remove chemistry.pdf from Life sciences" }));
+    expect(del).toHaveBeenCalledWith("d2", "c1");
+  });
 });
 
 describe("course overview", () => {
@@ -149,10 +163,40 @@ describe("course overview", () => {
     server();
     const edit = vi.fn(), upload = vi.fn();
     render(<CourseOverview course={course({ documents: [], ready: 0 })} onEdit={edit} onUpload={upload} hasOtherPdfs />);
-    expect(screen.getByRole("heading", { name: "Add your first PDF" })).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: "Upload a PDF" }));
+    expect(screen.getByRole("heading", { name: "Add your PDFs" })).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Upload PDFs" }));
     expect(upload).toHaveBeenCalled();
     fireEvent.click(screen.getByRole("button", { name: "Pick from your PDFs" }));
     expect(edit).toHaveBeenCalled();
+  });
+});
+
+describe("DeleteDocument from a course", () => {
+  it("a PDF that is also in another course only leaves this one; otherwise it is deleted for good", async () => {
+    const calls: string[] = [];
+    vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const path = new URL(urlOf(input)).pathname.replace("/api/v1", "");
+      const method = (typeof input === "object" && "method" in input ? input.method : init?.method) ?? "GET";
+      calls.push(`${method} ${path}${method === "PUT" ? ` ${JSON.stringify((await bodyOf(input, init)).document_ids)}` : ""}`);
+      if (method === "PUT") return json(200, course({ documents: [{ id: "d1", filename: "biology.pdf", status: "ready", chunks: 12 }] as Course["documents"] }));
+      return json(200, { ok: true });
+    }));
+    const other = course({ id: "c2", name: "Physics", documents: [{ id: "d2", filename: "chemistry.pdf", status: "ready", chunks: 3 }] as Course["documents"] });
+    useCourses.setState({ courses: [course(), other], loaded: true });
+    const done = vi.fn();
+    const { default: DeleteDocument } = await import("./DeleteDocument");
+    render(<DeleteDocument doc={{ id: "d2", filename: "chemistry.pdf" }} course={course()} onClose={vi.fn()} onDeleted={done} />);
+    expect(screen.getByRole("alertdialog", { name: "Remove from Life sciences?" }).textContent).toContain("It stays in Physics");
+    fireEvent.click(screen.getByRole("button", { name: "Remove" }));
+    await waitFor(() => expect(done).toHaveBeenCalledWith("d2", false));
+    expect(calls).toEqual(['PUT /courses/c1 ["d1"]']);
+    cleanup();
+
+    useCourses.setState({ courses: [course()], loaded: true });
+    render(<DeleteDocument doc={{ id: "d2", filename: "chemistry.pdf" }} course={course()} onClose={vi.fn()} onDeleted={done} />);
+    expect(screen.getByRole("alertdialog", { name: "Delete this PDF?" }).textContent).toMatch(/leaves Life sciences and, since it's in no other course, is deleted for good/);
+    fireEvent.click(screen.getByRole("button", { name: "Delete PDF" }));
+    await waitFor(() => expect(done).toHaveBeenCalledWith("d2", true));
+    expect(calls.at(-1)).toBe("DELETE /documents/d2");
   });
 });

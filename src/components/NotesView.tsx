@@ -1,15 +1,31 @@
 "use client";
-import { useState, useRef, useEffect } from "react";
-import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
-import { Download, RefreshCw, Sparkles, FileText, Zap, Brain, NotebookPen } from "@/components/icons";
+import { useState, useRef, useEffect, useCallback, useMemo, type ReactNode } from "react";
+import dynamic from "next/dynamic";
+import { Download, RefreshCw, Sparkles, FileText, Zap, Brain, NotebookPen, TableCells, List, KeyRound, ScrollText, Printer, Copy } from "@/components/icons";
 import HistoryPanel from "./HistoryPanel";
 import StudyToolbar from "./study/StudyToolbar";
-import { Button, Input, Select, Tabs } from "@/components/ui";
+import ChatMarkdown from "./chat/ChatMarkdown";
+import CitationList from "./chat/CitationList";
+import { Button, Input, Tabs } from "@/components/ui";
 import { generateNotes } from "@/lib/api";
 import { useHUDStore } from "@/hooks/useHUD";
 import { saveSessionData, loadSessionData } from "@/lib/sessions";
+import { forgetSession, rememberSession, useDraft } from "@/lib/study/memory";
+import { citedFirst, citationText, type Citation } from "@/lib/study/citations";
 import { toast } from "@/components/ui/Toast";
+
+const PdfViewer = dynamic(() => import("./pdf/PdfViewer"), { ssr: false });
+
+/** The note formats (server: study/prompts.ts NOTE_FORMATS). */
+export const NOTE_FORMATS: { id: string; label: string; hint: string; icon: ReactNode }[] = [
+  { id: "summary",    label: "Summary",     hint: "The main ideas, short and clear",            icon: <Sparkles size={18} /> },
+  { id: "detailed",   label: "Exam-ready",  hint: "Everything in depth, with examples",         icon: <Brain size={18} /> },
+  { id: "cornell",    label: "Cornell",     hint: "Cue questions beside notes, then a summary", icon: <TableCells size={18} /> },
+  { id: "outline",    label: "Outline",     hint: "A nested outline of the topic",              icon: <List size={18} /> },
+  { id: "keyterms",   label: "Key terms",   hint: "A glossary: term, meaning, example",         icon: <KeyRound size={18} /> },
+  { id: "cheatsheet", label: "Cheat sheet", hint: "One page of facts, formulas and traps",      icon: <ScrollText size={18} /> },
+];
+const formatLabel = (id: string) => NOTE_FORMATS.find((f) => f.id === id)?.label ?? "Notes";
 
 const TOPIC_SUGGESTIONS = [
   { label: "Key Concepts",  icon: <Brain size={16} />,    topic: "key concepts and main ideas" },
@@ -18,21 +34,51 @@ const TOPIC_SUGGESTIONS = [
   { label: "Examples",      icon: <Zap size={16} />,      topic: "examples and case studies" },
 ];
 
-interface SavedNotes { notes: string; topic: string; detail: string; }
+/** Saved notes. `detail` is from before round 7 (the old detail level) and still opens. */
+interface SavedNotes { notes: string; topic: string; format?: string; detail?: string; citations?: Citation[] }
+const savedFormat = (s: SavedNotes) =>
+  s.format && NOTE_FORMATS.some((f) => f.id === s.format) ? s.format : /Ultra-detailed|Exam Ready/.test(s.detail ?? "") ? "detailed" : "summary";
+
+/** The passages the notes cite, in order of first use (all of them when the notes cite none). */
+function notesSources(notes: string, citations: Citation[]): Citation[] {
+  const used = new Set([...notes.matchAll(/\[(\d{1,2})\](?!\()/g)].map((m) => Number(m[1])));
+  const cited = citedFirst(notes, citations).filter((c) => used.has(c.n));
+  return cited.length ? cited : citations;
+}
+
+/** The notes as a Markdown file: the [n] markers stay, and a Sources list at the end says which page each one is. */
+export function notesMarkdown(notes: string, citations: Citation[]): string {
+  const used = [...notesSources(notes, citations)].sort((a, b) => a.n - b.n);
+  if (!used.length) return notes;
+  return `${notes.trimEnd()}\n\n## Sources\n\n${used.map((c) => `- [${c.n}] ${c.label || citationText(c)}`).join("\n")}\n`;
+}
 
 /** `documentId` is the workspace's active document (what the notes are about); `historyId` is just this saved set of notes. */
 export default function NotesView({ documentId, restoreSessionId }: { documentId?: string; restoreSessionId?: string }) {
   const [historyId, setHistoryId] = useState(() => restoreSessionId || crypto.randomUUID());
   const sessionId = documentId ?? historyId;
   const refreshIfStale = useHUDStore((s) => s.refreshIfStale);
-  const [topic, setTopic] = useState("");
-  const [detail, setDetail] = useState("Normal (Simplified)");
+  const [topic, setTopic] = useDraft("notes", documentId);         // typed but not sent: kept (lib/study/memory.ts)
+  const [format, setFormat] = useState("summary");
   const [loading, setLoading] = useState(false);
   const [notes, setNotes] = useState<string | null>(null);
+  const [citations, setCitations] = useState<Citation[]>([]);
   const [tab, setTab] = useState<"full" | "outline">("full");
   const [showHistory, setShowHistory] = useState(false);
   const notesContentRef = useRef<HTMLDivElement>(null);
   const notesScrollRef = useRef<HTMLDivElement>(null);   // the scrolling box the outline jumps within
+
+  // the passage open in the PDF viewer (focus goes back to the [n] that opened it)
+  const [openCitation, setOpenCitationState] = useState<Citation | null>(null);
+  const citeOpener = useRef<HTMLElement | null>(null);
+  const setOpenCitation = useCallback((c: Citation | null) => {
+    if (c) citeOpener.current = document.activeElement as HTMLElement | null;
+    setOpenCitationState(c);
+  }, []);
+  const closeCitation = useCallback(() => {
+    setOpenCitationState(null);
+    requestAnimationFrame(() => citeOpener.current?.focus?.({ preventScroll: true }));
+  }, []);
 
   // Restore from history navigation
   useEffect(() => {
@@ -47,19 +93,22 @@ export default function NotesView({ documentId, restoreSessionId }: { documentId
     let data: Awaited<ReturnType<typeof generateNotes>> | undefined;
     try {
       // Use existing sessionId so the PDF uploaded to this session is found on the backend
-      data = await generateNotes(finalTopic, detail, sessionId);
+      data = await generateNotes(finalTopic, format, sessionId);
     } catch (e) {
       setLoading(false);
       toast.apiError(e, { onRetry: () => handleGenerate(finalTopic) });
       return;
     }
     setLoading(false);
-    if (data?.content) {
+    if (typeof data?.content === "string" && data.content) {
+      const cites = Array.isArray(data.citations) ? data.citations : [];
       setNotes(data.content);
+      setCitations(cites);
       setTopic(finalTopic);
-      // Save to history
-      const preview = `${finalTopic} · ${detail}`;
-      saveSessionData(historyId, "notes", preview, { notes: data.content, topic: finalTopic, detail } as SavedNotes, finalTopic);
+      setTab("full");
+      saveSessionData(historyId, "notes", `${finalTopic} · ${formatLabel(format)}`,
+        { notes: data.content, topic: finalTopic, format, citations: cites } as SavedNotes, finalTopic);
+      rememberSession("notes", documentId, historyId);     // these notes reopen here next time
       if (data.rewards?.ok) {
         toast.success(`+${data.rewards.xp_gained} XP | +${data.rewards.coins_gained} Coins`, { icon: "🎉" });
         refreshIfStale(5_000);
@@ -73,22 +122,36 @@ export default function NotesView({ documentId, restoreSessionId }: { documentId
     const data = loadSessionData<SavedNotes>(id);
     if (!data?.notes) return;
     setHistoryId(id);
+    rememberSession("notes", documentId, id);
     setNotes(data.notes);
+    setCitations(Array.isArray(data.citations) ? data.citations : []);
     setTopic(data.topic || "");
-    setDetail(data.detail || "Normal (Simplified)");
+    setFormat(savedFormat(data));
     setTab("full");
     setShowHistory(false);
   };
 
   const handleNew = () => {
     setNotes(null);
+    setCitations([]);
     setTopic("");
-    // Do NOT reset sessionId — PDF stays uploaded to this session
+    forgetSession("notes", documentId);
+    setHistoryId(crypto.randomUUID());                    // the next notes are a new History entry, not these overwritten
+  };
+
+  const copyNotes = async () => {
+    if (!notes) return;
+    const copied = await navigator.clipboard?.writeText(notesMarkdown(notes, citations)).then(() => true, () => false);
+    if (copied) toast.success("Notes copied");
+    else toast.info("Couldn't copy here. Select the text and copy it instead.");
   };
 
   const wordCount = notes ? notes.split(/\s+/).length : 0;
   const readingTime = Math.max(1, Math.floor(wordCount / 200));
   const sections = notes ? notes.split("\n").filter((l) => l.startsWith("##")).length : 0;
+  const sources = useMemo(() => (notes ? notesSources(notes, citations) : []), [notes, citations]);
+  const markdownFile = notes ? notesMarkdown(notes, citations) : "";
+  const fileName = topic || "notes";
 
   const headers = notes
     ? notes.split("\n").filter((line) => line.startsWith("#")).map((line) => {
@@ -128,7 +191,7 @@ export default function NotesView({ documentId, restoreSessionId }: { documentId
       <div className="ws-pane flex flex-col flex-1 min-w-0 overflow-hidden">
         <StudyToolbar
           title="Notes"
-          subtitle={notes ? topic : "Study notes from your document"}
+          subtitle={notes ? `${topic} · ${formatLabel(format)}` : "Study notes from your document"}
           historyLabel="Notes history" historyOpen={showHistory} onToggleHistory={() => setShowHistory((v) => !v)}
           onNew={notes ? handleNew : undefined} newLabel="New notes"
         />
@@ -141,17 +204,28 @@ export default function NotesView({ documentId, restoreSessionId }: { documentId
                 <span className="study-intro__icon" aria-hidden="true"><NotebookPen size={26} /></span>
                 <div>
                   <h3>Generate study notes</h3>
-                  <p>Pick a topic from your document and get notes you can read, outline and download.</p>
+                  <p>Pick a topic and a format. Every fact links back to the page it came from.</p>
                 </div>
               </div>
 
               <form className="study-card space-y-5 mb-8" onSubmit={(e) => { e.preventDefault(); void handleGenerate(); }}>
                 <Input label="What would you like notes on?" value={topic} onChange={(e) => setTopic(e.target.value)}
                        placeholder="e.g. Machine learning basics, Chapter 3 summary, Key definitions" />
-                <Select label="Detail level" value={detail} onChange={(e) => setDetail(e.target.value)}>
-                  <option>Normal (Simplified)</option>
-                  <option>Ultra-detailed (Exam Ready)</option>
-                </Select>
+                <fieldset className="note-formats">
+                  <legend className="note-formats__legend">Format</legend>
+                  <div className="note-formats__grid">
+                    {NOTE_FORMATS.map((f) => (
+                      <label key={f.id} className="note-format">
+                        <input type="radio" name="note-format" value={f.id} checked={format === f.id} onChange={() => setFormat(f.id)} className="sr-only" />
+                        <span className="note-format__icon" aria-hidden="true">{f.icon}</span>
+                        <span className="note-format__text">
+                          <span className="note-format__name">{f.label}</span>
+                          <span className="note-format__hint">{f.hint}</span>
+                        </span>
+                      </label>
+                    ))}
+                  </div>
+                </fieldset>
                 <Button type="submit" variant="primary" block loading={loading} disabled={!topic.trim()}>
                   {loading ? "Generating notes…" : <><Sparkles size={16} aria-hidden="true" />Generate notes</>}
                 </Button>
@@ -168,7 +242,7 @@ export default function NotesView({ documentId, restoreSessionId }: { documentId
                 </div>
               </div>
 
-              <p className="mt-8 text-sm text-fg-muted">Be specific about the topic for better notes. Use “Ultra-detailed” for exam preparation. Past notes are saved: open History to revisit them.</p>
+              <p className="mt-8 text-sm text-fg-muted">Be specific about the topic for better notes. Use “Exam-ready” before a test, “Cheat sheet” the night before. Past notes are saved: open History to revisit them.</p>
             </div>
           </div>
         ) : (
@@ -179,14 +253,20 @@ export default function NotesView({ documentId, restoreSessionId }: { documentId
               <span>~{readingTime} min read</span>
               <span>{sections} {sections === 1 ? "section" : "sections"}</span>
               <span className="flex-1" />
-              <a href={`data:text/markdown;charset=utf-8,${encodeURIComponent(notes)}`} download={`${topic || "notes"}.md`}
-                 className="inline-flex items-center gap-1 text-ink-blue hover:underline">
+              <a href={`data:text/markdown;charset=utf-8,${encodeURIComponent(markdownFile)}`} download={`${fileName}.md`}
+                 className="notes-action">
                 <Download size={12} aria-hidden="true" /> Markdown
               </a>
-              <a href={`data:text/plain;charset=utf-8,${encodeURIComponent(notes.replace(/[#*`]/g, ""))}`} download={`${topic || "notes"}.txt`}
-                 className="inline-flex items-center gap-1 text-ink-blue hover:underline">
+              <a href={`data:text/plain;charset=utf-8,${encodeURIComponent(markdownFile.replace(/[#*`]/g, ""))}`} download={`${fileName}.txt`}
+                 className="notes-action">
                 <Download size={12} aria-hidden="true" /> Text
               </a>
+              <button type="button" className="notes-action" onClick={() => window.print()}>
+                <Printer size={12} aria-hidden="true" /> Print / PDF
+              </button>
+              <button type="button" className="notes-action" onClick={() => void copyNotes()}>
+                <Copy size={12} aria-hidden="true" /> Copy
+              </button>
               <Button size="sm" variant="ghost" onClick={handleNew}><RefreshCw size={12} aria-hidden="true" />New</Button>
             </div>
 
@@ -197,8 +277,17 @@ export default function NotesView({ documentId, restoreSessionId }: { documentId
 
             <div ref={notesScrollRef} className="relative flex-1 min-h-0 overflow-y-auto notes-scroll px-6 py-6">
               {tab === "full" && (
-                <div ref={notesContentRef} className="notes-canvas mx-auto">
-                  <ReactMarkdown remarkPlugins={[remarkGfm]}>{notes}</ReactMarkdown>
+                <div ref={notesContentRef} className="notes-canvas mx-auto" data-print="notes">
+                  <ChatMarkdown citations={citations.length}
+                    onCite={citations.length ? (n) => setOpenCitation(citations.find((c) => c.n === n) ?? null) : undefined}>
+                    {notes}
+                  </ChatMarkdown>
+                  {sources.length > 0 && (
+                    <section className="notes-sources" aria-labelledby="notes-sources-h">
+                      <h2 id="notes-sources-h" className="notes-sources__title">Sources</h2>
+                      <CitationList citations={sources} onOpen={setOpenCitation} />
+                    </section>
+                  )}
                 </div>
               )}
               {tab === "outline" && (
@@ -218,6 +307,7 @@ export default function NotesView({ documentId, restoreSessionId }: { documentId
           </div>
         )}
       </div>
+      {openCitation && <PdfViewer citation={openCitation} onClose={closeCitation} />}
     </div>
   );
 }

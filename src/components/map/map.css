@@ -1,35 +1,7 @@
-/* The concept map (components/map/*). Study theme, tokens only: a calm star chart, no gradients. */
+/* The concept map (components/map/*). Study theme, tokens only: a mind map, no gradients. */
 .cmap-wrap { display: grid; grid-template-columns: minmax(0, 1fr) 20rem; gap: var(--space-4); align-items: start; }
 .cmap-wrap[data-panel="none"] { grid-template-columns: minmax(0, 1fr); }
 @media (max-width: 980px) { .cmap-wrap { grid-template-columns: minmax(0, 1fr); } }
-
-.cmap-sky {
-  position: relative; border-radius: var(--radius-xl); border: 1px solid var(--glass-border);
-  background: var(--color-surface-sunken); overflow: hidden;
-}
-.cmap { display: block; width: 100%; height: auto; }
-.cmap__dust { fill: var(--color-fg-muted); opacity: 0.35; }
-.cmap__line { stroke: var(--color-line-strong); stroke-width: 1.2; opacity: 0.55; transition: opacity 160ms, stroke 160ms; }
-.cmap__line[data-on] { stroke: var(--color-accent-text); opacity: 0.95; stroke-width: 1.8; }
-.cmap__rel { fill: var(--color-text-secondary); font-size: 13px; font-style: italic; text-anchor: middle; paint-order: stroke; stroke: var(--color-surface-sunken); stroke-width: 4px; }
-
-.cmap__star { cursor: pointer; transition: opacity 160ms; --star: var(--color-fg-muted); }
-.cmap__star[data-heat="weak"] { --star: var(--color-danger); }
-.cmap__star[data-heat="learning"] { --star: var(--color-warning); }
-.cmap__star[data-heat="strong"] { --star: var(--color-success); }
-.cmap__star[data-dim] { opacity: 0.35; }
-.cmap__hit { fill: transparent; }
-.cmap__core { fill: var(--star); }
-.cmap__star[data-heat="new"] .cmap__core { fill: var(--color-surface-sunken); stroke: var(--star); stroke-width: 2; }
-/* the ring says the heat without colour too: solid = strong, dashed = learning, dotted = weak, none = not tried */
-.cmap__ring { fill: none; stroke: var(--star); stroke-width: 1.6; opacity: 0.75; }
-.cmap__star[data-heat="learning"] .cmap__ring { stroke-dasharray: 5 4; }
-.cmap__star[data-heat="weak"] .cmap__ring { stroke-dasharray: 1.5 3.5; stroke-linecap: round; stroke-width: 2.2; }
-.cmap__star[data-heat="new"] .cmap__ring { opacity: 0; }
-.cmap__star:hover .cmap__ring, .cmap__star:focus-visible .cmap__ring, .cmap__star[data-selected] .cmap__ring { opacity: 1; stroke-width: 2.6; }
-.cmap__star[data-selected] .cmap__core { stroke: var(--color-text); stroke-width: 2.5; }
-.cmap__label { fill: var(--color-text-secondary); font-size: 15px; font-weight: 500; text-anchor: middle; paint-order: stroke; stroke: var(--color-surface-sunken); stroke-width: 4px; }
-.cmap__label[data-major] { fill: var(--color-text); font-weight: 650; font-size: 16.5px; }
 
 .cmap-legend { display: flex; flex-wrap: wrap; gap: var(--space-3) var(--space-4); margin: var(--space-3) 0 0; padding: 0; list-style: none; font-size: 0.78rem; color: var(--color-text-secondary); }
 .cmap-legend li { display: inline-flex; align-items: center; gap: var(--space-2); }
@@ -62,4 +34,57 @@
 .cmap-progress ul { margin: 0; padding: 0; list-style: none; display: grid; gap: var(--space-1); font-size: 0.8rem; color: var(--color-text-secondary); text-align: left; }
 .cmap-progress li { display: flex; justify-content: space-between; gap: var(--space-3); }
 .cmap-notice { margin: 0 0 var(--space-3); font-size: 0.85rem; color: var(--color-text-secondary); }
-@media (prefers-reduced-motion: reduce) { .cmap__line, .cmap__star, .cmap-progress__bar > span { transition: none; } }
+@media (prefers-reduced-motion: reduce) { .cmap-progress__bar > span { transition: none; } }
+
+/* ── Mind map (MindMap.tsx): the subject in the middle, a colour per main idea, flat pills ─────────────────────── */
+.mm {
+  --mm-0: #7c8cff; --mm-1: #34c3a0; --mm-2: #f2a33a; --mm-3: #e8698c; --mm-4: #5cb8f0; --mm-5: #b48cf2; --mm-6: #a3c94f; --mm-7: #e88a5c;
+  position: relative; border-radius: var(--radius-xl); border: 1px solid var(--glass-border); background: var(--color-surface-sunken);
+}
+:root[data-mode="light"] .mm {
+  --mm-0: #3f4fd6; --mm-1: #0f8a6c; --mm-2: #b86a00; --mm-3: #c23a63; --mm-4: #1f7fb8; --mm-5: #7a4fc9; --mm-6: #5f8a1a; --mm-7: #b8562a;
+}
+.mm__tools {
+  position: absolute; top: var(--space-2); right: var(--space-2); z-index: 1; display: flex; align-items: center; gap: 2px;
+  padding: 2px; border-radius: var(--radius-lg); background: var(--color-elevated); border: 1px solid var(--glass-border);
+}
+.mm__zoom { min-width: 3.2em; text-align: center; font-size: 0.75rem; font-variant-numeric: tabular-nums; color: var(--color-text-secondary); }
+.mm__box { display: flex; overflow: auto; min-height: 22rem; max-height: min(72vh, 760px); cursor: grab; touch-action: pan-x pan-y; border-radius: inherit; }
+.mm__box:active { cursor: grabbing; }
+.mm__svg { display: block; flex: none; margin: auto; }                /* centred while it fits, scrolls when it doesn't */
+
+.mm__branch { fill: none; stroke-linecap: round; opacity: 0.85; transition: opacity 160ms; }
+.mm__branch[data-depth="1"] { stroke-width: 3.5; }
+.mm__branch[data-depth="2"] { stroke-width: 2.2; }
+.mm__branch[data-depth="3"] { stroke-width: 1.5; }
+.mm__branch[data-dim] { opacity: 0.18; }
+.mm__cross { fill: none; stroke: var(--color-text-secondary); stroke-width: 1.5; stroke-dasharray: 5 5; opacity: 0.8; }
+.mm__rel { fill: var(--color-text-secondary); font-size: 12.5px; font-style: italic; text-anchor: middle; paint-order: stroke; stroke: var(--color-surface-sunken); stroke-width: 4px; }
+
+.mm__root rect { fill: var(--color-accent); }
+.mm__root text { fill: var(--color-on-accent); font-size: 17px; font-weight: 700; text-anchor: middle; dominant-baseline: central; }
+.mm__more rect { fill: none; stroke: var(--b); stroke-width: 1.5; stroke-dasharray: 4 4; }
+.mm__more text { fill: var(--color-text-secondary); font-size: 14px; font-style: italic; text-anchor: middle; dominant-baseline: central; }
+
+.mm__node { cursor: pointer; transition: opacity 160ms; --heat: var(--color-fg-muted); }
+.mm__node[data-heat="weak"] { --heat: var(--color-danger); }
+.mm__node[data-heat="learning"] { --heat: var(--color-warning); }
+.mm__node[data-heat="strong"] { --heat: var(--color-success); }
+.mm__node[data-dim] { opacity: 0.32; }
+.mm__pill { fill: var(--color-elevated); stroke: color-mix(in srgb, var(--b) 55%, var(--color-border)); stroke-width: 1.3; transition: stroke-width 120ms; }
+.mm__node[data-depth="1"] .mm__pill { fill: color-mix(in srgb, var(--b) 18%, var(--color-elevated)); stroke: var(--b); stroke-width: 1.8; }
+.mm__node:hover .mm__pill, .mm__node[data-lit] .mm__pill { stroke: var(--b); stroke-width: 2.4; }
+.mm__node:focus-visible { outline: 2px solid transparent; }          /* the pill's own ring shows focus (and forced colours still draw this one) */
+.mm__node:focus-visible .mm__pill { stroke: var(--focus-ring-color); stroke-width: 3; }
+.mm__node[data-selected] .mm__pill { stroke: var(--color-text); stroke-width: 2.6; }
+.mm__dot { fill: var(--heat); }
+.mm__node[data-heat="new"] .mm__dot { fill: none; stroke: var(--heat); stroke-width: 1.6; }
+.mm__label { fill: var(--color-text-secondary); font-size: 14px; font-weight: 500; dominant-baseline: central; }
+.mm__node[data-depth="1"] .mm__label { fill: var(--color-text); font-size: 15px; font-weight: 650; }
+@media (prefers-reduced-motion: reduce) { .mm__branch, .mm__node, .mm__pill { transition: none; } }
+/* an umbrella concept in the middle: the subject's name above it */
+.mm__node--root .mm__pill { fill: var(--color-accent); stroke: var(--color-accent); }
+.mm__node--root .mm__label { fill: var(--color-on-accent); font-size: 17px; font-weight: 700; }
+.mm__node--root .mm__dot { stroke: var(--color-on-accent); stroke-width: 1.5; }
+.mm__node--root[data-selected] .mm__pill { stroke: var(--color-text); stroke-width: 3; }
+.mm__caption { fill: var(--color-muted); font-size: 12px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; text-anchor: middle; }

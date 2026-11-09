@@ -61,6 +61,11 @@ function hintFor(t: Target, message: string): string | undefined {
     return "Check that Ollama and the tunnel are both running on your computer.";
   }
   if (t.provider === "workers-ai") return "Is the Workers AI binding (AI) set, and is the model name an @cf/... model from the Workers AI catalog?";
+  if (t.provider === "ollama-cloud") {
+    if (status === 401 || status === 403) return "Ollama's cloud refused the key: check OLLAMA_API_KEY (create one at ollama.com → Settings → Keys).";
+    if (status === 404) return `Ollama's cloud has no model "${t.model}". Pick one from its list (Admin → AI shows them), e.g. gpt-oss:120b.`;
+    if (status === 429) return "Your Ollama plan's usage limit is reached for now. Wait a bit, or check your usage on ollama.com.";
+  }
   if (status === 400 && m.includes("api key")) return `The provider rejected the key: check ${KEY_ENV[t.provider as KeyedProvider]}.`;
   if (status === 401 || status === 403) return `The key is wrong or has no access to this model: check ${KEY_ENV[t.provider as KeyedProvider]}.`;
   if (status === 404) return `No model called "${t.model}" for this key. Check the exact model id in the provider's docs.`;
@@ -98,9 +103,15 @@ export async function testModel(db: Db, adminId: number, input: { spec?: string 
   const spec = `${target.provider}:${target.model}`;
   const start = now();
   try {
-    const r = await llmFor(target, bindings).generate(PROMPT, { maxOutputTokens: 16, temperature: 0, timeoutMs: 20_000 });
+    // a budget a thinking model can think in and still answer (16 tokens went entirely on thinking)
+    const r = await llmFor(target, bindings).generate(PROMPT, { maxOutputTokens: 512, temperature: 0, timeoutMs: 30_000 });
     const reply = (r.text || "").trim();
-    if (!reply) return { ok: false, spec, source, latency_ms: now() - start, error: "The model answered with nothing.", hint: hintFor(target, "") };
+    if (!reply) {
+      return { ok: false, spec, source, latency_ms: now() - start, error: "The model answered with nothing.",
+        hint: target.provider === "ollama" || target.provider === "ollama-cloud"
+          ? "It's probably a thinking model that spent its whole answer on thinking. Try again, or set OLLAMA_REASONING_EFFORT=low (the default) / medium."
+          : hintFor(target, "") };
+    }
     return { ok: true, spec, source, latency_ms: now() - start, reply: reply.slice(0, 120) };
   } catch (e) {
     const message = (e instanceof Error ? e.message : String(e)).slice(0, 300);

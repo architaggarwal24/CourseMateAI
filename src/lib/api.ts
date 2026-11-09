@@ -8,6 +8,7 @@ import { readPdf, type ReadPdf } from "./upload";
 import type { components } from "./api/generated/schema";
 import { ApiError, parseApiError } from "./api/errors";
 import { idempotencyKey } from "./api/idempotency";
+import type { Citation } from "./study/citations";
 
 type QuestionType = components["schemas"]["QuizRequest"]["question_type"];
 
@@ -125,19 +126,30 @@ export async function generateFlashcards(topic: string, sessionId: string, numCa
   return body({ data });
 }
 
-export async function generateQuiz(topic: string, numQuestions: number, questionType: string, sessionId: string) {
+export async function generateQuiz(topic: string, numQuestions: number, questionType: string, sessionId: string, difficulty = "mixed") {
   const { data } = await api.POST("/quiz", {
-    // The server validates question_type and answers 422 for anything outside the schema's set.
-    body: { topic, num_questions: numQuestions, question_type: questionType as QuestionType, session_id: sessionId },
+    // The server validates question_type and answers 422 for anything outside the schema's set. (difficulty: round 7)
+    body: { topic, num_questions: numQuestions, question_type: questionType as QuestionType, session_id: sessionId, difficulty } as {
+      topic: string; num_questions: number; question_type: QuestionType; session_id: string },
   });
   return body({ data });
 }
 
-export async function generateNotes(topic: string, detailLevel: string, sessionId: string) {
+/** A new quiz of a finished quiz's missed questions (no AI call). */
+export async function retryMissedQuiz(quizId: string) {
+  const res = await rawApi.POST("/quiz/retry" as never, { body: { quiz_id: quizId } } as never) as { data?: unknown; error?: unknown; response: Response };
+  if (!res.response.ok) throw parseApiError(res.response.status, res.error, "Couldn't start the retry");
+  return res.data as { quiz_id: string; topic: string; content: { questions: unknown[] } };
+}
+
+/** Notes in a format (round 7: summary, detailed, cornell, outline, keyterms, cheatsheet), with page-linked citations. */
+export async function generateNotes(topic: string, format: string, sessionId: string) {
   const { data } = await api.POST("/notes", {
-    body: { topic, detail_level: detailLevel, session_id: sessionId },
+    body: { topic, format, detail_level: format === "detailed" ? "Ultra-detailed (Exam Ready)" : "Normal (Simplified)", session_id: sessionId } as {
+      topic: string; detail_level: string; session_id: string },
   });
-  return body({ data });
+  return body({ data }) as { mode: string; format?: string; content: string; sources: unknown[]; citations?: Citation[];
+    rewards?: { ok?: boolean; xp_gained?: number; coins_gained?: number } | null };
 }
 
 /** Grade one quiz answer on the server (instant feedback). The first answer to a question is final. */

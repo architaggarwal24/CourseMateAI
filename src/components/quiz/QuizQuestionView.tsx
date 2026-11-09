@@ -128,6 +128,12 @@ export default function QuizQuestionView({ index, total, question, picked, resul
               {(result?.explanation ?? question.explanation) && (
                 <p className="text-sm leading-[1.6] text-fg-2">{result?.explanation ?? question.explanation}</p>
               )}
+              {(result?.source || result?.concept) && (
+                <p className="quiz-verdict__meta">
+                  {result.concept && <span>Tests: <strong>{result.concept}</strong></span>}
+                  {result.source && <span>Read again: {result.source}</span>}
+                </p>
+              )}
             </Card>
           )}
         </div>

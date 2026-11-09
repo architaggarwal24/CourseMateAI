@@ -40,11 +40,11 @@ export default function CourseOverview({ course, onEdit, onUpload, uploading, ha
       <div className="flex-1 min-h-0 overflow-y-auto px-6 py-8" tabIndex={0} role="region" aria-label="Course overview">
         <div className="mx-auto w-full max-w-[84ch] course-overview">
           {course.documents.length === 0 ? (
-            <EmptyState icon={<BookMarked size={30} />} title="Add your first PDF"
-                        description="Lecture slides, chapters, past papers: everything this course covers. Chat, notes, quizzes, review and exams then use all of it together. Or drop a PDF anywhere on this page."
+            <EmptyState icon={<BookMarked size={30} />} title="Add your PDFs"
+                        description="Lecture slides, chapters, past papers: everything this course covers. Chat, notes, quizzes, review and exams then use all of it together. Pick several at once, or drop them anywhere on this page."
                         action={
                           <div className="flex flex-wrap justify-center gap-2">
-                            {onUpload && <Button variant="primary" onClick={onUpload} loading={uploading}><Upload size={15} aria-hidden="true" />Upload a PDF</Button>}
+                            {onUpload && <Button variant="primary" onClick={onUpload} loading={uploading}><Upload size={15} aria-hidden="true" />Upload PDFs</Button>}
                             {(hasOtherPdfs || !onUpload) && <Button onClick={onEdit}>Pick from your PDFs</Button>}
                           </div>
                         } />

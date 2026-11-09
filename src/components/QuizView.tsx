@@ -7,10 +7,11 @@ import QuizQuestionView from "./quiz/QuizQuestionView";
 import QuizReview from "./quiz/QuizReview";
 import { normalizeAnswer } from "./quiz/answers";
 import { Button, Input, Select } from "@/components/ui";
-import { generateQuiz, answerQuizQuestion, finishQuiz } from "@/lib/api";
+import { generateQuiz, answerQuizQuestion, finishQuiz, retryMissedQuiz } from "@/lib/api";
 import { useHUDStore } from "@/hooks/useHUD";
 import { QuizData, QuizFeedback, QuizQuestion } from "@/types";
 import { saveSessionData, loadSessionData } from "@/lib/sessions";
+import { forgetSession, rememberSession, useDraft } from "@/lib/study/memory";
 import { toast } from "@/components/ui/Toast";
 
 // FIX BUG 44: Quick-suggestion type strings must map through TYPE_MAP to reach
@@ -47,9 +48,13 @@ export default function QuizView({ documentId, restoreSessionId, initialTopic }:
   const [historyId, setHistoryId] = useState(() => restoreSessionId || crypto.randomUUID());
   const sessionId = documentId ?? historyId;
   const refreshIfStale = useHUDStore((s) => s.refreshIfStale);
-  const [topic, setTopic] = useState(initialTopic ?? "");
+  const [topic, setTopic] = useDraft("quiz", documentId, initialTopic);
   const [qType, setQType] = useState("MCQ");
   const [numQ, setNumQ] = useState(5);
+  const [difficulty, setDifficulty] = useState("mixed");
+  // after finishing: what was missed went to Review, and the weak spots (round 7)
+  const [summary, setSummary] = useState<{ missed: number[]; added_to_review: number; weak_concepts: string[] } | null>(null);
+  const [retrying, setRetrying] = useState(false);
   const [loading, setLoading] = useState(false);
   const [quiz, setQuiz] = useState<QuizData | null>(null);
   const [currentQ, setCurrentQ] = useState(0);
@@ -98,7 +103,8 @@ export default function QuizView({ documentId, restoreSessionId, initialTopic }:
     saveSessionData(historyId, "quiz", `${topic} · ${Object.keys(answers).length}/${quiz.questions.length} answered`, {
       quiz, topic, answers, currentQ, score, quizId: quizId ?? undefined, feedback,
     } as SavedQuiz, topic);
-  }, [answers, currentQ, quiz, topic, historyId, computeScore, quizId, feedback]);
+    rememberSession("quiz", documentId, historyId);       // reopens here, on this question, next time
+  }, [answers, currentQ, quiz, topic, historyId, computeScore, quizId, feedback, documentId]);
 
   // Award on completion
   useEffect(() => {
@@ -113,6 +119,7 @@ export default function QuizView({ documentId, restoreSessionId, initialTopic }:
         // The server grades the finished quiz itself and pays out once per quiz; a quiz saved before that
         // change has no id on the server, so it earns nothing.
         const done = quizId ? await finishQuiz(quizId) : null;
+        if (done && Array.isArray(done.missed)) setSummary({ missed: done.missed, added_to_review: done.added_to_review ?? 0, weak_concepts: done.weak_concepts ?? [] });
         const res = done?.rewards;
         if (res?.ok) {
           toast.success(`+${res.xp_gained} XP | +${res.coins_gained} Coins`, { icon: "🎉" });
@@ -134,6 +141,7 @@ export default function QuizView({ documentId, restoreSessionId, initialTopic }:
     const data = loadSessionData<SavedQuiz>(id);
     if (!data?.quiz?.questions?.length) return;
     setHistoryId(id);
+    rememberSession("quiz", documentId, id);
     setQuiz(data.quiz);
     setTopic(data.topic || "");
     setAnswers(data.answers || {});
@@ -156,7 +164,7 @@ export default function QuizView({ documentId, restoreSessionId, initialTopic }:
     setLoading(true);
     try {
       // Use existing sessionId so the PDF uploaded to this session is found on the backend
-      const data = await generateQuiz(finalTopic, finalNum, finalType, sessionId);
+      const data = await generateQuiz(finalTopic, finalNum, finalType, sessionId, difficulty);
       setLoading(false);
       if (data?.content?.questions?.length) {
         setQuiz(data.content);
@@ -167,6 +175,7 @@ export default function QuizView({ documentId, restoreSessionId, initialTopic }:
         setAnswers({});
         setShowExplanation(false);
         setRewarded(false);
+        setSummary(null);
       } else {
         toast.error("Quiz generation failed. Make sure a PDF is uploaded.");
       }
@@ -190,7 +199,7 @@ export default function QuizView({ documentId, restoreSessionId, initialTopic }:
       const res = await answerQuizQuestion(quizId, question.id, option);
       setAnswers((prev) => ({ ...prev, [question.id]: res.answer }));
       setFeedback((prev) => ({ ...prev, [question.id]: {
-        correct: !!res.correct, correct_answer: res.correct_answer, explanation: res.explanation } }));
+        correct: !!res.correct, correct_answer: res.correct_answer, explanation: res.explanation, source: res.source ?? null, concept: res.concept ?? null } }));
       setShowExplanation(true);
     } catch (e) {
       toast.apiError(e, { onRetry: () => handleAnswer(option) });
@@ -202,9 +211,27 @@ export default function QuizView({ documentId, restoreSessionId, initialTopic }:
   const handleNext = () => { setShowExplanation(false); setCurrentQ((c) => c + 1); };
 
   const handleRestart = () => {
+    forgetSession("quiz", documentId);
+    setHistoryId(crypto.randomUUID());                    // the next quiz is a new entry in History, not this one overwritten
     setQuiz(null); setTopic(""); setCurrentQ(0);
-    setQuizId(null); setFeedback({});
+    setQuizId(null); setFeedback({}); setSummary(null);
     setAnswers({}); setShowExplanation(false); setRewarded(false);
+  };
+
+  /** A new quiz of just the questions missed (no AI call): the same questions, options in a new order. */
+  const handleRetryMissed = async () => {
+    if (!quizId) return;
+    setRetrying(true);
+    try {
+      const data = await retryMissedQuiz(quizId);
+      setHistoryId(crypto.randomUUID());
+      setQuiz(data.content as QuizData);
+      setQuizId(data.quiz_id);
+      setTopic(data.topic);
+      setFeedback({}); setAnswers({}); setCurrentQ(0); setShowExplanation(false); setRewarded(false); setSummary(null);
+    } catch (e) {
+      toast.apiError(e);
+    } finally { setRetrying(false); }
   };
 
 
@@ -260,6 +287,13 @@ export default function QuizView({ documentId, restoreSessionId, initialTopic }:
                   <option value="True/False">True/False</option>
                   <option value="Mixed">Mixed</option>
                 </Select>
+                <Select label="Difficulty" value={difficulty} onChange={(e) => setDifficulty(e.target.value)}
+                  hint="Hard asks you to apply and compare, not just remember.">
+                  <option value="mixed">Mixed (easy to hard)</option>
+                  <option value="easy">Easy: key facts</option>
+                  <option value="medium">Medium: understand and apply</option>
+                  <option value="hard">Hard: analyse and compare</option>
+                </Select>
                 <div>
                   <label htmlFor="quiz-count" className="block text-sm font-medium text-fg-2 mb-2">
                     Questions
@@ -299,7 +333,8 @@ export default function QuizView({ documentId, restoreSessionId, initialTopic }:
     return shell(
       <>
         {toolbar("Quiz complete", `${topic} · ${quiz.questions.length} ${quiz.questions.length === 1 ? "question" : "questions"}`)}
-        <QuizReview topic={topic} questions={quiz.questions} answers={answers} verdict={feedbackFor} onNewQuiz={handleRestart} />
+        <QuizReview topic={topic} questions={quiz.questions} answers={answers} verdict={feedbackFor} onNewQuiz={handleRestart}
+          summary={summary} onRetryMissed={quizId && summary?.missed.length ? () => { void handleRetryMissed(); } : undefined} retrying={retrying} />
       </>,
     );
   }

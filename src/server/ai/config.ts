@@ -107,7 +107,7 @@ function checkSlot(slot: SlotName, value: string, env: Env): string {
   }
   const spec = parseSpec(v);
   if (!spec || spec.provider === "ollama") {
-    throw invalid("Write it as provider:model, with provider gemini, openai, claude, nvidia or workers-ai.", slot);
+    throw invalid("Write it as provider:model, with provider gemini, openai, claude, nvidia, ollama-cloud or workers-ai.", slot);
   }
   if (spec.provider !== "workers-ai" && !configured(spec.provider, env)) {
     throw new HttpError(400, "provider_not_configured", `The server has no ${KEY_ENV[spec.provider]} set, so ${spec.provider} can't answer. Add the key in the Cloudflare dashboard first.`, null, { field: slot });
@@ -168,6 +168,19 @@ export function providerStatus(env: Env = process.env, tunnel?: string | null): 
     configured: p === "workers-ai" || p === "ollama" ? true : configured(p, env),
     key_env: p === "workers-ai" || p === "ollama" ? null : KEY_ENV[p],
   }));
+}
+
+/** The models Ollama's cloud offers (its public list; [] without OLLAMA_API_KEY or when it doesn't answer). */
+export async function ollamaCloudModels(env: Env = process.env, fetchImpl: typeof fetch = fetch): Promise<string[]> {
+  if (!(env.OLLAMA_API_KEY || "").trim()) return [];
+  try {
+    const res = await fetchImpl("https://ollama.com/api/tags", { signal: AbortSignal.timeout(5000) });
+    if (!res.ok) return [];
+    const j = (await res.json()) as { models?: { name?: string }[] };
+    return (j.models ?? []).map((m) => m.name).filter((n): n is string => !!n).sort();
+  } catch {
+    return [];
+  }
 }
 
 /** The models that Ollama has pulled ([] when it isn't answering, or can't be reached from here). */

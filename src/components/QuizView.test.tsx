@@ -17,7 +17,7 @@ const BANK: Q[] = [
 
 /** The server: the quiz holds `questions` (what it generated, maybe fewer than asked); answers are graded here. */
 function server(questions: Q[], opts: { failAnswerOnce?: boolean } = {}) {
-  const log = { generate: [] as any[], answers: [] as any[], finish: [] as any[] };
+  const log = { generate: [] as any[], answers: [] as any[], finish: [] as any[], retry: [] as any[] };
   let failed = false;
   vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
     const path = new URL(urlOf(input)).pathname;
@@ -26,12 +26,18 @@ function server(questions: Q[], opts: { failAnswerOnce?: boolean } = {}) {
       log.answers.push(body);
       if (opts.failAnswerOnce && !failed) { failed = true; return json(500, { error: { code: "internal", message: "Couldn't reach the grader.", action: "retry", details: null } }); }
       const q = questions.find((x) => x.id === body.question_id)!;
-      return json(200, { ok: true, question_id: q.id, answer: body.answer, correct: body.answer === q.correct, correct_answer: q.correct, explanation: q.explanation ?? null });
+      return json(200, { ok: true, question_id: q.id, answer: body.answer, correct: body.answer === q.correct, correct_answer: q.correct, explanation: q.explanation ?? null,
+        source: "bio.pdf · p.4", concept: "Organelles" });
     }
     if (path.endsWith("/quiz/finish")) {
       log.finish.push(body);
       return json(200, { ok: true, quiz_id: "qz1", score: 0, total: questions.length, accuracy: 0, already_finished: false,
-        rewards: { ok: true, xp_gained: 30, coins_gained: 5, new_achievements: [] } });
+        rewards: { ok: true, xp_gained: 30, coins_gained: 5, new_achievements: [] }, missed: [1], added_to_review: 1, weak_concepts: ["Organelles"] });
+    }
+    if (path.endsWith("/quiz/retry")) {
+      log.retry.push(body);
+      return json(200, { mode: "quiz", quiz_id: "qz2", topic: "cells (retry)", sources: [],
+        content: { questions: questions.slice(0, 1).map(({ id, question, options }) => ({ id, question, options })) } });
     }
     if (path.endsWith("/quiz")) {
       log.generate.push(body);
@@ -198,5 +204,26 @@ describe("QuizView: a quiz shorter than requested", () => {
     fireEvent.click(screen.getByRole("button", { name: "Finish quiz" }));
     expect(await screen.findByText("1 of 1 correct")).toBeTruthy();
     expect(document.body.textContent).not.toMatch(NO_ERROR_TEXT);
+  });
+});
+
+describe("QuizView: hardened quizzes (round 7)", () => {
+  it("sends the difficulty; the verdict says where to read again; the end screen says what went to Review and retries the missed ones", async () => {
+    const log = server(BANK.slice(0, 1));
+    render(<QuizView documentId="d1" />);
+    fireEvent.change(screen.getByRole("textbox"), { target: { value: "cells" } });
+    fireEvent.change(screen.getByLabelText("Difficulty"), { target: { value: "hard" } });
+    fireEvent.click(screen.getByRole("button", { name: "Generate quiz" }));
+    await screen.findByText(/Question 1 of/);
+    expect(log.generate[0]).toMatchObject({ topic: "cells", difficulty: "hard" });
+    fireEvent.click(option("Nucleus"));
+    expect(await screen.findByText("Read again: bio.pdf · p.4")).toBeTruthy();
+    expect(screen.getByText("Organelles")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Finish quiz" }));
+    expect(await screen.findByText(/1 missed question is in your Review now/)).toBeTruthy();
+    expect(screen.getByText("Work on: Organelles")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: /Retry the one I missed/ }));
+    await waitFor(() => expect(log.retry).toEqual([{ quiz_id: "qz1" }]));
+    expect(await screen.findByText(/Question 1 of 1/)).toBeTruthy();
   });
 });

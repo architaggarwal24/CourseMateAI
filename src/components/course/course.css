@@ -60,3 +60,8 @@
 .course-onboard__steps svg { color: var(--color-accent-text); }
 .course-onboard__form { width: 100%; display: grid; gap: var(--space-3); text-align: left; }
 .course-onboard__ideas { display: flex; flex-wrap: wrap; gap: var(--space-1); margin-top: calc(-1 * var(--space-1)); }
+/* a PDF and its bin on one row (the bin: out of this course) */
+.lib-menu__row { display: flex; align-items: stretch; gap: 2px; }
+.lib-menu__row > .umenu__item:first-child { flex: 1; min-width: 0; }
+.lib-menu__bin { flex: none; justify-content: center; width: 2.25rem; padding: 0; color: var(--color-muted); }
+.lib-menu__bin:hover, .lib-menu__bin[data-highlighted] { color: var(--color-danger-text, var(--color-danger)); }

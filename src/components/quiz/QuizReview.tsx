@@ -1,6 +1,6 @@
 "use client";
 
-import { CheckCircle2, MinusCircle, XCircle } from "@/components/icons";
+import { CheckCircle2, MinusCircle, Repeat, RotateCcw, Target, XCircle } from "@/components/icons";
 import { Button } from "@/components/ui";
 import { AnimatedNumber } from "@/components/fx";
 import type { QuizFeedback, QuizQuestion } from "@/types";
@@ -12,10 +12,14 @@ interface Props {
   /** The verdict for each question, by question id (undefined where it was never answered). */
   verdict: (q: QuizQuestion) => QuizFeedback | undefined;
   onNewQuiz: () => void;
+  /** From the server once the quiz is scored: missed questions went to the review queue; the ideas to work on. */
+  summary?: { missed: number[]; added_to_review: number; weak_concepts: string[] } | null;
+  onRetryMissed?: () => void;
+  retrying?: boolean;
 }
 
 /** The final screen: the score, then every question with the user's answer and the correct one. */
-export default function QuizReview({ topic, questions, answers, verdict, onNewQuiz }: Props) {
+export default function QuizReview({ topic, questions, answers, verdict, onNewQuiz, summary, onRetryMissed, retrying }: Props) {
   const rows = questions.map((q) => ({ q, picked: answers[q.id], fb: verdict(q) }));
   const score = rows.filter((r) => r.fb?.correct).length;
   const total = rows.length;
@@ -32,6 +36,19 @@ export default function QuizReview({ topic, questions, answers, verdict, onNewQu
             <p className="mt-1 text-sm text-fg-muted">{topic}</p>
           </div>
         </div>
+
+        {summary && summary.missed.length > 0 && (
+          <section className="study-card quiz-next" aria-label="What next">
+            <p className="quiz-next__line"><Repeat size={16} aria-hidden="true" />
+              {summary.added_to_review} missed {summary.added_to_review === 1 ? "question is" : "questions are"} in your Review now: they come back just before you&apos;d forget them.</p>
+            {summary.weak_concepts.length > 0 && (
+              <p className="quiz-next__line"><Target size={16} aria-hidden="true" />Work on: {summary.weak_concepts.join(", ")}</p>
+            )}
+            {onRetryMissed && (
+              <Button onClick={onRetryMissed} loading={retrying}><RotateCcw size={15} aria-hidden="true" />Retry the {summary.missed.length === 1 ? "one" : summary.missed.length} I missed</Button>
+            )}
+          </section>
+        )}
 
         <ol aria-label="Review" className="m-0 list-none space-y-4 p-0">
           {rows.map(({ q, picked, fb }, i) => (
@@ -51,6 +68,7 @@ export default function QuizReview({ topic, questions, answers, verdict, onNewQu
                 <details className="mt-3 text-sm text-fg-2">
                   <summary className="cursor-pointer text-fg-muted">Explanation</summary>
                   <p className="mt-1 leading-[1.6]">{fb.explanation}</p>
+                  {fb.source && <p className="mt-1 text-xs text-fg-muted">Read again: {fb.source}</p>}
                 </details>
               )}
             </li>

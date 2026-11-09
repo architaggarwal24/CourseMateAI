@@ -1,69 +1,88 @@
 import { describe, expect, it } from "vitest";
-import { heatLabel, layoutConstellation, neighbours, starInDirection, type MapConcept, type MapRelation } from "./conceptMap";
+import { heatLabel, layoutMindMap, MIND_MORE, MIND_ROOT, mindLabel, neighbours, type MapConcept, type MapRelation, type MindNode } from "./conceptMap";
 
 const c = (id: string, importance = 2, heat: MapConcept["heat"] = "new"): MapConcept => ({
   id, name: id.toUpperCase(), summary: "", importance, pages: [], docs: [], heat, seen: 0, correct: 0,
 });
-const CONCEPTS = [c("atp", 3), c("mito", 3), c("glyco"), c("krebs"), c("etc"), c("nadh", 1), c("osmo", 1)];
+const CONCEPTS = [c("atp", 3), c("mito", 3), c("glyco"), c("krebs"), c("etc"), c("nadh", 1), c("osmo", 1), c("membrane")];
 const REL: MapRelation[] = [
   { source: "mito", target: "atp", label: "makes" }, { source: "glyco", target: "atp", label: "yields" },
   { source: "krebs", target: "nadh", label: "makes" }, { source: "etc", target: "atp", label: "drives" },
-  { source: "krebs", target: "mito", label: "inside" },
+  { source: "krebs", target: "mito", label: "inside" }, { source: "osmo", target: "membrane", label: "crosses" },
 ];
+const byId = (nodes: MindNode[]) => new Map(nodes.map((n) => [n.id, n]));
+const overlap = (a: MindNode, b: MindNode) =>
+  Math.abs(a.x - b.x) < (a.w + b.w) / 2 && Math.abs(a.y - b.y) < (a.h + b.h) / 2;
 
-describe("constellation layout", () => {
-  it("is deterministic: the same map always draws the same sky", () => {
-    expect(layoutConstellation(CONCEPTS, REL)).toEqual(layoutConstellation([...CONCEPTS].reverse(), [...REL].reverse()));
+describe("mind map layout", () => {
+  it("puts the subject in the middle and the central concepts as its main ideas", () => {
+    const m = byId(layoutMindMap("Biology", CONCEPTS, REL).nodes);
+    expect(m.get(MIND_ROOT)).toMatchObject({ depth: 0, name: "Biology", parent: null });
+    expect(m.get("atp")).toMatchObject({ depth: 1, parent: MIND_ROOT });
+    expect(m.get("mito")).toMatchObject({ depth: 1, parent: MIND_ROOT });
+    // each concept hangs off the main idea it is linked to
+    expect(m.get("glyco")!.parent).toBe("atp");
+    expect(m.get("krebs")!.parent).toBe("mito");
+    expect(m.get("nadh")).toMatchObject({ parent: "krebs", depth: 3, branch: m.get("mito")!.branch });
+    // a group linked to no central concept gets its own main idea
+    expect(m.get("membrane")).toMatchObject({ depth: 1 });
+    expect(m.get("osmo")!.parent).toBe("membrane");
   });
 
-  it("keeps every star inside the frame and apart from the others", () => {
-    const at = layoutConstellation(CONCEPTS, REL);
-    const pts = Object.values(at);
-    expect(pts).toHaveLength(CONCEPTS.length);
-    for (const p of pts) {
-      expect(p.x).toBeGreaterThanOrEqual(0.06); expect(p.x).toBeLessThanOrEqual(0.94);
-      expect(p.y).toBeGreaterThanOrEqual(0.08); expect(p.y).toBeLessThanOrEqual(0.92);
+  it("uses both sides, keeps every pill apart, and keeps each detail outward of its parent", () => {
+    const { nodes, width, height } = layoutMindMap("Biology", CONCEPTS, REL);
+    const m = byId(nodes);
+    const root = m.get(MIND_ROOT)!;
+    expect(new Set(nodes.filter((n) => n.depth === 1).map((n) => n.side))).toEqual(new Set([1, -1]));
+    for (const a of nodes) for (const b of nodes) if (a !== b) expect(overlap(a, b), `${a.id} / ${b.id}`).toBe(false);
+    for (const n of nodes) {
+      expect(n.x - n.w / 2).toBeGreaterThanOrEqual(0);
+      expect(n.x + n.w / 2).toBeLessThanOrEqual(width);
+      expect(n.y + n.h / 2).toBeLessThanOrEqual(height);
+      if (n.parent) {
+        const p = m.get(n.parent)!;
+        expect(Math.sign(n.x - (n.parent === MIND_ROOT ? root.x : p.x))).toBe(n.side);
+      }
     }
-    for (let i = 0; i < pts.length; i++) for (let j = i + 1; j < pts.length; j++) {
-      expect(Math.hypot(pts[i].x - pts[j].x, pts[i].y - pts[j].y)).toBeGreaterThan(0.09);
-    }
   });
 
-  it("puts the central concepts nearer the middle than the supporting ones", () => {
-    const at = layoutConstellation(CONCEPTS, REL);
-    const r = (id: string) => Math.hypot(at[id].x - 0.5, at[id].y - 0.5);
-    expect(Math.max(r("atp"), r("mito"))).toBeLessThan(Math.min(r("nadh"), r("osmo")));
+  it("is the same whatever order the relations come in", () => {
+    const strip = (nodes: MindNode[]) => nodes.map((n) => `${n.id}:${n.parent}:${n.x},${n.y}`).sort();
+    expect(strip(layoutMindMap("B", CONCEPTS, REL).nodes)).toEqual(strip(layoutMindMap("B", CONCEPTS, [...REL].reverse()).nodes));
   });
 
-  it("fits a full map (24 concepts, 40 links) without crowding", () => {
-    const many = Array.from({ length: 24 }, (_, i) => c(`k${i}`, [3, 2, 2, 1][i % 4]));
-    const links = Array.from({ length: 40 }, (_, i) => ({ source: `k${i % 24}`, target: `k${(i * 7 + 3) % 24}`, label: "" }));
-    const pts = Object.values(layoutConstellation(many, links));
-    for (let i = 0; i < pts.length; i++) for (let j = i + 1; j < pts.length; j++) {
-      expect(Math.hypot(pts[i].x - pts[j].x, pts[i].y - pts[j].y)).toBeGreaterThan(0.09);
-    }
+  it("gathers concepts linked to nothing under 'More ideas' when there are several", () => {
+    const m = byId(layoutMindMap("B", [c("a", 3), c("b"), c("x", 1), c("y", 1), c("z", 1)], [{ source: "a", target: "b", label: "" }]).nodes);
+    expect(m.get(MIND_MORE)).toMatchObject({ depth: 1, name: "More ideas" });
+    expect(["x", "y", "z"].map((id) => m.get(id)!.parent)).toEqual([MIND_MORE, MIND_MORE, MIND_MORE]);
+    const few = byId(layoutMindMap("B", [c("a", 3), c("x", 1)], []).nodes);
+    expect(few.has(MIND_MORE)).toBe(false);
+    expect(few.get("x")!.depth).toBe(1);
   });
 
-  it("handles one star and none", () => {
-    expect(layoutConstellation([], [])).toEqual({});
-    expect(layoutConstellation([c("solo", 3)], [])).toEqual({ solo: { x: 0.5, y: 0.5 } });
+  it("an umbrella idea linked to most main ideas goes in the middle, and its other links become main ideas", () => {
+    const list = [c("unsup", 3), c("clust", 3), c("dimred", 3), c("assoc", 3), c("kmeans"), c("pca"), c("anomaly")];
+    const rel = [["unsup", "clust"], ["unsup", "dimred"], ["unsup", "assoc"], ["clust", "kmeans"], ["dimred", "pca"], ["unsup", "anomaly"]]
+      .map(([source, target]) => ({ source, target, label: "" }));
+    const layout = layoutMindMap("Machine Learning", list, rel);
+    const m = byId(layout.nodes);
+    expect(layout.rootConcept).toBe("unsup");
+    expect(m.get(MIND_ROOT)!.name).toBe("UNSUP");
+    expect(m.has("unsup")).toBe(false);
+    expect(["clust", "dimred", "assoc", "anomaly"].map((id) => m.get(id)!.depth)).toEqual([1, 1, 1, 1]);
+    expect(m.get("kmeans")!.parent).toBe("clust");
+    expect(layout.tree.has(["clust", "unsup"].sort().join("|"))).toBe(true);     // a branch, not a cross-link
+    expect(layoutMindMap("B", CONCEPTS, REL).rootConcept).toBeNull();
   });
-});
 
-describe("moving between stars with the arrow keys", () => {
-  const at = { a: { x: 0.5, y: 0.5 }, right: { x: 0.8, y: 0.52 }, up: { x: 0.48, y: 0.2 }, far: { x: 0.9, y: 0.9 }, left: { x: 0.1, y: 0.5 } };
-  const links: MapRelation[] = [{ source: "a", target: "right", label: "" }, { source: "up", target: "a", label: "" }];
-
-  it("lists a star's linked stars", () => {
-    expect(neighbours("a", links).sort()).toEqual(["right", "up"]);
+  it("copes with no concepts, and shortens very long names", () => {
+    expect(layoutMindMap("B", [], []).nodes.map((n) => n.id)).toEqual([MIND_ROOT]);
+    expect(mindLabel("x".repeat(60))).toHaveLength(34);
+    expect(mindLabel("ATP")).toBe("ATP");
   });
 
-  it("prefers a linked star in that direction, then any star there, else stays", () => {
-    expect(starInDirection("a", "ArrowRight", at, links)).toBe("right");
-    expect(starInDirection("a", "ArrowUp", at, links)).toBe("up");
-    expect(starInDirection("a", "ArrowLeft", at, links)).toBe("left");          // not linked, but the only one left
-    expect(starInDirection("left", "ArrowLeft", at, links)).toBe("left");       // nothing further: stays
-    expect(starInDirection("a", "ArrowDown", at, links)).toBe("far");
+  it("lists a concept's links", () => {
+    expect(neighbours("atp", REL).sort()).toEqual(["etc", "glyco", "mito"]);
   });
 });
 

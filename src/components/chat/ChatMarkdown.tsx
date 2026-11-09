@@ -9,6 +9,7 @@ import rehypeHighlight from "@/lib/study/highlight";
 import "katex/dist/katex.min.css";
 import "highlight.js/styles/github-dark.css";
 import { citationNumber, linkCitations } from "@/lib/study/citations";
+import "@/components/pdf/pdf.css";             // .cite-mark (also needed before the viewer has loaded)
 
 // Tables scroll sideways inside the message instead of stretching it; links open in a new tab. (Raw HTML in the
 // answer is never rendered: react-markdown escapes it.)

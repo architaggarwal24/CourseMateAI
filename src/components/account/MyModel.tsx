@@ -31,6 +31,8 @@ export default function MyModel() {
   if (!data) return <Skeleton className="h-24" />;
   const choices = data.providers.filter((p) => p.configured);
   const ollama = provider === "ollama";
+  // a list to pick from: what the local Ollama has pulled, or what Ollama's cloud offers
+  const listed = ollama ? data.ollama.models : provider === "ollama-cloud" ? data.ollama_cloud?.models ?? [] : [];
 
   async function save(spec: string | null) {
     setBusy(true);
@@ -46,21 +48,22 @@ export default function MyModel() {
       <p className="text-sm text-fg-muted">
         Admins only. Your own chats, quizzes and notes try this model first; everyone else keeps the models set in Admin.
         {data.ollama.enabled ? (data.ollama.tunnel ? ` Ollama answers through the tunnel ${data.ollama.tunnel}.` : " Ollama runs on this computer while you use npm run dev.") : " Ollama: save a tunnel address in Admin → AI to use it on the live site."}
+        {data.ollama_cloud?.configured ? " Ollama's cloud models: pick ollama-cloud (no computer or tunnel needed)." : ""}
       </p>
       <div className="grid gap-3 sm:grid-cols-2">
         <Select label="Provider" value={provider} onChange={(e) => { setProvider(e.currentTarget.value); setModel(""); setTyping(false); }}>
           <option value={NORMAL}>Normal models (no override)</option>
           {choices.map((p) => <option key={p.id} value={p.id}>{p.id}</option>)}
         </Select>
-        {provider !== NORMAL && (ollama && data.ollama.models.length && !typing && (model === "" || data.ollama.models.includes(model)) ? (
+        {provider !== NORMAL && (listed.length && !typing && (model === "" || listed.includes(model)) ? (
           <Select label="Model" value={model} onChange={(e) => { const v = e.currentTarget.value; if (v === "__other") { setTyping(true); setModel(""); } else setModel(v); }}>
             <option value="">Choose a model</option>
-            {data.ollama.models.map((m) => <option key={m} value={m}>{m}</option>)}
+            {listed.map((m) => <option key={m} value={m}>{m}</option>)}
             <option value="__other">Another model (type its name)</option>
           </Select>
         ) : (
           <Input label="Model" mono value={model} onChange={(e) => setModel(e.currentTarget.value)}
-            placeholder={ollama ? "llama3.2, qwen2.5:7b, my-model:latest" : provider === "workers-ai" ? "@cf/meta/llama-3.1-8b-instruct-fp8" : "model name"}
+            placeholder={ollama ? "llama3.2, qwen2.5:7b, my-model:latest" : provider === "ollama-cloud" ? "gpt-oss:120b, nemotron-3-ultra, kimi-k3" : provider === "workers-ai" ? "@cf/meta/llama-3.1-8b-instruct-fp8" : "model name"}
             hint={ollama ? (data.ollama.models.length ? `Any model Ollama at ${data.ollama.base} can run.` : `Ollama at ${data.ollama.base} isn't answering: start it, or type a model name.`) : undefined} />
         ))}
       </div>

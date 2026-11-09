@@ -307,9 +307,16 @@ export async function addPages(ctx: RequestContext, deps: SearchDeps, user: Curr
       throw new HttpError(503, "embedding_unavailable", "Couldn't index these pages just now. Please try again in a moment.", "retry");
     }
     const start = row.chunks;
-    await deps.vectors.upsert(pieces.map((c, i) => ({
-      id: vectorId(id, start + i), values: vectors[i], metadata: { doc: id, user: String(user.id), page: c.page },
-    })));
+    try {
+      await deps.vectors.upsert(pieces.map((c, i) => ({
+        id: vectorId(id, start + i), values: vectors[i], metadata: { doc: id, user: String(user.id), page: c.page },
+      })));
+    } catch (e) {
+      // Under `npm run dev` this is usually "Binding VECTORS needs to be run remotely": Vectorize has no local
+      // version, so wrangler.jsonc marks it `"remote": true` and dev needs `npx wrangler login` (docs/deploy-cloudflare.md).
+      console.error("[coursemate] search index write failed", e);
+      throw new HttpError(503, "search_unavailable", "Couldn't save this PDF to the search index just now. Please try again in a moment.", "retry");
+    }
     const rows = pieces.map((c, i) => ({ documentId: id, idx: start + i, page: c.page, text: c.text }));
     for (let i = 0; i < rows.length; i += 25) {                 // D1 takes at most 100 bound values a statement
       await ctx.db.insert(documentChunks).values(rows.slice(i, i + 25)).onConflictDoNothing();
@@ -392,9 +399,17 @@ export async function studyDocs(ctx: RequestContext, user: CurrentUser, id: stri
   const course = await ctx.db.select().from(courses).where(eq(courses.id, id)).get();
   if (!course || course.userId !== user.id) throw notFound();
   requireFeature(await tierFor(ctx.db, user), "courses");
-  const ready = (await courseMembers(ctx, id)).filter((m) => m.status === "ready");
+  const members = await courseMembers(ctx, id);
+  const ready = members.filter((m) => m.status === "ready");
   if (!ready.length) {
-    throw new HttpError(409, "course_empty", "This course has no ready documents yet. Add a PDF to it, or wait for its documents to finish.");
+    const settled = await Promise.all(members.map((m) => settleStale(ctx, m)));
+    const working = settled.some((m) => IN_FLIGHT.has(m.status));
+    throw new HttpError(409, "course_empty", !members.length
+      ? "This course has no PDFs yet. Add one to start."
+      : working
+        ? "This course's PDFs are still being processed. Try again when one is ready."
+        : "None of this course's PDFs could be read. Open one and press Try again, or add another PDF.",
+      working ? "retry" : undefined);
   }
   return { kind: "course" as const, id, name: course.name, hash: `course:${id}`, docs: ready.map((m) => ({ id: m.id, name: m.filename })) };
 }

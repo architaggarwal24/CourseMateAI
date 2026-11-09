@@ -15,6 +15,7 @@ import * as courses from "@/app/api/v1/courses/route";
 import * as course from "@/app/api/v1/courses/[id]/route";
 import * as progress from "@/app/api/v1/courses/[id]/progress/route";
 import * as usage from "@/app/api/v1/account/usage/route";
+import * as chatStream from "@/app/api/v1/chat/stream/route";
 import { setMailerForTests } from "./context";
 import { setEnvForTests } from "./env";
 import { setSearchForTests } from "./search";
@@ -253,6 +254,32 @@ describe("courses", () => {
     const other = await person("other@example.com", "other");
     const bad = await upload.POST(other.request("/api/v1/upload", { body: { filename: "x.pdf", size: 10, pages: 1, file_hash: "e".repeat(64), course_id: c.id } }));
     expect((await json(bad)).error.code).toBe("course_not_found");
+  });
+
+  it("a search index that can't be written stops the upload with a clear 503, and the course says why it's empty", async () => {
+    const b = await person("free@example.com", "free");
+    const c = await json(await courses.POST(b.request("/api/v1/courses", { body: { name: "Machine Learning" } })));
+    const ask = async () => json(await chatStream.POST(b.request("/api/v1/chat/stream", { body: { question: "explain clustering", session_id: c.id } })));
+    expect((await ask()).error.message).toMatch(/no PDFs yet/);
+
+    vectors.upsert = async () => { throw new Error("Binding VECTORS needs to be run remotely"); };
+    const spy = vi.spyOn(console, "error").mockImplementation(() => {});
+    const bytes = pdfBytes("ml");
+    const s = await json(await upload.POST(b.request("/api/v1/upload", { body: { filename: "ML.pdf", size: bytes.length, pages: 1, file_hash: await sha256(bytes), course_id: c.id } })));
+    const id = s.session_id as string;
+    await file.PUT(new Request(`${ORIGIN}/api/v1/documents/${id}/file`, {
+      method: "PUT", headers: { cookie: b.header(), origin: ORIGIN, "content-type": "application/pdf", "content-length": String(bytes.length) },
+      body: bytes, duplex: "half",
+    } as RequestInit), params({ id }));
+    const res = await pages.POST(b.request(`/api/v1/documents/${id}/pages`, { body: { pages: [BIOLOGY[0]], done: true } }), params({ id }));
+    expect(res.status).toBe(503);
+    expect((await json(res)).error).toMatchObject({ code: "search_unavailable", action: "retry" });
+    expect(spy).toHaveBeenCalled();
+    spy.mockRestore();
+
+    expect(await ask()).toMatchObject({ error: { code: "course_empty", message: expect.stringMatching(/still being processed/) } });
+    await p.env.DB.prepare("UPDATE documents SET updated_at = '2020-01-01T00:00:00Z' WHERE id = ?").bind(id).run();
+    expect((await ask()).error.message).toMatch(/None of this course's PDFs could be read/);
   });
 
   it("PDFs from before courses were needed are gathered into a first course, once", async () => {

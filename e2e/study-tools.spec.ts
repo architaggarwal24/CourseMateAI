@@ -43,3 +43,29 @@ test("admin: Test connection shows the reply, or the error with a hint", async (
   await expect(page.getByText(/answered in 742 ms/)).toBeVisible();
   await page.goto("/account/settings");
 });
+
+// Round 7: Study remembers what you were doing - the notes on screen and what was typed come back after Hero.
+test("notes and a half-typed question are still there after going to Hero and back", async ({ page }) => {
+  await mockApi(page);
+  await page.route("**/api/v1/notes", (route) => route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({
+    mode: "notes", format: "summary", sources: [], citations: [], rewards: null, content: "# Cell energy\n\nATP is the energy currency.",
+  }) }));
+  await page.goto("/study?tab=notes&doc=doc-1");
+  await page.getByRole("textbox", { name: /notes on/ }).fill("cell energy");
+  await page.getByRole("button", { name: "Generate notes" }).click();
+  await expect(page.getByRole("heading", { level: 1, name: "Cell energy" })).toBeVisible();
+  await page.getByRole("link", { name: "Chat", exact: true }).first().click();
+  await page.getByRole("textbox", { name: "Message" }).fill("what is glycolysis");
+
+  await page.goto("/hero");
+  await page.goto("/study?tab=notes&doc=doc-1");
+  await expect(page.getByRole("heading", { level: 1, name: "Cell energy" })).toBeVisible();
+  await page.getByRole("link", { name: "Chat", exact: true }).first().click();
+  await expect(page.getByRole("textbox", { name: "Message" })).toHaveValue("what is glycolysis");
+  // New starts empty; the old notes stay in History
+  await page.getByRole("link", { name: "Notes", exact: true }).first().click();
+  await page.getByRole("button", { name: "New notes" }).click();
+  await expect(page.getByRole("button", { name: "Generate notes" })).toBeVisible();
+  await page.reload();
+  await expect(page.getByRole("button", { name: "Generate notes" })).toBeVisible();
+});

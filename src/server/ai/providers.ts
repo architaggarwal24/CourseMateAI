@@ -96,24 +96,51 @@ function gemini(t: Target, fetchImpl: typeof fetch): Llm {
 }
 
 // ── OpenAI chat completions (and NVIDIA NIM) ────────────────────────────────
-function openaiCompatible(t: Target, fetchImpl: typeof fetch, baseUrl: string, newStyle: boolean): Llm {
+/**
+ * Ollama's thinking models (gpt-oss, nemotron, beam ...) think before they answer, and the thinking counts against
+ * max_tokens: with a small budget the whole budget went on thinking and the answer came back empty. So for Ollama:
+ * ask for little thinking (reasoning_effort, OLLAMA_REASONING_EFFORT: "low" by default, "default" to leave the
+ * model's own), and never give a budget too small to think and still answer.
+ */
+const OLLAMA_MIN_OUTPUT = 1024;
+const ollamaEffort = () => {
+  const v = (process.env.OLLAMA_REASONING_EFFORT ?? "low").trim().toLowerCase();
+  return v && v !== "default" ? v : null;
+};
+
+function openaiCompatible(t: Target, fetchImpl: typeof fetch, baseUrl: string, newStyle: boolean, thinking = false): Llm {
   const headers = { authorization: `Bearer ${t.apiKey ?? ""}` };
   // OpenAI's reasoning models take max_completion_tokens and no temperature.
   const reasoning = newStyle && /^(o\d|gpt-5)/i.test(t.model);
-  const body = (messages: ChatMessage[], o: CallOptions, stream: boolean) => ({
-    model: t.model, messages,
-    ...(newStyle ? { max_completion_tokens: o.maxOutputTokens ?? DEFAULT_MAX_OUTPUT } : { max_tokens: o.maxOutputTokens ?? DEFAULT_MAX_OUTPUT }),
-    ...(o.temperature !== undefined && !reasoning ? { temperature: o.temperature } : {}),
-    ...(stream ? { stream: true, stream_options: { include_usage: true } } : {}),
-    ...(o.json && newStyle ? { response_format: { type: "json_object" } } : {}),
-  });
+  let effort = thinking ? ollamaEffort() : null;               // dropped for good if the model refuses it
+  const body = (messages: ChatMessage[], o: CallOptions, stream: boolean) => {
+    const max = thinking ? Math.max(o.maxOutputTokens ?? DEFAULT_MAX_OUTPUT, OLLAMA_MIN_OUTPUT) : o.maxOutputTokens ?? DEFAULT_MAX_OUTPUT;
+    return {
+      model: t.model, messages,
+      ...(newStyle ? { max_completion_tokens: max } : { max_tokens: max }),
+      ...(o.temperature !== undefined && !reasoning ? { temperature: o.temperature } : {}),
+      ...(stream ? { stream: true, stream_options: { include_usage: true } } : {}),
+      ...(o.json && newStyle ? { response_format: { type: "json_object" } } : {}),
+      ...(effort ? { reasoning_effort: effort } : {}),
+    };
+  };
+  /** POST, and once more without reasoning_effort if the model says it doesn't take it. */
+  const send = async (messages: ChatMessage[], o: CallOptions, stream: boolean) => {
+    try {
+      return await post(`${baseUrl}/chat/completions`, headers, body(messages, o, stream), o, fetchImpl);
+    } catch (e) {
+      if (!(effort && e instanceof ProviderError && e.status === 400 && /reason|think|effort/i.test(e.message))) throw e;
+      effort = null;
+      return post(`${baseUrl}/chat/completions`, headers, body(messages, o, stream), o, fetchImpl);
+    }
+  };
   return {
     async generate(messages, o) {
-      const j = await (await post(`${baseUrl}/chat/completions`, headers, body(messages, o, false), o, fetchImpl)).json();
+      const j = await (await send(messages, o, false)).json();
       return { text: j?.choices?.[0]?.message?.content ?? "", tokensIn: j?.usage?.prompt_tokens, tokensOut: j?.usage?.completion_tokens };
     },
     async *stream(messages, o) {
-      const res = await post(`${baseUrl}/chat/completions`, headers, body(messages, o, true), o, fetchImpl);
+      const res = await send(messages, o, true);
       let last: Piece = {};
       for await (const { data } of sseData(res.body)) {
         if (data === "[DONE]") break;
@@ -161,6 +188,12 @@ function claude(t: Target, fetchImpl: typeof fetch): Llm {
   };
 }
 
+export const OLLAMA_CLOUD_BASE = "https://ollama.com/v1";
+/** A cloud model's API name: "gpt-oss:120b-cloud" / "gemma4:cloud" style names from the Ollama app work too. */
+export function ollamaCloudModel(name: string): string {
+  return name.trim().replace(/:cloud$/i, "").replace(/-cloud$/i, "");
+}
+
 export function apiLlm(t: Target, fetchImpl: typeof fetch = fetch): Llm {
   switch (t.provider) {
     case "gemini": return gemini(t, fetchImpl);
@@ -169,7 +202,10 @@ export function apiLlm(t: Target, fetchImpl: typeof fetch = fetch): Llm {
     case "claude": return claude(t, fetchImpl);
     // Ollama speaks the OpenAI chat API at /v1 (no key): on this computer under `next dev`, or through an admin's
     // tunnel URL on the live site (ai/config.ts). Only ever an admin's own model.
-    case "ollama": return openaiCompatible(t, fetchImpl, `${(t.baseUrl || process.env.OLLAMA_BASE_URL || "http://localhost:11434").replace(/\/+$/, "")}/v1`, false);
+    case "ollama": return openaiCompatible(t, fetchImpl, `${(t.baseUrl || process.env.OLLAMA_BASE_URL || "http://localhost:11434").replace(/\/+$/, "")}/v1`, false, true);
+    // Ollama's cloud (docs.ollama.com/cloud): the OpenAI chat API at https://ollama.com/v1 with OLLAMA_API_KEY. The
+    // API names a model without the app's ":cloud" tag ("nemotron-3-ultra:cloud" is "nemotron-3-ultra" here).
+    case "ollama-cloud": return openaiCompatible({ ...t, model: ollamaCloudModel(t.model) }, fetchImpl, OLLAMA_CLOUD_BASE, false, true);
     default: throw new Error(`no API client for ${t.provider}`);
   }
 }

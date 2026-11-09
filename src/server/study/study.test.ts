@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import * as quiz from "@/app/api/v1/quiz/route";
 import * as quizAnswer from "@/app/api/v1/quiz/answer/route";
 import * as quizFinish from "@/app/api/v1/quiz/finish/route";
+import * as quizRetry from "@/app/api/v1/quiz/retry/route";
 import * as flashcards from "@/app/api/v1/flashcards/route";
 import * as notes from "@/app/api/v1/notes/route";
 import * as cardReview from "@/app/api/v1/study/flashcards/review/route";
@@ -39,6 +40,7 @@ import { extractJson, normalizeCorrectAnswer, sameAnswer, stripOptionPrefixes } 
 import { conceptMapDraft, quizBatch } from "./schemas";
 import { plan as examPlan } from "./exams";
 import { digest as mapDigest } from "./conceptMap";
+import { shuffleOptions } from "./tools";
 
 let p: LocalPlatform;
 let mail: ReturnType<typeof fakeMailer>;
@@ -179,6 +181,65 @@ describe("quizzes", () => {
     expect((await quizAnswer.POST(post(other, "/api/v1/quiz/answer", { quiz_id: q.quiz_id, question_id: 1, answer: "ATP" }))).status).toBe(404);
   });
 
+  it("hardened (round 7): written from numbered passages at the asked difficulty, checked by a second pass, options shuffled, the page shown with the answer", async () => {
+    let n = 0;
+    llm = fakeLlms({ "*": (m) => {
+      const all = m.map((x) => x.content).join("\n");
+      if (all.includes("quiz checker")) {
+        // the checker disagrees with question 2's key, and finds question 3 unsupported
+        const qs = JSON.parse(all.match(/QUESTIONS:\n(\[[\s\S]*?\])\n/)![1]) as { id: number }[];
+        return JSON.stringify({ results: qs.map((q) => ({ id: q.id, answer: q.id === 2 ? "DNA" : "ATP", supported: q.id !== 3 })) });
+      }
+      if (all.includes("quiz generator")) {
+        return JSON.stringify({ questions: Array.from({ length: 5 }, () => ({ question: `Hard question ${++n} about respiration?`, options: ["A. ATP", "B. DNA", "C. RNA", "D. Fat"],
+          correct_answer: "A", explanation: "Respiration makes ATP.", difficulty: "hard", concept: "Cellular respiration", source: 1 })) });
+      }
+      return script(m);
+    } });
+    setLlmFactoryForTests(llm.factory);
+    const b = await person(mail, "free@example.com", "free");
+    const id = await uploadPdf(b, "Bio.pdf", BIO);
+    const q = await json(await quiz.POST(post(b, "/api/v1/quiz", { topic: "mitochondria ATP respiration", num_questions: 5, question_type: "MCQ", difficulty: "hard", session_id: id })));
+    expect(q.content.questions).toHaveLength(3);                                       // 2 of 5 failed the check
+    expect(q.content.questions.map((x: any) => x.question)).toEqual(["Hard question 1 about respiration?", "Hard question 4 about respiration?", "Hard question 5 about respiration?"]);
+    expect(q.content.questions[0]).not.toHaveProperty("source_label");                  // hidden until answered
+    const gen = prompts().find((t) => t.includes("quiz generator"))!;
+    expect(gen).toContain("Difficulty: hard");
+    expect(gen).toMatch(/\[1\] \(Bio\.pdf · p\.\d\)/);
+    expect(gen).toMatch(/Test understanding/);
+    const a = await json(await quizAnswer.POST(post(b, "/api/v1/quiz/answer", { quiz_id: q.quiz_id, question_id: 1, answer: "DNA" })));
+    expect(a).toMatchObject({ correct: false, correct_answer: "ATP", concept: "Cellular respiration", source: expect.stringMatching(/^Bio\.pdf · p\.\d$/) });
+  });
+
+  it("finishing lists what was missed (it's in the review queue now) and the weak spots; the missed ones can be retried with no AI call", async () => {
+    const b = await person(mail, "free@example.com", "free");
+    const id = await uploadPdf(b, "Bio.pdf", BIO);
+    const q = await json(await quiz.POST(post(b, "/api/v1/quiz", { topic: "mitochondria ATP respiration", num_questions: 3, question_type: "MCQ", session_id: id })));
+    await quizAnswer.POST(post(b, "/api/v1/quiz/answer", { quiz_id: q.quiz_id, question_id: 1, answer: "DNA" }));
+    for (const qid of [2, 3]) await quizAnswer.POST(post(b, "/api/v1/quiz/answer", { quiz_id: q.quiz_id, question_id: qid, answer: "ATP" }));
+    expect((await json(await quizRetry.POST(post(b, "/api/v1/quiz/retry", { quiz_id: q.quiz_id })))).error.code).toBe("quiz_incomplete");
+    const done = await json(await quizFinish.POST(post(b, "/api/v1/quiz/finish", { quiz_id: q.quiz_id })));
+    expect(done).toMatchObject({ score: 2, missed: [1], added_to_review: 1, weak_concepts: ["mitochondria ATP respiration"] });
+    const calls = llm.calls.length;
+    const again = await json(await quizRetry.POST(post(b, "/api/v1/quiz/retry", { quiz_id: q.quiz_id })));
+    expect(llm.calls.length).toBe(calls);
+    expect(again.content.questions).toHaveLength(1);
+    expect(again.content.questions[0].question).toBe(q.content.questions[0].question);
+    expect(again.topic).toBe("mitochondria ATP respiration (retry)");
+  });
+
+  it("shuffles multiple-choice options but leaves True/False alone", () => {
+    const q = { question: "Q?", options: ["ATP", "DNA", "RNA", "Fat"], correct_answer: "ATP", explanation: "", difficulty: "easy" as const };
+    const seq = [0.1, 0.9, 0.5];
+    let i = 0;
+    const shuffled = shuffleOptions(q, () => seq[i++ % seq.length]);
+    expect([...shuffled.options].sort()).toEqual([...q.options].sort());
+    expect(shuffled.options).not.toEqual(q.options);
+    expect(shuffled.correct_answer).toBe("ATP");
+    const tf = { ...q, options: ["True", "False"], correct_answer: "True" };
+    expect(shuffleOptions(tf).options).toEqual(["True", "False"]);
+  });
+
   it("the spare questions of a batch serve the next quiz on the topic with no AI call", async () => {
     const b = await person(mail, "free@example.com", "free");
     const id = await uploadPdf(b, "Bio.pdf", BIO);
@@ -217,6 +278,28 @@ describe("flashcards, notes and history", () => {
     const r = await json(await cardReview.POST(post(b, "/api/v1/study/flashcards/review", { session_id: id, concept: "Mitochondria", correct: false, front: "What makes ATP?", back: "Mitochondria" })));
     expect(r).toMatchObject({ ok: true, concept: "Mitochondria", mastery: { seen: 1, correct: 0, wrong_streak: 1 } });
     expect(r.review_item).toMatchObject({ front: "What makes ATP?", reps: 1, source: "flashcard" });
+  });
+
+  it("notes come in the format picked (round 7), cite their passages, and each format is cached on its own", async () => {
+    const b = await person(mail, "free@example.com", "free");
+    const id = await uploadPdf(b, "Bio.pdf", BIO);
+    llm = fakeLlms({ "*": (m) => (m[0].content.includes("Cornell notes") ? "# Cells — Cornell notes\n\n| Cue | Notes |\n|---|---|\n| What makes ATP? | Mitochondria [1] |" : script(m)) });
+    setLlmFactoryForTests(llm.factory);
+    const body = { topic: "mitochondria ATP respiration", session_id: id, format: "cornell" };
+    const r = await json(await notes.POST(post(b, "/api/v1/notes", body)));
+    expect(r).toMatchObject({ format: "cornell", content: expect.stringContaining("Cornell notes") });
+    expect(r.citations[0]).toMatchObject({ n: 1, doc_name: "Bio.pdf", label: expect.stringMatching(/^Bio\.pdf · p\.\d$/) });
+    const sys = llm.calls[0].messages[0].content;
+    expect(sys).toMatch(/Put the passage number in square brackets/);
+    expect(llm.calls[0].messages[1].content).toMatch(/\[1\] \(Bio\.pdf · p\.\d\)/);
+    await notes.POST(post(b, "/api/v1/notes", body));
+    expect(llm.calls).toHaveLength(1);                                             // cached
+    await notes.POST(post(b, "/api/v1/notes", { ...body, format: "cheatsheet" }));
+    expect(llm.calls).toHaveLength(2);
+    expect(llm.calls[1].messages[0].content).toMatch(/Cheat sheet/);
+    // an older client's detail level still works
+    const old = await json(await notes.POST(post(b, "/api/v1/notes", { topic: "mitochondria ATP respiration", session_id: id, detail_level: "Ultra-detailed (Exam Ready)" })));
+    expect(old.format).toBe("detailed");
   });
 
   it("notes are cached; chat, quiz and notes are in the history, oldest first per document", async () => {

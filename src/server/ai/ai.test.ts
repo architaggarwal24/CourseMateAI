@@ -53,6 +53,10 @@ describe("costs", () => {
     expect(price("claude", "anything").priced).toBe(true);
     expect(price("workers-ai", "x").rate).toEqual([0, 0]);
     expect(price("openai", "mystery")).toEqual({ rate: [1, 4], priced: false });
+    expect(price("ollama-cloud", "gpt-oss:120b")).toEqual({ rate: [0, 0], priced: true });     // a plan, not per token
+    expect(parseSpec("ollama-cloud:gpt-oss:120b")).toEqual({ provider: "ollama-cloud", model: "gpt-oss:120b" });
+    expect(slotTarget("fast", { LLM_FAST: "ollama-cloud:gpt-oss:120b", OLLAMA_API_KEY: "o-key" })).toMatchObject({ provider: "ollama-cloud", model: "gpt-oss:120b", apiKey: "o-key" });
+    expect(slotTarget("fast", { LLM_FAST: "ollama-cloud:gpt-oss:120b" })).toBeNull();                                  // no key: not used
   });
 });
 

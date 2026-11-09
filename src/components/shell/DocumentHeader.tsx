@@ -54,7 +54,7 @@ interface Props {
  * so it survives reloads and backend restarts.
  */
 export default function DocumentHeader({ doc, gone, loaded, upload, tabs, course, onEditCourse, switcher, onDelete, inCourse, noCourse }: Props) {
-  const { inputRef, uploading, upload: uploadFile, pick, signedIn } = upload;
+  const { inputRef, uploading, uploadMany, multiple, pick, signedIn } = upload;
   const [isPageDragging, setIsPageDragging] = useState(false);
 
   // Announce the outcome of a document we watched being processed (not one that was already finished on load).
@@ -88,8 +88,8 @@ export default function DocumentHeader({ doc, gone, loaded, upload, tabs, course
       e.preventDefault();
       counter.n = 0;
       setIsPageDragging(false);
-      const file = e.dataTransfer?.files?.[0];
-      if (file) uploadFile(file);
+      const files = Array.from(e.dataTransfer?.files ?? []);
+      if (files.length) void uploadMany(files);
     };
     window.addEventListener("dragenter", onEnter);
     window.addEventListener("dragleave", onLeave);
@@ -101,7 +101,7 @@ export default function DocumentHeader({ doc, gone, loaded, upload, tabs, course
       window.removeEventListener("dragover", onOver);
       window.removeEventListener("drop", onDrop);
     };
-  }, [signedIn, uploadFile]);
+  }, [signedIn, uploadMany]);
 
   const busy = uploading || !signedIn || !loaded;
   const named = (name: ReactNode) => (switcher ? switcher(name) : name);
@@ -117,7 +117,7 @@ export default function DocumentHeader({ doc, gone, loaded, upload, tabs, course
         <div role="presentation" className="drop-overlay">
           <div className="drop-overlay__card">
             <FileUp size={40} className="drop-overlay__icon" aria-hidden="true" />
-            <div className="text-xl font-semibold">Drop your PDF anywhere</div>
+            <div className="text-xl font-semibold">{multiple ? "Drop your PDFs anywhere" : "Drop your PDF anywhere"}</div>
             <div className="text-sm text-fg-muted">Release to upload</div>
           </div>
         </div>,
@@ -125,9 +125,9 @@ export default function DocumentHeader({ doc, gone, loaded, upload, tabs, course
       )}
 
       <input
-        ref={inputRef} type="file" accept=".pdf" className="hidden" aria-label="Choose a PDF"
-        disabled={busy}
-        onChange={(e) => { const file = e.target.files?.[0]; if (file) uploadFile(file); }}
+        ref={inputRef} type="file" accept=".pdf" className="hidden" aria-label={multiple ? "Choose PDFs" : "Choose a PDF"}
+        multiple={multiple} disabled={busy}
+        onChange={(e) => { const files = Array.from(e.target.files ?? []); if (files.length) void uploadMany(files); }}
       />
 
       <div className="ws-doc">
@@ -194,7 +194,7 @@ export default function DocumentHeader({ doc, gone, loaded, upload, tabs, course
           {course ? (
             <>
               <Button size="sm" variant="primary" onClick={pick} disabled={busy} loading={uploading}>
-                {!uploading && <Upload size={14} aria-hidden="true" />}Add PDF
+                {!uploading && <Upload size={14} aria-hidden="true" />}Add PDFs
               </Button>
               <Button size="sm" onClick={onEditCourse}><Pencil size={14} aria-hidden="true" />Edit course</Button>
             </>

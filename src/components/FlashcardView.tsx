@@ -12,6 +12,7 @@ import { addToReview } from "@/lib/study/review";
 import { useReview } from "@/hooks/useReview";
 import { ROUTES } from "@/lib/routes";
 import { saveSessionData, loadSessionData } from "@/lib/sessions";
+import { forgetSession, rememberSession, useDraft } from "@/lib/study/memory";
 import { useHUDStore } from "@/hooks/useHUD";
 import { toast } from "@/components/ui/Toast";
 import { shortcutBlocked } from "@/lib/keys";
@@ -39,11 +40,11 @@ export default function FlashcardView({ documentId, restoreSessionId, initialTop
   /** A topic to start from (the concept map's "Quick quiz" / "Flashcards" on one concept). */
   initialTopic?: string;
 }) {
-  const [historyId] = useState(() => restoreSessionId || crypto.randomUUID());
+  const [historyId, setHistoryId] = useState(() => restoreSessionId || crypto.randomUUID());
   const sessionId = documentId ?? historyId;
   const [showHistory, setShowHistory] = useState(false);
   const refreshIfStale = useHUDStore((s) => s.refreshIfStale);
-  const [topic, setTopic] = useState(initialTopic ?? "");
+  const [topic, setTopic] = useDraft("flashcards", documentId, initialTopic);
   const [numCards, setNumCards] = useState(10);
   const [cards, setCards] = useState<Card[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -57,6 +58,8 @@ export default function FlashcardView({ documentId, restoreSessionId, initialTop
   const openDeck = useCallback((id: string) => {
     const saved = loadSessionData<SavedFlashcardSession>(id);
     if (!saved?.cards?.length) return;
+    setHistoryId(id);
+    rememberSession("flashcards", documentId, id);
     setCards(saved.cards);
     setTopic(saved.topic || "");
     setCurrentIndex(saved.currentIndex ?? 0);
@@ -64,7 +67,7 @@ export default function FlashcardView({ documentId, restoreSessionId, initialTop
     setFlipped(false);
     setDone(false);
     setShowHistory(false);
-  }, []);
+  }, [documentId, setTopic]);
   useEffect(() => {
     if (restoreSessionId) openDeck(restoreSessionId);
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -80,12 +83,13 @@ export default function FlashcardView({ documentId, restoreSessionId, initialTop
       { cards, results, currentIndex, topic } as SavedFlashcardSession,
       topic
     );
-  }, [results, currentIndex, cards, topic, historyId]);
+    rememberSession("flashcards", documentId, historyId);  // reopens here, on this card, next time
+  }, [results, currentIndex, cards, topic, historyId, documentId]);
 
   // Missed questions from the arena and quizzes, as a ready-made deck ("Study scrolls"). ?review=1 opens it at once.
   const [reviewDeck, setReviewDeck] = useState<ReviewCard[]>([]);
   useEffect(() => {
-    if (!documentId || restoreSessionId) return;
+    if (!documentId) return;
     let alive = true;
     fetchReviewDeck(documentId).then((deck) => {
       if (!alive) return;
@@ -102,6 +106,7 @@ export default function FlashcardView({ documentId, restoreSessionId, initialTop
       topic: c.concept, difficulty: (c.difficulty === "easy" || c.difficulty === "hard" ? c.difficulty : "medium") as Card["difficulty"],
     })));
     setTopic("Missed questions");
+    setHistoryId(crypto.randomUUID());
     setCurrentIndex(0); setFlipped(false); setResults({}); setDone(false); setPendingRewards(null);
   };
 
@@ -111,6 +116,7 @@ export default function FlashcardView({ documentId, restoreSessionId, initialTop
     try {
       const data = await generateFlashcards(topic.trim(), sessionId, numCards);
       if (data?.cards?.length) {
+        setHistoryId(crypto.randomUUID());                 // a new deck is a new History entry
         setCards(data.cards);
         setCurrentIndex(0);
         setFlipped(false);
@@ -174,6 +180,7 @@ export default function FlashcardView({ documentId, restoreSessionId, initialTop
     setCurrentIndex(0); setFlipped(false); setResults({});
   }, []);
 
+  const newTopic = () => { forgetSession("flashcards", documentId); setCards([]); setDone(false); setTopic(""); };
   const restart = () => { setCurrentIndex(0); setFlipped(false); setResults({}); setDone(false); };
 
   const restartWrong = () => {
@@ -318,7 +325,7 @@ export default function FlashcardView({ documentId, restoreSessionId, initialTop
             {addedToReview
               ? <ButtonLink block href={ROUTES.studyTab("review", undefined, documentId)}><Repeat size={16} aria-hidden="true" />Open your review queue</ButtonLink>
               : <Button block onClick={() => void addDeckToReview()} loading={adding}><Repeat size={16} aria-hidden="true" />Add deck to review</Button>}
-            <Button block onClick={() => { setCards([]); setDone(false); }}>New topic</Button>
+            <Button block onClick={newTopic}>New topic</Button>
           </div>
         </div>
       </div>
@@ -332,7 +339,7 @@ export default function FlashcardView({ documentId, restoreSessionId, initialTop
   return (
     <div className="flex h-full overflow-hidden">
       <div className="ws-pane flex flex-col flex-1 min-w-0 overflow-hidden">
-        <StudyToolbar title="Flashcards" subtitle={topic} onNew={() => setCards([])} newLabel="New topic">
+        <StudyToolbar title="Flashcards" subtitle={topic} onNew={newTopic} newLabel="New topic">
           <Button size="sm" icon onClick={shuffle} aria-label="Shuffle" title="Shuffle"><Shuffle size={16} /></Button>
           <Button size="sm" icon onClick={restart} aria-label="Restart" title="Restart"><RotateCcw size={16} /></Button>
           <Button size="sm" icon onClick={() => void addDeckToReview()} loading={adding} disabled={addedToReview}

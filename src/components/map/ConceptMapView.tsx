@@ -10,7 +10,7 @@ import { ROUTES } from "@/lib/routes";
 import {
   buildConceptMap, fetchConceptMap, heatLabel, HEATS, neighbours, type ConceptMap, type Heat, type MapConcept,
 } from "@/lib/study/conceptMap";
-import Constellation from "./Constellation";
+import MindMap from "./MindMap";
 import "./map.css";
 
 export const POLL_MS = 1500;
@@ -28,7 +28,7 @@ function narrow() {
 /**
  * The concept map of the workspace's document or course. Made once per document (one AI pass, cached for every
  * user with the same PDF) only when asked; while it builds the page shows the server's progress line and polls.
- * Drawn as a constellation (keyboard-navigable), or as a plain list - the default on a phone. A concept's panel
+ * Drawn as a mind map (keyboard-navigable, zoom and pan), or as a plain list - the default on a phone. A concept's panel
  * offers a quick quiz, flashcards or a boss fight on it.
  */
 export default function ConceptMapView({ documentId }: { documentId?: string }) {
@@ -125,7 +125,7 @@ export default function ConceptMapView({ documentId }: { documentId?: string }) 
   if (phase === "locked") {
     return frame(
       <UpgradeCard feature="The concept map" plan={plan}
-        description="Every concept in your PDFs and how they connect, as a calm star chart coloured by how well you know each one. One click starts a quiz, flashcards or a boss fight on any of them.">
+        description="Every concept in your PDFs and how they connect, as a mind map coloured by how well you know each one. One click starts a quiz, flashcards or a boss fight on any of them.">
         <ButtonLink size="sm" href={ROUTES.studyTab("quiz", undefined, documentId)}><Brain size={15} aria-hidden="true" />Take a quiz</ButtonLink>
       </UpgradeCard>,
     );
@@ -162,7 +162,7 @@ export default function ConceptMapView({ documentId }: { documentId?: string }) 
       <div className="cmap-wrap" data-panel={panel ? undefined : "none"}>
         <div>
           {view === "graph" ? (
-            <div className="cmap-sky"><Constellation concepts={concepts} relations={map.relations} selected={selected} onSelect={setSelected} /></div>
+            <MindMap subject={map.scope.name.replace(/\.pdf$/i, "")} concepts={concepts} relations={map.relations} selected={selected} onSelect={setSelected} />
           ) : (
             <ConceptList concepts={concepts} relations={map.relations} selected={selected} onSelect={setSelected} />
           )}
@@ -197,14 +197,13 @@ function Legend() {
     <ul className="cmap-legend" aria-label="Legend">
       {HEATS.map((h) => (
         <li key={h}>
-          <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true" className="cmap__star" data-heat={h}>
-            <circle className="cmap__ring" cx="9" cy="9" r="7.5" style={{ opacity: h === "new" ? 0 : 1 }} />
-            <circle className="cmap__core" cx="9" cy="9" r="4" />
+          <svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true" className="mm__node" data-heat={h}>
+            <circle className="mm__dot" cx="7" cy="7" r="5" />
           </svg>
           {heatLabel(h)}
         </li>
       ))}
-      <li>Bigger star: more central</li>
+      <li>Each colour is one main idea · hover a concept to see its links</li>
     </ul>
   );
 }

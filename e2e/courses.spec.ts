@@ -29,13 +29,13 @@ test("the document name is a switcher between courses and documents", async ({ p
   const trigger = page.getByRole("button", { name: /switch course or PDF/ });
   await trigger.click();
   const menu = page.getByRole("menu");
-  await expect(menu.getByRole("menuitem", { name: /Life sciences/ })).toBeVisible();
-  await expect(menu.getByRole("menuitem", { name: /Organic Chemistry\.pdf/ })).toBeVisible();
+  await expect(menu.getByRole("menuitem", { name: /^Life sciences/ })).toBeVisible();
+  await expect(menu.getByRole("menuitem", { name: /^Organic Chemistry\.pdf/ })).toBeVisible();
   await settle(page);
   const axe = await new AxeBuilder({ page }).include("[role=menu]").analyze();
   expect(axe.violations.map((v) => v.id)).toEqual([]);
   await page.keyboard.press("ArrowDown");
-  await menu.getByRole("menuitem", { name: /Life sciences/ }).click();
+  await menu.getByRole("menuitem", { name: /^Life sciences/ }).click();
   await expect(page).toHaveURL(new RegExp(`tab=overview&doc=${COURSE.id}`));
   await expect(page.getByRole("region", { name: "Course overview" })).toBeVisible();
   await page.getByRole("link", { name: "Quiz", exact: true }).first().click();

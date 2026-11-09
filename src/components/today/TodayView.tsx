@@ -153,7 +153,7 @@ export default function TodayView() {
             <>
               <p className="today-tile__text">Drop in lecture notes, a textbook chapter or past papers for <strong>{latest.name}</strong>. It is ready to study in about a minute.</p>
               <button type="button" className="ui-btn ui-btn--secondary today-tile__cta" onClick={upload.pick} disabled={upload.uploading} aria-busy={upload.uploading || undefined}>
-                <Upload size={16} />{upload.uploading ? "Uploading…" : `Add a PDF to ${latest.name}`}
+                <Upload size={16} />{upload.uploading ? "Uploading…" : `Add PDFs to ${latest.name}`}
               </button>
             </>
           ) : (
@@ -162,12 +162,11 @@ export default function TodayView() {
               <Link href={ROUTES.study} className="ui-btn ui-btn--secondary today-tile__cta"><Plus size={16} />Create a course</Link>
             </>
           )}
-          <input ref={upload.inputRef} type="file" accept=".pdf" className="hidden" aria-label="Choose a PDF"
+          <input ref={upload.inputRef} type="file" accept=".pdf" className="hidden" aria-label="Choose PDFs" multiple
             onChange={async (e) => {
-              const file = e.currentTarget.files?.[0];
-              if (!file) return;
-              const doc = await upload.upload(file);
-              if (doc) router.push(ROUTES.studyTab("chat", undefined, doc.id));
+              const docs = await upload.uploadMany(Array.from(e.currentTarget.files ?? []));
+              if (docs.length === 1) router.push(ROUTES.studyTab("chat", undefined, docs[0].id));
+              else if (docs.length > 1 && latest) router.push(ROUTES.studyTab("overview", undefined, latest.id));
             }} />
         </Tile>
       </div>

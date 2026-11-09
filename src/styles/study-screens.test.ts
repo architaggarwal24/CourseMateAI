@@ -23,7 +23,7 @@ const STUDY_FILES = [
   "components/shell/ReviewBadge.tsx", "components/exam/ExamView.tsx", "components/exam/ExamRunner.tsx", "components/exam/exam.css",
   "components/pdf/PdfViewer.tsx", "components/pdf/pdf.css", "components/chat/CitationList.tsx",
   "components/course/CourseEditor.tsx", "components/course/CourseOverview.tsx", "components/course/LibraryMenu.tsx",
-  "components/course/course.css", "components/map/ConceptMapView.tsx", "components/map/Constellation.tsx", "components/map/map.css",
+  "components/course/course.css", "components/map/ConceptMapView.tsx", "components/map/MindMap.tsx", "components/map/map.css",
   "components/account/PlanUsage.tsx", "components/account/plan-usage.css", "app/(app)/account/usage/page.tsx",
   "components/pwa/InstallApp.tsx", "app/offline/page.tsx",
 ];
@@ -62,7 +62,7 @@ const KIT_STUDY_FILES = [
   "components/review/ReviewView.tsx", "components/study/UpgradeCard.tsx", "components/exam/ExamView.tsx",
   "components/exam/ExamRunner.tsx", "components/pdf/PdfViewer.tsx", "components/chat/CitationList.tsx",
   "components/course/CourseEditor.tsx", "components/course/CourseOverview.tsx", "components/course/LibraryMenu.tsx",
-  "components/map/ConceptMapView.tsx", "components/map/Constellation.tsx", "components/account/PlanUsage.tsx",
+  "components/map/ConceptMapView.tsx", "components/map/MindMap.tsx", "components/account/PlanUsage.tsx",
 ];
 describe("Kit-styled Study tools", () => {
   it.each(KIT_STUDY_FILES)("%s has no Play styling", (file) => {

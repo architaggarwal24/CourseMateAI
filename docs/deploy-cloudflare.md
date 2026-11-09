@@ -69,6 +69,7 @@ Sign-up, sign-in, email codes, two-step sign-in, Google, and the admin page all 
 | `EMAIL_FROM` | to send codes | e.g. `CourseMate <no-reply@study.example.com>` |
 | `RESEND_API_KEY` (Secret) | one way to send codes | See *Emails*. |
 | `EMAIL_DAILY_CAP` | optional | Emails a day for the whole site (default 100). Also at most 5 codes an hour go to one address. |
+| `OLLAMA_API_KEY` (Secret) | optional | Ollama's cloud models as `ollama-cloud:<model>` (e.g. `ollama-cloud:gpt-oss:120b`), no tunnel needed. Key from ollama.com → Settings → Keys. |
 | `PASSWORD_BREACH_CHECK` | optional | `off` stops checking new passwords against Have I Been Pwned (on by default). |
 | `PASSWORD_HASH_ITERATIONS` | no | Default 20000, which fits the free plan's CPU limit. On Workers Paid, set `100000` (the most Workers allows). Each password is re-hashed at the user's next sign-in. |
 
@@ -131,7 +132,7 @@ Create the metadata index before uploading anything: vectors added earlier can't
 
 **Check:** `/api/system/status` shows `search: ok`. Then upload a PDF and try `/api/v1/documents/<id>/search?q=<a question>`, which lists the passages the chat would answer from.
 
-**Running it locally:** Workers AI and Vectorize only run on Cloudflare's network. So `npm run dev` / `cf:preview` can only index and search after `npx wrangler login`. The tests use stand-ins (`src/server/test/search-fakes.ts`).
+**Running it locally:** Workers AI and Vectorize only run on Cloudflare's network. `wrangler.jsonc` marks the Vectorize binding `"remote": true`, so `npm run dev` / `cf:preview` use the real `coursemate-chunks` index; run `npx wrangler login` once on that computer (and restart `npm run dev`). Without it an upload stops with "Couldn't save this PDF to the search index" and the log says `Binding VECTORS needs to be run remotely`. Dev PDFs get their own ids, so they never mix with real users' passages; deleting a PDF in dev removes its vectors. The tests use stand-ins (`src/server/test/search-fakes.ts`).
 
 **Scanned PDFs** (photos of pages, no text layer) are refused before anything is uploaded, with a message saying so.
 

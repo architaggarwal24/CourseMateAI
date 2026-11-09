@@ -14,14 +14,17 @@ import { callerFor } from "../chat";
 import { cacheGet, cacheKey, cachePut, findTopic, generateData, generationFailed, logActivity } from "./core";
 import * as mastery from "./mastery";
 import { gradeFirst } from "./review";
-import { flashcardSet, mergeQuestions, quizBatch, type QuizQuestion } from "./schemas";
-import { flashcardSystem, notesMessages, quizHuman, quizSystem } from "./prompts";
+import { BadAnswer, flashcardSet, mergeQuestions, quizBatch, type QuizQuestion } from "./schemas";
+import { flashcardSystem, noteFormatFrom, notesMessages, QUIZ_CHECK_SYSTEM, quizCheckPrompt, quizHuman, quizSystem } from "./prompts";
+import { toRetrieval } from "../chat";
+import type { Found } from "./core";
 import { cleanText, newId, questionKey, sameAnswer, stamp, validateTopic } from "./text";
 import { onFlashcards, onNotes, onQuizFinished, onQuizStarted } from "../game/hooks";
 
 const player = (u: CurrentUser) => ({ id: u.id, tz: u.row.timezone ?? null });
 
 export const QUESTION_TYPES = ["MCQ", "True/False", "Mixed"] as const;
+export const DIFFICULTIES = ["easy", "medium", "hard", "mixed"] as const;
 const BATCH_SIZE = 5;
 const MAX_BATCHES = 6;
 const MAX_CONCURRENT = 3;
@@ -57,21 +60,82 @@ function firstReal(results: PromiseSettledResult<unknown>[], message: string): H
 }
 
 // ── quiz ─────────────────────────────────────────────────────────────────────────────────────────────────────
+const passageLabel = (p: Found["passages"][number]) => (p.documentName && p.page ? `${p.documentName} · p.${p.page}` : p.documentName || (p.page ? `p.${p.page}` : ""));
+/** The passages numbered, so a question can say which one its answer comes from. */
+export function numberedPassages(found: Pick<Found, "passages">, maxChars = 12_000): string {
+  let out = "";
+  found.passages.forEach((p, i) => {
+    const block = `[${i + 1}] (${passageLabel(p)})\n${p.text}\n\n`;
+    if (out.length + block.length <= maxChars) out += block;
+  });
+  return out.trim();
+}
+
+/**
+ * Round 7, the second pass: another call answers every question from the passages alone. A question whose key it
+ * disagrees with, or that it finds unsupported or ambiguous, is dropped. If the check itself fails, the questions
+ * stand (they were written from the same passages).
+ */
+export async function checkQuiz(ctx: RequestContext, caller: Caller, questions: QuizQuestion[], context: string): Promise<{ kept: QuizQuestion[]; dropped: number; checked: boolean }> {
+  if (!questions.length) return { kept: questions, dropped: 0, checked: false };
+  const asked = questions.map((q, i) => ({ id: i + 1, question: q.question, options: q.options }));
+  type Verdict = { id: number; answer: string; supported: boolean };
+  let verdicts: Verdict[];
+  try {
+    verdicts = await generateData(ctx, caller, "strong", [{ role: "system", content: QUIZ_CHECK_SYSTEM }, { role: "user", content: quizCheckPrompt(asked, context) }], (d) => {
+      const list = Array.isArray((d as { results?: unknown })?.results) ? (d as { results: unknown[] }).results : [];
+      const out = list.flatMap((r) => {
+        const o = r as Record<string, unknown>;
+        const id = Number(o?.id);
+        return Number.isInteger(id) ? [{ id, answer: String(o.answer ?? ""), supported: o.supported !== false }] : [];
+      });
+      if (!out.length) throw new BadAnswer("no verdicts");
+      return out;
+    }, { temperature: 0, attempts: 1 });
+  } catch (e) {
+    if (e instanceof HttpError && (e.code === "plan_limit" || e.status === 429)) throw e;     // out of AI calls: say so
+    return { kept: questions, dropped: 0, checked: false };
+  }
+  const byId = new Map(verdicts.map((v) => [v.id, v]));
+  const kept = questions.filter((q, i) => {
+    const v = byId.get(i + 1);
+    if (!v) return true;                                      // not checked: keep
+    return v.supported && sameAnswer(q.options.find((o) => sameAnswer(o, v.answer)) ?? v.answer, q.correct_answer);
+  });
+  return { kept, dropped: questions.length - kept.length, checked: true };
+}
+
 /**
  * Up to `n` questions rounded up to whole batches (a 3-question quiz asks for 5): the spares go to the bank, so a
- * later quiz on the topic may need no AI call at all. Batches run in parallel; a failed one is skipped.
+ * later quiz on the topic may need no AI call at all. Batches run in parallel; a failed one is skipped. Each
+ * question remembers where its answer is ("Bio.pdf · p.2"), then the whole set is checked (checkQuiz).
  */
-export async function writeQuiz(ctx: RequestContext, caller: Caller, context: string, n: number, type: string): Promise<QuizQuestion[]> {
+export async function writeQuiz(ctx: RequestContext, caller: Caller, found: Pick<Found, "passages">, n: number, type: string, difficulty = "mixed"): Promise<QuizQuestion[]> {
   const sizes: number[] = [];
   const want = Math.min(Math.ceil(n / BATCH_SIZE) * BATCH_SIZE, BATCH_SIZE * MAX_BATCHES);
   for (let left = want; left > 0 && sizes.length < MAX_BATCHES; left -= sizes.at(-1)!) sizes.push(Math.min(left, BATCH_SIZE));
   const system = quizSystem(type);
+  const context = numberedPassages(found);
   const results = await settleAll(sizes.map((size) => () => generateData(ctx, caller, "strong",
-    [{ role: "system", content: system }, { role: "user", content: quizHuman(size, type, context) }],
+    [{ role: "system", content: system }, { role: "user", content: quizHuman(size, type, context, difficulty) }],
     (d) => quizBatch(d, type), { temperature: 0.7, attempts: 1 })), MAX_CONCURRENT);
   const all = results.flatMap((r) => (r.status === "fulfilled" ? r.value : []));
   if (!all.length) throw firstReal(results, "Quiz generation failed. Please try again.");
-  return mergeQuestions(all, want);
+  const labelled = mergeQuestions(all, want).map(({ id: _id, ...q }) => {
+    const p = q.source ? found.passages[q.source - 1] : undefined;
+    return p ? { ...q, source_label: passageLabel(p) } : q;
+  });
+  const { kept } = await checkQuiz(ctx, caller, labelled, context);
+  if (!kept.length) throw generationFailed("The questions written for this topic didn't hold up against your PDF. Try a narrower topic.");
+  return kept;
+}
+
+/** Multiple-choice options in a fresh order (models put the right answer first far too often). */
+export function shuffleOptions<T extends QuizQuestion>(q: T, rand: () => number = Math.random): T {
+  if (q.options.length < 3) return q;                          // True/False stays True, False
+  const options = [...q.options];
+  for (let i = options.length - 1; i > 0; i--) { const j = Math.floor(rand() * (i + 1)); [options[i], options[j]] = [options[j], options[i]]; }
+  return { ...q, options };
 }
 
 const topicKey = (t: string) => questionKey(t);
@@ -99,7 +163,7 @@ async function addToBank(ctx: RequestContext, userId: number, docHash: string, t
   for (const r of rows) await ctx.db.insert(quizBank).values(r).onConflictDoNothing();
 }
 
-const SECRET = ["correct_answer", "explanation"];
+const SECRET = ["correct_answer", "explanation", "source", "source_label"];
 const publicQuestion = (q: Record<string, unknown>) => Object.fromEntries(Object.entries(q).filter(([k]) => !SECRET.includes(k)));
 
 export async function createQuiz(ctx: RequestContext, user: CurrentUser, body: Body) {
@@ -109,16 +173,19 @@ export async function createQuiz(ctx: RequestContext, user: CurrentUser, body: B
   if (!(QUESTION_TYPES as readonly string[]).includes(type)) throw new HttpError(422, "validation_error", "Some of the information you entered is invalid.", null, { field: "question_type" });
   let n = Number(body.num_questions);
   n = !Number.isFinite(n) || n < 1 ? 3 : Math.min(20, Math.trunc(n));
+  const difficulty = (DIFFICULTIES as readonly string[]).includes(str(body.difficulty)) ? str(body.difficulty) : "mixed";
+  // the bank keeps each difficulty apart ("MCQ" is the mixed one, as before)
+  const bankType = difficulty === "mixed" ? type : `${type}|${difficulty}`;
   const study = await studyDocs(ctx, user, str(body.session_id));
-  await logActivity(ctx, user.id, study.id, "quiz", "generate", { topic, num_questions: n, question_type: type });
+  await logActivity(ctx, user.id, study.id, "quiz", "generate", { topic, num_questions: n, question_type: type, difficulty });
   const found = await findTopic(ctx, study.docs, topic, k, 50);
-  let questions = await takeFromBank(ctx, user.id, study.hash, topic, type, n);
+  let questions = await takeFromBank(ctx, user.id, study.hash, topic, bankType, n);
   if (!questions) {
-    const written = await writeQuiz(ctx, await callerFor(ctx, user), found.context, n, type);
+    const written = await writeQuiz(ctx, await callerFor(ctx, user), found, n, type, difficulty);
     questions = written.slice(0, n);
-    await addToBank(ctx, user.id, study.hash, topic, type, written, questions.length);
+    await addToBank(ctx, user.id, study.hash, topic, bankType, written, questions.length);
   }
-  const stored = questions.map((q, i) => ({ ...q, id: i + 1 }));
+  const stored = questions.map((q, i) => ({ ...shuffleOptions(q), id: i + 1 }));
   const id = newId();
   await ctx.db.insert(quizzes).values({
     id, userId: user.id, sessionId: study.id, topic, questionType: type, questionsJson: JSON.stringify(stored),
@@ -155,7 +222,8 @@ export async function answerQuiz(ctx: RequestContext, user: CurrentUser, body: B
     }
   }
   const stored = await ctx.db.select().from(quizAnswers).where(and(eq(quizAnswers.quizId, quiz.id), eq(quizAnswers.questionId, q.id))).get();
-  return { ok: true, question_id: q.id, answer: stored!.answer, correct: stored!.correct, correct_answer: correctOption(q), explanation: q.explanation || null };
+  return { ok: true, question_id: q.id, answer: stored!.answer, correct: stored!.correct, correct_answer: correctOption(q), explanation: q.explanation || null,
+    source: q.source_label ?? null, concept: q.concept ?? null };
 }
 
 export async function finishQuiz(ctx: RequestContext, user: CurrentUser, body: Body) {
@@ -163,7 +231,7 @@ export async function finishQuiz(ctx: RequestContext, user: CurrentUser, body: B
   const result = (q: typeof quiz, already: boolean) => ({
     ok: true, quiz_id: q.id, score: q.correctCount ?? 0, total: q.questionCount, accuracy: q.accuracy ?? 0, already_finished: already, rewards: null,
   });
-  if (quiz.finishedAt) return result(quiz, true);
+  if (quiz.finishedAt) return { ...result(quiz, true), ...(await missedOf(ctx, quiz)) };
   const r = await ctx.db.select({ answered: count(), correct: sql<number>`COALESCE(SUM(${quizAnswers.correct}), 0)` }).from(quizAnswers).where(eq(quizAnswers.quizId, quiz.id)).get();
   const answered = Number(r?.answered ?? 0), correct = Number(r?.correct ?? 0);
   if (answered < quiz.questionCount) {
@@ -174,7 +242,35 @@ export async function finishQuiz(ctx: RequestContext, user: CurrentUser, body: B
     .where(and(eq(quizzes.id, quiz.id), isNull(quizzes.finishedAt))).returning({ id: quizzes.id }).all();
   if (!won.length) return result(await ownQuiz(ctx, user.id, quiz.id), true);
   const rewards = await onQuizFinished(ctx, player(user), quiz.id, accuracy);
-  return { ok: true, quiz_id: quiz.id, score: correct, total: quiz.questionCount, accuracy, already_finished: false, rewards };
+  return { ok: true, quiz_id: quiz.id, score: correct, total: quiz.questionCount, accuracy, already_finished: false, rewards, ...(await missedOf(ctx, quiz)) };
+}
+
+/** What was missed: those questions went to the review queue, and their ideas are the weak spots. */
+async function missedOf(ctx: RequestContext, quiz: Awaited<ReturnType<typeof ownQuiz>>) {
+  const wrong = await ctx.db.select({ id: quizAnswers.questionId }).from(quizAnswers).where(and(eq(quizAnswers.quizId, quiz.id), eq(quizAnswers.correct, false))).all();
+  const missed = quiz.questions.filter((q) => wrong.some((w) => w.id === q.id));
+  return {
+    missed: missed.map((q) => q.id),
+    added_to_review: missed.length,
+    weak_concepts: [...new Set(missed.map((q) => q.concept || quiz.topic))].slice(0, 5),
+  };
+}
+
+/** "Retry the ones I missed": a new quiz of a finished quiz's wrong answers, options in a new order. No AI call. */
+export async function retryQuiz(ctx: RequestContext, user: CurrentUser, body: Body) {
+  const quiz = await ownQuiz(ctx, user.id, body.quiz_id);
+  if (!quiz.finishedAt) throw new HttpError(400, "quiz_incomplete", "Finish the quiz first, then retry the questions you missed.");
+  const { missed } = await missedOf(ctx, quiz);
+  if (!missed.length) throw new HttpError(400, "nothing_missed", "You got every question right: nothing to retry.");
+  const stored = quiz.questions.filter((q) => missed.includes(q.id)).map((q, i) => ({ ...shuffleOptions(q), id: i + 1 }));
+  const id = newId();
+  const topic = quiz.topic.endsWith(" (retry)") ? quiz.topic : `${quiz.topic} (retry)`;
+  await ctx.db.insert(quizzes).values({
+    id, userId: user.id, sessionId: quiz.sessionId, topic, questionType: quiz.questionType, questionsJson: JSON.stringify(stored),
+    questionCount: stored.length, createdAt: stamp(),
+  });
+  await logActivity(ctx, user.id, quiz.sessionId, "quiz", "generate", { topic, num_questions: stored.length, question_type: quiz.questionType, retry_of: quiz.id });
+  return { mode: "quiz", quiz_id: id, topic, content: { questions: stored.map(publicQuestion) }, sources: [] };
 }
 
 // ── flashcards ───────────────────────────────────────────────────────────────────────────────────────────────
@@ -220,20 +316,29 @@ export async function reviewDeck(ctx: RequestContext, user: CurrentUser, session
 }
 
 // ── notes ────────────────────────────────────────────────────────────────────────────────────────────────────
+/**
+ * Notes in a format the student picks (round 7): summary, detailed (exam-ready), Cornell, outline, key terms or a
+ * cheat sheet. Written from numbered passages, so every point carries its [n] and the page opens beside the notes.
+ * (`detail_level` from older clients still works: "Ultra-detailed" is the detailed format.)
+ */
 export async function makeNotes(ctx: RequestContext, user: CurrentUser, body: Body) {
-  const k = topK(body.top_k);
+  const k = Math.max(topK(body.top_k), 8);                     // a page of notes needs more than a chat answer
   const topic = validateTopic(body.topic);
   const detail = cleanText(body.detail_level, 60);
+  const format = noteFormatFrom(body.format, detail);
   const study = await studyDocs(ctx, user, str(body.session_id));
-  await logActivity(ctx, user.id, study.id, "notes", "generate", { topic, detail_level: detail });
-  const key = cacheKey("notes", user.id, study.hash, topic, { top_k: k, detail_level: detail });
-  let cached = await cacheGet<{ content: string; sources: string[] }>(ctx, key);
+  await logActivity(ctx, user.id, study.id, "notes", "generate", { topic, format });
+  const key = cacheKey("notes", user.id, study.hash, topic, { top_k: k, format });
+  type Cached = { content: string; sources: string[]; citations?: unknown[] };
+  let cached = await cacheGet<Cached>(ctx, key);
   if (!cached) {
     const found = await findTopic(ctx, study.docs, topic, k, 50);
-    const { text } = await generate(ctx, await callerFor(ctx, user), "strong", notesMessages(detail, found.context), { temperature: 0.4 })
+    const r = toRetrieval(found.passages);
+    const context = r.citations.map((c) => `[${c.n}] (${c.label})\n${r.passages[c.n - 1].text}`).join("\n\n");
+    const { text } = await generate(ctx, await callerFor(ctx, user), "strong", notesMessages(format, context), { temperature: 0.4, maxOutputTokens: 6000 })
       .catch((e) => { throw e instanceof HttpError ? e : generationFailed("Notes generation failed. Please try again."); });
-    cached = { content: text.trim(), sources: found.sources };
+    cached = { content: text.trim(), sources: r.sources, citations: r.citations };
     await cachePut(ctx, user.id, key, cached);
   }
-  return { mode: "notes", content: cached.content, sources: cached.sources, rewards: await onNotes(ctx, player(user)) };
+  return { mode: "notes", format, content: cached.content, sources: cached.sources, citations: cached.citations ?? [], rewards: await onNotes(ctx, player(user)) };
 }

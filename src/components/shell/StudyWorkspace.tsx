@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import { useRouter, useSearchParams } from "next/navigation";
 import { BookMarked, FileX } from "@/components/icons";
@@ -15,6 +15,7 @@ import { useRevalidate } from "@/hooks/useRevalidate";
 import type { Course } from "@/lib/study/courses";
 import LibraryMenu from "@/components/course/LibraryMenu";
 import "@/components/course/course.css";
+import { activeSession } from "@/lib/study/memory";
 import { DEFAULT_STUDY_TAB, ROUTES, isStudyTab, type StudyTab } from "@/lib/routes";
 import DocumentHeader from "./DocumentHeader";
 import SubNav from "./SubNav";
@@ -60,7 +61,8 @@ export default function StudyWorkspace() {
   const { courses, loaded: coursesLoaded, load: loadCourses } = useCourses();
   const update = useCourses((s) => s.update);
   const [editor, setEditor] = useState<{ course: Course | null } | null>(null);
-  const [deleting, setDeleting] = useState(false);
+  // the PDF being deleted: from the header (for good), or from the switcher's bin (out of `course`)
+  const [deleting, setDeleting] = useState<{ id: string; filename: string; course: Course | null } | null>(null);
 
   // The courses load alongside the documents (not after them): a course link (?doc=<course>) waited for both in turn.
   const { user } = useAuth();
@@ -90,7 +92,7 @@ export default function StudyWorkspace() {
     if (!course) return;
     checkedAt.current = { id: course.id, at: Date.now() };
     refreshDocument(course.id).catch(() => { /* offline: the overview still shows */ });
-  }, [course?.id, course?.updated_at, refreshDocument]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [course?.id, course?.updated_at, course?.ready, course?.documents.length, refreshDocument]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // On a course a dropped PDF becomes a new document in it (a course isn't replaced by one file); on one of its PDFs
   // a new file replaces that PDF (and it stays in the course).
@@ -130,28 +132,38 @@ export default function StudyWorkspace() {
     current: t === tab,
     ...(t === "review" && due ? { badge: { count: due, label: `${due} ${due === 1 ? "card" : "cards"} due` } } : {}),
   }));
-  const key = `${tab}:${restoreSessionId ?? ""}:${topic ?? ""}`;
+  const key = `${tab}:${documentId ?? ""}:${restoreSessionId ?? ""}:${topic ?? ""}`;
+  // Each tool reopens what it had open on this course / PDF (lib/study/memory.ts), unless History or the concept
+  // map asked for something else. Read once per tool and subject: the view keeps it up to date from then on.
+  const resume = useMemo(() => restoreSessionId ?? (topic ? undefined : activeSession(tab, documentId)),
+    [tab, documentId, restoreSessionId, topic]);
 
   return (
     <div className="ws">
       <DocumentHeader doc={doc} gone={gone} loaded={loaded} upload={upload} course={course}
         onEditCourse={() => setEditor({ course })}
-        onDelete={doc && !course ? () => setDeleting(true) : undefined}
+        onDelete={doc && !course ? () => setDeleting({ id: doc.id, filename: doc.filename, course: null }) : undefined}
         inCourse={!course && parentCourse ? { name: parentCourse.name, href: ROUTES.studyTab("overview", undefined, parentCourse.id) } : undefined}
         noCourse={noCourses}
         switcher={loaded && upload.signedIn && !noCourses ? (name) => (
           <LibraryMenu current={documentId} courses={courses} documents={list}
             onPick={(id, kind) => router.push(ROUTES.studyTab(kind === "course" ? "overview" : tab === "overview" ? DEFAULT_STUDY_TAB : tab, undefined, id))}
-            onNewCourse={() => setEditor({ course: null })}>{name}</LibraryMenu>
+            onNewCourse={() => setEditor({ course: null })}
+            onDelete={(id, courseId) => {
+              const d = documents[id] ?? courses.flatMap((c) => c.documents).find((x) => x.id === id);
+              if (d) setDeleting({ id, filename: d.filename, course: courses.find((c) => c.id === courseId) ?? null });
+            }}>{name}</LibraryMenu>
         ) : undefined}
         tabs={noCourses || loose ? undefined : <SubNav label="Study tools" items={items} className="!px-[3px]" />} />
-      {deleting && doc && !course && (
-        <DeleteDocument doc={doc} onClose={() => setDeleting(false)}
+      {deleting && (
+        <DeleteDocument doc={deleting} course={deleting.course} onClose={() => setDeleting(null)}
           onDeleted={(id) => {
-            setDeleting(false);
-            loadCourses(true).catch(() => {});                   // it left any course it was in
-            // back to its course's page (or the next PDF, for one that wasn't in a course)
-            if (parentCourse) router.replace(ROUTES.studyTab("overview", undefined, parentCourse.id));
+            const from = deleting.course ?? parentCourse;
+            setDeleting(null);
+            loadCourses(true).catch(() => {});                   // its course list changed
+            if (id !== documentId) return;                       // another PDF of the course: stay where you are
+            // the open PDF: back to its course's page (or the next PDF, for one that wasn't in a course)
+            if (from) router.replace(ROUTES.studyTab("overview", undefined, from.id));
             else router.replace(ROUTES.studyTab(tab === "overview" ? DEFAULT_STUDY_TAB : tab, undefined, list.find((d) => d.id !== id)?.id));
           }} />
       )}
@@ -194,10 +206,10 @@ export default function StudyWorkspace() {
           </div>
         ) : (
           <>
-            {tab === "chat"       && <ChatView      key={key} documentId={documentId} restoreSessionId={restoreSessionId} />}
-            {tab === "quiz"       && <QuizView      key={key} documentId={documentId} restoreSessionId={restoreSessionId} initialTopic={topic} />}
-            {tab === "notes"      && <NotesView     key={key} documentId={documentId} restoreSessionId={restoreSessionId} />}
-            {tab === "flashcards" && <FlashcardView key={key} documentId={documentId} restoreSessionId={restoreSessionId} initialTopic={topic} />}
+            {tab === "chat"       && <ChatView      key={key} documentId={documentId} restoreSessionId={resume} />}
+            {tab === "quiz"       && <QuizView      key={key} documentId={documentId} restoreSessionId={resume} initialTopic={topic} />}
+            {tab === "notes"      && <NotesView     key={key} documentId={documentId} restoreSessionId={resume} />}
+            {tab === "flashcards" && <FlashcardView key={key} documentId={documentId} restoreSessionId={resume} initialTopic={topic} />}
             {tab === "map"        && <ConceptMapView key={key} documentId={documentId} />}
             {tab === "review"     && <ReviewView    key={key} documentId={documentId} />}
             {tab === "exam"       && <ExamView      key={key} documentId={documentId} />}

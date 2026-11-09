@@ -4,6 +4,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { deleteDocument, fetchDocument, fetchDocuments, uploadPDF, type DocumentInfo } from "@/lib/api";
 import { isInFlight, POLL_INTERVAL_MS, SLOW_POLL_AFTER, SLOW_POLL_INTERVAL_MS } from "@/lib/documents";
 import { sendUpload } from "@/lib/upload";
+import { useCourses } from "@/hooks/useCourses";
 
 interface SessionStore {
   // ── Documents: the SERVER is the source of truth (status, filename, expiry). This is only a cache of
@@ -35,6 +36,12 @@ export function stopDocumentPolling(sessionId?: string) {
   }
 }
 
+/** A PDF finished (ready or failed): the courses holding it show its new status without a reload. */
+function courseDocumentSettled(id: string) {
+  const courses = useCourses.getState();
+  if (courses.courses.some((c) => c.documents.some((d) => d.id === id))) void courses.load(true).catch(() => {});
+}
+
 function startPolling(sessionId: string, get: () => SessionStore) {
   if (pollers.has(sessionId)) return;                 // already being followed (any number of components)
   const poller: Poller = { polls: 0, failures: 0 };
@@ -56,6 +63,7 @@ function startPolling(sessionId: string, get: () => SessionStore) {
       poller.timer = setTimeout(tick, poller.polls > SLOW_POLL_AFTER ? SLOW_POLL_INTERVAL_MS : POLL_INTERVAL_MS);
     } else {
       pollers.delete(sessionId);                      // ready / failed / needs_reindex / gone: nothing left to wait for
+      courseDocumentSettled(sessionId);
     }
   };
   poller.timer = setTimeout(tick, POLL_INTERVAL_MS);
@@ -99,6 +107,7 @@ export const useSessionStore = create<SessionStore>()((set, get) => ({
         if (current && isInFlight(current.status)) {
           put({ ...current, status: "failed", error: e instanceof Error ? e.message : "The upload stopped. Please try again." });
           stopDocumentPolling(document.id);
+          courseDocumentSettled(document.id);
         }
       });
     }

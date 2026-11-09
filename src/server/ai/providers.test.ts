@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { apiLlm, ProviderError, sseData } from "./providers";
+import { apiLlm, ollamaCloudModel, ProviderError, sseData } from "./providers";
 import type { Target } from "./models";
 
 type Seen = { url: string; headers: Record<string, string>; body: any };
@@ -96,6 +96,37 @@ describe("openai-compatible", () => {
     expect(await collect(llm.stream(msgs, { temperature: 0.3 }))).toEqual([{ text: "A" }, { text: "B" }, { tokensIn: 9, tokensOut: 2 }]);
     expect(seen[0].url).toBe("https://integrate.api.nvidia.com/v1/chat/completions");
     expect(seen[0].body).toMatchObject({ max_tokens: 4096, temperature: 0.3, stream: true, stream_options: { include_usage: true } });
+  });
+});
+
+describe("Ollama's cloud", () => {
+  it("calls https://ollama.com/v1 with the API key, and takes the app's :cloud names too", async () => {
+    const seen: Seen[] = [];
+    const llm = apiLlm(target("ollama-cloud", "nemotron-3-ultra:cloud"), fakeFetch({ json: { choices: [{ message: { content: "Hello!" } }] } }, seen));
+    expect((await llm.generate(msgs, { temperature: 0.5 })).text).toBe("Hello!");
+    expect(seen[0].url).toBe("https://ollama.com/v1/chat/completions");
+    expect(seen[0].headers.authorization).toBe("Bearer k-1");
+    expect(seen[0].body).toMatchObject({ model: "nemotron-3-ultra", max_tokens: 4096, temperature: 0.5 });
+    expect(seen[0].body.reasoning_effort).toBe("low");                           // thinking models: think a little
+    expect(ollamaCloudModel("gpt-oss:120b-cloud")).toBe("gpt-oss:120b");
+    expect(ollamaCloudModel("gpt-oss:120b")).toBe("gpt-oss:120b");
+  });
+});
+
+describe("Ollama's thinking models", () => {
+  it("get a budget big enough to think and still answer, and lose reasoning_effort if a model refuses it", async () => {
+    const seen: Seen[] = [];
+    let first = true;
+    const fetchImpl = (async (url: string, init: RequestInit) => {
+      seen.push({ url, headers: init.headers as Record<string, string>, body: JSON.parse(String(init.body)) });
+      if (first) { first = false; return new Response("unknown field reasoning_effort", { status: 400 }); }
+      return new Response(JSON.stringify({ choices: [{ message: { content: "OK" } }] }), { status: 200 });
+    }) as unknown as typeof fetch;
+    const llm = apiLlm(target("ollama-cloud", "beam"), fetchImpl);
+    expect((await llm.generate(msgs, { maxOutputTokens: 16 })).text).toBe("OK");
+    expect(seen[0].body).toMatchObject({ max_tokens: 1024, reasoning_effort: "low" });
+    expect(seen[1].body.reasoning_effort).toBeUndefined();
+    expect(seen[1].body.max_tokens).toBe(1024);
   });
 });
 

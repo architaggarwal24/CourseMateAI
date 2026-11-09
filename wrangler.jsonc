@@ -29,5 +29,7 @@
   // Search (Stage 4.2):
   //   npx wrangler vectorize create coursemate-chunks --dimensions=384 --metric=cosine
   //   npx wrangler vectorize create-metadata-index coursemate-chunks --property-name=doc --type=string
-  "vectorize": [{ "binding": "VECTORS", "index_name": "coursemate-chunks" }]
+  // Vectorize has no local version: under `npm run dev` the binding talks to the real index ("remote"), which needs
+  // `npx wrangler login` once on that computer. (Deploys ignore "remote".)
+  "vectorize": [{ "binding": "VECTORS", "index_name": "coursemate-chunks", "remote": true }]
 }

@@ -18,6 +18,7 @@ import { useDocument } from "@/hooks/useSessions";
 import { useHUDStore } from "@/hooks/useHUD";
 import { useStickToBottom } from "@/hooks/useStickToBottom";
 import { saveSession, loadSession } from "@/lib/sessions";
+import { forgetSession, rememberSession, useDraft } from "@/lib/study/memory";
 import { toast } from "@/components/ui/Toast";
 
 interface Message {
@@ -90,7 +91,7 @@ export default function ChatView({ documentId, restoreSessionId }: { documentId?
   });
   const { document: pdf } = useDocument(documentId);
   const uploadedFile = pdf?.status === "ready" ? pdf.filename : null;   // what the server says is usable
-  const [input, setInput] = useState("");
+  const [input, setInput] = useDraft("chat", documentId);          // typed but not sent: kept (lib/study/memory.ts)
   const [loading, setLoading] = useState(false);
   const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
   const [followUps, setFollowUps] = useState<string[]>([]);
@@ -131,8 +132,9 @@ export default function ChatView({ documentId, restoreSessionId }: { documentId?
     if (messages.length > 0 && !loading) {
       const withType = messages.map((m) => ({ ...m, type: "chat" }));
       saveSession(chatId, withType as any);
+      rememberSession("chat", documentId, chatId);         // this conversation reopens here next time
     }
-  }, [messages, chatId, loading]);
+  }, [messages, chatId, loading, documentId]);
 
   // The input grows with what is typed, up to a few lines, then scrolls.
   useLayoutEffect(() => {
@@ -155,7 +157,8 @@ export default function ChatView({ documentId, restoreSessionId }: { documentId?
     setFollowUps([]);
     setFailure(null);
     setInput("");
-  }, [cancelRequest]);
+    forgetSession("chat", documentId);
+  }, [cancelRequest, setInput, documentId]);
 
   const loadHistorySession = useCallback((id: string, _type: string) => {
     cancelRequest();
@@ -164,11 +167,12 @@ export default function ChatView({ documentId, restoreSessionId }: { documentId?
     const raw = Array.isArray(loaded) ? loaded : [];
     const msgs = raw.filter((m) => m.role === "user" || m.role === "assistant") as Message[];
     setChatId(id);
+    rememberSession("chat", documentId, id);
     setMessages(msgs);
     setFollowUps([]);
     setFailure(null);
     setShowHistory(false);
-  }, [cancelRequest]);
+  }, [cancelRequest, documentId]);
 
   /** `base` is the conversation the question is added to (a retry passes the one without the failed question). */
   const sendMessage = useCallback(async (question: string, base: Message[] = messages) => {
@@ -243,10 +247,7 @@ export default function ChatView({ documentId, restoreSessionId }: { documentId?
   };
 
   const clearChat = () => {
-    cancelRequest();
-    setMessages([]);
-    setFollowUps([]);
-    setFailure(null);
+    startNewSession();                                    // the cleared chat stays in History; this one starts empty
     toast.info("Chat cleared");
   };
 
@@ -392,7 +393,7 @@ export default function ChatView({ documentId, restoreSessionId }: { documentId?
 
           {scroll.away && (
             <Button size="sm" onClick={scroll.jump} aria-label="Jump to latest"
-                    className="absolute bottom-3 left-1/2 -translate-x-1/2">
+                    className="absolute bottom-5 left-1/2 -translate-x-1/2">
               <ArrowDown size={14} aria-hidden="true" /> Latest
             </Button>
           )}
