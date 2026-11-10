@@ -89,7 +89,19 @@ export interface MockOptions {
   ceremony?: string;
   /** Stage S1: an item made unlocked and affordable, to buy in the shop. */
   buyable?: string;
+  /** "You've been upgraded": a plan notice waiting in GET /hud until POST /account/plan-notice marks it shown. */
+  planNotice?: Record<string, unknown>;
 }
+
+/** An admin gave this account Sage for 30 days, with a note. */
+export const PLAN_NOTICE = {
+  id: 11, kind: "upgrade", tier: "sage", tier_name: "Sage", from_tier: "apprentice", from_tier_name: "Apprentice", source: "admin",
+  expires_at: "2026-12-10T00:00:00Z", from_expires_at: null, note: "Thanks for testing CourseMateAI!", from_name: "Archit",
+  unlocked: [{ feature: "review_queue", name: "Spaced-repetition review" }, { feature: "exam_mode", name: "Exam mode" },
+             { feature: "concept_map", name: "The concept map" }, { feature: "pdf_viewer", name: "The PDF page viewer" }],
+  gains: [{ key: "documents", from: 3, to: 50 }, { key: "courses", from: 1, to: 10 }, { key: "ai_calls_day", from: 25, to: 400 }, { key: "pdf_mb", from: 10, to: 50 }],
+  created_at: "2026-11-10T09:00:00Z",
+};
 
 const ADMIN_USERS = [
   { user_id: 1, email: "alice@example.com", username: "alice", full_name: "Alice Example", email_verified: true, role: "admin", is_owner: true,
@@ -104,8 +116,9 @@ const INVITES = [
 ];
 
 /** Installs the mock. Returns the list of GET paths nothing answered, so a test can say a new call needs a fixture. */
-export async function mockApi(page: Page, { signedIn = true, advanced = true, documents = [DOCUMENT], ceremony, buyable }: MockOptions = {}) {
+export async function mockApi(page: Page, { signedIn = true, advanced = true, documents = [DOCUMENT], ceremony, buyable, planNotice }: MockOptions = {}) {
   const unanswered: string[] = [];
+  let notice: Record<string, unknown> | null = planNotice ?? null;
   const progress = { ...hud.progress, current_level: advanced ? 7 : 1, total_xp: advanced ? 1450 : 0, coins: advanced ? 320 : 0, xp_into_level: advanced ? 150 : 0, xp_to_next: 400, streak_days: advanced ? 4 : 0 };
   const shopData = { ...shop, shop_unlocked: advanced, level: progress.current_level, coins: progress.coins,
     items: shop.items.map((i) => (i.id === buyable ? { ...i, locked: false, owned: false, can_afford: true, price: 120 } : { ...i })) };
@@ -215,7 +228,9 @@ export async function mockApi(page: Page, { signedIn = true, advanced = true, do
     const method = route.request().method();
 
     if (path === "/auth/me") return signedIn ? json(route, 200, me) : json(route, 401, { error: { code: "unauthenticated", message: "Please log in to continue.", action: "relogin", details: null } });
-    if (path === "/hud") return json(route, 200, { ...hud, progress, shop: shopData, guest_mode: !signedIn });
+    if (path === "/hud") return json(route, 200, { ...hud, progress, shop: shopData, guest_mode: !signedIn, plan_notice: signedIn ? notice : null });
+    if (path === "/account/plan-notice" && method === "POST") { notice = null; return json(route, 200, { ok: true }); }
+    if (path === "/account/plan-notice") return json(route, 200, { plan_notice: notice });
     if (path === "/profile") return json(route, 200, { ...profile, progress });
     if (path === "/daily-quests") return json(route, 200, dailyQuests);
     if (path === "/shop") return json(route, 200, { ...shopData, champion_id: champion.champion_id });
@@ -299,6 +314,12 @@ export async function mockApi(page: Page, { signedIn = true, advanced = true, do
     if (path === "/auth/config") return json(route, 200, { google: false, email_delivery: true, verification_required: true, invite_only: false });
     if (path === "/admin/users") return json(route, 200, { users: ADMIN_USERS, total: ADMIN_USERS.length, offset: 0, limit: 25 });
     if (path === "/admin/invites") return json(route, 200, { invites: INVITES });
+    if (/^\/admin\/users\/\d+\/plan$/.test(path) && method === "PUT") {
+      const body = JSON.parse(route.request().postData() || "{}");
+      const u = ADMIN_USERS.find((x) => path.includes(`/users/${x.user_id}/`)) ?? ADMIN_USERS[1];
+      const up = ["apprentice", "scholar", "sage", "archmage"].indexOf(body.tier) > ["apprentice", "scholar", "sage", "archmage"].indexOf(u.tier);
+      return json(route, 200, { ...u, tier: body.tier, notice: up ? { kind: "upgrade" } : null });
+    }
     // Admin -> AI models and the admin's own model (Settings -> AI).
     if (path === "/admin/ai/models") return json(route, 200, {
       slots: {}, mine: null, ollama: { enabled: false, base: null, models: [] },

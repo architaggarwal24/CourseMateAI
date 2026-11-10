@@ -85,6 +85,45 @@ html.reduce-animations .fx-spark { display: none; }
 @media (prefers-reduced-motion: reduce) { .fx-ach__medal, .fx-level__sprite, .fx-level__to { animation: none; } }
 html.reduce-animations :is(.fx-ach__medal, .fx-level__sprite, .fx-level__to) { animation: none; }
 
+/* ── "you've been upgraded" (UpgradeCeremony.tsx): a calm card in Study and Account, a pixel party in Hero ──── */
+.fx-up__body { display: grid; justify-items: center; gap: var(--space-3); text-align: center; }
+.fx-up__crest {
+  --tier: var(--color-accent-text);
+  position: relative; display: grid; place-items: center; width: 4.5rem; height: 4.5rem; margin-top: var(--space-1);
+  border-radius: var(--radius-full); color: var(--tier);
+  background: color-mix(in srgb, var(--tier) 14%, transparent); border: 1px solid color-mix(in srgb, var(--tier) 35%, transparent);
+  animation: fx-up-pop 520ms cubic-bezier(.2, 1.4, .4, 1) both;
+}
+.fx-up__crest[data-tier="scholar"] { --tier: var(--color-rarity-rare); }
+.fx-up__crest[data-tier="sage"] { --tier: var(--color-rarity-epic); }
+.fx-up__crest[data-tier="archmage"] { --tier: var(--color-rarity-legendary); }
+.fx-up__spark { position: absolute; width: 0.4rem; height: 0.4rem; border-radius: 2px; background: var(--tier); opacity: 0; animation: fx-up-twinkle 1.6s ease-out 400ms 2; }
+.fx-up__spark--a { top: -0.3rem; right: 0.2rem; }
+.fx-up__spark--b { bottom: 0.3rem; left: -0.45rem; width: 0.3rem; height: 0.3rem; animation-delay: 650ms; }
+.fx-up__spark--c { top: 0.6rem; left: -0.2rem; width: 0.25rem; height: 0.25rem; animation-delay: 900ms; }
+.fx-up__preview { margin: 0; width: 100%; padding: var(--space-1) var(--space-2); font-size: 0.78rem; font-weight: 600; color: var(--color-warning-text); border: 1px dashed var(--color-border-strong); border-radius: var(--radius-md); }
+.fx-up__title { margin: 0; font-size: 0.85rem; line-height: 1.6; color: var(--color-text); }
+.fx-up__from { margin: 0; font-size: 0.9rem; font-weight: 600; color: var(--color-text-secondary); }
+.fx-up__plan { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: var(--space-2); margin: 0; }
+.fx-up__until { font-size: 0.85rem; color: var(--color-muted); }
+.fx-up__note {
+  margin: 0; width: 100%; padding: var(--space-3) var(--space-4); text-align: left; border-radius: var(--radius-lg);
+  background: var(--color-elevated); border: 1px solid var(--color-border); border-left: 3px solid var(--color-accent-text);
+}
+.fx-up__note p { margin: 0; color: var(--color-text); line-height: 1.55; overflow-wrap: anywhere; }
+.fx-up__note footer { margin-top: var(--space-1); font-size: 0.8rem; color: var(--color-muted); }
+.fx-up__note footer::before { content: "— "; }
+.fx-up__list { list-style: none; margin: 0; padding: 0; width: 100%; display: grid; gap: var(--space-2); text-align: left; }
+.fx-up__list li { display: flex; align-items: flex-start; gap: var(--space-2); color: var(--color-text); line-height: 1.45; }
+.fx-up__list li svg { flex: none; margin-top: 0.15rem; color: var(--color-success); }
+.fx-up--play .fx-up__note { border-radius: 0; border-left-width: 4px; }
+.fx-up--play .fx-up__list li { font-size: 0.9rem; }
+.fx-up--play .fx-up__body > :not(.fx-level__confetti) { position: relative; z-index: 3; }
+@keyframes fx-up-pop { 0% { transform: scale(0.4); opacity: 0; } 100% { transform: none; opacity: 1; } }
+@keyframes fx-up-twinkle { 0% { opacity: 0; transform: scale(0.4); } 30% { opacity: 1; transform: scale(1.2); } 100% { opacity: 0; transform: scale(0.6) translateY(-6px); } }
+@media (prefers-reduced-motion: reduce) { .fx-up__crest, .fx-up__spark { animation: none; } }
+html.reduce-animations :is(.fx-up__crest, .fx-up__spark) { animation: none; }
+
 /* ── the sound switch (Stage S1) ──────────────────────────────────────────────────────────────────────────── */
 .sound-toggle {
   position: relative; display: inline-grid; place-items: center; width: 2.75rem; height: 2.75rem; flex: none; cursor: pointer;

@@ -17,6 +17,8 @@ import AchievementBanner from "@/components/fx/AchievementBanner";
 
 // the level-up screen draws the champion (the pixel engine): loaded on its own, only for a signed-in player
 const LevelUpCeremony = dynamic(() => import("@/components/fx/LevelUpCeremony"), { ssr: false });
+// "you've been upgraded": a plan given by an admin, an invite code or a payment, shown once
+const UpgradeCeremony = dynamic(() => import("@/components/fx/UpgradeCeremony"), { ssr: false });
 import "./shell.css";
 
 /**
@@ -72,6 +74,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       <CoinRain />
       <AchievementBanner />
       {user && <LevelUpCeremony />}
+      {user && <UpgradeCeremony />}
     </div>
     </ThemeScope>
   );

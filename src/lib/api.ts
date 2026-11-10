@@ -171,6 +171,11 @@ export async function fetchHUD() {
   return body({ data });
 }
 
+/** "You've been upgraded" was shown: never again, on any device. Quiet: a failure only means it may show once more. */
+export async function markPlanNoticeSeen(id: number): Promise<void> {
+  try { await rawApi.POST("/account/plan-notice", { body: { id } }); } catch { /* offline: it shows again next time */ }
+}
+
 export async function fetchDailyQuests() {
   const { data } = await api.GET("/daily-quests");
   return body({ data });

@@ -4,7 +4,10 @@
 // make admins (the owner only); invite codes that grant a plan. Server rules: src/server/admin.ts.
 import { useCallback, useEffect, useState } from "react";
 import { Ban, Crown, Search, ShieldCheck, Sparkles, Ticket, UserCog } from "@/components/icons";
-import { Badge, Button, Card, EmptyState, Input, Modal, Select, Skeleton, toast } from "@/components/ui";
+import { Badge, Button, Card, EmptyState, Input, Modal, Select, Skeleton, Textarea, toast } from "@/components/ui";
+import { UpgradeWindow } from "@/components/fx/UpgradeCeremony";
+import { fetchPlans } from "@/lib/account/plans";
+import { previewNotice, type PlanNotice } from "@/lib/planNotice";
 import { useAuth } from "@/contexts/AuthContext";
 import { useHUDStore } from "@/hooks/useHUD";
 import AiModelsCard from "./AiModels";
@@ -37,6 +40,9 @@ function UserEditor({ user, isOwnerActor, onClose, onSaved }: {
   const [banDays, setBanDays] = useState("");
   const [busy, setBusy] = useState(false);
   const [daysError, setDaysError] = useState("");
+  const [note, setNote] = useState("");
+  const [preview, setPreview] = useState<{ notice: PlanNotice; variant: "study" | "play" } | null>(null);
+  const { user: me } = useAuth();
 
   async function run(fn: () => Promise<AdminUser>, done: string) {
     setBusy(true);
@@ -55,7 +61,33 @@ function UserEditor({ user, isOwnerActor, onClose, onSaved }: {
     const d = daysOrNull(days);
     if (d === "bad") { setDaysError("A whole number of days from 1 to 3650, or empty for no end"); return; }
     if (tier === "apprentice") { void run(() => adminApi.clearPlan(user.user_id), "Back on Free"); return; }
-    void run(() => adminApi.setPlan(user.user_id, tier, d), `Plan set: ${TIER_OPTIONS.find((t) => t.value === tier)?.label}`);
+    const label = TIER_OPTIONS.find((t) => t.value === tier)?.label;
+    void (async () => {
+      setBusy(true);
+      try {
+        const fresh = await adminApi.setPlan(user.user_id, tier, d, note);
+        toast.success(fresh.notice ? `Plan set: ${label}. They'll get a congratulations window next time they open the app.` : `Plan set: ${label}`);
+        setNote("");
+        onSaved(fresh);
+      } catch (e) {
+        toast.apiError(e);
+      } finally {
+        setBusy(false);
+      }
+    })();
+  }
+
+  /** What they'd see if this plan were saved now (nothing is saved). */
+  async function showPreview(variant: "study" | "play") {
+    const d = daysOrNull(days);
+    if (d === "bad") { setDaysError("A whole number of days from 1 to 3650, or empty for no end"); return; }
+    let limits: Partial<Record<Tier, Record<string, number>>> = {};
+    try { limits = Object.fromEntries((await fetchPlans()).plans.map((p) => [p.tier, p.limits])); } catch { /* the preview leaves out the limits */ }
+    const inForce = user.plan && user.plan.tier === user.tier ? user.plan.expires_at : null;
+    const n = previewNotice({ fromTier: user.tier, fromExpiresAt: inForce, toTier: tier, days: d, note,
+      fromName: (me?.full_name || me?.username || "").trim() || null, limits });
+    if (!n) { toast.info("That's not an upgrade or a longer plan, so they won't see a window."); return; }
+    setPreview({ notice: n, variant });
   }
 
   function doBan() {
@@ -85,8 +117,21 @@ function UserEditor({ user, isOwnerActor, onClose, onSaved }: {
                   hint="Empty = no end" error={daysError || undefined}
                   onChange={(e) => { setDays(e.currentTarget.value); setDaysError(""); }} />
               </div>
-              <Button variant="primary" onClick={savePlan} loading={busy}>Save plan</Button>
+              <Textarea label="Note for them (optional)" rows={2} maxLength={280} value={note} disabled={tier === "apprentice"}
+                placeholder="e.g. Thanks for testing CourseMateAI!"
+                hint={`Shown in their "you've been upgraded" window. ${280 - note.length} characters left.`}
+                onChange={(e) => setNote(e.currentTarget.value)} />
+              <div className="flex flex-wrap gap-2">
+                <Button variant="primary" onClick={savePlan} loading={busy}>Save plan</Button>
+                {tier !== "apprentice" && (
+                  <>
+                    <Button variant="ghost" onClick={() => void showPreview("study")} disabled={busy}><Sparkles size={14} aria-hidden="true" />Preview their window</Button>
+                    <Button variant="ghost" onClick={() => void showPreview("play")} disabled={busy}>Hero style</Button>
+                  </>
+                )}
+              </div>
             </section>
+            {preview && <UpgradeWindow notice={preview.notice} variant={preview.variant} preview onClose={() => setPreview(null)} />}
 
             {isOwnerActor && (
               <section aria-labelledby="ed-role" className="space-y-3">

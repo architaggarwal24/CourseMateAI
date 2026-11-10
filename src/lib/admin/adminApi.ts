@@ -101,7 +101,9 @@ async function call<T>(path: string, init: { method?: string; body?: unknown; he
 export const adminApi = {
   users: (q = "", offset = 0, limit = 25) =>
     call<{ users: AdminUser[]; total: number; offset: number; limit: number }>(`/users?q=${encodeURIComponent(q)}&offset=${offset}&limit=${limit}`),
-  setPlan: (id: number, tier: Tier, days: number | null) => call<AdminUser>(`/users/${id}/plan`, { method: "PUT", body: { tier, days } }),
+  /** `note` shows in the user's "you've been upgraded" window; `notice` in the answer says whether they'll get one. */
+  setPlan: (id: number, tier: Tier, days: number | null, note = "") =>
+    call<AdminUser & { notice?: { kind: "upgrade" | "extend" } | null }>(`/users/${id}/plan`, { method: "PUT", body: { tier, days, note } }),
   clearPlan: (id: number) => call<AdminUser>(`/users/${id}/plan`, { method: "DELETE" }),
   setRole: (id: number, role: "admin" | "user") => call<AdminUser>(`/users/${id}/role`, { method: "PUT", body: { role } }),
   ban: (id: number, reason: string, days: number | null) => call<AdminUser>(`/users/${id}/ban`, { body: { reason, days } }),

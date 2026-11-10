@@ -4,6 +4,24 @@
  */
 
 export interface paths {
+    "/api/v1/account/plan-notice": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The "you've been upgraded" notice to show now, if any */
+        get: operations["plan_notice_api_v1_account_plan_notice_get"];
+        put?: never;
+        /** Mark a plan notice shown */
+        post: operations["plan_notice_seen_api_v1_account_plan_notice_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/account/redeem": {
         parameters: {
             query?: never;
@@ -2547,8 +2565,29 @@ export interface components {
             shop: {
                 [key: string]: unknown;
             };
+            /** "You've been upgraded", shown once */
+            plan_notice?: components["schemas"]["PlanNotice"] | null;
         } & {
             [key: string]: unknown;
+        };
+        /** PlanNotice: "you've been upgraded" (src/server/planNotices.ts) */
+        PlanNotice: {
+            id: number;
+            /** @enum {string} */
+            kind: "upgrade" | "extend";
+            tier: "apprentice" | "scholar" | "sage" | "archmage";
+            tier_name: string;
+            from_tier: "apprentice" | "scholar" | "sage" | "archmage";
+            from_tier_name: string;
+            /** @enum {string} */
+            source: "admin" | "invite" | "subscription";
+            expires_at: string | null;
+            from_expires_at: string | null;
+            note: string | null;
+            from_name: string | null;
+            unlocked: { feature: string; name: string }[];
+            gains: { key: "documents" | "courses" | "ai_calls_day" | "pdf_mb"; from: number; to: number }[];
+            created_at: string;
         };
         /** KitText */
         KitText: {
@@ -3550,6 +3589,50 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    plan_notice_api_v1_account_plan_notice_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": { plan_notice: components["schemas"]["PlanNotice"] | null };
+                };
+            };
+        };
+    };
+    plan_notice_seen_api_v1_account_plan_notice_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": { id: number };
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": { ok: boolean };
+                };
+            };
+        };
+    };
     redeem_api_v1_account_redeem_post: {
         parameters: {
             query?: never;

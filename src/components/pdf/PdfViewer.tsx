@@ -1,5 +1,6 @@
 "use client";
 
+import { usePlanChanged } from "@/hooks/usePlanChanged";
 import { useEffect, useRef, useState } from "react";
 import { ChevronLeft, ChevronRight, FileWarning, Lock, X } from "@/components/icons";
 import { Button, Skeleton } from "@/components/ui";
@@ -62,7 +63,9 @@ export default function PdfViewer({ citation, onClose }: { citation: Citation; o
     return () => window.removeEventListener("keydown", onKey);
   }, [onClose]);
 
-  // open the document
+  // open the document (again, if the plan just went up while it said "locked")
+  const [tries, setTries] = useState(0);
+  usePlanChanged(() => setTries((n) => n + 1), status === "locked");
   useEffect(() => {
     let alive = true;
     setStatus("loading");
@@ -78,7 +81,7 @@ export default function PdfViewer({ citation, onClose }: { citation: Citation; o
         : e instanceof FileError && (e.status === 404) ? "unavailable" : "error");
     });
     return () => { alive = false; };
-  }, [citation.doc_id]);
+  }, [citation.doc_id, tries]);
 
   // draw the page and find the passage on it
   useEffect(() => {

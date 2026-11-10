@@ -5,12 +5,12 @@ import { api, intParam } from "@/server/route";
 
 export const dynamic = "force-dynamic";
 
-/** { tier, days } - days empty/null = no end. */
+/** { tier, days, note } - days empty/null = no end; note (optional) shows in the user's "you've been upgraded" window. */
 export const PUT = api<{ id: string }>(async (req, ctx, { id }) => {
   const actor = await requireAdmin(req, ctx);
   await rateLimit(ctx.db, `admin:${actor.id}`, 120, 60);
-  const body = await readJson<{ tier?: unknown; days?: unknown }>(req);
-  return setUserPlan(ctx, actor, intParam(id), body.tier, body.days);
+  const body = await readJson<{ tier?: unknown; days?: unknown; note?: unknown }>(req);
+  return setUserPlan(ctx, actor, intParam(id), body.tier, body.days, body.note);
 });
 
 /** Back to Free. */

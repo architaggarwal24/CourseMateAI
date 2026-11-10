@@ -107,7 +107,7 @@ function routes(): Route[] {
 /** Round trips per route after the performance pass. Lower is fine (lower the number); higher needs a reason. */
 const BUDGET: Record<string, number> = {
   "GET /auth/me": 4,
-  "GET /hud": 6,
+  "GET /hud": 7, // +1: the "you've been upgraded" notice (one indexed read, alongside the others)
   "GET /documents": 4,
   "GET /documents/:id": 4,
   "GET /documents/:course": 5,

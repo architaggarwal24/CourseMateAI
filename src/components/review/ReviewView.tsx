@@ -1,5 +1,6 @@
 "use client";
 
+import { usePlanChanged } from "@/hooks/usePlanChanged";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { motion, useMotionValue, useTransform } from "motion/react";
 import { CalendarClock, CheckCircle2, FileText, Layers, Repeat, Trash2 } from "@/components/icons";
@@ -71,6 +72,7 @@ export default function ReviewView({ documentId }: { documentId?: string }) {
     }
   }, [scope, setStats]);
   useEffect(() => { void load(); }, [load]);
+  usePlanChanged(() => { void load(); }, phase === "locked");   // upgraded while looking at the lock
 
   const item = items[0];
   const reveal = () => { if (item && !revealed) setRevealed(true); };

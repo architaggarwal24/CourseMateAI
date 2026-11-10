@@ -1,5 +1,6 @@
 "use client";
 
+import { usePlanChanged } from "@/hooks/usePlanChanged";
 import { useCallback, useEffect, useState } from "react";
 import { CheckCircle2, Download, GraduationCap, Plus, Repeat, X, XCircle } from "@/components/icons";
 import StudyToolbar from "@/components/study/StudyToolbar";
@@ -36,6 +37,7 @@ export default function ExamView({ documentId }: { documentId?: string }) {
   const [custom, setCustom] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [lockPlan, setLockPlan] = useState("Sage");
+  const [tries, setTries] = useState(0);
 
   const locked = (e: unknown) => {
     if (e instanceof ApiError && e.code === "feature_locked") {
@@ -64,7 +66,8 @@ export default function ExamView({ documentId }: { documentId?: string }) {
       }
     })();
     return () => { alive = false; };
-  }, [documentId]);
+  }, [documentId, tries]);
+  usePlanChanged(() => { setPhase("loading"); setTries((n) => n + 1); }, phase === "locked");   // upgraded while looking at the lock
 
   const begin = async () => {
     if (!documentId) return;

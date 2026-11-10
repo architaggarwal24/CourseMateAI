@@ -13,6 +13,7 @@ import type { CurrentUser, RequestContext } from "./context";
 import { paymentEvents, subscriptions, userPlans } from "./db/schema";
 import { HttpError } from "./http";
 import { PLANS, TIER_NAMES, forgetTier, type Tier } from "./plans";
+import { notePlanChange, planState } from "./planNotices";
 
 export const GRACE_DAYS = 3;
 const PERIOD_DAYS: Record<string, number> = { month: 30, year: 365 };
@@ -216,6 +217,7 @@ async function syncPlan(ctx: RequestContext, row: Sub) {
   const plan = await ctx.db.select().from(userPlans).where(eq(userPlans.userId, row.userId)).get();
   if (!LIVE.includes(row.status) && plan && !(plan.source === "subscription" && plan.sourceRef === row.id)) return;  // an old one ending
   const t = iso(now)!;
+  const before = await planState(ctx.db, row.userId, now);
   await ctx.db.insert(userPlans).values({ userId: row.userId, tier: row.tier as Tier, source: "subscription", sourceRef: row.id, startedAt: t, expiresAt: iso(expires), updatedAt: t })
     .onConflictDoUpdate({
       target: userPlans.userId,
@@ -223,6 +225,7 @@ async function syncPlan(ctx: RequestContext, row: Sub) {
              startedAt: sql`CASE WHEN ${userPlans.sourceRef} = ${row.id} THEN ${userPlans.startedAt} ELSE ${t} END` },
     });
   forgetTier(ctx.db, row.userId);
+  await notePlanChange(ctx.db, row.userId, before, { source: "subscription" }, now);   // a higher plan: the thank-you window
 }
 
 /** Switching plans: the user's other live subscriptions are cancelled now (best effort). */

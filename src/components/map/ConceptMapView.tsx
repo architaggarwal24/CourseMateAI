@@ -1,5 +1,6 @@
 "use client";
 
+import { usePlanChanged } from "@/hooks/usePlanChanged";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Brain, Layers, List, Network, RefreshCw, Sparkles, Swords, X } from "@/components/icons";
 import StudyToolbar from "@/components/study/StudyToolbar";
@@ -57,6 +58,7 @@ export default function ConceptMapView({ documentId }: { documentId?: string }) 
   }, [documentId]);
 
   useEffect(() => { setPhase("loading"); setMap(null); setSelected(null); void load(); }, [load]);
+  usePlanChanged(() => { setPhase("loading"); void load(); }, phase === "locked");   // upgraded while looking at the lock
 
   // While it builds: ask again, a little slower after a while (a reasoning model can take minutes).
   const building = map?.status === "building";

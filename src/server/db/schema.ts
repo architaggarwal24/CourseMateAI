@@ -101,6 +101,26 @@ export const userPlans = sqliteTable("user_plans", {
   updatedAt: text("updated_at").notNull(),
 });
 
+/**
+ * "You've been upgraded" (src/server/planNotices.ts): a plan went up, or got longer, by an admin, an invite code or a
+ * payment. The app shows it once (seen_at), on whichever device opens first. `from_*` is the plan before the first
+ * change not yet seen, so a grant followed quickly by a correction shows one window that tells the whole story.
+ */
+export const planNotices = sqliteTable("plan_notices", {
+  id: integer("id", { mode: "number" }).primaryKey({ autoIncrement: true }),
+  userId: integer("user_id").notNull().references(() => user.id, { onDelete: "cascade" }),
+  kind: text("kind", { enum: ["upgrade", "extend"] }).notNull(),
+  tier: text("tier", { enum: ["apprentice", "scholar", "sage", "archmage"] }).notNull(),
+  fromTier: text("from_tier", { enum: ["apprentice", "scholar", "sage", "archmage"] }).notNull(),
+  fromExpiresAt: text("from_expires_at"),
+  source: text("source", { enum: ["admin", "invite", "subscription"] }).notNull(),
+  expiresAt: text("expires_at"),
+  note: text("note"),
+  grantedBy: integer("granted_by"),
+  createdAt: text("created_at").notNull(),
+  seenAt: text("seen_at"),
+}, (t) => [index("plan_notices_user_idx").on(t.userId, t.seenAt)]);
+
 export const inviteCodes = sqliteTable("invite_codes", {
   code: text("code").primaryKey(),
   tier: text("tier", { enum: ["apprentice", "scholar", "sage", "archmage"] }).notNull(),

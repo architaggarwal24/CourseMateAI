@@ -1,5 +1,6 @@
 "use client";
 
+import { showUpgradeNow } from "@/lib/account/upgradeNotice";
 import { useEffect, useRef, useState } from "react";
 import { Check, Eye, EyeOff } from "@/components/icons";
 import { Button, Card, Input, toast } from "@/components/ui";
@@ -93,7 +94,7 @@ export default function SignupFlow({ onDone }: { onDone: () => void }) {
     if (code) {
       try {
         const { error, response } = await rawApi.POST("/account/redeem", { body: { code } });
-        if (response.ok) toast.success("Invite code used: your plan is upgraded.");
+        if (response.ok) await showUpgradeNow("Invite code used: your plan is upgraded.");   // the window, once in
         else toast.apiError(parseApiError(response.status, error, "That invite code didn't work"));
       } catch { /* the code can be used later from Account -> Plan & usage */ }
     }

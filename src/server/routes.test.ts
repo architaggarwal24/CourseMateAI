@@ -19,6 +19,8 @@ import * as adminBan from "@/app/api/v1/admin/users/[id]/ban/route";
 import * as adminGrant from "@/app/api/v1/admin/users/[id]/grant/route";
 import * as adminInvites from "@/app/api/v1/admin/invites/route";
 import * as adminInvite from "@/app/api/v1/admin/invites/[code]/route";
+import * as hudRoute from "@/app/api/v1/hud/route";
+import * as planNotice from "@/app/api/v1/account/plan-notice/route";
 import { setMailerForTests } from "./context";
 import { setEnvForTests } from "./env";
 import { Browser, fakeMailer, json, SETTINGS } from "./test/auth-helpers";
@@ -266,5 +268,73 @@ describe("invite codes", () => {
     const statuses: number[] = [];
     for (let i = 0; i < 10; i++) statuses.push((await redeem.POST(s.request("/api/v1/account/redeem", { body: { code: "NOPE-NOPE" } }))).status);
     expect(statuses.at(-1)).toBe(429);
+  });
+});
+
+describe("you've been upgraded (plan notices)", () => {
+  const notice = async (b: Browser) => (await json(await hudRoute.GET(b.request("/api/v1/hud")))).plan_notice;
+  const seen = (b: Browser, id: number) => planNotice.POST(b.request("/api/v1/account/plan-notice", { body: { id } }));
+  const grant = (owner: Browser, sid: number, body: Record<string, unknown>) =>
+    adminPlan.PUT(owner.request(`/api/v1/admin/users/${sid}/plan`, { method: "PUT", body }), params({ id: String(sid) }));
+
+  it("an admin grant leaves one notice, with the note, what's new and who it's from, shown once everywhere", async () => {
+    const owner = await person("owner@example.com", "boss");
+    const s = await person("lucky@example.com", "lucky");
+    const sid = await idOf(s);
+    expect(await notice(s)).toBeNull();
+    const r = await json(await grant(owner, sid, { tier: "sage", days: 30, note: "  Thanks   for testing!  " }));
+    expect(r.notice).toEqual({ kind: "upgrade" });
+    const n = await notice(s);
+    expect(n).toMatchObject({
+      kind: "upgrade", tier: "sage", tier_name: "Sage", from_tier: "apprentice", source: "admin", note: "Thanks for testing!",
+      from_name: "BOSS",
+    });
+    expect(n.unlocked.map((u: { feature: string }) => u.feature)).toEqual(["review_queue", "exam_mode", "concept_map", "pdf_viewer"]);
+    expect(n.gains).toContainEqual({ key: "documents", from: 3, to: 50 });
+    expect(n.expires_at).toMatch(/Z$/);
+    // the light GET says the same; once seen, it's gone on every device
+    expect((await json(await planNotice.GET(s.request("/api/v1/account/plan-notice")))).plan_notice.id).toBe(n.id);
+    expect((await seen(s, n.id)).status).toBe(200);
+    expect(await notice(s)).toBeNull();
+    // someone else can't mark it (their own notices only), and a bad id is a 400
+    expect((await seen(s, 0)).status).toBe(400);
+  });
+
+  it("more days on the same plan is an extension; a lower plan or Free is nothing", async () => {
+    const owner = await person("owner@example.com", "boss");
+    const s = await person("ext@example.com", "ext");
+    const sid = await idOf(s);
+    await grant(owner, sid, { tier: "scholar", days: 7 });
+    await seen(s, (await notice(s)).id);
+    await grant(owner, sid, { tier: "scholar", days: 60 });
+    expect(await notice(s)).toMatchObject({ kind: "extend", tier: "scholar", from_tier: "scholar", unlocked: [], gains: [] });
+    await seen(s, (await notice(s)).id);
+    expect((await json(await grant(owner, sid, { tier: "scholar", days: 3 }))).notice).toBeNull();      // shorter
+    await adminPlan.DELETE(owner.request(`/api/v1/admin/users/${sid}/plan`, { method: "DELETE" }), params({ id: String(sid) }));
+    expect(await notice(s)).toBeNull();
+  });
+
+  it("quick corrections fold into one window, and a grant taken back before it's seen shows nothing", async () => {
+    const owner = await person("owner@example.com", "boss");
+    const s = await person("fold@example.com", "fold");
+    const sid = await idOf(s);
+    await grant(owner, sid, { tier: "archmage", note: "Welcome aboard" });
+    await grant(owner, sid, { tier: "scholar", days: 30 });                       // oops, meant Scholar
+    expect(await notice(s)).toMatchObject({ kind: "upgrade", tier: "scholar", from_tier: "apprentice", note: "Welcome aboard" });
+    await adminPlan.DELETE(owner.request(`/api/v1/admin/users/${sid}/plan`, { method: "DELETE" }), params({ id: String(sid) }));
+    expect(await notice(s)).toBeNull();
+  });
+
+  it("an invite code leaves a notice too, and so does adding its days to the same plan", async () => {
+    const owner = await person("owner@example.com", "boss");
+    await adminInvites.POST(owner.request("/api/v1/admin/invites", { body: { tier: "scholar", days: 14, max_uses: 5, code: "FRIENDS-1" } }));
+    await adminInvites.POST(owner.request("/api/v1/admin/invites", { body: { tier: "scholar", days: 14, max_uses: 5, code: "FRIENDS-2" } }));
+    const s = await person("inv@example.com", "inv");
+    await redeem.POST(s.request("/api/v1/account/redeem", { body: { code: "FRIENDS-1" } }));
+    const n = await notice(s);
+    expect(n).toMatchObject({ kind: "upgrade", tier: "scholar", source: "invite", note: null, from_name: null });
+    await seen(s, n.id);
+    await redeem.POST(s.request("/api/v1/account/redeem", { body: { code: "FRIENDS-2" } }));
+    expect(await notice(s)).toMatchObject({ kind: "extend", source: "invite" });
   });
 });

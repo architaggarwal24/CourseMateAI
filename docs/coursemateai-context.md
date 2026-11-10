@@ -67,6 +67,10 @@ An AI study companion with an RPG game layer, aimed at **launching to real stude
   game, with 6 original champions, creature mechanics, ultimates and a roguelite "Expedition".
 - **Plans:** Apprentice (free), Scholar ₹149, Sage ₹299, Archmage ₹599 a month. Invite codes grant plans. The
   `OWNER_EMAIL` account is always admin and on Archmage.
+- **"You've been upgraded":** a higher plan (or more days, from an admin or an invite) leaves a notice
+  (`plan_notices`, `src/server/planNotices.ts`) that arrives with GET /hud and shows once on any device: a calm card
+  in Study/Account, a pixel celebration in Hero (`components/fx/UpgradeCeremony.tsx`). Admins can add a note and
+  preview it. Anything that changes a plan calls `planState` before and `notePlanChange` after.
 
 ---
 

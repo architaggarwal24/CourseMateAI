@@ -9,6 +9,7 @@ import * as stubComplete from "@/app/api/v1/billing/stub/complete/route";
 import * as webhookRoute from "@/app/api/v1/billing/webhook/route";
 import * as usage from "@/app/api/v1/account/usage/route";
 import * as plans from "@/app/api/v1/plans/route";
+import * as hudRoute from "@/app/api/v1/hud/route";
 import { setMailerForTests } from "./context";
 import { setEnvForTests } from "./env";
 import { provider, razorpay, setProviderForTests, stub, type Provider } from "./billing";
@@ -71,6 +72,8 @@ describe("billing", () => {
     expect(sub).toMatchObject({ status: "active", tier: "sage", cancel_at_period_end: false });
     const u = await json(await usage.GET(b.request("/api/v1/account/usage")));
     expect(u).toMatchObject({ tier: "sage", source: "subscription" });
+    // the thank-you window: once, for the new plan
+    expect((await json(await hudRoute.GET(b.request("/api/v1/hud")))).plan_notice).toMatchObject({ kind: "upgrade", tier: "sage", source: "subscription", from_tier: "apprentice" });
     expect((await json(await checkout.POST(b.request("/api/v1/billing/checkout", { body: { tier: "sage", period: "month" } })))).error.code).toBe("already_subscribed");
     expect(await json(await cancelRoute.POST(b.request("/api/v1/billing/cancel", { body: {} })))).toMatchObject({ cancel_at_period_end: true });
     expect((await json(await usage.GET(b.request("/api/v1/account/usage")))).tier).toBe("sage");

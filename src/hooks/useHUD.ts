@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { fetchHUD } from "@/lib/api";
+import type { PlanNotice } from "@/lib/planNotice";
 
 interface HUDState {
   userId: string;
@@ -16,6 +17,8 @@ interface HUDState {
   /** Inventory quantities for consumable items (always populated, even below level 5) */
   consumableInventory: Record<string, number>;
   guestMode: boolean;
+  /** "You've been upgraded", waiting to be shown (components/fx/UpgradeCeremony.tsx). */
+  planNotice: PlanNotice | null;
   loading: boolean;
   _lastRefresh: number;
   /** Counts local changes (a purchase, a claim ...). A refresh that started before the latest one is stale and is dropped. */
@@ -41,6 +44,7 @@ interface HUDState {
 const GUEST = {
   level: 1, xp: 0, coins: 0, xpInto: 0, xpToNext: 100, streakDays: 0, streakFreezes: 0,
   quests: [] as any[], shop: { shop_unlocked: false, items: [] }, buffs: {}, consumableInventory: {}, guestMode: true,
+  planNotice: null as PlanNotice | null,
 };
 
 /** A load() within this long of the last answer reuses it. */
@@ -73,6 +77,7 @@ export const useHUDStore = create<HUDState>((set, get) => ({
   buffs: {},
   consumableInventory: {},
   guestMode: true,
+  planNotice: null,
   loading: false,
   _lastRefresh: 0,
   _epoch: 0,
@@ -153,6 +158,7 @@ async function fetchInto(seq: number, epoch: number): Promise<void> {
         buffs: data.buffs || {},
         consumableInventory: data.consumable_inventory || {},
         guestMode: data.guest_mode !== false,
+        planNotice: (data.plan_notice as PlanNotice | null | undefined) ?? null,
         loading: false,
         _lastRefresh: Date.now(),
       });

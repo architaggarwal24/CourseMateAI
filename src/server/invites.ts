@@ -6,6 +6,7 @@ import type { Db } from "./db";
 import { inviteCodes, inviteRedemptions, userPlans } from "./db/schema";
 import { HttpError } from "./http";
 import { TIER_NAMES, TIERS, forgetTier, isTier, nowIso, planRow, type Tier } from "./plans";
+import { notePlanChange, planState } from "./planNotices";
 
 const CODE_RE = /^[A-Z0-9][A-Z0-9-]{3,39}$/;
 const ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";          // no 0/O, 1/I
@@ -97,5 +98,8 @@ export async function redeemInvite(db: Db, userId: number, code: string, now = n
     .where(and(eq(inviteCodes.code, row.code), lt(inviteCodes.uses, row.maxUses), eq(inviteCodes.revoked, false))).run();
   if ((took.meta?.changes ?? 0) === 0) throw invalid("That invite code has been used up.");
   await db.insert(inviteRedemptions).values({ code: row.code, userId, redeemedAt: nowIso(now) });
-  return setPlan(db, userId, row.tier, { days, source: "invite", ref: row.code, from }, now);
+  const before = await planState(db, userId, now);
+  const plan = await setPlan(db, userId, row.tier, { days, source: "invite", ref: row.code, from }, now);
+  await notePlanChange(db, userId, before, { source: "invite" }, now);
+  return plan;
 }

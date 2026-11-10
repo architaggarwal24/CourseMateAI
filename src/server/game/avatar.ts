@@ -1,5 +1,6 @@
 // The avatar (port of backend/routers/avatar.py): the player's pixel champion and the skins it wears, plus the
 // profile, HUD and achievements views (routers/progression.py).
+import { pendingPlanNotice } from "../planNotices";
 import { bestiaryStats } from "./tome";
 import { eq } from "drizzle-orm";
 import type { RequestContext } from "../context";
@@ -109,13 +110,14 @@ export async function hud(ctx: RequestContext, p: Player | null) {
   const prog = await getProgress(ctx, p.id);
   const [, into, toNext] = xpProgress(prog.totalXp);
   // Independent reads, side by side instead of one after another (the header waits on this on every screen).
-  const [quests, buffs, consumables] = await Promise.all([dailyQuestsFor(ctx, p, prog), activeBuffs(ctx, p.id), inventory(ctx, p.id)]);
+  const [quests, buffs, consumables, planNotice] = await Promise.all([dailyQuestsFor(ctx, p, prog), activeBuffs(ctx, p.id), inventory(ctx, p.id), pendingPlanNotice(ctx.db, p.id)]);
   const shop = prog.currentLevel < SHOP_LEVEL
     ? { shop_unlocked: false, level: prog.currentLevel, coins: prog.coins, items: [] }
     : await shopState(ctx, p, prog, { inv: consumables, buffs });
   return {
     progress: { ...progressView(prog), xp_into_level: into, xp_to_next: toNext }, quests, shop,
     buffs, consumable_inventory: consumables, guest_mode: false,
+    plan_notice: planNotice,           // "you've been upgraded", once (src/server/planNotices.ts)
   };
 }
 

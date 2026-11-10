@@ -1,5 +1,6 @@
 "use client";
 
+import { showUpgradeNow } from "@/lib/account/upgradeNotice";
 import { useCallback, useEffect, useState } from "react";
 import { Check, CreditCard, FileText, KeyRound, Sparkles, Ticket, Trash2 } from "@/components/icons";
 import { Badge, Button, Card, Input, Modal, Skeleton, toast } from "@/components/ui";
@@ -57,7 +58,7 @@ export default function PlanUsage() {
   useEffect(() => { void load(); }, [load]);
 
   const paid = (sub: Subscription) => {
-    toast.success(`Welcome to ${sub.tier_name}!`);
+    void showUpgradeNow(`Welcome to ${sub.tier_name}!`);           // the "you've been upgraded" window
     void load();
   };
   const upgrade = async (tier: string) => {
@@ -138,7 +139,7 @@ export default function PlanUsage() {
 
       <div className="pu-cols">
         <DocumentsBox allowed={usage.limits.documents} onChanged={() => void load()} />
-        <RedeemBox onRedeemed={(u) => { setUsage(u); toast.success(`You're on ${u.tier_name} now.`); }} />
+        <RedeemBox onRedeemed={(u) => { setUsage(u); void showUpgradeNow(`You're on ${u.tier_name} now.`); }} />
       </div>
 
       <section aria-labelledby="pu-plans-title" className="pu-plans-wrap">

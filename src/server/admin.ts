@@ -9,6 +9,7 @@ import { checkAchievements } from "./game/progression";
 import { recordRewardEvent } from "./game/store";
 import { HttpError } from "./http";
 import { clearPlan, setPlan } from "./invites";
+import { cleanNote, notePlanChange, planState } from "./planNotices";
 import { TIER_NAMES, isTier, nowIso, tierFor } from "./plans";
 
 const DAY = 86_400_000;
@@ -76,9 +77,11 @@ export async function listUsers(ctx: RequestContext, { q = "", offset = 0, limit
   return { users: await Promise.all(rows.map((r) => adminUserView(ctx, r))), total, offset, limit: lim };
 }
 
-export async function setUserPlan(ctx: RequestContext, actor: CurrentUser, id: number, tier: unknown, days: unknown) {
+/** Set (or, with tier null, remove) a plan. A higher or longer plan leaves the user a "you've been upgraded" notice, with the note. */
+export async function setUserPlan(ctx: RequestContext, actor: CurrentUser, id: number, tier: unknown, days: unknown, note?: unknown) {
   const t = await target(ctx, id);
   if (t.owner) throw new HttpError(400, "owner_plan", "The owner is always on the top plan.");
+  const before = await planState(ctx.db, id);
   if (tier === null || tier === "apprentice" && !days) {
     await clearPlan(ctx.db, id);
   } else {
@@ -89,7 +92,8 @@ export async function setUserPlan(ctx: RequestContext, actor: CurrentUser, id: n
     }
     await setPlan(ctx.db, id, tier, { days: d, source: "admin", ref: `admin:${actor.id}`, grantedBy: actor.id });
   }
-  return adminUserView(ctx, (await target(ctx, id)).row);
+  const notice = await notePlanChange(ctx.db, id, before, { source: "admin", note: cleanNote(note), grantedBy: actor.id });
+  return { ...(await adminUserView(ctx, (await target(ctx, id)).row)), notice: notice ? { kind: notice.kind } : null };
 }
 
 export async function setRole(ctx: RequestContext, actor: CurrentUser, id: number, role: unknown) {

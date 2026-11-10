@@ -12,6 +12,7 @@ import { useHeroStore } from "@/hooks/useHero";
 import { ROUTES } from "@/lib/routes";
 import { sfx } from "@/lib/sound/chip";
 import ThemeScope from "@/components/ThemeScope";
+import { useCeremonyQueue } from "./ceremonyQueue";
 
 const KEY = (uid: string) => `cmai_level_seen:${uid}`;
 /** The coins a level-up pays (server rewards.json level_up_bonus_coins_per_level). */
@@ -43,6 +44,10 @@ export default function LevelUpCeremony() {
     if (level > last) { setUp({ from: last, to: level }); sfx("levelup"); }
     if (level !== last) remember(uid, level);
   }, [uid, guest, level, refreshed]);
+
+  // the upgrade window waits while this one is open
+  const setOpen = useCeremonyQueue((s) => s.setLevelUpOpen);
+  useEffect(() => { setOpen(!!up); return () => setOpen(false); }, [up, setOpen]);
 
   if (!up) return null;
   const hero = lookFor(championId, shop).hero;
