@@ -3,7 +3,7 @@
 // DELETE /auth/delete-account. Same paths and shapes, so the screens keep working.
 import { isAPIError } from "better-auth/api";
 import { and, eq, ne, sql } from "drizzle-orm";
-import { USERNAME_RE, googleEnabled } from "./auth";
+import { USERNAME_RE, githubEnabled, googleEnabled } from "./auth";
 import { verifyPassword } from "./auth/password";
 import { account as accountTable, user as userTable } from "./db/schema";
 import type { CurrentUser, RequestContext } from "./context";
@@ -22,10 +22,11 @@ export function fromAuthError(e: unknown, field?: string): never {
   throw e;
 }
 
-async function hasPassword(ctx: RequestContext, userId: number): Promise<boolean> {
-  const row = await ctx.db.select({ id: accountTable.id }).from(accountTable)
-    .where(and(eq(accountTable.userId, userId), eq(accountTable.providerId, "credential"))).get();
-  return !!row;
+/** How this account signs in: a password ("credential") and/or Google, GitHub. One read. */
+async function signInMethods(ctx: RequestContext, userId: number): Promise<{ password: boolean; providers: string[] }> {
+  const rows = await ctx.db.select({ provider: accountTable.providerId }).from(accountTable).where(eq(accountTable.userId, userId)).all();
+  const ids = rows.map((r) => r.provider);
+  return { password: ids.includes("credential"), providers: [...new Set(ids.filter((p) => p !== "credential"))].sort() };
 }
 
 async function passwordMatches(ctx: RequestContext, userId: number, password: string): Promise<boolean> {
@@ -37,10 +38,13 @@ async function passwordMatches(ctx: RequestContext, userId: number, password: st
 export async function me(ctx: RequestContext, u: CurrentUser) {
   const tier = await tierFor(ctx.db, { id: u.id, owner: u.owner });
   const r = u.row;
+  const methods = await signInMethods(ctx, r.id);
   return {
     user_id: r.id, email: r.email, username: r.displayUsername || r.username, full_name: r.name, image: r.image,
     email_verified: r.emailVerified, role: u.admin ? "admin" : "user", is_admin: u.admin, is_owner: u.owner,
-    two_factor_enabled: !!r.twoFactorEnabled, has_password: await hasPassword(ctx, r.id), timezone: r.timezone,
+    two_factor_enabled: !!r.twoFactorEnabled, has_password: methods.password,
+    /** The other ways in: "github", "google" (Account -> Security names them). */
+    sign_in_providers: methods.providers, timezone: r.timezone,
     tier, tier_name: TIER_NAMES[tier],
   };
 }
@@ -49,6 +53,7 @@ export async function me(ctx: RequestContext, u: CurrentUser) {
 export function authConfig(ctx: RequestContext) {
   return {
     google: googleEnabled(ctx.settings),
+    github: githubEnabled(ctx.settings),
     email_delivery: ctx.mailer.canSend,
     verification_required: ctx.mailer.canSend,
     invite_only: false,
@@ -131,7 +136,7 @@ export async function updateProfile(req: Request, ctx: RequestContext, u: Curren
 /** Delete the account and everything on it. The owner's account can't be deleted while OWNER_EMAIL names it. */
 export async function deleteAccount(req: Request, ctx: RequestContext, u: CurrentUser, password: string | undefined): Promise<Headers> {
   if (u.owner) throw new HttpError(400, "owner_account", "This is the owner account (OWNER_EMAIL). Change OWNER_EMAIL first to delete it.");
-  if (await hasPassword(ctx, u.id)) {
+  if ((await signInMethods(ctx, u.id)).password) {
     if (!password || !(await passwordMatches(ctx, u.id, password))) {
       throw new HttpError(400, "wrong_password", "Your password isn't right", null, { field: "password" });
     }

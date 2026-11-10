@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { failureFrom, signIn, signUp } from "./authApi";
+import { failureFrom, providerErrorMessage, signIn, signInWithProvider, signUp } from "./authApi";
 
 const res = (body: unknown, status: number, headers: Record<string, string> = {}) =>
   new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json", ...headers } });
@@ -52,5 +52,33 @@ describe("signUp", () => {
     const [url, init] = f.mock.calls[0] as unknown as [string, RequestInit];
     expect(url).toBe("/api/auth/sign-up/email");
     expect(JSON.parse(String(init.body))).toMatchObject({ email: "a@x.io", name: "Ada", username: "ada", displayUsername: "ada" });
+  });
+});
+
+describe("Google and GitHub sign-in", () => {
+  afterEach(() => { vi.unstubAllGlobals(); });
+
+  it("asks the server for the provider's page and comes back to the login page on a failure", async () => {
+    const f = vi.fn(async () => res({ url: "https://github.com/login/oauth/authorize?x=1", redirect: true }, 200));
+    vi.stubGlobal("fetch", f);
+    const assign = vi.fn();
+    vi.stubGlobal("location", { ...window.location, assign });
+    expect(await signInWithProvider("github")).toBeNull();
+    const [url, init] = f.mock.calls[0] as unknown as [string, RequestInit];
+    expect(url).toBe("/api/auth/sign-in/social");
+    expect(JSON.parse(String(init.body))).toEqual({ provider: "github", callbackURL: "/study", errorCallbackURL: "/login?sso=github" });
+    expect(assign).toHaveBeenCalledWith("https://github.com/login/oauth/authorize?x=1");
+  });
+
+  it("explains what came back", () => {
+    expect(providerErrorMessage("github", "account_not_linked")).toBe(
+      "There's already a CourseMateAI account with this email. Log in the way you signed up (your email and password, or Google).");
+    expect(providerErrorMessage("github", "email_not_found")).toMatch(/^GitHub didn't share an email address/);
+    expect(providerErrorMessage("github", "access_denied")).toBe("GitHub sign-in was cancelled.");
+    expect(providerErrorMessage("github", "invalid_code")).toBe("GitHub sign-in didn't finish. Please try again.");
+    expect(providerErrorMessage("microsoft", "invalid_code")).toBeNull();                                   // not offered
+    expect(providerErrorMessage(null, "google")).toBe("Google sign-in didn't finish. Please try again.");   // the old link
+    expect(providerErrorMessage("evil", "x")).toBeNull();
+    expect(providerErrorMessage("github", null)).toBeNull();
   });
 });

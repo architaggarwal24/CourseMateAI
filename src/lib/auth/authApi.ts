@@ -149,10 +149,36 @@ export async function disableTwoFactor(password: string) {
   return post("/two-factor/disable", { password });
 }
 
-/** Sends the browser to Google; it comes back signed in at `callbackURL`. */
-export async function signInWithGoogle(callbackURL = "/study"): Promise<AuthFailure | null> {
-  const r = await post<{ url?: string }>("/sign-in/social", { provider: "google", callbackURL, errorCallbackURL: "/login?error=google" });
+export type SocialProvider = "google" | "github";
+export const PROVIDER_NAMES: Record<SocialProvider, string> = { google: "Google", github: "GitHub" };
+
+/**
+ * Sends the browser to Google or GitHub; it comes back signed in at `callbackURL`. If it doesn't finish,
+ * it comes back to /login?sso=<provider>&error=<code> (the login page explains the code).
+ */
+export async function signInWithProvider(provider: SocialProvider, callbackURL = "/study"): Promise<AuthFailure | null> {
+  const r = await post<{ url?: string }>("/sign-in/social", { provider, callbackURL, errorCallbackURL: `/login?sso=${provider}` });
   if (!r.ok) return r.failure;
   if (r.data?.url) window.location.assign(r.data.url);
   return null;
+}
+
+/** The login page's message for a sign-in that came back with ?sso=<provider>&error=<code> (or the old ?error=google). */
+export function providerErrorMessage(sso: string | null, error: string | null): string | null {
+  const provider = (sso && sso in PROVIDER_NAMES ? sso : error === "google" ? "google" : null) as SocialProvider | null;
+  if (!provider || !error) return null;
+  const name = PROVIDER_NAMES[provider];
+  switch (error) {
+    case "account_not_linked":
+    case "unable_to_link_account":
+      return `There's already a CourseMateAI account with this email. Log in the way you signed up (your email and password${provider === "google" ? "" : ", or Google"}).`;
+    case "email_not_found":
+      return `${name} didn't share an email address, so we couldn't sign you in. Try another way to sign in.`;
+    case "access_denied":
+      return `${name} sign-in was cancelled.`;
+    case "account_already_linked_to_different_user":
+      return `That ${name} account is already connected to a different CourseMateAI account.`;
+    default:
+      return `${name} sign-in didn't finish. Please try again.`;
+  }
 }

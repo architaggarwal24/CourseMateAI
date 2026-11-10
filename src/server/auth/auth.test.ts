@@ -3,6 +3,7 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { localPlatform, type LocalPlatform } from "../test/platform";
 import { Browser, fakeMailer, json, SETTINGS, testAuth } from "../test/auth-helpers";
+import type { AuthSettings } from "./index";
 
 let p: LocalPlatform;
 beforeEach(async () => { p = await localPlatform(); }, 60_000);
@@ -242,5 +243,25 @@ describe("codes are sent after the reply", () => {
     await Promise.all(later);
     expect(mail.sent.length).toBe(before + 1);
     expect(mail.sent.at(-1)!.to).toBe("slow@example.com");
+  });
+});
+
+describe("Google and GitHub", () => {
+  const SOCIAL = { ...SETTINGS, GOOGLE_CLIENT_ID: "g-id", GOOGLE_CLIENT_SECRET: "g-secret", GITHUB_CLIENT_ID: "gh-id", GITHUB_CLIENT_SECRET: "gh-secret" };
+  const start = (provider: string, settings: AuthSettings = SOCIAL) => testAuth(p.env.DB, fakeMailer(true), settings)
+    .handler(new Browser().request("/api/auth/sign-in/social", { body: { provider, callbackURL: "/study", errorCallbackURL: `/login?sso=${provider}` } }));
+
+  it("each one set up sends the browser to its own sign-in page", async () => {
+    const g = new URL((await json(await start("google"))).url);
+    expect(g.origin + g.pathname).toBe("https://accounts.google.com/o/oauth2/v2/auth");
+    expect(g.searchParams.get("client_id")).toBe("g-id");
+    expect(g.searchParams.get("prompt")).toBe("select_account");
+    const gh = new URL((await json(await start("github"))).url);
+    expect(gh.origin + gh.pathname).toBe("https://github.com/login/oauth/authorize");
+    expect(gh.searchParams.get("scope")).toContain("user:email");
+  });
+
+  it("one that isn't set up is refused", async () => {
+    expect((await start("github", SETTINGS)).status).toBe(404);
   });
 });

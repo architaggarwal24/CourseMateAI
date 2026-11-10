@@ -26,7 +26,7 @@ export const absoluteUrl = (path: string) => new URL(path, siteOrigin()).toStrin
 // /account; /login; /offline; the API) is private or a utility page and carries noindex. Add a page here only when
 // it is public, returns 200 without signing in, and has real content of its own.
 export interface PublicPage { path: string; title: string; description: string; lastModified?: string }
-export const LEGAL_UPDATED_ISO = "2026-11-05";     // src/app/legal/legal.ts UPDATED ("5 November 2026")
+export const LEGAL_UPDATED_ISO = "2026-11-10";     // src/app/legal/legal.ts UPDATED ("10 November 2026")
 export const PUBLIC_PAGES: readonly PublicPage[] = [
   {
     path: "/",

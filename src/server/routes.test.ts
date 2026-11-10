@@ -64,15 +64,18 @@ describe("/auth/me and friends", () => {
     const b = await person("asha@example.com", "asha");
     const body = await json(await me.GET(b.request("/api/v1/auth/me")));
     expect(body).toMatchObject({ email: "asha@example.com", username: "asha", full_name: "ASHA", email_verified: true,
-      is_admin: false, is_owner: false, tier: "apprentice", has_password: true, two_factor_enabled: false });
+      is_admin: false, is_owner: false, tier: "apprentice", has_password: true, two_factor_enabled: false, sign_in_providers: [] });
     expect(typeof body.user_id).toBe("number");
   });
 
   it("config says how sign-in works here", async () => {
     expect(await json(await config.GET(new Browser().request("/api/v1/auth/config"))))
-      .toEqual({ google: false, email_delivery: true, verification_required: true, invite_only: false });
+      .toEqual({ google: false, github: false, email_delivery: true, verification_required: true, invite_only: false });
     vi.stubEnv("GOOGLE_CLIENT_ID", "id"); vi.stubEnv("GOOGLE_CLIENT_SECRET", "secret");
-    expect((await json(await config.GET(new Browser().request("/api/v1/auth/config")))).google).toBe(true);
+    vi.stubEnv("GITHUB_CLIENT_ID", "gh"); vi.stubEnv("GITHUB_CLIENT_SECRET", "gh-secret");
+    expect(await json(await config.GET(new Browser().request("/api/v1/auth/config")))).toMatchObject({ google: true, github: true });
+    vi.stubEnv("GITHUB_CLIENT_SECRET", "");                                      // no secret: off
+    expect((await json(await config.GET(new Browser().request("/api/v1/auth/config")))).github).toBe(false);
   });
 
   it("logout ends the session", async () => {

@@ -8,7 +8,8 @@ import { Brain, Eye, EyeOff, Layers, MessageSquare, Sparkles, Swords, Trophy, Za
 import { Magnetic, TextReveal } from '@/components/fx';
 import './login.css';
 import SignupFlow from '@/components/auth/SignupFlow';
-import GoogleButton from '@/components/auth/GoogleButton';
+import SocialButtons from '@/components/auth/SocialButtons';
+import { providerErrorMessage, type SocialProvider } from '@/lib/auth/authApi';
 import ResetPassword from '@/components/auth/ResetPassword';
 import TwoFactorStep from '@/components/auth/TwoFactorStep';
 import VerifyEmailStep from '@/components/auth/VerifyEmailStep';
@@ -28,7 +29,7 @@ export default function LoginPage() {
   const [notice, setNotice] = useState('');
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-  const [google, setGoogle] = useState(false);
+  const [providers, setProviders] = useState<SocialProvider[]>([]);
   const isRegister = mode === 'register';
 
   const { login, refresh, user, loading: authLoading } = useAuth();
@@ -38,9 +39,10 @@ export default function LoginPage() {
 
   useEffect(() => {
     let alive = true;
-    fetchAuthConfig().then((c) => { if (alive) setGoogle(c.google); });
+    fetchAuthConfig().then((c) => { if (alive) setProviders((['google', 'github'] as const).filter((p) => c[p])); });
     const q = new URLSearchParams(window.location.search);
-    if (q.get('error') === 'google') setError("Google sign-in didn't finish. Please try again.");
+    const ssoError = providerErrorMessage(q.get('sso'), q.get('error'));
+    if (ssoError) setError(ssoError);
     if (q.get('mode') === 'register') setMode('register');
     setNext(safeNext(q.get('next'), ROUTES.today));
     return () => { alive = false; };
@@ -141,9 +143,9 @@ export default function LoginPage() {
           <h2 className="login__welcome">{isRegister ? 'Create your account' : 'Welcome back'}</h2>
           <p className="login__sub">{isRegister ? 'A few details and you are in.' : 'Log in to pick up where you left off.'}</p>
 
-          {(mode === 'login' || mode === 'register') && google && (
+          {(mode === 'login' || mode === 'register') && providers.length > 0 && (
             <div className="space-y-4 mb-4">
-              <GoogleButton onError={setError} />
+              <SocialButtons providers={providers} onError={setError} />
               <p className="login__or text-center text-xs text-fg-muted" aria-hidden="true">or with your email</p>
             </div>
           )}

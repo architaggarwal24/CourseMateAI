@@ -9,7 +9,7 @@ import { Badge, Button, Card, Input, toast } from "@/components/ui";
 import VerifyEmailStep from "@/components/auth/VerifyEmailStep";
 import CodeField from "@/components/auth/CodeField";
 import { useAuth } from "@/contexts/AuthContext";
-import { disableTwoFactor, enableTwoFactor, verifyTwoFactor } from "@/lib/auth/authApi";
+import { PROVIDER_NAMES, disableTwoFactor, enableTwoFactor, verifyTwoFactor, type SocialProvider } from "@/lib/auth/authApi";
 
 /** The otpauth:// link as a QR code, drawn as SVG squares (no image, no network). */
 export function QrCode({ text, label }: { text: string; label: string }) {
@@ -66,7 +66,9 @@ function TwoStep() {
   }
 
   if (!user?.has_password) {
-    return <p className="text-sm text-fg-2">Your account signs in with Google, so Google&apos;s own two-step sign-in protects it.</p>;
+    const names = (user?.sign_in_providers ?? []).map((p) => PROVIDER_NAMES[p as SocialProvider] ?? p);
+    const via = names.length ? names.join(" or ") : "Google";
+    return <p className="text-sm text-fg-2">Your account signs in with {via}, so {names.length > 1 ? "their" : `${via}'s`} own two-step sign-in protects it.</p>;
   }
   if (setup) {
     return (

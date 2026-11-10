@@ -62,4 +62,14 @@ describe("SecurityPanel", () => {
     render(<SecurityPanel />);
     expect(screen.getByText(/signs in with Google/)).toBeTruthy();
   });
+
+  it("names the provider (or providers) the account actually signs in with", () => {
+    auth.user = { user_id: 1, email: "m@x.io", email_verified: true, has_password: false, sign_in_providers: ["github"] };
+    render(<SecurityPanel />);
+    expect(screen.getByText("Your account signs in with GitHub, so GitHub's own two-step sign-in protects it.")).toBeTruthy();
+    cleanup();
+    auth.user = { user_id: 1, email: "m@x.io", email_verified: true, has_password: false, sign_in_providers: ["github", "google"] };
+    render(<SecurityPanel />);
+    expect(screen.getByText(/signs in with GitHub or Google, so their own/)).toBeTruthy();
+  });
 });

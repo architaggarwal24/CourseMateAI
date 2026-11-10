@@ -1,6 +1,6 @@
 // Accounts on the Worker (Phase 4.1): Better Auth on D1.
 //   * email + password (PBKDF2 through Web Crypto: src/server/auth/password.ts), a 6-digit code to verify the email
-//     and to reset a password (email-otp plugin), Google sign-in when GOOGLE_CLIENT_ID / _SECRET are set
+//     and to reset a password (email-otp plugin); Google and GitHub sign-in, each when its client id and secret are set
 //   * two-step sign-in the user can turn on later (authenticator app, or an emailed code), with backup codes
 //   * usernames, roles and bans (username + admin plugins; the admin's own endpoints are switched off: the /admin
 //     page uses src/server/admin.ts, which protects the owner)
@@ -22,6 +22,8 @@ export interface AuthSettings extends MailerEnv {
   OWNER_EMAIL?: string;
   GOOGLE_CLIENT_ID?: string;
   GOOGLE_CLIENT_SECRET?: string;
+  GITHUB_CLIENT_ID?: string;
+  GITHUB_CLIENT_SECRET?: string;
   PASSWORD_HASH_ITERATIONS?: string;
   /** Emails the site may send a day (default 100). */
   EMAIL_DAILY_CAP?: string;
@@ -46,6 +48,28 @@ export function isOwner(user: { email: string; emailVerified?: boolean | null },
 export function googleEnabled(settings: AuthSettings): boolean {
   return !!(settings.GOOGLE_CLIENT_ID && settings.GOOGLE_CLIENT_SECRET);
 }
+export function githubEnabled(settings: AuthSettings): boolean {
+  return !!(settings.GITHUB_CLIENT_ID && settings.GITHUB_CLIENT_SECRET);
+}
+
+export type SocialProvider = "google" | "github";
+export const SOCIAL_PROVIDERS: readonly SocialProvider[] = ["google", "github"];
+
+/**
+ * The sign-in providers that are set up, and how an existing account with the same email is treated:
+ *   google  trusted: Google only gives verified addresses, so it signs into that account
+ *   github  signs into that account only when GitHub says the address is verified (Better Auth checks)
+ */
+export function socialProviders(settings: AuthSettings): NonNullable<BetterAuthOptions["socialProviders"]> {
+  const out: NonNullable<BetterAuthOptions["socialProviders"]> = {};
+  if (googleEnabled(settings)) {
+    out.google = { clientId: settings.GOOGLE_CLIENT_ID!, clientSecret: settings.GOOGLE_CLIENT_SECRET!, prompt: "select_account" };
+  }
+  if (githubEnabled(settings)) {
+    out.github = { clientId: settings.GITHUB_CLIENT_ID!, clientSecret: settings.GITHUB_CLIENT_SECRET! };
+  }
+  return out;
+}
 
 /** Only `next dev` and the tests may run without a real secret. */
 const DEV_SECRET_OK = new Set(["development", "test"]);
@@ -64,7 +88,7 @@ export function secretFrom(settings: AuthSettings): string {
   return "coursemate-dev-only-secret-change-me-0123456789";
 }
 
-/** A free username from an email (for Google sign-ups): its letters before the @, and a number if taken. */
+/** A free username from an email (for Google and GitHub sign-ups): its letters before the @, and a number if taken. */
 export function usernameFromEmail(email: string, suffix: number): string {
   const base = email.split("@")[0].replace(/[^a-zA-Z0-9_.-]/g, "").slice(0, 24) || "student";
   const padded = base.length < 3 ? `${base}${"xyz".slice(base.length)}` : base;
@@ -140,9 +164,8 @@ export function authOptions(d1: D1Database, settings: AuthSettings, { origin, ma
       password: { hash: (password: string) => hashPassword(password, iterations), verify: verifyPassword },
     },
     emailVerification: { autoSignInAfterVerification: true },
-    socialProviders: googleEnabled(settings)
-      ? { google: { clientId: settings.GOOGLE_CLIENT_ID!, clientSecret: settings.GOOGLE_CLIENT_SECRET!, prompt: "select_account" } }
-      : {},
+    socialProviders: socialProviders(settings),
+    // Google is trusted; GitHub links only verified addresses (see socialProviders above)
     account: { accountLinking: { enabled: true, trustedProviders: ["google"] } },
     user: {
       additionalFields: { timezone: { type: "string", required: false, input: true } },

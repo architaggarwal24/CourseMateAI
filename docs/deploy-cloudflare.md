@@ -66,6 +66,7 @@ Sign-up, sign-in, email codes, two-step sign-in, Google, and the admin page all 
 | `OWNER_EMAIL` | yes | Your email. That account is always an admin and on Archmage, once its email is verified. |
 | `BETTER_AUTH_URL` | with a custom domain | e.g. `https://study.example.com`, so links and Google's redirect use your domain. |
 | `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` (Secret) | for Google sign-in | See below. Without them there's no Google button. |
+| `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET` (Secret) | for GitHub sign-in | See below. |
 | `EMAIL_FROM` | to send codes | e.g. `CourseMate <no-reply@study.example.com>` |
 | `RESEND_API_KEY` (Secret) | one way to send codes | See *Emails*. |
 | `EMAIL_DAILY_CAP` | optional | Emails a day for the whole site (default 100). Also at most 5 codes an hour go to one address. |
@@ -99,6 +100,16 @@ Sign up as the owner before anyone else can. Until the email is verified the acc
 3. Set `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET`.
 
 A Google account with the same email as an existing account signs into that account.
+
+**GitHub sign-in:**
+1. GitHub → Settings → Developer settings → *OAuth Apps* → *New OAuth App*.
+2. *Homepage URL*: your address. *Authorization callback URL*: `https://<your address>/api/auth/callback/github`. Leave *Enable Device Flow* off.
+3. After registering, *Add redirect URI* `http://localhost:3000/api/auth/callback/github` for `npm run dev` (an OAuth App takes up to 10). Upload `public/icons/maskable-512.png` as the logo.
+4. Copy the *Client ID* into `GITHUB_CLIENT_ID`; *Generate a new client secret* (shown once) into `GITHUB_CLIENT_SECRET`.
+
+A GitHub account signs into an existing account with the same email only when GitHub says that address is verified.
+
+Each button appears on the login page as soon as its id and secret are set (`npx wrangler secret put <NAME>`); no redeploy needed.
 
 **Limits that protect accounts:**
 

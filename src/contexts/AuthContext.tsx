@@ -23,6 +23,8 @@ export interface User {
   is_owner?: boolean;
   two_factor_enabled?: boolean;
   has_password?: boolean;
+  /** Other ways this account signs in: "github", "google". */
+  sign_in_providers?: string[];
   tier?: string;
   tier_name?: string;
 }

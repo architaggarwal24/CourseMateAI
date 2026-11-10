@@ -1,12 +1,13 @@
-// How sign-in works on this server (GET /api/v1/auth/config): Google on or off, and whether emails really go out.
+// How sign-in works on this server (GET /api/v1/auth/config): which providers are on, and whether emails really go out.
 export interface AuthConfig {
   google: boolean;
+  github: boolean;
   email_delivery: boolean;
   verification_required: boolean;
   invite_only: boolean;
 }
 
-const FALLBACK: AuthConfig = { google: false, email_delivery: false, verification_required: false, invite_only: false };
+const FALLBACK: AuthConfig = { google: false, github: false, email_delivery: false, verification_required: false, invite_only: false };
 let cached: Promise<AuthConfig> | null = null;
 
 export function fetchAuthConfig(): Promise<AuthConfig> {
