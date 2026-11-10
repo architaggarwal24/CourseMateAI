@@ -7,18 +7,18 @@ BETTER_AUTH_SECRET=
 # Your own account: once its email is verified it is always the admin, on the top plan.
 OWNER_EMAIL=
 # Optional: Google sign-in (Google Cloud -> Credentials -> OAuth client ID, type Web application).
-# GOOGLE_CLIENT_ID=
-# GOOGLE_CLIENT_SECRET=
+GOOGLE_CLIENT_ID=
+GOOGLE_CLIENT_SECRET=
 # Optional: GitHub sign-in (GitHub -> Settings -> Developer settings -> OAuth Apps).
-# GITHUB_CLIENT_ID=
-# GITHUB_CLIENT_SECRET=
+GITHUB_CLIENT_ID=
+GITHUB_CLIENT_SECRET=
 # Optional: the sender for verification / reset codes. Without an email service codes only go to the log.
 # EMAIL_FROM=CourseMate <no-reply@your-domain>
 # RESEND_API_KEY=
 # Emails the site may send a day (codes stop for the day past it; the log says so). Default 100 (Resend's free plan).
 # EMAIL_DAILY_CAP=100
 # New passwords are checked against Have I Been Pwned (only 5 characters of the password's SHA-1 leave the Worker).
-# PASSWORD_BREACH_CHECK=off
+PASSWORD_BREACH_CHECK=om
 # PBKDF2 work for passwords: 20000 fits the free plan's CPU limit; raise to 100000 on Workers Paid.
 # PASSWORD_HASH_ITERATIONS=20000
 
@@ -26,14 +26,14 @@ OWNER_EMAIL=
 # LLM_FAST=gemini:gemini-3.5-flash-lite
 # LLM_STRONG=gemini:gemini-3.8-flash
 # LLM_PREMIUM=claude:claude-sonnet-5-5
-# GOOGLE_API_KEY=
+GOOGLE_API_KEY=
 # ANTHROPIC_API_KEY=
 # OPENAI_API_KEY=
 # Ollama's cloud models (ollama.com -> Settings -> Keys): use them as ollama-cloud:<model>, e.g. LLM_FAST=ollama-cloud:gpt-oss:120b.
 # No computer or tunnel needed. Model names: https://ollama.com/api/tags (or pick one in Admin -> AI).
-# OLLAMA_API_KEY=
+OLLAMA_API_KEY=
 # Ollama on your own computer, for admins only and only under `npm run dev` (Settings -> AI -> Your model).
-# OLLAMA_BASE_URL=http://localhost:11434
+OLLAMA_BASE_URL=http://localhost:11434
 # Small jobs on Workers AI (default @cf/meta/llama-3.1-8b-instruct-fp8)
 # WORKERS_AI_MODEL=
 # US dollars per 1M tokens [in, out], from the providers' pricing pages; unpriced models are estimated at [1, 4]
