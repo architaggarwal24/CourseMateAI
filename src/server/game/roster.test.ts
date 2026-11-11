@@ -4,6 +4,13 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import * as champion from "@/app/api/v1/avatar/champion/route";
 import * as celebrateRoute from "@/app/api/v1/avatar/champion/celebrate/route";
+import * as heroRoute from "@/app/api/v1/hero/route";
+import * as heroLook from "@/app/api/v1/hero/look/route";
+import * as heroBuild from "@/app/api/v1/hero/build/route";
+import * as heroTree from "@/app/api/v1/hero/tree/route";
+import * as heroBuy from "@/app/api/v1/hero/buy/route";
+import { STARTER_LOOKS } from "@/lib/appearance";
+import * as build from "./build";
 import * as battles from "@/app/api/v1/arena/battles/route";
 import * as battleOne from "@/app/api/v1/arena/battles/[id]/route";
 import * as question from "@/app/api/v1/arena/battles/[id]/question/route";
@@ -21,6 +28,8 @@ import {
   KitTurn, SIGNATURE_RIPOSTE, SIGNATURES, charge, hasSignature, initKit, kitHud, prepare, settle,
 } from "./kits";
 import { championForTier, earned, unlockProgress, UNLOCK_REWARD } from "./roster";
+import * as kits from "./kits";
+import * as mastery from "./mastery";
 import { finishedTiers, recordFight } from "./tome";
 
 const rec = (wins: number) => ({ wins, flawlessWins: 0, nightmareWins: 0, baneFound: false });
@@ -149,6 +158,217 @@ const beat = async (b: Browser, species: string[]) => {
   return last!;
 };
 const coins = async (b: Browser) => Number((await db().prepare("SELECT coins FROM user_progress WHERE user_id = ?").bind(await uid(b)).first<{ coins: number }>())!.coins);
+
+describe("champion weaknesses", () => {
+  const turn = (champ: string, move: string, correct: boolean) => {
+    const t = new KitTurn(champ as never, "medium", initKit(champ), move, correct, 0, true, () => 0.99, 1);
+    prepare(t);
+    return t;
+  };
+  it("each champion has one, sized against its passive", () => {
+    expect(turn("kaien", "heavy", false).selfDamage).toBe(1);                 // Glass Edge
+    expect(turn("kaien", "heavy", true).selfDamage).toBe(0);
+    expect(kits.heavyCostFor("asha", 2)).toBe(3);                             // Long Haft
+    expect(kits.heavyCostFor("asha", 1)).toBe(2);                             // with the whetstone relic
+    expect(kits.heavyCostFor("kaien", 2)).toBe(2);
+    expect(turn("brak", "guard", true).guardHalves).toBe(true);               // Reckless
+    expect(kits.heartsFor("mira", 10)).toBe(8);                               // Frail
+    expect(kits.heartsFor("thorne", 10)).toBe(10);
+    expect(turn("vex", "heavy", true).heavyMult).toBe(1.5);                   // Light Blades
+    for (const k of Object.values(kits.KITS)) expect(k.weakness_name && k.weakness_text).toBeTruthy();
+    expect(kits.kitHud(initKit("mira")).weakness).toEqual({ name: "Frail", text: "You fight with 2 fewer hearts." });
+  });
+});
+
+describe("your hero's kit in a fight", () => {
+  const hk = (o: Partial<Parameters<typeof kits.initHeroKit>[0]> = {}) =>
+    kits.initHeroKit({ name: "Me", passive: "second_wind", ultimate: "rally", style: "apprentice", perks: [], weaknesses: [], tree: {}, ...o });
+  const turn = (s: kits.KitState, move: string, correct: boolean, o: { hp?: number; ratio?: number; rng?: number } = {}) => {
+    const t = new KitTurn("hero", "medium", s, move, correct, 3, true, () => o.rng ?? 0.99, 1);
+    t.hp = o.hp ?? 10; t.bossRatio = o.ratio ?? 1;
+    prepare(t);
+    return t;
+  };
+  it("the style brings its bonus and its weakness", () => {
+    expect(hk({ style: "katana" }).weaknesses).toEqual(["glass_edge"]);
+    expect(turn(hk({ style: "katana" }), "strike", true).strikeMult).toBeCloseTo(1.1);
+    expect(turn(hk({ style: "katana" }), "heavy", false).selfDamage).toBe(1);
+    expect(turn(hk({ style: "greatsword" }), "heavy", true).heavyMult).toBe(2.0);
+    expect(turn(hk({ style: "daggers" }), "strike", true, { rng: 0.05 }).dodge).toBe(true);
+    expect(kits.heartsFor("hero", 10, hk({ style: "staff" }))).toBe(8);
+    expect(kits.startFocusFor(hk({ style: "staff" }))).toBe(1);
+    expect(kits.timeBonusFor(hk({ style: "chain_whip" }), "jab")).toBe(5);
+    expect(kits.heavyCostFor("hero", 2, hk({ style: "war_fan" }))).toBe(3);
+    const ap = turn(hk(), "guard", true); settle(ap);
+    expect(ap.focusDelta).toBe(1);                                                 // Apprentice: a right Guard +1 Focus
+  });
+  it("the tree, perks and extra weaknesses change the numbers", () => {
+    const s = hk({ tree: { o1: 2, o2: 1, d1: 2, d2: 1, m4: 1, m5: 1 }, perks: ["quick_hands", "combo_fuel"], weaknesses: ["short_fuse", "glass_body"] });
+    expect(turn(s, "strike", true).strikeMult).toBeCloseTo(1.1);
+    expect(turn(s, "strike", true).mult).toBe(1.25);                               // Opening
+    expect(turn(s, "guard", true).comboBonus).toBe(1);                             // Parry
+    expect(kits.heartsFor("hero", 10, s)).toBe(9);                                 // +2 Tough, -3 Glass Body
+    expect(kits.focusCapFor(s, 5)).toBe(6);
+    expect(kits.timeBonusFor(s, "strike")).toBe(2 + 3 - 3);
+    expect(kits.comboCap(s)).toBe(6);
+    expect(kits.chargeRate(hk({ weaknesses: ["slow_charge"] }))).toBeCloseTo(0.9 * 0.75);
+  });
+  it("passives and ultimates work by ability", () => {
+    const sw = hk();
+    expect(kits.afterBlow(sw, 1, 10)).toBe(2);
+    expect(kits.afterBlow(sw, 1, 10)).toBe(0);                                     // once a fight
+    const ts = hk({ passive: "thick_skin" });
+    const miss = turn(ts, "strike", false); settle(miss);
+    expect(miss.forgive).toBe(true);
+    expect(turn(ts, "strike", false).forgive).toBe(false);
+    const rp = turn(hk({ passive: "riposte" }), "guard", true);
+    expect(rp.riposte).toBe(0.5);
+    const od = hk({ ultimate: "overdrive" }); od.meter = kits.METER_MAX;
+    expect(kits.activate(od).name).toBe("Overdrive");
+    expect(turn(od, "strike", true).mult).toBeCloseTo(1.6);
+    const ral = hk(); ral.meter = kits.METER_MAX;
+    expect(kits.activate(ral)).toMatchObject({ name: "Rally", hearts: 2, focus: 1 });
+    expect(kits.kitHud(hk({ style: "fists" }))).toMatchObject({ champion: "hero", style: { id: "fists" }, hero: { name: "Me" }, passive: { name: "Second Wind" } });
+  });
+});
+
+describe("mastery", () => {
+  const f = (o: Partial<mastery.FightSummary> = {}): mastery.FightSummary => ({ won: true, correct: 8, difficulty: "medium", flawless: false, seconds: 200, heartsLeft: 5, stats: {}, tiersFinished: 0, ...o });
+
+  it("is 70% XP and 30% challenges", () => {
+    expect(mastery.masteryOf("kaien", 0, []).pct).toBe(0);
+    expect(mastery.masteryOf("kaien", 1350, []).pct).toBe(35);
+    expect(mastery.masteryOf("kaien", 99_999, [])).toMatchObject({ pct: 70, passive_learnable: true, complete: false });
+    const done = mastery.CHALLENGES.kaien.map((c) => ({ userId: 1, championId: "kaien", challengeId: c.id, progress: c.target, doneAt: "x", updatedAt: "x" }));
+    expect(mastery.masteryOf("kaien", 2700, done)).toMatchObject({ pct: 100, complete: true });
+    expect(mastery.masteryOf("kaien", 0, done.slice(0, 2)).challenges.filter((c) => c.done)).toHaveLength(2);
+    for (const list of Object.values(mastery.CHALLENGES)) expect(list).toHaveLength(6);
+  });
+
+  it("fights move the champion's challenges; streaks reset on a loss; studying counts for the equipped champion", async () => {
+    const b = await person(mail, "m@example.com", "mastery");
+    await state(b);
+    const ctx = await requestContext(b.request("/api/v1/avatar/champion"));
+    const me = await uid(b);
+    expect(await mastery.recordFight(ctx, me, "kaien", f({ stats: { riposte: 4 } }))).toEqual([]);
+    await mastery.recordFight(ctx, me, "kaien", f({ won: true, difficulty: "hard", flawless: true, stats: { riposte: 11 } }));
+    let k = (await state(b)).progress.kaien;
+    expect(k.challenges.find((c: { id: string }) => c.id === "riposte15")).toMatchObject({ progress: 15, done: true });
+    expect(k.challenges.find((c: { id: string }) => c.id === "flawless")).toMatchObject({ done: true });
+    expect(k.challenges.find((c: { id: string }) => c.id === "win10")).toMatchObject({ progress: 2, done: false });
+    expect(k.mastery_pct).toBeGreaterThanOrEqual(10);
+    expect(k.kit.weakness.name).toBe("Glass Edge");
+
+    // Brak's 3-in-a-row resets on a loss, and is kept once done
+    for (const won of [true, true, false, true, true, true, false]) await mastery.recordFight(ctx, me, "brak", f({ won }));
+    expect((await state(b)).progress.brak.challenges.find((c: { id: string }) => c.id === "row3")).toMatchObject({ done: true });
+
+    // reviews count for the equipped champion (Kaien), not Thorne
+    await mastery.recordStudy(ctx, me, "review_card", 5);
+    k = (await state(b)).progress;
+    expect(k.thorne.challenges.find((c: { id: string }) => c.id === "review300").progress).toBe(0);
+    expect(await mastery.recordFight(ctx, me, "nobody", f())).toEqual([]);
+  }, 60_000);
+});
+
+describe("your hero", () => {
+  const hero = async (b: Browser) => json(await heroRoute.GET(b.request("/api/v1/hero")));
+  const put = (route: { PUT: (r: Request) => Promise<Response> }, path: string, b: Browser, body: unknown) => route.PUT(b.request(path, { method: "PUT", body }));
+  const addXp = async (b: Browser, xp: number) => build.addXp(await requestContext(b.request("/api/v1/hero")), await uid(b), xp);
+
+  it("levels on 80 + 40 x level XP, one skill point a level, 6 + level/3 loadout points", () => {
+    expect(build.heroLevelFor(0)).toEqual({ level: 1, into: 0, next: 120 });
+    expect(build.heroLevelFor(120).level).toBe(2);
+    expect(build.heroLevelFor(10 ** 7).level).toBe(30);
+    expect([build.skillPoints(30), build.loadoutBudget(1), build.loadoutBudget(30)]).toEqual([29, 6, 16]);
+    expect(build.buildCost(build.STARTER_BUILD)).toBe(4);
+  });
+
+  it("the tree opens top-down, tier 6 needs 5 points in its branch, and respec is free", () => {
+    expect(build.treeProblem({ o1: 1 }, 2)).toBeNull();
+    expect(build.treeProblem({ o2: 1 }, 5)).toMatch(/Sharpened first/);
+    expect(build.treeProblem({ o1: 2 }, 2)).toMatch(/2 skill points; you have 1/);
+    expect(build.treeProblem({ o1: 3 }, 30)).toMatch(/0 to 2/);
+    expect(build.treeProblem({ o1: 1, o2: 1, o3: 1, o4: 1, o6: 1 }, 30)).toMatch(/needs a point in Finisher/);
+    expect(build.treeProblem({ o1: 1, o2: 1, o3: 1, o4: 1, o5: 1, o6: 1 }, 30)).toBeNull();
+    expect(build.treeProblem({ o1: 2, o2: 1, o3: 1, o4: 1, o5: 0, o6: 1 }, 30)).toMatch(/needs a point in Finisher/);
+    expect(build.treeProblem({ x9: 1 } as never, 30)).toMatch(/no skill/);
+  });
+
+  it("starts with the Apprentice Blade, Second Wind and Rally; can be picked; looks are its own; champion looks need 100%", async () => {
+    const b = await person(mail, "h@example.com", "herohero");
+    const h = await hero(b);
+    expect(h).toMatchObject({ level: 1, skill_points: 0, loadout_budget: 6, loadout_cost: 4, build: build.STARTER_BUILD, look: null });
+    expect(h.catalog.styles.find((s: { id: string }) => s.id === "katana")).toMatchObject({ owned: false, how: "Kaien at 100% mastery" });
+    expect(h.catalog.styles.find((s: { id: string }) => s.id === "chain_whip").for_sale).toMatchObject({ coins: 1200, level: 12, can_buy: false });
+    expect((await choose(b, "hero")).status).toBe(200);
+    expect((await state(b)).champion_id).toBe("hero");
+
+    const mine = { ...STARTER_LOOKS.mira, hair: "spiky" };
+    expect((await json(await put(heroLook, "/api/v1/hero/look", b, { look: mine }))).look).toEqual(mine);
+    expect((await json(await put(heroLook, "/api/v1/hero/look", b, { look: STARTER_LOOKS.mira }))).error).toMatchObject({ code: "look_locked" });
+    expect((await put(heroLook, "/api/v1/hero/look", b, { look: { ...mine, main: "#fff" } })).status).toBe(422);
+    expect((await json(await put(heroLook, "/api/v1/hero/look", b, { look: null }))).look).toBeNull();
+  }, 60_000);
+
+  it("the loadout only takes what is owned and fits the points; the tree unlocks abilities; shop items cost coins", async () => {
+    const b = await person(mail, "l@example.com", "loadouts");
+    await hero(b);
+    const save = (bd: unknown) => put(heroBuild, "/api/v1/hero/build", b, { build: bd });
+    expect((await json(await save({ ...build.STARTER_BUILD, style: "katana" }))).error).toMatchObject({ code: "not_owned" });
+    expect((await json(await save({ ...build.STARTER_BUILD, passive: "thick_skin" }))).error).toMatchObject({ code: "not_owned" });
+    expect((await save({ ...build.STARTER_BUILD, style: "nope" })).status).toBe(422);
+    // an extra weakness gives points back
+    expect((await json(await save({ ...build.STARTER_BUILD, weaknesses: ["glass_body"] }))).loadout_cost).toBe(1);
+
+    await addXp(b, 2000);                                     // level 7ish: a few skill points
+    const h = await hero(b);
+    expect(h.skill_points).toBeGreaterThanOrEqual(3);
+    const t = await json(await put(heroTree, "/api/v1/hero/tree", b, { tree: { d1: 1, d2: 1, d3: 1 } }));
+    expect(t.catalog.passives.find((p: { id: string }) => p.id === "thick_skin").owned).toBe(true);
+    expect((await save({ ...build.STARTER_BUILD, passive: "thick_skin" })).status).toBe(200);
+    // respec: dropping the node drops the passive from the loadout too
+    const r = await json(await put(heroTree, "/api/v1/hero/tree", b, { tree: { o1: 1 } }));
+    expect(r.build.passive).toBe("second_wind");
+    expect((await put(heroTree, "/api/v1/hero/tree", b, { tree: { o2: 1 } })).status).toBe(422);
+
+    // the shop: level-gated, paid in coins, once
+    const buy = (item: string) => heroBuy.POST(b.request("/api/v1/hero/buy", { body: { item } }));
+    expect((await json(await buy("style:katana"))).error).toMatchObject({ code: "not_for_sale" });
+    expect((await json(await buy("perk:lucky_coin"))).error).toMatchObject({ code: "level_locked" });
+    await db().prepare("UPDATE user_progress SET current_level = 12, coins = 2000 WHERE user_id = ?").bind(await uid(b)).run();
+    const bought = await json(await buy("style:chain_whip"));
+    expect(bought.catalog.styles.find((s: { id: string }) => s.id === "chain_whip").owned).toBe(true);
+    expect(await coins(b)).toBe(800);
+    expect((await buy("style:chain_whip")).status).toBe(409);
+    await db().prepare("UPDATE user_progress SET current_level = 12 WHERE user_id = ?").bind(await uid(b)).run();   // the ledger re-derives the level from XP
+    const qh = await json(await buy("perk:quick_hands"));
+    expect(qh.error).toBeUndefined();
+    expect(qh.catalog.perks.find((p: { id: string }) => p.id === "quick_hands").owned).toBe(true);
+    await db().prepare("UPDATE user_progress SET current_level = 12 WHERE user_id = ?").bind(await uid(b)).run();
+    expect((await json(await buy("perk:lucky_coin"))).error).toMatchObject({ code: "not_enough_coins" });
+  }, 60_000);
+
+  it("a mastered champion teaches its style, ultimate and look; 50% teaches its passive", async () => {
+    const b = await person(mail, "t@example.com", "teacher");
+    await state(b);
+    const ctx = await requestContext(b.request("/api/v1/hero"));
+    const me = await uid(b);
+    await db().prepare("INSERT INTO champion_progress (user_id, champion_id, xp, level, battles, wins, updated_at) VALUES (?, 'kaien', 2700, 10, 30, 20, 'x')").bind(me).run();
+    let h = await hero(b);
+    expect(h.catalog.passives.find((p: { id: string }) => p.id === "riposte").owned).toBe(true);     // 70%
+    expect(h.catalog.styles.find((s: { id: string }) => s.id === "katana").owned).toBe(false);
+    for (const c of mastery.CHALLENGES.kaien) await db().prepare("INSERT INTO champion_challenges (user_id, champion_id, challenge_id, progress, done_at, updated_at) VALUES (?, 'kaien', ?, ?, 'x', 'x')").bind(me, c.id, c.target).run();
+    h = await hero(b);
+    expect(h.looks_unlocked).toEqual(["kaien"]);
+    expect(h.catalog.styles.find((s: { id: string }) => s.id === "katana").owned).toBe(true);
+    expect(h.catalog.ultimates.find((u: { id: string }) => u.id === "cut").owned).toBe(true);
+    expect((await put(heroLook, "/api/v1/hero/look", b, { look: STARTER_LOOKS.kaien })).status).toBe(200);
+    // the hero's kit carries the style's weakness with it
+    const kit = await build.heroKit(ctx, me, "T");
+    expect(kit).toMatchObject({ champion: "hero", style: "apprentice", weaknesses: ["untrained"] });
+  }, 60_000);
+});
 
 describe("the roster in play", () => {
   it("only Kaien at first; finishing tier I brings Asha, whose ceremony pays once", async () => {

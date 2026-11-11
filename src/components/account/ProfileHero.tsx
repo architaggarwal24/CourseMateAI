@@ -7,7 +7,7 @@ import { AnimatedNumber } from "@/components/fx";
 import { useChampion } from "@/hooks/useChampion";
 import { useHUDStore } from "@/hooks/useHUD";
 import { useHeroStore } from "@/hooks/useHero";
-import { heroById } from "@/lib/pixel/heroes";
+import { heroById, fighterLabel } from "@/lib/pixel/heroes";
 
 /** The top of the profile: the pixel champion in a lit ring (with its pet), who they are, and four live stats that count up. */
 export default function ProfileHero({ name, handle }: { name: string; handle?: string }) {
@@ -17,7 +17,7 @@ export default function ProfileHero({ name, handle }: { name: string; handle?: s
   const streak = useHUDStore((s) => s.streakDays);
   const xpInto = useHUDStore((s) => s.xpInto);
   const xpToNext = useHUDStore((s) => s.xpToNext);
-  const champion = useChampion((s) => heroById(s.championId));
+  const champion = fighterLabel(useChampion((s) => s.championId));
 
   useEffect(() => {
     void useChampion.getState().load({ signedIn: true });

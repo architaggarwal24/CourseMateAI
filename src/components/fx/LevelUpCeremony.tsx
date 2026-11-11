@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { Coins, Sparkles } from "@/components/icons";
 import PixelConfetti from "@/components/fx/PixelConfetti";
 import PixelSprite from "@/components/arena/pixel/PixelSprite";
-import { lookFor } from "@/components/champion/useChampionLook";
+import { lookFor, useMyHeroLook } from "@/components/champion/useChampionLook";
 import { Badge, Button, ButtonLink, Modal } from "@/components/ui";
 import { useChampion } from "@/hooks/useChampion";
 import { useHUDStore } from "@/hooks/useHUD";
@@ -35,6 +35,7 @@ export default function LevelUpCeremony() {
   const refreshed = useHUDStore((s) => s._lastRefresh);
   const shop = useHeroStore((s) => s.shop);
   const championId = useChampion((s) => s.championId);
+  const mine = useMyHeroLook();
   const [up, setUp] = useState<{ from: number; to: number } | null>(null);
 
   useEffect(() => {
@@ -50,7 +51,7 @@ export default function LevelUpCeremony() {
   useEffect(() => { setOpen(!!up); return () => setOpen(false); }, [up, setOpen]);
 
   if (!up) return null;
-  const hero = lookFor(championId, shop).hero;
+  const hero = lookFor(championId, shop, null, mine).hero;
   const unlocked = (shop?.items ?? []).filter((i) => i.price > 0 && i.level_required > up.from && i.level_required <= up.to && !i.mastery);
   const bonus = Array.from({ length: up.to - up.from }, (_, k) => (up.from + k + 1) * LEVEL_BONUS_PER_LEVEL).reduce((a, b) => a + b, 0);
 

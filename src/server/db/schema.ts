@@ -438,6 +438,8 @@ export const userAvatar = sqliteTable("user_avatar", {
   ownedJson: text("owned_json").notNull().default("[]"),
   championId: text("champion_id"),
   championSetAt: text("champion_set_at"),
+  /** Built-your-own looks per champion ({ kaien: Appearance, ... }, lib/appearance.ts). Missing: the champion's own. */
+  looksJson: text("looks_json").notNull().default("{}"),
   createdAt: text("created_at").notNull(),
   updatedAt: text("updated_at").notNull(),
 });
@@ -477,6 +479,53 @@ export const championProgress = sqliteTable("champion_progress", {
   wins: integer("wins").notNull().default(0),
   updatedAt: text("updated_at").notNull(),
 }, (t) => [primaryKey({ columns: [t.userId, t.championId] })]);
+
+/**
+ * Your hero (game/build.ts): the seventh fighter, built by the player. Level and XP; its look (an appearance,
+ * lib/appearance.ts); its build (style, passive, ultimate, perks, extra weaknesses); its skill-tree ranks; and the
+ * original styles and perks it has bought or earned (champion styles and abilities come from mastery, not stored).
+ */
+export const heroState = sqliteTable("hero_state", {
+  userId: integer("user_id").primaryKey().references(() => user.id, { onDelete: "cascade" }),
+  xp: integer("xp").notNull().default(0),
+  lookJson: text("look_json").notNull().default(""),
+  buildJson: text("build_json").notNull().default("{}"),
+  treeJson: text("tree_json").notNull().default("{}"),
+  ownedJson: text("owned_json").notNull().default("[]"),
+  createdAt: text("created_at").notNull(),
+  updatedAt: text("updated_at").notNull(),
+});
+
+/**
+ * The forge (game/forge.ts): every weapon, outfit, head piece and pet a player owns earns XP when worn in a fight.
+ * `xp` is the bar toward the next tier (it starts again after an upgrade); `tier` is I-V (1-5). A pet saddled at
+ * tier IV or more can be ridden as a mount.
+ */
+export const itemProgress = sqliteTable("item_progress", {
+  userId: integer("user_id").notNull().references(() => user.id, { onDelete: "cascade" }),
+  itemId: text("item_id").notNull(),
+  xp: integer("xp").notNull().default(0),
+  tier: integer("tier").notNull().default(1),
+  saddled: integer("saddled", { mode: "boolean" }).notNull().default(false),
+  updatedAt: text("updated_at").notNull(),
+}, (t) => [primaryKey({ columns: [t.userId, t.itemId] })]);
+
+/** Forge materials dropped by Bestiary creatures (game/forge.ts MATERIALS), per player. */
+export const forgeMaterials = sqliteTable("forge_materials", {
+  userId: integer("user_id").notNull().references(() => user.id, { onDelete: "cascade" }),
+  materialId: text("material_id").notNull(),
+  quantity: integer("quantity").notNull().default(0),
+}, (t) => [primaryKey({ columns: [t.userId, t.materialId] })]);
+
+/** Champion mastery challenges (game/mastery.ts): how far each one is, per player and champion; doneAt once finished. */
+export const championChallenges = sqliteTable("champion_challenges", {
+  userId: integer("user_id").notNull().references(() => user.id, { onDelete: "cascade" }),
+  championId: text("champion_id").notNull(),
+  challengeId: text("challenge_id").notNull(),
+  progress: integer("progress").notNull().default(0),
+  doneAt: text("done_at"),
+  updatedAt: text("updated_at").notNull(),
+}, (t) => [primaryKey({ columns: [t.userId, t.championId, t.challengeId] })]);
 
 /**
  * Champions the player may fight as (Stage C1). Kaien needs no row. `source`: tier1..tier4 (a Bestiary tier

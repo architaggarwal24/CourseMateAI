@@ -3,7 +3,7 @@
 import { Suspense, useEffect, useSyncExternalStore, type ReactNode } from "react";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
-import { BookOpen, GraduationCap, Home, PanelLeft, Repeat, Search, Swords, type IconType } from "@/components/icons";
+import { BookOpen, Crown, GraduationCap, Home, PanelLeft, Repeat, ScrollText, Search, Skull, Swords, type IconType } from "@/components/icons";
 import UserMenu from "@/components/UserMenu";
 import Logo from "@/components/brand/Logo";
 import { dueBadge, useReview } from "@/hooks/useReview";
@@ -46,7 +46,7 @@ const typing = (t: EventTarget | null) =>
 
 /**
  * The desktop sidebar (hidden below md; phones get BottomNav). Search (Ctrl K) on top, then three groups:
- * Study (Today, Study, Review with its due count, Mock exam), your Courses (when the plan has them) and Hero, and you at
+ * Study (Today, Study, Review with its due count, Mock exam), your Courses (when the plan has them) and Play (Quests, Arena, Bestiary, Champion), and you at
  * the bottom. It collapses to a 64px icon rail (the button beside the logo, or Ctrl+B): every link keeps its name
  * for screen readers and shows it as a tooltip on hover and focus.
  */
@@ -79,15 +79,19 @@ function Sidebar({ tab, doc }: { tab: string | null; doc: string | null }) {
   }, []);
 
   const inStudy = pathname === ROUTES.study;
-  const inHero = pathname === ROUTES.hero;
   const study: Item[] = [
     { label: "Today", href: ROUTES.today, Icon: Home, current: pathname === ROUTES.today },
     { label: "Study", href: ROUTES.study, Icon: BookOpen, current: inStudy && tab !== "review" && tab !== "exam" && !(tab === "overview" && courses.some((c) => c.id === doc)) },
     { label: "Review", href: ROUTES.studyTab("review"), Icon: Repeat, current: inStudy && tab === "review", extra: <ReviewBadge due={due} /> },
     { label: "Mock exam", href: ROUTES.studyTab("exam"), Icon: GraduationCap, current: inStudy && tab === "exam" },
   ];
-  // one way in: the Hero area's own tab bar (Quests, Arena, Bestiary, Shop, ...) does the rest
-  const hero: Item[] = [{ label: "Hero", href: ROUTES.hero, Icon: Swords, current: inHero }];
+  // Quests, Arena and Bestiary are pages of their own; Champion's own tab bar (Inventory, Forge, Shop, ...) does the rest
+  const play: Item[] = [
+    { label: "Quests", href: ROUTES.heroQuests, Icon: ScrollText, current: pathname === ROUTES.heroQuests },
+    { label: "Arena", href: ROUTES.heroArena, Icon: Swords, current: pathname === ROUTES.heroArena },
+    { label: "Bestiary", href: ROUTES.heroBestiary, Icon: Skull, current: pathname === ROUTES.heroBestiary },
+    { label: "Champion", href: ROUTES.champion, Icon: Crown, current: pathname === ROUTES.champion },
+  ];
 
   return (
     <aside className="side" data-collapsed={collapsed || undefined}>
@@ -120,7 +124,7 @@ function Sidebar({ tab, doc }: { tab: string | null; doc: string | null }) {
             ))}
           </Group>
         )}
-        <Group id="side-hero" title="Play">{hero.map((i) => <NavLink key={i.label} {...i} />)}</Group>
+        <Group id="side-hero" title="Play">{play.map((i) => <NavLink key={i.label} {...i} />)}</Group>
       </nav>
 
       <div className="side__foot">

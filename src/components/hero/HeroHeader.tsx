@@ -27,7 +27,7 @@ export default function HeroHeader() {
   const previewId = useHeroStore((s) => s.previewId);
   const setPreview = useHeroStore((s) => s.setPreview);
 
-  const { hero, petId } = useChampionLook({ preview: true });
+  const { hero, petId, petStage } = useChampionLook({ preview: true });
   const pct = Math.min(100, Math.round((xpInto / Math.max(xpToNext, 1)) * 100));
   const previewItem = previewId ? shop?.items.find((i) => i.id === previewId) : undefined;
   const petName = petId ? shop?.items.find((i) => i.id === petId)?.name : undefined;
@@ -66,7 +66,7 @@ export default function HeroHeader() {
       <div className="hero-header__stat hero-header__streak" role="group" data-idle={streakDays === 0} aria-label={`${streakDays} day streak`}>
         <Flame size={16} aria-hidden="true" />
         <span className="pixel-font" data-testid="hero-streak">{streakDays}</span>
-        <span className="text-xs">day streak</span>
+        <span className="text-xs hero-header__streak-label">day streak</span>
         {streakFreezes > 0 && (
           <span className="text-xs text-ink-blue" title="Streak Shield: used automatically when you miss a day." aria-label={`${streakFreezes} streak shields`}>
             <ShieldPlus size={12} className="inline" aria-hidden="true" /> ×{streakFreezes}

@@ -9,8 +9,10 @@ import { useHUDStore } from "@/hooks/useHUD";
 import ChampionAvatar from "@/components/champion/ChampionAvatar";
 import ThemeScope from "@/components/ThemeScope";
 import { useChampion } from "@/hooks/useChampion";
+import { useMyHero } from "@/hooks/useMyHero";
+import { useForge } from "@/hooks/useForge";
 import { useHeroStore } from "@/hooks/useHero";
-import { heroById } from "@/lib/pixel/heroes";
+import { heroById, fighterLabel } from "@/lib/pixel/heroes";
 import { ROUTES } from "@/lib/routes";
 
 /**
@@ -23,7 +25,7 @@ export default function UserMenu() {
   const router = useRouter();
   const level = useHUDStore((s) => s.level);
   const loadChampion = useChampion((s) => s.load);
-  const championName = useChampion((s) => heroById(s.championId).name);
+  const championName = useChampion((s) => fighterLabel(s.championId).name);
   const xpInto = useHUDStore((s) => s.xpInto);
   const xpToNext = useHUDStore((s) => s.xpToNext);
 
@@ -31,6 +33,8 @@ export default function UserMenu() {
     if (authLoading) return;
     void loadChampion({ signedIn: !!user, force: true });
     if (user && !useHeroStore.getState().shop) void useHeroStore.getState().loadShop();   // the skins it wears
+    if (user) void useMyHero.getState().load();                                            // your hero (drawn when it is your fighter)
+    if (user) void useForge.getState().load();                                             // forge tiers, pet growth, the mount
   }, [user, loadChampion, authLoading]);
 
   if (!user) {

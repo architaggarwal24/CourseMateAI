@@ -65,6 +65,30 @@ export const ARMOR_SKINS: Record<string, OutfitPalette> = {
 
 const shiny = (h: string) => ramp(h, { shiny: true });
 
+/** A built look (any outfit style on any champion), re-coloured from a palette by what it wears. */
+function dressByStyle(look: HumanoidLook, p: OutfitPalette): HumanoidLook {
+  const trim = p.glow ? ramp(p.trim, { emissive: true }) : ramp(p.trim);
+  const metalOr = (own: Material | undefined) => (p.metal ? shiny(p.metal) : own ? tint(own, p.main, 0.18) : undefined);
+  const out: HumanoidLook = { ...look, belt: trim, trim, boots: ramp(p.dark) };
+  switch (look.topStyle) {
+    case "coat": Object.assign(out, { coat: ramp(p.main, { contrast: 1.2 }), top: ramp(p.second), pants: ramp(p.dark) }); break;
+    case "robe":
+      Object.assign(out, { top: ramp(p.second), coat: ramp(p.main), sleeveMat: ramp(p.main), pants: ramp(p.dark), belt: p.glow ? trim : ramp(p.trim, { shiny: true }) });
+      if (look.hair?.style === "hood") out.hair = { ...look.hair, mat: ramp(p.main) };
+      break;
+    case "armor":
+      Object.assign(out, { top: p.metal ? shiny(p.metal) : ramp(p.main), sleeveMat: ramp(p.second), pants: ramp(p.second), pauldrons: metalOr(look.pauldrons) });
+      break;
+    case "gi": case "tank": Object.assign(out, { top: ramp(p.main), pants: ramp(p.dark), boots: ramp(p.second) }); break;
+    default: Object.assign(out, { top: ramp(p.main), pants: ramp(p.dark) });
+  }
+  if (look.gloves) out.gloves = ramp(p.dark);
+  if (look.scarf) out.scarf = trim;
+  if (look.cape) out.cape = ramp(p.main);
+  if (p.metal && !out.pauldrons) out.pauldrons = shiny(p.metal);
+  return out;
+}
+
 /** Each champion's outfit, re-coloured from a palette. Only the parts that champion has are touched. */
 function dressArmor(heroId: string, look: HumanoidLook, p: OutfitPalette): HumanoidLook {
   const trim = p.glow ? ramp(p.trim, { emissive: true }) : ramp(p.trim);
@@ -95,6 +119,7 @@ function dressArmor(heroId: string, look: HumanoidLook, p: OutfitPalette): Human
     default:
       Object.assign(out, { top: ramp(p.main), pants: ramp(p.second), boots: ramp(p.dark) });
   }
+  out.trim = trim;
   // plate outfits read as plate on everyone: metal pauldrons on champions who have none of their own
   if (p.metal && !out.pauldrons) out.pauldrons = shiny(p.metal);
   return out;
@@ -180,18 +205,36 @@ export function loadoutKey(heroId: string, l: Loadout, weaponRarity?: string | n
  * The champion wearing a loadout. Unknown or empty slots keep the champion's own look; the weapon glows in its
  * rarity's colour. The pet is not part of the figure (it is its own sprite, see pets.ts).
  */
+/**
+ * Forge tiers on the figure (forge.ts): a weapon at tier IV glows in its own metal's light and at V burns brighter;
+ * an outfit gains a trim at II and a lit trim at IV. `tiers` maps item ids (and `style:<id>` for your hero's base
+ * weapon) to I-V.
+ */
+export function forged(hero: HeroDef, loadout: Loadout, tiers: Record<string, number> | undefined, heroStyle?: string | null): HeroDef {
+  if (!tiers) return hero;
+  const wt = tiers[loadout.weapon ?? (heroStyle ? `style:${heroStyle}` : "")] ?? 1;
+  const at = tiers[loadout.armor ?? ""] ?? 1;
+  if (wt < 4 && at < 2) return hero;
+  const look = { ...hero.look };
+  if (wt >= 4 && look.weaponMat && !look.weaponGlow) look.weaponGlow = ramp(toHex(look.weaponMat.ramp[wt >= 5 ? 4 : 3]), { emissive: true });
+  if (at >= 2 && !look.trim) look.trim = look.belt ?? ramp("#facc15", { shiny: true });
+  if (at >= 4 && look.trim && !look.trim.emissive) look.trim = { ...look.trim, emissive: true };
+  return { ...hero, look, skinKey: `${hero.skinKey ?? hero.id}|f${wt}${at}` };
+}
+const toHex = (c: number) => `#${[c & 255, (c >>> 8) & 255, (c >>> 16) & 255].map((x) => x.toString(16).padStart(2, "0")).join("")}`;
+
 export function dressed(hero: HeroDef, loadout: Loadout, rarities: { weapon?: string | null } = {}): HeroDef {
   // another champion's mastery skin is not drawn (the server takes it off on a switch; this covers the moment between)
   const mine = (id?: string | null) => (id && (masteryOwner(id) ?? hero.id) === hero.id ? id : null);
   const l: Loadout = { armor: mine(loadout.armor), headgear: mine(loadout.headgear), weapon: mine(loadout.weapon), pet: loadout.pet };
   let look = hero.look;
   const a = l.armor ? ARMOR_SKINS[l.armor] : undefined;
-  if (a) look = dressArmor(hero.id, look, a);
+  if (a) look = hero.custom ? dressByStyle(look, a) : dressArmor(hero.id, look, a);
   const h = l.headgear ? HEAD_SKINS[l.headgear] : undefined;
   if (h) look = { ...look, headgear: h() };
   const w = l.weapon ? WEAPON_SKINS[l.weapon] : undefined;
   if (w) look = dressWeapon(look, w, rarities.weapon);
   else if (rarities.weapon && RARITY_GLOW[rarities.weapon]) look = { ...look, weaponGlow: ramp(RARITY_GLOW[rarities.weapon], { emissive: true }) };
   if (look === hero.look) return hero;
-  return { ...hero, look, skinKey: loadoutKey(hero.id, l, rarities.weapon) };
+  return { ...hero, look, skinKey: `${hero.skinKey ? `${hero.skinKey}|` : ""}${loadoutKey(hero.id, l, rarities.weapon)}` };
 }

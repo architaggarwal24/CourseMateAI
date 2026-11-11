@@ -98,6 +98,12 @@ export function ramp(base: string, opts: { shiny?: boolean; emissive?: boolean; 
   };
 }
 
+/** A blend of two colours (t = 0 gives a, 1 gives b). */
+export function mix(a: RGBA, b: RGBA, t: number): RGBA {
+  const [ar, ag, ab, aa] = unpack(a), [br, bg, bb, ba] = unpack(b);
+  return pack(ar + (br - ar) * t, ag + (bg - ag) * t, ab + (bb - ab) * t, aa + (ba - aa) * t);
+}
+
 /** A copy of a material shaded one step darker (limbs on the far side of the body). */
 export function farSide(m: Material): Material {
   const [o, s, mid, l] = m.ramp;

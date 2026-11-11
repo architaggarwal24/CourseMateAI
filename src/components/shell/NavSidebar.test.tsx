@@ -28,7 +28,7 @@ const main = () => screen.getByRole("navigation", { name: "Main" });
 const link = (name: RegExp) => within(main()).getByRole("link", { name });
 
 describe("the sidebar", () => {
-  it("groups the app: Study (Today first, with Review and Mock exam), your Courses, and Hero", () => {
+  it("groups the app: Study (Today first, with Review and Mock exam), your Courses, and Play", () => {
     render(<NavSidebar />);
     expect(within(within(main()).getByRole("group", { name: "Study" })).getAllByRole("link")[0].getAttribute("href")).toBe("/today");
     for (const g of ["Study", "Courses", "Play"]) expect(within(main()).getByRole("group", { name: g })).toBeTruthy();
@@ -36,9 +36,12 @@ describe("the sidebar", () => {
     expect(link(/^Review/).textContent).toContain("7 cards to review");          // the due count lives on Review
     expect(link(/^Mock exam/).getAttribute("href")).toBe("/study?tab=exam");
     expect(link(/^Cell Biology/).getAttribute("href")).toBe("/study?tab=overview&doc=course-1");
-    // the Hero area has one link: its own tab bar holds Quests, Arena, Bestiary, Shop, ...
-    expect(link(/^Hero/).getAttribute("href")).toBe("/hero");
-    for (const h of ["Arena", "Quests", "Shop", "Champion"]) expect(within(main()).queryByRole("link", { name: new RegExp(`^${h}`) })).toBeNull();
+    // Play: Quests, Arena and Bestiary are pages; Champion's own tab bar holds Inventory, Forge, Shop, ...
+    const play = within(within(main()).getByRole("group", { name: "Play" })).getAllByRole("link");
+    expect(play.map((l) => [l.textContent, l.getAttribute("href")])).toEqual([
+      ["Quests", "/quests"], ["Arena", "/arena"], ["Bestiary", "/bestiary"], ["Champion", "/champion"],
+    ]);
+    for (const h of ["Hero", "Shop", "Forge", "Inventory"]) expect(within(main()).queryByRole("link", { name: new RegExp(`^${h}`) })).toBeNull();
     expect(screen.getByRole("button", { name: /Go to/ })).toBeTruthy();
   });
 
@@ -51,9 +54,14 @@ describe("the sidebar", () => {
     expect(link(/^Review/).getAttribute("aria-current")).toBe("page");
     expect(link(/^Study/).getAttribute("aria-current")).toBeNull();
     cleanup();
-    nav.path = "/hero"; nav.query = "tab=shop";
+    nav.path = "/champion"; nav.query = "tab=shop";
     render(<NavSidebar />);
-    expect(link(/^Hero/).getAttribute("aria-current")).toBe("page");
+    expect(link(/^Champion/).getAttribute("aria-current")).toBe("page");
+    cleanup();
+    nav.path = "/bestiary"; nav.query = "";
+    render(<NavSidebar />);
+    expect(link(/^Bestiary/).getAttribute("aria-current")).toBe("page");
+    expect(link(/^Champion/).getAttribute("aria-current")).toBeNull();
     cleanup();
     nav.path = "/today"; nav.query = "";
     render(<NavSidebar />);

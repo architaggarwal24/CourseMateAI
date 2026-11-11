@@ -21,10 +21,12 @@ interface Layer { at: (i: number) => PixelBuffer; count: number; fps: number; lo
  * Accessibility: give `label` for a sprite that means something on its own (role="img"); without it the canvas
  * is decorative (aria-hidden) and the words around it must carry the information.
  */
-export default function PixelSprite({ hero, boss, pet, anim = "idle", flip = false, className, label, crop = true, portrait = false }: {
+export default function PixelSprite({ hero, boss, pet, petStage = "young", anim = "idle", flip = false, className, label, crop = true, portrait = false, still = false }: {
   hero?: HeroDef; boss?: string;
   /** A pet id: beside the champion (full body), or alone when no hero / boss is given. */
   pet?: string | null;
+  /** How grown the pet is (forge tiers). */
+  petStage?: "baby" | "young" | "adult";
   anim?: AnimName | BossAnim; flip?: boolean; className?: string;
   /** Accessible name; omit for a decorative sprite. */
   label?: string;
@@ -32,9 +34,11 @@ export default function PixelSprite({ hero, boss, pet, anim = "idle", flip = fal
   crop?: boolean;
   /** Just the head and shoulders (HUD portraits, avatars). Never shows the pet. */
   portrait?: boolean;
+  /** One still frame, whatever the motion setting (rows of small previews: cheap to redraw). */
+  still?: boolean;
 }) {
   const ref = useRef<HTMLCanvasElement>(null);
-  const reduced = !!useReducedMotionConfig();
+  const reduced = !!useReducedMotionConfig() || still;
   const petId = pet && petById(pet) ? pet : null;
   useEffect(() => {
     const canvas = ref.current;
@@ -44,7 +48,7 @@ export default function PixelSprite({ hero, boss, pet, anim = "idle", flip = fal
     const layers: Layer[] = [];
     if (hero) {
       const a = anim as AnimName;
-      layers.push({ at: (i) => heroFrame(hero, a, i).buf, count: heroAnims(hero.style)[a].length, fps: ANIM_FPS[a], loop: ANIM_LOOP[a], dx: 0, dy: 0 });
+      layers.push({ at: (i) => heroFrame(hero, a, i).buf, count: still ? 1 : heroAnims(hero.style)[a].length, fps: ANIM_FPS[a], loop: ANIM_LOOP[a], dx: 0, dy: 0 });
     } else if (boss) {
       const a = anim as BossAnim, def = bossById(boss);
       layers.push({ at: (i) => bossFrame(def, a, i).buf, count: BOSS_ANIMS[a].length, fps: BOSS_FPS[a], loop: a === "idle", dx: 0, dy: 0 });
@@ -52,7 +56,7 @@ export default function PixelSprite({ hero, boss, pet, anim = "idle", flip = fal
     if (petId && !portrait && !boss) {
       const [dx, dy] = hero ? [HERO_FRAME.anchor[0] + PET_OFFSET[0] - PET_FRAME.anchor[0], HERO_FRAME.anchor[1] + PET_OFFSET[1] - PET_FRAME.anchor[1]] : [0, 0];
       // behind the champion: drawn first
-      layers.unshift({ at: (i) => petFrame(petId, i)!, count: PET_FRAMES, fps: PET_FPS, loop: true, dx, dy });
+      layers.unshift({ at: (i) => petFrame(petId, i, petStage)!, count: PET_FRAMES, fps: PET_FPS, loop: true, dx, dy });
     }
     if (!layers.length) return;
 
@@ -107,7 +111,7 @@ export default function PixelSprite({ hero, boss, pet, anim = "idle", flip = fal
     };
     raf = requestAnimationFrame(draw);
     return () => cancelAnimationFrame(raf);
-  }, [hero, boss, petId, anim, flip, reduced, crop, portrait]);
+  }, [hero, boss, petId, petStage, anim, flip, reduced, crop, portrait]);
   return (
     <canvas
       ref={ref}

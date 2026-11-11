@@ -12,6 +12,7 @@ import { arenaBattles, arenaRuns, documents, missedQuestions } from "../db/schem
 import { HttpError } from "../http";
 import { conceptKey } from "../study/review";
 import { weakConcepts } from "../study/mastery";
+import * as kits from "./kits";
 import { createBattle, end as endBattle, gearFor, PLAYER_MAX_HP, publicBoss, setRunBattleEnd, state as battleState, weekStart } from "./arena";
 import type { Boss } from "./boss";
 import { relics as RELICS } from "./content";
@@ -155,7 +156,8 @@ export async function createRun(ctx: RequestContext, userId: number, sessionId: 
   const s = seed ?? 1 + Math.floor(Math.random() * (2 ** 31 - 2));
   const ok = await nemesisReady(ctx, userId, docHash);
   const maps = Array.from({ length: ACTS }, (_, i) => buildMap(s, i + 1, ok));
-  const hearts = PLAYER_MAX_HP + gearFor((await getAvatar(ctx, userId)).equipped).hp;
+  const av = await getAvatar(ctx, userId);
+  const hearts = kits.heartsFor(av.championId, PLAYER_MAX_HP + gearFor(av.equipped).hp);   // Mira is Frail
   const now = iso();
   const id = crypto.randomUUID().replace(/-/g, "");
   try {

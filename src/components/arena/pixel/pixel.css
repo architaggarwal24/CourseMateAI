@@ -150,6 +150,8 @@ button .pixel-canvas, [role="radio"] .pixel-canvas { pointer-events: none; }
 
 /* champion level on a roster card */
 .px-hero-card__level { display: inline-flex; align-items: center; gap: 0.35rem; font-size: 0.65rem; color: var(--color-reward); }
+.px-hero-card__mastery { margin-left: 0.15rem; color: var(--color-text-secondary); }
+.px-hero-card__mastery[data-mastered] { color: var(--color-reward); }
 .px-hero-card__xp { width: 2.75rem; height: 0.3rem; border-radius: 2px; background: var(--color-surface-sunken); overflow: hidden; border: 1px solid var(--color-border); }
 .px-hero-card__xp > span { display: block; height: 100%; background: var(--color-reward); }
 /* Stage C1: a champion who hasn't joined yet is a silhouette with what brings them */

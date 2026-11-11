@@ -3,14 +3,14 @@
 import { Suspense } from "react";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
-import { BookOpen, Home, Repeat, Swords, UserCircle, type IconType } from "@/components/icons";
+import { BookOpen, Crown, Home, Repeat, Swords, UserCircle, type IconType } from "@/components/icons";
 import { areaOf, ROUTES } from "@/lib/routes";
 import { dueBadge, useReview } from "@/hooks/useReview";
 import ReviewBadge from "./ReviewBadge";
 
 /**
  * Phones (hidden from md up): a flat tab bar along the bottom, where the thumb is. Today, Study, Review (with the
- * due count), Hero and Me. It pads itself clear of the home bar.
+ * due count), Arena, Champion and Me. It pads itself clear of the home bar.
  */
 export default function BottomNav() {
   return <Suspense fallback={<Bar tab={null} />}><WithQuery /></Suspense>;
@@ -27,7 +27,9 @@ function Bar({ tab }: { tab: string | null }) {
     { label: "Today", href: ROUTES.today, Icon: Home, current: pathname === ROUTES.today },
     { label: "Study", href: ROUTES.study, Icon: BookOpen, current: area === "study" && tab !== "review" },
     { label: "Review", href: ROUTES.studyTab("review"), Icon: Repeat, current: area === "study" && tab === "review", badge: true },
-    { label: "Hero", href: ROUTES.hero, Icon: Swords, current: area === "hero" },
+    { label: "Arena", href: ROUTES.heroArena, Icon: Swords, current: pathname === ROUTES.heroArena },
+    // Champion stands for the rest of play too (Quests and Bestiary are linked from the pages themselves and the menu)
+    { label: "Champion", href: ROUTES.champion, Icon: Crown, current: area === "hero" && pathname !== ROUTES.heroArena },
     { label: "Me", href: ROUTES.account, Icon: UserCircle, current: area === "account" },
   ];
   return (

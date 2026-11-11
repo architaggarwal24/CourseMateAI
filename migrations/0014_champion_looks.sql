@@ -1,0 +1,1 @@
+ALTER TABLE `user_avatar` ADD `looks_json` text DEFAULT '{}' NOT NULL;

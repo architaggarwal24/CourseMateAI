@@ -97,7 +97,7 @@ async function strike(page: Page) {
 }
 
 async function summon(page: Page) {
-  await page.goto("/hero?tab=arena");
+  await page.goto("/arena");
   await page.getByRole("button", { name: /Quick Battle/ }).click();
   await page.getByLabel("Boss topic").fill("cells");
   await page.getByRole("button", { name: /Summon boss/ }).click();
@@ -297,7 +297,7 @@ test("chiptune: the fight has music and effects, the music switch stops it, and 
   await page.keyboard.press("2");                                                // a hit still makes a sound
   await expect.poll(notes, { timeout: 5_000 }).toBeGreaterThan(after);
 
-  await page.goto("/hero?tab=quests");
+  await page.goto("/quests");
   const soundBtn = page.getByRole("button", { name: "Sound", exact: true });
   await expect(soundBtn).toHaveAttribute("aria-pressed", "true");
   await soundBtn.click();
@@ -309,6 +309,6 @@ test("chiptune: the fight has music and effects, the music switch stops it, and 
 test("chiptune: off by default for reduced motion", async ({ page }) => {
   await page.emulateMedia({ reducedMotion: "reduce" });
   await battleServer(page);
-  await page.goto("/hero?tab=quests");
+  await page.goto("/quests");
   await expect(page.getByRole("button", { name: "Sound", exact: true })).toHaveAttribute("aria-pressed", "false");
 });

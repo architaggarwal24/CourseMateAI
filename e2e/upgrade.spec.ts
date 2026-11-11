@@ -27,7 +27,7 @@ test("the upgrade window shows once in Study: who it's from, the note, what's ne
 
 test("in Hero it's the pixel celebration, and Try it goes to the new feature", async ({ page }) => {
   await mockApi(page, { planNotice: PLAN_NOTICE });
-  await page.goto("/hero?tab=quests");
+  await page.goto("/quests");
   const dialog = page.getByRole("dialog", { name: "Upgraded!" });
   await expect(dialog).toBeVisible();
   await expect(dialog.locator("[data-variant=play]")).toBeVisible();

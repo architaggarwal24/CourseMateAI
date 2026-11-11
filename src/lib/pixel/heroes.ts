@@ -5,8 +5,10 @@
 import { hex, ramp, tint, type Material } from "./color";
 import { HERO_BUILD, type HumanoidLook, type Pose } from "./rig";
 
-export type AnimName = "idle" | "attack" | "hit" | "guard" | "cast" | "ko" | "win" | "dash";
-export type Style = "blade" | "heavy" | "lance" | "fist" | "mage" | "twin";
+export type AnimName = "idle" | "attack" | "hit" | "guard" | "cast" | "ko" | "win" | "dash" | "ride";
+export type Style = "blade" | "heavy" | "lance" | "fist" | "mage" | "twin"
+  // your hero's original styles (Apprentice Blade, Chain Whip, War Fan, Twin Kamas)
+  | "sword" | "whip" | "fan" | "kamas";
 
 export interface HeroDef {
   id: string;
@@ -18,8 +20,10 @@ export interface HeroDef {
   /** The roster card's accent (CSS colour). */
   accent: string;
   look: HumanoidLook;
-  /** Set by skins.ts dressed(): which loadout this look wears (frame caches key on it). */
+  /** Set by skins.ts dressed() / appearance.ts: which loadout and look this wears (frame caches key on it). */
   skinKey?: string;
+  /** The player built this look (appearance.ts): skins dress it by outfit style, not by champion. */
+  custom?: boolean;
 }
 
 const skinLight = ramp("#f2c39c"), skinTan = ramp("#d99a6c"), skinDeep = ramp("#9c6040");
@@ -31,7 +35,7 @@ export const HEROES: HeroDef[] = [
     look: {
       build: HERO_BUILD, scale: 1, skin: skinLight, eye: ramp("#38bdf8"),
       top: ramp("#1f2937"), topStyle: "coat", coat: ramp("#e5e7eb", { contrast: 1.2 }), coatLen: 20, sleeves: "long",
-      pants: ramp("#334155"), boots: ramp("#1c1917"), belt: ramp("#dc2626"),
+      pants: ramp("#334155"), boots: ramp("#1c1917"), belt: ramp("#dc2626"), trim: ramp("#334155"),
       hair: { style: "spiky", mat: ramp("#1e1b4b") },
       weapon: "katana", weaponMat: ramp("#cbd5e1", { shiny: true }), weaponAccent: ramp("#7f1d1d"),
     },
@@ -43,7 +47,7 @@ export const HEROES: HeroDef[] = [
       build: { ...HERO_BUILD, shoulderW: 12, waistW: 8, thighR: 3.3 }, scale: 1, skin: skinTan, eye: ramp("#f59e0b"),
       top: ramp("#0f766e"), topStyle: "armor", sleeves: "short", sleeveMat: ramp("#115e59"),
       pants: ramp("#134e4a"), boots: ramp("#78350f"), belt: ramp("#d97706"), pauldrons: ramp("#d97706", { shiny: true }),
-      gloves: ramp("#78350f"),
+      gloves: ramp("#78350f"), trim: ramp("#d97706"),
       hair: { style: "ponytail", mat: ramp("#b91c1c") },
       weapon: "spear", weaponMat: ramp("#e2e8f0", { shiny: true }), weaponAccent: ramp("#78350f"), weaponGlow: ramp("#f97316"),
     },
@@ -54,7 +58,7 @@ export const HEROES: HeroDef[] = [
     look: {
       build: { ...HERO_BUILD, shoulderW: 15, armR: 3.2, foreR: 2.8, waistW: 10 }, scale: 1, skin: skinDeep, eye: ramp("#fbbf24"),
       top: ramp("#b91c1c"), topStyle: "gi", sleeves: "none",
-      pants: ramp("#27272a"), baggy: true, boots: ramp("#57534e"), belt: ramp("#0a0a0a"),
+      pants: ramp("#27272a"), baggy: true, boots: ramp("#57534e"), belt: ramp("#0a0a0a"), trim: ramp("#fbbf24"),
       hair: { style: "wild", mat: ramp("#e7e5e4", { contrast: 1.3 }) },
       weapon: "gauntlets", weaponMat: ramp("#94a3b8", { shiny: true }),
     },
@@ -65,7 +69,7 @@ export const HEROES: HeroDef[] = [
     look: {
       build: { ...HERO_BUILD, shoulderW: 11, waistW: 8 }, scale: 1, skin: skinLight, eye: ramp("#a78bfa"),
       top: ramp("#312e81"), topStyle: "robe", coat: ramp("#6d28d9"), sleeves: "long", sleeveMat: ramp("#6d28d9"),
-      pants: ramp("#1e1b4b"), boots: ramp("#1e1b4b"), belt: ramp("#facc15", { shiny: true }),
+      pants: ramp("#1e1b4b"), boots: ramp("#1e1b4b"), belt: ramp("#facc15", { shiny: true }), trim: ramp("#facc15", { shiny: true }),
       hair: { style: "hood", mat: ramp("#5b21b6") },
       weapon: "staff", weaponMat: ramp("#a78bfa"), weaponAccent: ramp("#78350f"), weaponGlow: ramp("#67e8f9", { emissive: true }),
     },
@@ -76,7 +80,7 @@ export const HEROES: HeroDef[] = [
     look: {
       build: { ...HERO_BUILD, shoulderW: 11, waistW: 8, thighR: 3.3 }, scale: 1, skin: skinTan, eye: ramp("#4ade80"),
       top: ramp("#14532d"), topStyle: "jacket", sleeves: "long",
-      pants: ramp("#1c1917"), boots: ramp("#292524"), gloves: ramp("#292524"), scarf: ramp("#e11d48"),
+      pants: ramp("#1c1917"), boots: ramp("#292524"), gloves: ramp("#292524"), scarf: ramp("#e11d48"), trim: ramp("#e11d48"),
       hair: { style: "bob", mat: ramp("#18181b", { contrast: 0.9 }) },
       weapon: "daggers", weaponMat: ramp("#e2e8f0", { shiny: true }), weaponAccent: ramp("#3f3f46"),
     },
@@ -88,7 +92,7 @@ export const HEROES: HeroDef[] = [
       build: { ...HERO_BUILD, shoulderW: 15, waistW: 10, armR: 3, thighR: 3.9, shinR: 3.1 }, scale: 1, skin: skinLight, eye: ramp("#60a5fa"),
       top: ramp("#94a3b8", { shiny: true }), topStyle: "armor", sleeves: "long", sleeveMat: ramp("#64748b", { shiny: true }),
       pants: ramp("#475569"), boots: ramp("#64748b", { shiny: true }), gloves: ramp("#64748b", { shiny: true }), belt: ramp("#78350f"),
-      cape: ramp("#1d4ed8"), pauldrons: ramp("#cbd5e1", { shiny: true }),
+      cape: ramp("#1d4ed8"), trim: ramp("#fbbf24", { shiny: true }), pauldrons: ramp("#cbd5e1", { shiny: true }),
       hair: { style: "slick", mat: ramp("#fbbf24") },
       weapon: "greatsword", weaponMat: ramp("#e2e8f0", { shiny: true }), weaponAccent: ramp("#1e3a8a"), weaponGlow: ramp("#93c5fd", { emissive: true }),
     },
@@ -97,6 +101,9 @@ export const HEROES: HeroDef[] = [
 
 export const DEFAULT_HERO = "kaien";
 export const heroById = (id: string | null | undefined): HeroDef => HEROES.find((h) => h.id === id) ?? HEROES[0];
+/** A fighter's display name and title: one of the six champions, or "hero" (your hero). */
+export const fighterLabel = (id: string | null | undefined): { name: string; title: string } =>
+  id === "hero" ? { name: "Your hero", title: "Built by you" } : { name: heroById(id).name, title: heroById(id).title };
 
 /** A hero with gear applied: a weapon of a rarity glows in that rarity's colour; armour tints the outfit slightly. */
 export function geared(hero: HeroDef, gear: { weaponRarity?: string | null; armorRarity?: string | null }): HeroDef {
@@ -122,11 +129,86 @@ const STANCE: Record<Style, Pose> = {
   fist: { lean: 10, head: -6, fs: 40, fe: 85, bs: 25, be: 105, fh: 24, fk: -22, bh: -20, bk: -12, y: 3 },
   mage: { lean: 2, head: -2, fs: 25, fe: 60, wpn: 95, bs: 20, be: 40, fh: 12, fk: -6, bh: -10, bk: -4, y: 0 },
   twin: { lean: 14, head: -8, fs: 40, fe: 55, wpn: 10, bs: 30, be: 75, fh: 30, fk: -30, bh: -22, bk: -14, y: 4 },
+  sword: { lean: 6, head: -3, fs: 35, fe: 60, wpn: 40, bs: 70, be: 70, fh: 24, fk: -20, bh: -16, bk: -10, y: 2 },
+  whip: { lean: 4, head: -2, fs: 20, fe: 40, wpn: 20, bs: 30, be: 70, fh: 20, fk: -14, bh: -16, bk: -8, y: 1, lash: 0 },
+  fan: { lean: 6, head: -4, fs: 60, fe: 50, wpn: 100, bs: 20, be: 90, fh: 18, fk: -12, bh: -14, bk: -8, y: 1 },
+  kamas: { lean: 12, head: -6, fs: 45, fe: 70, wpn: 20, bs: 35, be: 80, fh: 28, fk: -26, bh: -20, bk: -12, y: 3 },
 };
 
 const m = (base: Pose, over: Pose): Pose => ({ ...base, ...over });
 
+/** Every animation, smoothed: key poses with eased in-betweens and cloth that lags behind the body. Cached. */
+const animCache = new Map<Style, Record<AnimName, Pose[]>>();
 export function heroAnims(style: Style): Record<AnimName, Pose[]> {
+  let a = animCache.get(style);
+  if (!a) {
+    const keys = heroKeys(style);
+    a = { ...keys } as Record<AnimName, Pose[]>;
+    for (const n of Object.keys(keys) as (keyof typeof keys)[]) if (n !== "idle") a[n] = inbetween(keys[n], ANIM_LOOP[n]);
+    a.idle = breathe(STANCE[style]);
+    // riding a mount: seated, thighs forward, shins down, a small bob with the mount's stride
+    const st = STANCE[style];
+    a.ride = inbetween([m(st, { lean: 4, head: -2, fh: 82, fk: -88, bh: 72, bk: -86, x: 0, y: 0, sway: 0.2 }), m(st, { lean: 6, head: -1, fh: 80, fk: -86, bh: 70, bk: -84, x: 0, y: -1, sway: 0.5 })], true);
+    animCache.set(style, a);
+  }
+  return a;
+}
+
+/** Key frames are drawn this many frames apart (one in-between each), so the frame rates below are doubled. */
+export const SUB = 2;
+/** The attack frame where the blow lands (key 2). */
+export const HERO_IMPACT_FRAME = 2 * SUB;
+
+const NUM: (keyof Pose)[] = ["x", "y", "lean", "head", "fs", "fe", "bs", "be", "fh", "fk", "bh", "bk", "wpn", "sway", "glow", "fall", "lash"];
+const DEF: Partial<Record<keyof Pose, number>> = { fs: 10, fe: 12, bs: -6, be: 14, fh: 8, fk: -4, bh: -8, bk: -6 };
+const val = (p: Pose, k: keyof Pose) => (p[k] as number | undefined) ?? DEF[k] ?? 0;
+
+function lerpPose(a: Pose, b: Pose, t: number): Pose {
+  const out: Pose = { ...(t < 0.5 ? a : b) };
+  for (const k of NUM) {
+    if (a[k] === undefined && b[k] === undefined) continue;
+    (out as Record<string, unknown>)[k] = val(a, k) + (val(b, k) - val(a, k)) * t;
+  }
+  // follow-through: hair, cape and coat tails trail the move - they keep the old sway and get pushed back
+  const push = -(val(b, "x") - val(a, "x")) * 0.06 - (val(b, "lean") - val(a, "lean")) * 0.025;
+  out.sway = Math.max(-1, Math.min(1, val(a, "sway") + (val(b, "sway") - val(a, "sway")) * t * 0.5 + push));
+  out.eyes = b.eyes ?? a.eyes;
+  return out;
+}
+
+function inbetween(keys: Pose[], loop: boolean): Pose[] {
+  const out: Pose[] = [];
+  const n = keys.length;
+  for (let i = 0; i < n; i++) {
+    out.push(keys[i]);
+    if (i < n - 1 || (loop && n > 1)) {
+      const next = keys[(i + 1) % n];
+      for (let j = 1; j < SUB; j++) out.push(lerpPose(keys[i], next, j / SUB));
+    }
+  }
+  return out;
+}
+
+/** Idle: eight frames of breathing on a sine, the arms and the cloth a beat behind the chest. */
+function breathe(st: Pose): Pose[] {
+  return Array.from({ length: 8 }, (_, i) => {
+    const p = (i / 8) * Math.PI * 2;
+    const rise = (1 - Math.cos(p)) / 2;                 // 0 -> 1 -> 0
+    const lag = (1 - Math.cos(p - 0.9)) / 2;
+    return m(st, {
+      y: (st.y ?? 0) + rise * 1.8,
+      lean: (st.lean ?? 0) + rise * 1.2,
+      head: (st.head ?? 0) + lag * 2,
+      fs: (st.fs ?? 0) + lag * 3,
+      bs: (st.bs ?? 0) - lag * 2,
+      fe: (st.fe ?? 0) + rise * 2,
+      wpn: st.wpn === undefined ? undefined : st.wpn - lag * 3,
+      sway: 0.15 + Math.sin(p - 1.4) * 0.35,
+    });
+  });
+}
+
+function heroKeys(style: Style): Record<Exclude<AnimName, "ride">, Pose[]> {
   const st = STANCE[style];
   const idle = [0, 1, 2, 1].map((i) => m(st, { y: (st.y ?? 0) + i * 0.8, sway: [0, 0.3, 0.5, 0.3][i], fs: (st.fs ?? 0) + i * 1.5, bs: (st.bs ?? 0) - i }));
   const hit = [m(st, { lean: -14, head: 14, x: -3, fs: 15, fe: 30, bs: -20, be: 40, eyes: "hurt", fh: 10, bh: -30, sway: 1, shout: true }),
@@ -205,6 +287,62 @@ export function heroAnims(style: Style): Record<AnimName, Pose[]> {
         cast: [m(st, { fs: 150, fe: 0, wpn: 30, bs: 140, be: 0, glow: 1, eyes: "closed" }), m(st, { fs: 160, fe: 0, wpn: 20, bs: 150, be: 0, glow: 2, eyes: "closed" }), m(st, { fs: 100, fe: 0, wpn: 0, bs: 95, be: 0, glow: 2, x: 4, shout: true })],
         win: [m(st, { fs: 168, fe: 0, wpn: 10, bs: 20, be: 30, glow: 2 }), m(st, { fs: 170, fe: 0, wpn: 8, bs: 20, be: 30, glow: 1.4, sway: 0.6 })],
       };
+    case "sword":
+      return {
+        idle, hit, ko, dash,
+        attack: [
+          m(st, { lean: -4, fs: 140, fe: 40, wpn: 10, bs: 90, be: 60, y: 3, eyes: "angry" }),
+          m(st, { x: 10, lean: 20, fs: 100, fe: 10, wpn: 0, bs: 80, be: 60, fh: 46, fk: -12, bh: -36, bk: -20, y: 4, sway: -1, shout: true, eyes: "angry" }),
+          m(st, { x: 16, lean: 26, fs: 92, fe: 0, wpn: 0, bs: 60, be: 70, fh: 50, fk: -10, bh: -40, bk: -20, y: 5, sway: -1, eyes: "angry" }),
+          m(st, { x: 14, lean: 18, fs: 40, fe: 20, wpn: 30, bs: 70, be: 70, fh: 44, fk: -12, bh: -34, bk: -18, y: 4 }),
+          m(st, { x: 6 }),
+        ],
+        guard: [m(st, { fs: 30, fe: 80, wpn: 60, bs: 95, be: 40, lean: 2, x: -2, eyes: "angry" }), m(st, { fs: 30, fe: 80, wpn: 60, bs: 95, be: 40, lean: 0, x: -3, eyes: "angry" })],
+        cast: [m(st, { fs: 150, fe: 10, wpn: 10, glow: 0.6, eyes: "closed" }), m(st, { fs: 165, fe: 0, wpn: 0, glow: 1.4 }), m(st, { fs: 100, fe: 0, wpn: 0, glow: 1.6, x: 5, shout: true })],
+        win: [m(st, { lean: 0, fs: 160, fe: 10, wpn: 0, bs: 60, be: 60, fh: 10, bh: -10, fk: 0, bk: 0, y: 0 }), m(st, { lean: 0, fs: 162, fe: 8, wpn: 0, bs: 60, be: 60, fh: 10, bh: -10, fk: 0, bk: 0, y: 0, sway: 0.7 })],
+      };
+    case "whip":
+      return {
+        idle, hit, ko, dash,
+        attack: [
+          m(st, { lean: -8, fs: 170, fe: 20, wpn: 10, y: 2, lash: 0.2, eyes: "angry" }),
+          m(st, { x: 4, lean: 6, fs: 150, fe: 0, wpn: 0, y: 2, lash: 0.6, sway: -0.5, shout: true }),
+          m(st, { x: 8, lean: 16, fs: 95, fe: 0, wpn: 0, fh: 34, fk: -10, bh: -26, y: 3, lash: 1, sway: -1, eyes: "angry" }),
+          m(st, { x: 8, lean: 14, fs: 70, fe: 10, wpn: 0, y: 3, lash: 1, sway: 0.6 }),
+          m(st, { x: 3, lash: 0.3 }),
+        ],
+        guard: [m(st, { fs: 110, fe: 60, wpn: 90, bs: 100, be: 60, x: -2, eyes: "angry", lash: 0.5 }), m(st, { fs: 110, fe: 60, wpn: 90, bs: 100, be: 60, x: -3, lash: 0.5, sway: 0.5 })],
+        cast: [m(st, { fs: 170, fe: 0, wpn: 0, glow: 0.8, lash: 1, eyes: "closed" }), m(st, { fs: 175, fe: 0, wpn: 20, glow: 1.4, lash: 1, sway: 1 }), m(st, { fs: 95, fe: 0, wpn: 0, glow: 1.6, lash: 1, x: 5, shout: true })],
+        win: [m(st, { lean: 0, fs: 175, fe: 0, wpn: 0, lash: 1, fh: 10, bh: -10, fk: 0, bk: 0, y: 0 }), m(st, { lean: 0, fs: 175, fe: 0, wpn: 30, lash: 1, fh: 10, bh: -10, fk: 0, bk: 0, y: 0, sway: 1 })],
+      };
+    case "fan":
+      return {
+        idle, hit, ko, dash,
+        attack: [
+          m(st, { lean: -6, fs: 160, fe: 30, wpn: 120, bs: 40, be: 60, y: 2, eyes: "angry" }),
+          m(st, { x: 8, lean: 14, fs: 120, fe: 10, wpn: 80, fh: 38, fk: -12, bh: -30, y: 3, sway: -1, shout: true }),
+          m(st, { x: 14, lean: 22, fs: 70, fe: 0, wpn: 40, fh: 44, fk: -10, bh: -34, bk: -18, y: 4, sway: -1, eyes: "angry" }),
+          m(st, { x: 12, lean: 16, fs: 30, fe: 30, wpn: 20, y: 3, sway: 0.5 }),
+          m(st, { x: 5 }),
+        ],
+        guard: [m(st, { fs: 100, fe: 70, wpn: 180, bs: 40, be: 80, x: -2, eyes: "angry" }), m(st, { fs: 100, fe: 70, wpn: 180, bs: 40, be: 80, x: -3 })],
+        cast: [m(st, { fs: 150, fe: 0, wpn: 90, bs: 140, be: 0, glow: 1, eyes: "closed" }), m(st, { fs: 165, fe: 0, wpn: 120, bs: 150, be: 0, glow: 1.6 }), m(st, { fs: 95, fe: 0, wpn: 90, bs: 90, be: 0, glow: 1.8, x: 4, shout: true })],
+        win: [m(st, { lean: 0, fs: 165, fe: 10, wpn: 140, bs: 20, be: 120, fh: 12, bh: -12, fk: 0, bk: 0, y: 0 }), m(st, { lean: 0, fs: 168, fe: 6, wpn: 150, bs: 20, be: 120, fh: 12, bh: -12, fk: 0, bk: 0, y: 0, sway: 0.8 })],
+      };
+    case "kamas":
+      return {
+        idle, hit, ko, dash,
+        attack: [
+          m(st, { x: 8, lean: 26, fs: 140, fe: 30, wpn: 20, bs: 130, be: 30, fh: 50, fk: -30, bh: -44, bk: -28, y: 5, sway: -1, eyes: "angry" }),
+          m(st, { x: 14, lean: 30, fs: 60, fe: 10, wpn: 10, bs: 140, be: 20, fh: 52, fk: -22, bh: -46, bk: -24, y: 6, sway: -1, shout: true }),
+          m(st, { x: 18, lean: 28, fs: 130, fe: 40, wpn: 30, bs: 60, be: 10, fh: 50, fk: -20, bh: -44, bk: -24, y: 6, sway: -0.8 }),
+          m(st, { x: 14, lean: 18, fs: 40, fe: 50, wpn: 40, bs: 40, be: 60, y: 4 }),
+          m(st, { x: 6 }),
+        ],
+        guard: [m(st, { fs: 115, fe: 70, wpn: 70, bs: 105, be: 75, lean: 4, x: -2, eyes: "angry" }), m(st, { fs: 115, fe: 70, wpn: 70, bs: 105, be: 75, lean: 2, x: -4 })],
+        cast: [m(st, { fs: 35, fe: 110, bs: 30, be: 100, glow: 1, eyes: "closed" }), m(st, { fs: 165, fe: 10, wpn: 10, bs: 155, be: 10, glow: 1.5 }), m(st, { fs: 95, fe: 0, wpn: 0, bs: 90, be: 0, glow: 1.6, x: 6, shout: true })],
+        win: [m(st, { lean: 0, fs: 150, fe: 30, wpn: 30, bs: 150, be: 30, fh: 14, bh: -12, fk: 0, bk: 0, y: 0 }), m(st, { lean: 0, fs: 152, fe: 28, wpn: 32, bs: 152, be: 28, fh: 14, bh: -12, fk: 0, bk: 0, y: 0, sway: 1 })],
+      };
     case "twin":
       return {
         idle, hit, ko, dash,
@@ -222,7 +360,7 @@ export function heroAnims(style: Style): Record<AnimName, Pose[]> {
   }
 }
 
-export const ANIM_FPS: Record<AnimName, number> = { idle: 5, attack: 14, hit: 10, guard: 8, cast: 8, ko: 8, win: 4, dash: 12 };
-export const ANIM_LOOP: Record<AnimName, boolean> = { idle: true, attack: false, hit: false, guard: true, cast: false, ko: false, win: true, dash: true };
+export const ANIM_FPS: Record<AnimName, number> = { idle: 10, attack: 28, hit: 20, guard: 16, cast: 16, ko: 16, win: 8, dash: 24, ride: 10 };
+export const ANIM_LOOP: Record<AnimName, boolean> = { idle: true, attack: false, hit: false, guard: true, cast: false, ko: false, win: true, dash: true, ride: true };
 
 export const SHADOW = hex("#000000", 70);

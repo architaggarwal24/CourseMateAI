@@ -9,7 +9,7 @@ if (process.env.NODE_ENV === "production") parseSiteUrl(process.env.NEXT_PUBLIC_
 
 // Private and utility pages: never indexed, said in the response header as well as the page's meta tag (the
 // header also covers anything that isn't HTML). The public pages are listed in src/lib/site.ts PUBLIC_PAGES.
-const NOINDEX_PATHS = ["/today", "/study", "/hero", "/account", "/login", "/offline", "/api"];
+const NOINDEX_PATHS = ["/today", "/study", "/quests", "/arena", "/bestiary", "/champion", "/hero", "/account", "/login", "/offline", "/api"];
 
 // The API: the browser only ever calls this site (/api/*), answered by the Worker's routes under src/app/api/
 // (an unknown path is a JSON 404). One site, so no CORS and a first-party cookie.

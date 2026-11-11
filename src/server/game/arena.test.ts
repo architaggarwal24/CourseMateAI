@@ -107,7 +107,10 @@ describe("the rules", () => {
     expect(t.bossHeal).toBe(3);
     const ks = kits.initKit("thorne");
     expect(() => kits.activate(ks)).toThrow(kits.NotReady);
+    // Heavy Plate: Thorne's ultimate charges 20% slower (20 a right answer, not 25)
     for (let i = 0; i < 4; i++) kits.charge(ks, true, 1);
+    expect(() => kits.activate(ks)).toThrow(kits.NotReady);
+    kits.charge(ks, true, 1);
     expect(kits.activate(ks)).toMatchObject({ name: "Last Chapter", hearts: 3 });
   });
 

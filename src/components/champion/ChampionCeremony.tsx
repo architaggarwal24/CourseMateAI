@@ -26,6 +26,7 @@ export function joinedBecause(source: string | null): string {
  */
 export default function ChampionCeremony() {
   const progress = useChampion((s) => s.progress);
+
   const celebrate = useChampion((s) => s.celebrate);
   const choose = useChampion((s) => s.choose);
   const shop = useHeroStore((s) => s.shop);

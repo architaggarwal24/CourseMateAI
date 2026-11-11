@@ -6,7 +6,7 @@ import { settle } from "./helpers";
 // Stage S1: buying asks first (what it costs, what's left), then celebrates with a reveal and confetti.
 test("buy: a confirm screen, then a reveal with confetti and Equip now", async ({ page }) => {
   await mockApi(page, { buyable: "armor_hoodie_gray" });
-  await page.goto("/hero?tab=shop");
+  await page.goto("/champion?tab=shop");
   await page.getByRole("button", { name: /Outfits/ }).click();
   const card = page.locator("[data-item-id='armor_hoodie_gray']");
   await card.getByRole("button", { name: "Buy" }).click();

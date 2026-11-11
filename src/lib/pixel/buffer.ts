@@ -6,7 +6,7 @@
  *
  * Pure TypeScript over a Uint32Array: it runs in the browser (into a canvas) and in Node (tests, previews).
  */
-import { TRANSPARENT, type Material, type RGBA } from "./color";
+import { TRANSPARENT, mix, type Material, type RGBA } from "./color";
 
 export type Pt = [number, number];
 
@@ -23,6 +23,10 @@ export interface DrawOpts {
   under?: boolean;
   /** Capsules: shade across the axis only (no darker end caps) - chained tubes look continuous. */
   smooth?: boolean;
+  /** Only paint over pixels of this material (folds, strands and trims that must stay inside one part). */
+  on?: Material;
+  /** No back rim light on this shape (small details, flat cloth seen from behind). */
+  noRimLight?: boolean;
 }
 
 const L = (() => { const v = [-0.55, -0.72, 0.42]; const n = Math.hypot(...v); return v.map((x) => x / n); })();
@@ -67,10 +71,14 @@ export class PixelBuffer {
     const v = nx * L[0] + ny * L[1] + nz * L[2] + (o.bias ?? 0);
     if (o.rim !== false && !m.emissive && edge > 0.86 && this.px[i] !== TRANSPARENT && this.mat[i] !== mi) return m.ramp[0];
     if (m.emissive) return v > 0.45 ? m.ramp[4] : v > 0.1 ? m.ramp[3] : m.ramp[2];
-    if (m.shiny && v > 0.8) return m.ramp[4];
-    if (v > 0.56) return m.ramp[3];
+    // back rim light: a thin cool edge on the side away from the key light, where the shape meets the air
+    if (!o.noRimLight && edge > 0.78 && nx > 0.5 && ny < 0.55 && (this.px[i] === TRANSPARENT || this.mat[i] === mi)) return rimOf(m);
+    if (m.shiny && v > 0.86) return m.ramp[4];
+    if (m.shiny && v > 0.62) return m.ramp[3];
+    if (v > 0.56) return m.shiny ? m.ramp[2] : m.ramp[3];
     if (v > 0.12) return m.ramp[2];
-    return m.ramp[1];
+    if (v > -0.32) return m.ramp[1];
+    return coreOf(m);
   }
 
   private paint(x: number, y: number, m: Material, nx: number, ny: number, edge: number, o: DrawOpts, mi: number) {
@@ -78,6 +86,7 @@ export class PixelBuffer {
     const i = y * this.w + x;
     if (o.clip && this.px[i] === TRANSPARENT) return;
     if (o.under && this.px[i] !== TRANSPARENT) return;
+    if (o.on && this.mat[i] !== this.matId(o.on)) return;
     this.px[i] = this.shade(m, nx, ny, edge, o, i, mi);
     this.mat[i] = mi;
   }
@@ -171,6 +180,79 @@ export class PixelBuffer {
     }
   }
 
+  /** A 1px line that only lands on pixels of material `on` (fold lines, strands, seams). */
+  lineOn(x0: number, y0: number, x1: number, y1: number, c: RGBA, on: Material) {
+    const id = this.matId(on);
+    const n = Math.max(1, Math.ceil(Math.max(Math.abs(x1 - x0), Math.abs(y1 - y0))));
+    for (let t = 0; t <= n; t++) {
+      const x = Math.round(x0 + ((x1 - x0) * t) / n), y = Math.round(y0 + ((y1 - y0) * t) / n);
+      if (x < 0 || y < 0 || x >= this.w || y >= this.h) continue;
+      const i = y * this.w + x;
+      if (this.mat[i] === id) this.px[i] = c;
+    }
+  }
+
+  /** One pixel, only if it lands on material `on`. */
+  dotOn(x: number, y: number, c: RGBA, on: Material) { this.lineOn(x, y, x, y, c, on); }
+
+  /**
+   * Soft light around everything emissive (magic orbs, glowing blades): empty pixels near an emissive pixel get its
+   * colour at low alpha, two rings deep. Run AFTER outline() so the halo is not outlined.
+   */
+  glow(strength = 1) {
+    const { w, h, px, mat } = this;
+    const add = new Map<number, [RGBA, number]>();
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+      const i = y * w + x;
+      const m = mat[i] ? this.mats[mat[i] - 1] : undefined;
+      if (!m?.emissive) continue;
+      for (let dy = -3; dy <= 3; dy++) for (let dx = -3; dx <= 3; dx++) {
+        const nx = x + dx, ny = y + dy;
+        if (nx < 0 || ny < 0 || nx >= w || ny >= h) continue;
+        const j = ny * w + nx;
+        if (px[j] !== TRANSPARENT && !add.has(j)) continue;
+        const d = Math.hypot(dx, dy);
+        if (d > 3.2) continue;
+        const a = Math.round((d < 1.6 ? 120 : d < 2.5 ? 70 : 34) * strength);
+        const prev = add.get(j);
+        if (!prev || prev[1] < a) add.set(j, [m.ramp[3], a]);
+      }
+    }
+    for (const [j, [c, a]] of add) px[j] = ((c & 0x00ffffff) | (Math.min(255, a) << 24)) >>> 0;
+  }
+
+  /**
+   * Light that spills from everything emissive onto what is around it (stage backdrops: braziers, moons, lava),
+   * blending its colour into the neighbouring pixels with a soft falloff. For opaque pictures; sprites use glow().
+   */
+  bloom(radius = 5, strength = 0.45) {
+    const { w, h, px, mat } = this;
+    const src = new Uint32Array(px), add = new Float32Array(w * h * 4);
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+      const i = y * w + x;
+      const m = mat[i] ? this.mats[mat[i] - 1] : undefined;
+      if (!m?.emissive) continue;
+      const c = src[i], r = c & 255, g = (c >>> 8) & 255, bl = (c >>> 16) & 255;
+      for (let dy = -radius; dy <= radius; dy += 1) for (let dx = -radius; dx <= radius; dx += 1) {
+        const nx = x + dx, ny = y + dy;
+        if (nx < 0 || ny < 0 || nx >= w || ny >= h) continue;
+        const d = Math.hypot(dx, dy);
+        if (d > radius || d === 0) continue;
+        const k = ((1 - d / radius) ** 2) * strength / (radius * 1.6);
+        const j = (ny * w + nx) * 4;
+        add[j] += r * k; add[j + 1] += g * k; add[j + 2] += bl * k; add[j + 3] = Math.max(add[j + 3], k);
+      }
+    }
+    for (let i = 0; i < w * h; i++) {
+      const j = i * 4;
+      if (!add[j + 3] || (mat[i] && this.mats[mat[i] - 1]?.emissive)) continue;
+      const c = src[i], a = (c >>> 24) & 255;
+      if (!a) continue;
+      const r = Math.min(255, (c & 255) + add[j]), g = Math.min(255, ((c >>> 8) & 255) + add[j + 1]), b = Math.min(255, ((c >>> 16) & 255) + add[j + 2]);
+      px[i] = ((a << 24) | (Math.round(b) << 16) | (Math.round(g) << 8) | Math.round(r)) >>> 0;
+    }
+  }
+
   rect(x: number, y: number, w: number, h: number, c: RGBA) {
     for (let j = 0; j < h; j++) for (let i = 0; i < w; i++) this.set(x + i, y + j, c);
   }
@@ -238,6 +320,19 @@ export class PixelBuffer {
     }
     return x1 < 0 ? [0, 0, 0, 0] : [x0, y0, x1 - x0 + 1, y1 - y0 + 1];
   }
+}
+
+// derived ramp steps, cached per material: a deep core shadow and a cool rim light
+const cores = new WeakMap<Material, RGBA>(), rims = new WeakMap<Material, RGBA>();
+function coreOf(m: Material): RGBA {
+  let c = cores.get(m);
+  if (c === undefined) { c = mix(m.ramp[1], m.ramp[0], 0.45); cores.set(m, c); }
+  return c;
+}
+function rimOf(m: Material): RGBA {
+  let c = rims.get(m);
+  if (c === undefined) { c = mix(m.ramp[3], 0xfff0d8c8 >>> 0, 0.25); rims.set(m, c); }
+  return c;
 }
 
 function segDist(px: number, py: number, a: Pt, b: Pt): number {

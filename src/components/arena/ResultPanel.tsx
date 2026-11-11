@@ -2,12 +2,13 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { BookOpen, Coins, Crown, Sparkles, Trophy } from "@/components/icons";
+import { BookOpen, Check, Coins, Crown, Sparkles, Trophy } from "@/components/icons";
 import ItemArt from "@/components/champion/ItemArt";
 import ChampionCeremony from "@/components/champion/ChampionCeremony";
 import { ceremonyDue, useChampion } from "@/hooks/useChampion";
+import { useForge } from "@/hooks/useForge";
 import { useHeroStore } from "@/hooks/useHero";
-import { heroById } from "@/lib/pixel/heroes";
+import { heroById, fighterLabel } from "@/lib/pixel/heroes";
 import { ROUTES } from "@/lib/routes";
 import { Badge, Button } from "@/components/ui";
 import PixelSprite from "./pixel/PixelSprite";
@@ -138,14 +139,16 @@ export default function ResultPanel({ battle, rewards, retreated, bossName, onAg
 function ChampionXpLine({ battle }: { battle: Battle }) {
   const champ = battle.result?.champion;
   const shop = useHeroStore((s) => s.shop);
+  const done = battle.result?.challenges_done ?? [];
   useEffect(() => {
-    if (champ?.leveled_up) {
-      void useChampion.getState().load({ signedIn: true, force: true });       // the new level, on every screen
+    if (battle.result?.forge) void useForge.getState().load(true);              // the gear's new XP, the materials
+    if (champ?.leveled_up || done.length) {
+      void useChampion.getState().load({ signedIn: true, force: true });       // the new level and mastery, on every screen
       void useHeroStore.getState().reconcile();                                 // the unlocked skin, owned
     }
-  }, [champ?.leveled_up]);
+  }, [champ?.leveled_up, done.length]);
   if (!champ) return null;
-  const name = heroById(champ.id).name;
+  const name = fighterLabel(champ.id).name;
   const nextAt = champ.next_level_xp;
   return (
     <section className="arena-result__champion" aria-label={`${name}'s progress`}>
@@ -155,6 +158,17 @@ function ChampionXpLine({ battle }: { battle: Battle }) {
           ? <Badge tone="reward"><Crown size={12} aria-hidden="true" />{name} reached Lv {champ.level}!</Badge>
           : <span className="text-muted">{name} Lv {champ.level}{nextAt ? ` · ${champ.xp}/${nextAt} XP` : " · max level"}</span>}
       </p>
+      {battle.result?.forge && battle.result.forge.items.length > 0 && (
+        <p className="arena__text text-sm" data-testid="result-forge">
+          <Badge tone="neutral">Gear +{battle.result.forge.item_xp} XP</Badge>{" "}
+          {battle.result.forge.materials.map((m) => <Badge key={m.id} tone={m.rare ? "epic" : "accent"} className="mr-1">{m.name} x{m.count}</Badge>)}
+        </p>
+      )}
+      {done.length > 0 && (
+        <ul className="arena-result__challenges" aria-label={`${name}'s mastery challenges done`}>
+          {done.map((t) => <li key={t}><Badge tone="reward"><Check size={12} aria-hidden="true" />Challenge done: {t}</Badge></li>)}
+        </ul>
+      )}
       {champ.unlocked.length > 0 && (
         <ul className="arena-result__unlocks" aria-label="Mastery skins unlocked">
           {champ.unlocked.map((id) => (

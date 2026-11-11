@@ -12,3 +12,9 @@ export function useFighter(): HeroDef {
 export function useFighterPet(): string | null {
   return useChampionLook().petId;
 }
+
+/** How grown the fighter's pet is, and the saddled pet it rides in on (forge.ts). */
+export function useFighterMount(): { petStage: "baby" | "young" | "adult"; mount: string | null } {
+  const l = useChampionLook();
+  return { petStage: l.petStage, mount: l.mount };
+}

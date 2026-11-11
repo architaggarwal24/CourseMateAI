@@ -1,6 +1,7 @@
 // XP, coins, levels, streaks, daily quests, achievements and buffs (Stage 4.5; ports of backend/services/progression:
 // reward_service, streak_service, quest_service, achievement_service, buff_service). Every payout is one ledger
 // event with a unique key (store.recordRewardEvent), so nothing can be paid twice.
+import { STUDY_SHARE as HERO_STUDY_SHARE, addXp as addHeroXp, xpBoost as heroXpBoost } from "./build";
 import { scrollEvent } from "./scrolls";
 import { bestiaryStats } from "./tome";
 import { and, eq, sql } from "drizzle-orm";
@@ -316,6 +317,11 @@ export async function award(ctx: RequestContext, p: Player, action: RewardAction
   if (!t.applied) return capped;
   const counter = COUNTERS[action];
   if (counter) await incrementProgress(ctx, p.id, counter);
+  // your hero grows from everything you do: a share of every payout's XP (build.ts)
+  if (xp > 0) {
+    const boost = await heroXpBoost(ctx, p.id, action === "review_complete");
+    await addHeroXp(ctx, p.id, xp * HERO_STUDY_SHARE * boost);
+  }
   if (action === "quiz_complete") {
     const pct = Math.round(accuracy * 100);
     if (pct > progress.bestQuizAccuracy) await setProgress(ctx, p.id, { bestQuizAccuracy: pct });

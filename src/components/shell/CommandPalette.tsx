@@ -6,7 +6,7 @@ import { Command } from "cmdk";
 import { Dialog } from "radix-ui";
 import {
   Backpack, BookOpen, Brain, CornerDownLeft, FileText, Gauge, GraduationCap, History, Home, Layers, LogOut, MessageSquare,
-  Network, ScrollText, Repeat, Search, Settings, Shield, ShieldCheck, ShoppingBag, SunMoon, Swords, Trophy, User, UserCircle,
+  Crown, Hammer, Network, ScrollText, Repeat, Search, Settings, Shield, ShieldCheck, ShoppingBag, SunMoon, Swords, Trophy, User, UserCircle,
 } from "@/components/icons";
 import ThemeScope from "@/components/ThemeScope";
 import { useAuth } from "@/contexts/AuthContext";
@@ -33,15 +33,17 @@ const GROUPS: { heading: string; items: Entry[] }[] = [
     ],
   },
   {
-    heading: "Hero",
+    heading: "Play",
     items: [
       { id: "arena", label: "Battle Arena", hint: "Fight a boss", href: ROUTES.heroArena, icon: <Swords size={16} />, keywords: ["boss", "fight", "battle", "expedition"] },
-      { id: "bestiary", label: "Bestiary", hint: "The book of creatures", href: ROUTES.heroTab("bestiary"), icon: <BookOpen size={16} />, keywords: ["creatures", "monsters", "bane", "lore", "book"] },
+      { id: "bestiary", label: "Bestiary", hint: "The book of creatures", href: ROUTES.heroBestiary, icon: <BookOpen size={16} />, keywords: ["creatures", "monsters", "bane", "lore", "book"] },
       { id: "quests", label: "Daily quests", href: ROUTES.heroQuests, icon: <ScrollText size={16} /> },
       { id: "shop", label: "Shop", href: ROUTES.heroShop, icon: <ShoppingBag size={16} />, keywords: ["buy", "gear", "potion"] },
       { id: "inventory", label: "Inventory", href: ROUTES.heroInventory, icon: <Backpack size={16} /> },
       { id: "champion", label: "Champion & skins", href: ROUTES.heroChampion, icon: <User size={16} />, keywords: ["avatar", "skin", "customize", "look", "outfit", "pet"] },
+      { id: "forge", label: "Forge", hint: "Upgrade your gear", href: ROUTES.heroTab("forge"), icon: <Hammer size={16} />, keywords: ["upgrade", "tier", "materials", "mount", "saddle"] },
       { id: "achievements", label: "Achievements", href: ROUTES.heroAchievements, icon: <Trophy size={16} /> },
+      { id: "mastery", label: "Mastery", hint: "Every champion's progress", href: ROUTES.heroMastery, icon: <Crown size={16} />, keywords: ["challenges", "mastery", "progress", "unlock"] },
     ],
   },
   {

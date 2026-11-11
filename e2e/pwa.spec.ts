@@ -26,7 +26,7 @@ test("the app is installable and polite offline", async ({ page, context }, info
   await page.waitForFunction(() => !!navigator.serviceWorker.controller);
   await page.waitForFunction(async () => !!(await caches.match("/offline")));
   await context.setOffline(true);
-  await page.goto("/hero?tab=quests").catch(() => {});
+  await page.goto("/quests").catch(() => {});
   await expect(page.getByRole("heading", { name: "You're offline" })).toBeVisible({ timeout: 30_000 });   // the worker can be slow under load
   await context.setOffline(false);
 });

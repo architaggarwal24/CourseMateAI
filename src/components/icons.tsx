@@ -105,6 +105,7 @@ import {
   CornerDownLeft as LCornerDownLeft,
   Crosshair as LCrosshair,
   Crown as LCrown,
+  Dices as LDices,
   Droplets as LDroplets,
   Feather as LFeather,
   FileWarning as LFileWarning,
@@ -124,6 +125,7 @@ import {
   ScrollText as LScrollText,
   SearchX as LSearchX,
   Shield as LShield,
+  Shirt as LShirt,
   ShieldHalf as LShieldHalf,
   ShieldPlus as LShieldPlus,
   Skull as LSkull,
@@ -261,6 +263,8 @@ export const BedDouble = lucide(LBedDouble, "BedDouble");
 export const Brain = lucide(LBrain, "Brain");
 export const Circle = lucide(LCircle, "Circle");
 export const Coins = lucide(LCoins, "Coins");
+export const Dices = lucide(LDices, "Dices");
+export const Shirt = lucide(LShirt, "Shirt");
 export const CornerDownLeft = lucide(LCornerDownLeft, "CornerDownLeft");
 export const Crosshair = lucide(LCrosshair, "Crosshair");
 export const Crown = lucide(LCrown, "Crown");

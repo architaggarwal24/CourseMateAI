@@ -27,12 +27,12 @@ const STUDY_FILES = [
   "components/account/PlanUsage.tsx", "components/account/plan-usage.css", "app/(app)/account/usage/page.tsx",
   "components/pwa/InstallApp.tsx", "app/offline/page.tsx",
 ];
-// Hero (the play theme): everything under app/(app)/hero is wrapped once, by its layout.
+// Play (the play theme): everything under app/(app)/(play) is wrapped once, by its layout.
 const PLAY_ROUTES = [
-  "app/(app)/hero/layout.tsx",
+  "app/(app)/(play)/layout.tsx",
 ];
 const HERO_COMPONENTS = [
-  "components/hero/HeroArea.tsx", "components/hero/HeroHeader.tsx", "components/hero/ItemCard.tsx",
+  "components/hero/PlayArea.tsx", "components/hero/MasteryTab.tsx", "components/hero/ForgeTab.tsx", "components/hero/HeroHeader.tsx", "components/hero/ItemCard.tsx",
   "components/hero/QuestsTab.tsx", "components/hero/ShopTab.tsx", "components/hero/InventoryTab.tsx",
   "components/hero/ChampionTab.tsx", "components/champion/ChampionAvatar.tsx", "components/champion/ItemArt.tsx",
 ];
@@ -81,8 +81,10 @@ describe("Play screens", () => {
     expect(text).not.toContain("<ThemeScope");
   });
 
-  it("the Hero area is ONE page under the Hero layout: its tabs are components, not routes", () => {
-    expect(readdirSync(src("app/(app)/hero")).sort()).toEqual(["layout.tsx", "page.tsx"]);
+  it("the play pages sit under one Play layout: Quests, Arena, Bestiary and Champion, whose tabs are components", () => {
+    expect(readdirSync(src("app/(app)/(play)")).sort()).toEqual(["arena", "bestiary", "champion", "layout.tsx", "quests"]);
+    for (const p of ["arena", "bestiary", "champion", "quests"]) expect(readdirSync(src(`app/(app)/(play)/${p}`)), p).toEqual(["page.tsx"]);
+    expect(readdirSync(src("app/hero"))).toEqual(["route.ts"]);          // the old /hero?tab= links: a redirect only
     expect(readdirSync(src("app")).sort()).not.toContain("(immersive)");
   });
 

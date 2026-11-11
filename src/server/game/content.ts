@@ -91,3 +91,6 @@ export type Champion = (typeof CHAMPIONS)[number];
 export const DEFAULT_CHAMPION: Champion = "kaien";
 export const LOADOUT_SLOTS = ["armor", "headgear", "weapon", "pet"] as const;
 export const isChampion = (v: unknown): v is Champion => typeof v === "string" && (CHAMPIONS as readonly string[]).includes(v);
+/** Who can fight: one of the six champions, or "hero" (your hero, game/build.ts). */
+export type Fighter = Champion | "hero";
+export const isFighter = (v: unknown): v is Fighter => v === "hero" || isChampion(v);

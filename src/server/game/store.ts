@@ -150,13 +150,13 @@ export async function releaseDailySlot(ctx: RequestContext, userId: number, day:
 }
 
 // ── avatar and inventory ─────────────────────────────────────────────────────────────────────────────────────
-export interface Avatar { equipped: Record<string, string>; owned: string[]; championId: string | null; championSetAt: string | null; updatedAt: string }
+export interface Avatar { equipped: Record<string, string>; owned: string[]; championId: string | null; championSetAt: string | null; updatedAt: string; looks: Record<string, unknown> }
 
 export async function getAvatar(ctx: RequestContext, userId: number): Promise<Avatar> {
   let row = await ctx.db.select().from(userAvatar).where(eq(userAvatar.userId, userId)).get();
   if (!row) { await ensureUser(ctx, userId); row = (await ctx.db.select().from(userAvatar).where(eq(userAvatar.userId, userId)).get())!; }
   const parse = <T,>(s: string, d: T): T => { try { return JSON.parse(s) ?? d; } catch { return d; } };
-  return { equipped: parse(row.equippedJson, {}), owned: parse(row.ownedJson, []), championId: row.championId, championSetAt: row.championSetAt, updatedAt: row.updatedAt };
+  return { equipped: parse(row.equippedJson, {}), owned: parse(row.ownedJson, []), championId: row.championId, championSetAt: row.championSetAt, updatedAt: row.updatedAt, looks: parse(row.looksJson ?? "{}", {}) };
 }
 
 /**

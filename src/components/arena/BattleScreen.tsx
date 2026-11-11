@@ -21,7 +21,7 @@ import BaneHud from "./BaneHud";
 import MovePicker from "./MovePicker";
 import PixelArena, { type Floater } from "./pixel/PixelArena";
 import PixelSprite from "./pixel/PixelSprite";
-import { useFighter, useFighterPet } from "./pixel/useFighter";
+import { useFighter, useFighterMount, useFighterPet } from "./pixel/useFighter";
 import TimerRing from "./TimerRing";
 import UltimateMeter from "./UltimateMeter";
 import { mechanicLines } from "./verdict";
@@ -178,6 +178,7 @@ export default function BattleScreen({ arena, context }: { arena: Arena; context
   const lastTaunt = useRef<string | undefined>(undefined);
   const fighter = useFighter();
   const pet = useFighterPet();
+  const { petStage, mount } = useFighterMount();
 
   const clock = stage === "asking" || stage === "answering" ? deadline : null;
   const expired = useExpired(clock);
@@ -314,7 +315,7 @@ export default function BattleScreen({ arena, context }: { arena: Arena; context
       </header>
 
       <PixelArena
-        hero={fighter} pet={pet} bossId={creature.id} rage={battle.rage} intent={intentTint} shield={battle.shield ?? 0}
+        hero={fighter} pet={pet} petStage={petStage} mount={mount} bossId={creature.id} rage={battle.rage} intent={intentTint} shield={battle.shield ?? 0}
         beats={beats} beatKey={beatKey} floaters={floaters} speech={speech}
         heroSpeech={arena.tauntCast ? { text: tauntLine(fighter.id, arena.tauntCast.key), key: arena.tauntCast.key } : undefined}
         callout={showingVerdict && outcome && outcome.correct ? comboCallout(outcome.combo, outcome.bane?.landed, outcome.weakness) : undefined}

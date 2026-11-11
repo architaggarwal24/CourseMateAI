@@ -16,7 +16,9 @@
 /* The Hero area's own frame: it must not depend on the Study stylesheet (that one only loads on Study pages, so
    opening /hero directly left the panel unbounded and nothing scrolled). The tab's content scrolls inside it. */
 .ws--play { flex: 1; min-height: 0; display: flex; flex-direction: column; overflow: hidden; box-shadow: var(--glass-shadow); }
-.hero-tabs { margin: var(--space-3) var(--space-4) 0; }
+.hero-tabs-pin { flex: none; padding: var(--space-3) var(--space-4) 0; }
+.hero-tabs { margin: 0; }
+
 
 .hero-header {
   display: flex;
@@ -192,3 +194,38 @@ button.hero-item__sprite:hover { border-color: var(--color-accent-alt-text); }
 
 /* A tab label with its icon (inventory categories). */
 .hero-tablabel { display: inline-flex; align-items: center; gap: 0.4rem; }
+
+/* Phones (after the base rules above, so these win) */
+@media (max-width: 767.98px) {
+  .hero-tabs-pin { padding: var(--space-2) var(--space-3); border-bottom: 1px solid var(--glass-border); }
+  /* the header, tighter: the champion, level and XP on one line; coins, streak and sound under them */
+  .hero-header { display: grid; grid-template-columns: auto auto minmax(0, 1fr) auto; align-items: center; gap: var(--space-2) var(--space-3); padding: var(--space-3); }
+  .hero-header__avatar { grid-row: span 2; padding-right: 1rem; }
+  .hero-header__xp { grid-column: 3 / -1; min-width: 0; max-width: none; }
+  .hero-header__coins { grid-column: 2 / 3; justify-self: start; }
+  .hero-header__streak { grid-column: 3 / 4; justify-self: start; }
+  .hero-header__sound { grid-column: 4 / 5; margin-left: 0; }
+  .hero-header__preview { grid-column: 1 / -1; }
+  .hero-header__streak-label { display: none; }        /* the flame and the number say it (the chip's label reads it out) */
+}
+/* ── the Forge tab ───────────────────────────────────────────────────────── */
+.forge { display: grid; gap: var(--space-2); padding: var(--space-4); max-width: 60rem; }
+.forge-head { display: grid; gap: var(--space-3); }
+.forge-mats { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+.forge-mat { display: inline-flex; align-items: center; gap: 0.4rem; padding: 0.35rem 0.7rem; border-radius: var(--radius-md); border: 1px solid var(--color-border); background: var(--color-surface-sunken); font-size: 0.8125rem; color: var(--color-text-secondary); }
+.forge-mat strong { color: var(--color-reward); }
+.forge-matlist { display: flex; flex-wrap: wrap; gap: 4px 12px; margin: 0; padding: 0; list-style: none; font-size: 0.75rem; color: var(--color-text-muted); }
+.forge-matlist li[data-rare] { color: var(--color-ink-purple, var(--color-reward)); }
+.forge-mount { display: flex; align-items: center; gap: var(--space-3); padding: var(--space-3); border: 1px solid var(--color-reward); border-radius: var(--radius-lg); background: var(--color-surface-sunken); }
+.forge-mount__art { width: 7.5rem; height: 6.25rem; object-fit: contain; image-rendering: pixelated; flex: none; }
+.forge-items { display: grid; gap: var(--space-2); margin: 0; padding: 0; list-style: none; }
+.forge-item { display: grid; grid-template-columns: 3.5rem minmax(0, 1fr); gap: var(--space-3); align-items: center; padding: var(--space-3); border: 1px solid var(--color-border); border-radius: var(--radius-md); background: var(--color-surface); }
+@media (min-width: 640px) { .forge-item { grid-template-columns: 3.5rem minmax(0, 1fr) auto; } }
+.forge-item--ready { border-color: var(--color-reward); }
+.forge-item__art { display: grid; place-items: center; width: 3.5rem; height: 3.5rem; }
+.forge-item__sprite { max-width: 3.5rem; max-height: 3.5rem; object-fit: contain; }
+.forge-item__bar { display: block; height: 0.4rem; border-radius: var(--radius-full, 9999px); background: var(--color-surface-sunken); border: 1px solid var(--color-border); overflow: hidden; }
+.forge-item__bar > span { display: block; height: 100%; background: var(--color-reward); }
+.forge-item__bar--max > span { background: var(--color-ink-purple, var(--color-reward)); }
+.forge-item__act { display: flex; flex-wrap: wrap; gap: var(--space-2); grid-column: 1 / -1; }
+@media (min-width: 640px) { .forge-item__act { grid-column: auto; justify-content: flex-end; } }

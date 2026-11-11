@@ -22,7 +22,7 @@ test("the concept map draws the constellation and a star opens its actions", asy
   await expect(first).toBeFocused();
   await page.keyboard.press("Enter");
   const panel = page.getByRole("region", { name: "ATP" });
-  await expect(panel.getByRole("link", { name: "Summon its boss" })).toHaveAttribute("href", "/hero?tab=arena&doc=doc-1&topic=ATP");
+  await expect(panel.getByRole("link", { name: "Summon its boss" })).toHaveAttribute("href", "/arena?doc=doc-1&topic=ATP");
   await page.screenshot({ path: `previews/stage-3b-map-${info.project.name}.png` });
   await settle(page);
   const axe = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21aa"]).analyze();

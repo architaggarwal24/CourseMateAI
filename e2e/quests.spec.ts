@@ -7,12 +7,12 @@ import { settle } from "./helpers";
 // one's seal breaks and pays.
 test("the quest board: scrolls by kind, Answer the call, and a hunt's seal breaking for its lost page", async ({ page }) => {
   const { unanswered } = await mockApi(page);
-  await page.goto("/hero?tab=quests");
+  await page.goto("/quests");
   for (const title of ["Today's quests", "Weekly trials", "Hunts", "Kaien's story"]) await expect(page.getByRole("heading", { name: title })).toBeVisible();
   await expect(page.getByRole("listitem", { name: "Trial of Questions" }).getByRole("progressbar")).toHaveAttribute("aria-valuenow", "3");
 
   const cyclops = page.getByRole("listitem", { name: "Hunt the Cyclops" });
-  await expect(cyclops.getByRole("link", { name: "Answer the call" })).toHaveAttribute("href", "/hero?tab=arena&topic=mechanics");
+  await expect(cyclops.getByRole("link", { name: "Answer the call" })).toHaveAttribute("href", "/arena?topic=mechanics");
   await expect(page.getByRole("listitem", { name: "Trial of Memory" }).getByRole("link", { name: "Answer the call" })).toHaveAttribute("href", "/study?tab=review");
 
   await settle(page);

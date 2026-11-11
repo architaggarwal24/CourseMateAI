@@ -2,7 +2,7 @@
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-import { AREAS, HERO_TABS, LEGACY_HERO_TABS, LEGACY_REDIRECTS, ROUTES, STUDY_TAB_PATH_SOURCE, areaOf, isHeroTab, isStudyTab } from "./routes";
+import { AREAS, CHAMPION_TABS, HERO_TABS, LEGACY_HERO_TABS, LEGACY_REDIRECTS, PLAY_PAGES, ROUTES, STUDY_TAB_PATH_SOURCE, areaOf, isChampionTab, isHeroTab, isStudyTab, legacyHeroUrl } from "./routes";
 
 const appDir = fileURLToPath(new URL("../app", import.meta.url));
 
@@ -28,8 +28,9 @@ describe("routes", () => {
   it("every old URL redirects to a page that exists", () => {
     expect(LEGACY_REDIRECTS.map(r => r.from).sort()).toEqual(
       [
-        "/arena", "/avatar", "/avatar/hero-forge", "/inventory", "/profile", "/settings", "/shop",
-        "/hero/arena", "/hero/shop", "/hero/inventory", "/hero/avatar", "/hero/forge", "/hero/champion", "/hero/achievements",
+        "/avatar", "/avatar/hero-forge", "/inventory", "/profile", "/settings", "/shop",
+        "/hero/quests", "/hero/arena", "/hero/bestiary", "/hero/shop", "/hero/inventory", "/hero/avatar", "/hero/forge",
+        "/hero/champion", "/hero/achievements", "/hero/mastery",
       ].sort(),
     );
     for (const { from, to } of LEGACY_REDIRECTS) expect(served, `${from} -> ${to}`).toContain(pathOf(to));
@@ -57,10 +58,12 @@ describe("routes", () => {
   });
 
   it("the three areas map to their paths", () => {
-    expect(AREAS.map(a => a.href)).toEqual(["/study", "/hero", "/account"]);
+    expect(AREAS.map(a => a.href)).toEqual(["/study", "/champion", "/account"]);
     expect(areaOf("/study/quiz")).toBe("study");
+    for (const p of ["/quests", "/arena", "/bestiary", "/champion"]) expect(areaOf(p), p).toBe("hero");   // the play area
     expect(areaOf("/hero")).toBe("hero");
-    expect(areaOf("/hero/shop")).toBe("hero");          // (an old URL: it redirects, but it is still the Hero area)
+    expect(areaOf("/hero/shop")).toBe("hero");          // (an old URL: it redirects, but it is still the play area)
+    expect(areaOf("/arenas")).toBeNull();
     expect(areaOf("/account/settings")).toBe("account");
     expect(areaOf("/login")).toBeNull();
   });
@@ -76,22 +79,41 @@ describe("routes", () => {
     expect(isStudyTab(undefined)).toBe(false);
   });
 
-  it("the Hero area is one page: every tab is /hero?tab=, and every old Hero URL redirects into a tab", () => {
-    expect(served.filter(p => p.startsWith("/hero"))).toEqual(["/hero"]);
-    expect([...HERO_TABS]).toEqual(["quests", "arena", "bestiary", "shop", "inventory", "champion", "achievements"]);
-    for (const tab of HERO_TABS) expect(ROUTES.heroTab(tab)).toBe(`/hero?tab=${tab}`);
-    expect(ROUTES.heroShop).toBe(ROUTES.heroTab("shop"));
+  it("play: Quests, Arena and Bestiary are pages, the rest are Champion tabs, and every old Hero URL lands on one", () => {
+    for (const p of ["/quests", "/arena", "/bestiary", "/champion"]) expect(served, p).toContain(p);
+    expect(existsSync(fileURLToPath(new URL("../app/hero/route.ts", import.meta.url)))).toBe(true);   // /hero?tab= redirects (legacyHeroUrl)
+    expect([...PLAY_PAGES]).toEqual(["quests", "arena", "bestiary"]);
+    expect([...CHAMPION_TABS]).toEqual(["champion", "inventory", "forge", "shop", "achievements", "mastery"]);
+    expect([...HERO_TABS]).toEqual([...PLAY_PAGES, ...CHAMPION_TABS]);
+    for (const p of PLAY_PAGES) expect(ROUTES.heroTab(p)).toBe(`/${p}`);
+    for (const t of CHAMPION_TABS) expect(ROUTES.heroTab(t)).toBe(`/champion?tab=${t}`);
+    expect(ROUTES.heroShop).toBe("/champion?tab=shop");
+    expect(ROUTES.heroHunt("oni")).toBe("/arena?hunt=oni");
     expect(isHeroTab("shop")).toBe(true);
     expect(isHeroTab("overview")).toBe(false);
     expect(isHeroTab(null)).toBe(false);
+    expect(isChampionTab("arena")).toBe(false);
+    expect(isChampionTab("mastery")).toBe(true);
     const toTab = Object.fromEntries(LEGACY_REDIRECTS.map(r => [r.from, r.to]));
-    for (const tab of ["arena", "shop", "inventory", "champion", "achievements"] as const) {
-      expect(toTab[`/hero/${tab}`], tab).toBe(`/hero?tab=${tab}`);
+    for (const tab of ["arena", "quests", "bestiary"] as const) expect(toTab[`/hero/${tab}`], tab).toBe(`/${tab}`);
+    for (const tab of ["shop", "inventory", "champion", "achievements", "forge", "mastery"] as const) {
+      expect(toTab[`/hero/${tab}`], tab).toBe(`/champion?tab=${tab}`);
     }
-    expect(toTab["/shop"]).toBe("/hero?tab=shop");
-    // the Avatar tab and the Hero Forge are now the Champion tab, by path and by ?tab=
-    for (const old of ["/avatar", "/avatar/hero-forge", "/hero/avatar", "/hero/forge"]) expect(toTab[old], old).toBe("/hero?tab=champion");
-    expect(LEGACY_HERO_TABS).toEqual({ avatar: "champion", forge: "champion" });
+    expect(toTab["/shop"]).toBe("/champion?tab=shop");
+    for (const old of ["/avatar", "/avatar/hero-forge", "/hero/avatar"]) expect(toTab[old], old).toBe("/champion?tab=champion");
+    expect(LEGACY_HERO_TABS).toEqual({ avatar: "champion" });
+  });
+
+  it("an old /hero?tab= link goes to its new page, keeping its other parameters", () => {
+    const q = (s: string) => legacyHeroUrl(new URLSearchParams(s));
+    expect(q("")).toBe("/quests");
+    expect(q("tab=nonsense")).toBe("/quests");
+    expect(q("tab=arena&doc=d1&topic=ATP")).toBe("/arena?doc=d1&topic=ATP");
+    expect(q("tab=arena&hunt=oni")).toBe("/arena?hunt=oni");
+    expect(q("tab=bestiary")).toBe("/bestiary");
+    expect(q("tab=shop")).toBe("/champion?tab=shop");
+    expect(q("tab=avatar")).toBe("/champion?tab=champion");
+    expect(q("tab=forge&x=1")).toBe("/champion?tab=forge&x=1");
   });
 
   it("the old /study/<tab> paths redirect to ?tab= and are no longer pages", () => {

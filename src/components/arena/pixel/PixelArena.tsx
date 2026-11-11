@@ -14,11 +14,14 @@ export interface Floater { id: string; text: string; sub?: string; side: "boss" 
  * `beats` (with a changing `beatKey`) are what just happened; the scene plays them in order. Damage numbers for a
  * side appear when the blow on that side actually lands.
  */
-function PixelArena({ hero, pet = null, bossId, stageId, rage, intent, shield, beats, beatKey, floaters, speech, label, introText = "FIGHT!",
+function PixelArena({ hero, pet = null, petStage = "young", mount = null, bossId, stageId, rage, intent, shield, beats, beatKey, floaters, speech, label, introText = "FIGHT!",
   heroSpeech, callout, calloutKey, intro }: {
   hero: HeroDef;
-  /** The pet idling behind the champion. */
+  /** The pet idling behind the champion, and how grown it is (forge tiers). */
   pet?: string | null;
+  petStage?: "baby" | "young" | "adult";
+  /** The saddled pet the fighter rides in on. */
+  mount?: string | null;
   bossId: string;
   stageId?: string;
   rage: boolean;
@@ -52,7 +55,7 @@ function PixelArena({ hero, pet = null, bossId, stageId, rage, intent, shield, b
   useEffect(() => {
     if (!canvas.current?.getContext?.("2d")) return;     // no canvas (tests): the words around it carry the fight
     const s = new FightScene(canvas.current, {
-      hero, pet, bossId, stageId, reduced,
+      hero, pet, petStage, mount, bossId, stageId, reduced,
       // only blows of the turn on screen reveal its numbers (a late blow of the last turn reveals nothing)
       onImpact: (side, key) => {
         if (key === undefined || key !== keyRef.current) return;

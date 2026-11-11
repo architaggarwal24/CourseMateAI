@@ -45,10 +45,21 @@ export default function SubNav({ label, items, className, onNavigate }: {
   const strip = useRef<HTMLElement>(null);
   const currentHref = items.find((i) => isCurrent(pathname, i))?.href;
   useEffect(() => {
-    const el = strip.current?.querySelector<HTMLElement>('[aria-current="page"]');
-    if (el && strip.current && strip.current.scrollWidth > strip.current.clientWidth) {
-      strip.current.scrollTo?.({ left: el.offsetLeft - (strip.current.clientWidth - el.offsetWidth) / 2 });
-    }
+    const nav = strip.current;
+    const el = nav?.querySelector<HTMLElement>('[aria-current="page"]');
+    if (!nav || !el) return;
+    // the box that scrolls (the strip itself, or its list), measured on screen: offsetLeft would count from whatever
+    // positioned ancestor the strip sits in (a pinned bar, its padding), and miss the centre
+    const center = () => {
+      let box: HTMLElement | null = el.parentElement;
+      while (box && box !== nav && box.scrollWidth <= box.clientWidth) box = box.parentElement;
+      if (!box || box.scrollWidth <= box.clientWidth) return;
+      const delta = el.getBoundingClientRect().left - box.getBoundingClientRect().left - (box.clientWidth - el.offsetWidth) / 2;
+      box.scrollTo?.({ left: box.scrollLeft + delta });
+    };
+    center();
+    // a web font arriving late (the pixel font) widens the tabs: centre again once it has
+    void document.fonts?.ready.then(center).catch(() => {});
   }, [currentHref]);
   const link = (item: SubNavItem) => (
     <Link

@@ -9,11 +9,12 @@
  */
 import { hex, toCss, type RGBA } from "./color";
 import { toCanvas } from "./canvas";
-import { BOSS_ANIMS, BOSS_FPS, bossById, type BossAnim, type BossDef } from "./bosses";
-import { ANIM_FPS, ANIM_LOOP, heroAnims, type AnimName, type HeroDef } from "./heroes";
+import { BOSS_ANIMS, BOSS_FPS, BOSS_IMPACT_FRAME, bossById, type BossAnim, type BossDef } from "./bosses";
+import { ANIM_FPS, ANIM_LOOP, HERO_IMPACT_FRAME, heroAnims, type AnimName, type HeroDef } from "./heroes";
 import { sheetFor, sheetFrame, stageImageFor, type LoadedSheet } from "./sheets";
-import { PET_FPS, PET_FRAME, PET_OFFSET, petById, petFrame } from "./pets";
-import { bossFrame, heroFrame, type Frame } from "./sprites";
+import { MOUNT_FRAME, PET_FPS, PET_FRAME, PET_OFFSET, mountFrame, petById, petFrame } from "./pets";
+import { solve } from "./rig";
+import { bossFrame, heroFrame, HERO_FRAME, type Frame } from "./sprites";
 import { GROUND_Y, STAGES, STAGE_H, STAGE_W, stageBackdrop, type ParticleKind } from "./stages";
 import type { PixelBuffer } from "./buffer";
 import { sfx, type Sfx } from "../sound/chip";
@@ -35,7 +36,8 @@ export type BeatKind =
 export type MechanicEffect =
   | "regrowth" | "cauterized" | "grabbed" | "broke_free" | "riddle_solved" | "riddle_failed" | "illusion" | "illusion_seen"
   | "chained" | "feather" | "devour" | "stunned" | "drum" | "drum_broken" | "shapeshift" | "venom" | "poisoned"
-  | "treasure" | "wisdom" | "plucked" | "squeeze" | "uncoil" | "uncoiled" | "refund" | "ultimate_hit" | "fortress";
+  | "treasure" | "wisdom" | "plucked" | "squeeze" | "uncoil" | "uncoiled" | "refund" | "ultimate_hit" | "fortress"
+  | "weakness" | "focus_flow" | "thick_skin" | "last_stand" | "second_wind";
 
 /** How an effect looks: who acts (and in which pose), the colour, the motion, an optional banner, how long it takes. */
 export type EffectMotion =
@@ -86,6 +88,12 @@ export const MECHANIC_FX: Record<MechanicEffect, EffectSpec> = {
   refund: { on: "hero", color: "#67e8f9", motion: "motes", ms: 450 },
   ultimate_hit: { on: "hero", anim: "cast", color: "#facc15", motion: "ring", ms: 400 },
   fortress: { on: "hero", anim: "guard", color: "#93c5fd", motion: "ring", ms: 600 },
+  // weaknesses and your hero's passives: a miss that costs a heart, Focus flowing in, a forgiven miss, a held line, a second wind
+  weakness: { on: "hero", anim: "hit", color: "#ef4444", motion: "burst", ms: 400, shake: 2 },
+  focus_flow: { on: "hero", color: "#67e8f9", motion: "motes", ms: 450 },
+  thick_skin: { on: "hero", anim: "guard", color: "#d6d3d1", motion: "ring", ms: 450 },
+  last_stand: { on: "hero", anim: "guard", color: "#fbbf24", motion: "ring", banner: "LAST STAND", ms: 650 },
+  second_wind: { on: "hero", anim: "win", color: "#86efac", motion: "motes", banner: "SECOND WIND", ms: 650 },
 };
 
 export interface Beat {
@@ -132,12 +140,16 @@ interface Actor {
   ghostUntil: number;
 }
 interface Particle { x: number; y: number; vx: number; vy: number; life: number; max: number; color: string; size: number; g: number; kind?: ParticleKind | "spark" | "mote" | "dust" }
-interface Fx { kind: "slash" | "ring" | "orb" | "banner-flash" | "bolt"; x: number; y: number; start: number; dur: number; color: string; size: number; tx?: number; ty?: number; flip?: boolean }
+interface Fx { kind: "slash" | "ring" | "orb" | "banner-flash" | "bolt" | "star" | "burst"; x: number; y: number; start: number; dur: number; color: string; size: number; tx?: number; ty?: number; flip?: boolean }
 
 export interface FightOptions {
   hero: HeroDef;
   /** The pet idling behind the champion (a pet id from pets.ts), if one is worn. */
   pet?: string | null;
+  /** A saddled pet the fighter rides in on (pets.ts mountFrame); it carries them in, then trots off. */
+  mount?: string | null;
+  /** How grown the pet is (forge tiers): baby, young or adult. */
+  petStage?: "baby" | "young" | "adult";
   bossId: string;
   stageId?: string;
   reduced: boolean;
@@ -160,6 +172,8 @@ export class FightScene {
   private last = 0;
   private hero: HeroDef;
   private pet: string | null = null;
+  private mount: string | null = null;
+  private mountLeave = { start: 0, dur: 0 };
   private boss: BossDef;
   private stageId: string;
   private reduced: boolean;
@@ -201,6 +215,7 @@ export class FightScene {
     this.ctx.imageSmoothingEnabled = false;
     this.hero = opts.hero;
     this.pet = opts.pet ?? null;
+    this.mount = opts.mount ?? null;
     this.boss = bossById(opts.bossId);
     this.stageId = opts.stageId ?? this.boss.stage;
     this.reduced = opts.reduced;
@@ -291,7 +306,10 @@ export class FightScene {
     switch (beat.kind) {
       case "intro": {
         this.h.dx = { from: -150, to: 0, start: this.now, dur: this.reduced ? 1 : 650 };
-        this.setAnim(this.h, "dash");
+        // riding in: the mount carries the fighter to their mark, then trots back off the stage
+        const riding = !!this.mount && !!mountFrame(this.mount, 0) && !this.reduced;
+        this.setAnim(this.h, riding ? "ride" : "dash");
+        if (riding) this.mountLeave = { start: this.now + 650, dur: 700 };
         this.b.flashUntil = this.now + 300;
         this.after(650, () => { this.setAnim(this.h, "idle"); });
         this.banner(beat.text ?? "FIGHT!", beat.text === "NEMESIS" ? "rage" : "fight");
@@ -306,8 +324,8 @@ export class FightScene {
         if (wind) { this.setAnim(this.h, "guard"); this.move(this.h, -8, wind); }
         this.after(wind, () => { this.setAnim(this.h, "dash"); this.move(this.h, reach, 200); this.dust(HERO_X, -1); sfx("swing"); });
         const fps = this.heroFps("attack");
-        this.after(wind + 200, () => this.setAnim(this.h, "attack"));
-        const hit = wind + 200 + this.impactAfterFrames(2, fps);
+        this.after(wind + 200, () => { this.setAnim(this.h, "attack"); this.dust(HERO_X + reach + 8, 1); });
+        const hit = wind + 200 + this.impactAfterFrames(HERO_IMPACT_FRAME, fps);
         this.after(hit, () => { this.bossHurt(beat); if (beat.signature && !beat.shielded) this.signatureStrike(); });
         if (style === "twin" || style === "fist") this.after(hit + 120, () => this.bossHurt({ ...beat, heavy: false }, true));
         this.after(hit + 380, () => { this.setAnim(this.h, "dash"); this.move(this.h, 0, 260); });
@@ -318,6 +336,7 @@ export class FightScene {
         this.setAnim(this.h, "cast");
         sfx("cast");
         if (!this.reduced) for (let i = 0; i < 18; i++) this.mote(HERO_X + (Math.random() - 0.5) * 30, GROUND_Y - 10 - Math.random() * 50, "#67e8f9");
+        this.after(260, () => this.fx.push({ kind: "burst", x: HERO_X + 6, y: GROUND_Y - 58, start: this.now, dur: 380, color: "#67e8f9", size: 30 }));
         this.after(700, () => this.setAnim(this.h, "idle"));
         return 600;
       }
@@ -325,7 +344,7 @@ export class FightScene {
         if (beat.projectile) return this.bossThrow(() => this.heroHurt(beat));
         if (beat.charge) return this.bossCharge(() => this.heroHurt(beat));
         this.setAnim(this.b, "attack"); this.move(this.b, -46, 260);
-        const hit = this.impactAfterFrames(2, BOSS_FPS.attack) + 40;
+        const hit = this.impactAfterFrames(BOSS_IMPACT_FRAME, BOSS_FPS.attack) + 40;
         this.after(hit, () => this.heroHurt(beat));
         this.after(hit + 260, () => this.move(this.b, 0, 320));
         this.after(hit + 340, () => this.setAnim(this.h, "idle"));
@@ -465,7 +484,7 @@ export class FightScene {
         if (beat.projectile) return this.bossThrow(sidestep);
         if (beat.charge) return this.bossCharge(sidestep);
         this.setAnim(this.b, "attack"); this.move(this.b, -46, 260);
-        const hit = this.impactAfterFrames(2, BOSS_FPS.attack) + 40;
+        const hit = this.impactAfterFrames(BOSS_IMPACT_FRAME, BOSS_FPS.attack) + 40;
         this.after(hit, sidestep);
         this.after(hit + 260, () => this.move(this.b, 0, 320));
         return hit + 600;
@@ -486,7 +505,7 @@ export class FightScene {
     this.setAnim(this.h, "attack");
     sfx("cast");
     const fps = this.heroFps("attack");
-    const launch = this.impactAfterFrames(2, fps);
+    const launch = this.impactAfterFrames(HERO_IMPACT_FRAME, fps);
     const flight = 320;
     this.after(launch, () => {
       const [tx, ty] = this.bossCenter();
@@ -583,6 +602,9 @@ export class FightScene {
     this.b.dx = { from: kb, to: 0, start: this.now, dur: 320 };
     this.fx.push({ kind: "slash", x: sx, y: sy, start: this.now, dur: 180, color: beat.crit ? "#facc15" : "#ffffff", size: beat.heavy ? 34 : 24, flip: followUp });
     this.burst(sx, sy, beat.crit ? "#facc15" : this.boss.accent, beat.heavy || beat.crit ? 26 : 14, beat.heavy ? 3 : 2);
+    this.fx.push({ kind: "star", x: sx, y: sy, start: this.now, dur: beat.heavy || beat.crit ? 170 : 120, color: beat.crit ? "#fde68a" : "#ffffff", size: beat.heavy || beat.crit ? 22 : 15 });
+    if (this.hero.style === "mage" && !followUp) this.fx.push({ kind: "burst", x: sx, y: sy, start: this.now, dur: 440, color: beat.crit ? "#facc15" : "#67e8f9", size: beat.heavy ? 46 : 38 });
+    if (beat.heavy || beat.crit) this.dust(this.bossFront + 30, 1);
     if (beat.crit) this.fx.push({ kind: "ring", x: sx, y: sy, start: this.now, dur: 260, color: "#facc15", size: 46 });
     this.shake(beat.heavy || beat.crit ? 6 : 3, beat.heavy ? 260 : 160);
     if (!followUp && (beat.heavy || beat.crit)) this.hitstop(beat.crit ? 110 : 70);
@@ -796,7 +818,10 @@ export class FightScene {
   /** Dust kicked up from the ground. */
   private dust(x: number, dir: 1 | -1) {
     if (this.reduced) return;
-    for (let i = 0; i < 8; i++) this.particles.push({ x: x + (Math.random() - 0.5) * 10, y: GROUND_Y - 1 - Math.random() * 3, vx: dir * (0.4 + Math.random() * 1.2), vy: -0.3 - Math.random() * 0.6, life: 18 + Math.random() * 10, max: 28, color: "#a8a29e", size: 2, g: 0.03, kind: "dust" });
+    for (let i = 0; i < 12; i++) {
+      const out = i % 2 ? dir : -dir;                       // a puff that spreads both ways, more forward
+      this.particles.push({ x: x + (Math.random() - 0.5) * 10, y: GROUND_Y - 1 - Math.random() * 3, vx: out * (0.3 + Math.random() * (out === dir ? 1.4 : 0.6)), vy: -0.2 - Math.random() * 0.5, life: 20 + Math.random() * 14, max: 34, color: i % 3 ? "#a8a29e" : "#d6d3d1", size: 2, g: 0.015, kind: "dust" });
+    }
   }
 
   private step(k: number) {
@@ -851,7 +876,7 @@ export class FightScene {
     const hx = Math.round(HERO_X + tweenAt(this.h.dx, now));
     const bxOff = Math.round(tweenAt(this.b.dx, now));
     this.shadow(hx, 18);
-    const pf = this.pet ? petFrame(this.pet, this.reduced ? 0 : Math.floor((now / 1000) * PET_FPS)) : null;
+    const pf = this.pet ? petFrame(this.pet, this.reduced ? 0 : Math.floor((now / 1000) * PET_FPS), this.opts.petStage ?? "young") : null;
     const petX = HERO_X + PET_OFFSET[0];
     if (pf && !petById(this.pet)?.flies) this.shadow(petX, 9);
     if (!this.b.hidden) this.shadow(this.bossFront + 55 + bxOff, 60);
@@ -860,6 +885,7 @@ export class FightScene {
     if (!this.b.hidden) this.drawBoss(bxOff);
     // the pet stays on its mark behind the champion; then the champion
     if (pf) ctx.drawImage(toCanvas(pf), petX - PET_FRAME.anchor[0], GROUND_Y + PET_OFFSET[1] - PET_FRAME.anchor[1]);
+    if (this.mount && this.h.anim !== "ride") this.drawMountLeaving(hx);
     this.drawHero(hx);
 
     // fx
@@ -875,7 +901,18 @@ export class FightScene {
     ctx.globalAlpha = Math.max(0, Math.min(1, alpha));
     ctx.fillStyle = p.color;
     if (streak) ctx.fillRect(Math.round(p.x), Math.round(p.y), 1, 4);
-    else ctx.fillRect(Math.round(p.x), Math.round(p.y), p.size, p.size);
+    else if (p.kind === "spark" && Math.hypot(p.vx, p.vy) > 1.2) {
+      // a fast spark is a short streak along its flight, its head brighter
+      const n = Math.min(4, Math.round(Math.hypot(p.vx, p.vy)));
+      for (let i = n; i >= 0; i--) {
+        ctx.globalAlpha = Math.max(0, Math.min(1, alpha)) * (1 - i / (n + 1));
+        ctx.fillRect(Math.round(p.x - p.vx * i * 0.5), Math.round(p.y - p.vy * i * 0.5), p.size, p.size);
+      }
+    } else if (p.kind === "dust") {
+      const grow = Math.round((1 - p.life / p.max) * 2);
+      ctx.globalAlpha = Math.max(0, Math.min(1, alpha)) * 0.7;
+      ctx.fillRect(Math.round(p.x) - (grow >> 1), Math.round(p.y) - (grow >> 1), p.size + grow, p.size + grow);
+    } else ctx.fillRect(Math.round(p.x), Math.round(p.y), p.size, p.size);
     ctx.globalAlpha = 1;
   }
 
@@ -895,9 +932,35 @@ export class FightScene {
     try { this.drawHeroFrame(x); } finally { ctx.globalAlpha = 1; }
   }
 
+  /** The mount trotting back off the stage after it carried the fighter in (fading as it goes). */
+  private drawMountLeaving(hx: number) {
+    const t = (this.now - this.mountLeave.start) / Math.max(1, this.mountLeave.dur);
+    if (!this.mountLeave.dur || t < 0 || t >= 1) return;
+    const m = mountFrame(this.mount!, Math.floor((this.now / 1000) * PET_FPS * 1.5));
+    if (!m) return;
+    const x = hx - 30 - easeOut(t) * 200;
+    const ctx = this.ctx;
+    ctx.globalAlpha = 1 - t;
+    ctx.save(); ctx.translate(Math.round(x + m.buf.w - MOUNT_FRAME.anchor[0]), GROUND_Y - MOUNT_FRAME.anchor[1]); ctx.scale(-1, 1);
+    ctx.drawImage(toCanvas(m.buf), 0, 0); ctx.restore();
+    ctx.globalAlpha = 1;
+  }
+
   private drawHeroFrame(x: number) {
     const ctx = this.ctx;
     const { anim, i } = this.heroAnimIndex();
+    if (anim === "ride" && this.mount) {
+      // the mount under the fighter; the fighter's hips on its saddle
+      const m = mountFrame(this.mount, Math.floor((this.now / 1000) * PET_FPS * 1.5));
+      if (m) {
+        const mx = x - MOUNT_FRAME.anchor[0], my = GROUND_Y - MOUNT_FRAME.anchor[1];
+        ctx.drawImage(toCanvas(m.buf), mx, my);
+        const f = heroFrame(this.hero, "ride", i);
+        const hip = solve(this.hero.look.build, heroAnims(this.hero.style).ride[i % heroAnims(this.hero.style).ride.length], HERO_FRAME.anchor, this.hero.look.scale).hip;
+        ctx.drawImage(toCanvas(f.buf), Math.round(mx + m.seat[0] - hip[0]), Math.round(my + m.seat[1] - hip[1]));
+        return;
+      }
+    }
     if (this.heroSheet) {
       const fr = sheetFrame(this.heroSheet, anim, i), a = this.heroSheet.entry.anchor;
       ctx.drawImage(this.heroSheet.image, fr.sx, fr.sy, fr.sw, fr.sh, x - a[0], GROUND_Y - a[1], fr.sw, fr.sh);
@@ -952,14 +1015,48 @@ export class FightScene {
     const t = (this.now - f.start) / f.dur;
     ctx.fillStyle = f.color;
     if (f.kind === "slash") {
-      // a crescent of pixels sweeping across the target
-      const n = 26;
-      for (let i = 0; i < n * Math.min(1, t * 1.6); i++) {
+      // a crescent sweeping across the target: thick in the middle, a white core inside a coloured rim
+      const n = 40, head = Math.min(1, t * 1.8), tail = Math.max(0, t * 1.8 - 0.8);
+      for (let i = Math.floor(n * tail); i < n * head; i++) {
         const u = i / n, ang = (f.flip ? 0.9 : -0.9) + u * (f.flip ? -2.0 : 2.0);
         const r = f.size * (0.7 + u * 0.3);
-        const w = u > 0.2 && u < 0.8 ? 2 : 1;
-        ctx.globalAlpha = 1 - t;
-        ctx.fillRect(Math.round(f.x + Math.cos(ang) * r * 0.6 - f.size * 0.3), Math.round(f.y + Math.sin(ang) * r * 0.9), w, w);
+        const thick = Math.max(1, Math.round(Math.sin(u * Math.PI) * 3.4));
+        const x = f.x + Math.cos(ang) * r * 0.6 - f.size * 0.3, y = f.y + Math.sin(ang) * r * 0.9;
+        const nx = Math.cos(ang) * 0.6, ny = Math.sin(ang) * 0.9;
+        for (let k = 0; k < thick; k++) {
+          ctx.globalAlpha = (1 - t) * (k === 0 ? 0.6 : 1);
+          ctx.fillStyle = k >= thick - 1 && thick > 1 ? "#ffffff" : f.color;
+          ctx.fillRect(Math.round(x - nx * k), Math.round(y - ny * k), 1, 1);
+        }
+      }
+      ctx.globalAlpha = 1;
+    } else if (f.kind === "star") {
+      // the impact flash: four long rays and four short ones, shooting out and thinning
+      const u = easeOut(t), len = f.size * (0.4 + u * 0.8);
+      ctx.globalAlpha = 1 - t * t;
+      for (let k = 0; k < 8; k++) {
+        const ang = (k / 8) * Math.PI * 2 + 0.2, L = k % 2 ? len * 0.45 : len;
+        for (let d = Math.floor(L * u * 0.5); d < L; d++) ctx.fillRect(Math.round(f.x + Math.cos(ang) * d), Math.round(f.y + Math.sin(ang) * d), 1, 1);
+      }
+      const c = Math.round(4 * (1 - t));
+      if (c > 0) { ctx.fillStyle = "#ffffff"; ctx.fillRect(Math.round(f.x) - c, Math.round(f.y) - c, c * 2, c * 2); }
+      ctx.globalAlpha = 1;
+    } else if (f.kind === "burst") {
+      // a magic burst: a bright core that pops, a ring of runes flying out, a second ring trailing it
+      const u = easeOut(t);
+      ctx.globalAlpha = 1 - t;
+      const core = Math.round(f.size * 0.3 * (1 - t));
+      if (core > 0) {
+        ctx.fillRect(Math.round(f.x) - core, Math.round(f.y) - core, core * 2, core * 2);
+        ctx.fillStyle = "#ffffff"; ctx.fillRect(Math.round(f.x) - (core >> 1), Math.round(f.y) - (core >> 1), core, core);
+        ctx.fillStyle = f.color;
+      }
+      for (const [rk, sz] of [[1, 2], [0.65, 1]] as const) {
+        const r = f.size * u * rk;
+        for (let a = 0; a < 16; a++) {
+          const ang = (a / 16) * Math.PI * 2 + t * 1.5 * (rk === 1 ? 1 : -1);
+          ctx.fillRect(Math.round(f.x + Math.cos(ang) * r), Math.round(f.y + Math.sin(ang) * r * 0.8), sz, sz);
+        }
       }
       ctx.globalAlpha = 1;
     } else if (f.kind === "ring") {

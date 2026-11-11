@@ -136,7 +136,13 @@ export async function mockApi(page: Page, { signedIn = true, advanced = true, do
   };
   const championProgress = Object.fromEntries(Object.entries(KITS).map(([id, [p, u]]) => [id, {
     xp: id === "kaien" ? 120 : 0, level: id === "kaien" ? 2 : 1, level_xp: id === "kaien" ? 100 : 0, next_level_xp: id === "kaien" ? 250 : 100,
-    battles: id === "kaien" ? 3 : 0, wins: id === "kaien" ? 2 : 0, mastery: mastery(id), kit: kit(p, u),
+    battles: id === "kaien" ? 3 : 0, wins: id === "kaien" ? 2 : 0, mastery: mastery(id), kit: { ...kit(p, u), weakness: { name: `${p} Flaw`, text: `${p} has a cost.` } },
+    // champion mastery (Phase 1): Kaien part-way, with one challenge done
+    mastery_pct: id === "kaien" ? 8 : 0, passive_learnable: false, mastered: false,
+    challenges: [
+      { id: "win10", text: "Win 10 fights", progress: id === "kaien" ? 2 : 0, target: 10, done: false },
+      { id: "right100", text: "Answer 100 questions right in fights", progress: id === "kaien" ? 100 : 0, target: 100, done: id === "kaien" },
+    ],
     signature: { weapon: `mastery_${id}_weapon`, perk: { name: `${p} Edge`, text: `${p}, a little stronger.` }, finisher: `${u} Finale`, owned: false, worn: false },
     // Stage C1 locks: Asha, Brak and Mira have joined; Vex waits on Bestiary tier IV, Thorne on level 25
     unlock: id === "vex" ? { unlocked: false, celebrated: false, source: null, how: "Beat every creature in Bestiary tier IV", have: 0, need: 2, reward: { xp: 600, coins: 400 } }
@@ -148,6 +154,38 @@ export async function mockApi(page: Page, { signedIn = true, advanced = true, do
     loadout: { armor: worn.armor ?? null, headgear: worn.headgear ?? null, weapon: worn.weapon ?? null, pet: worn.pet ?? null },
     progress: championProgress,
   });
+  const node = (id: string, name: string, ranks = 1) => ({ id, branch: id[0], tier: Number(id[1]), name, text: `${name} helps.`, ranks });
+  const hero = {
+    level: 4, xp: 400, level_xp: 40, next_level_xp: 240, skill_points: 3, skill_spent: 0, loadout_budget: 7, loadout_cost: 4,
+    look: null as unknown, build: { style: "apprentice", passive: "second_wind", ultimate: "rally", perks: [] as string[], weaknesses: [] as string[] }, tree: {} as Record<string, number>,
+    catalog: {
+      styles: [
+        { id: "apprentice", name: "Apprentice Blade", bonus: "A right Guard also gives +1 Focus.", weakness: { name: "Untrained", text: "Your ultimate charges 10% slower." }, anim: "sword", owned: true, how: "Your starting style", progress: null, for_sale: null },
+        { id: "katana", name: "Katana", bonus: "Strike hits x1.1.", weakness: { name: "Glass Edge", text: "A wrong Heavy also costs you 1 heart." }, anim: "blade", owned: false, how: "Kaien at 100% mastery", progress: 42, for_sale: null },
+        { id: "chain_whip", name: "Chain Whip", bonus: "Jab hits x0.7 with 5 more seconds.", weakness: { name: "Loose Grip", text: "Strike hits x0.9." }, anim: "whip", owned: false, how: "Shop: 1200 coins at player level 12", progress: null, for_sale: { coins: 1200, level: 12, can_buy: false } },
+      ],
+      passives: [
+        { id: "second_wind", name: "Second Wind", text: "Once a fight, when you drop to 1 heart, you heal 2.", cost: 2, owned: true, how: "Your starting passive", progress: null },
+        { id: "riposte", name: "Riposte", text: "A right Guard hits back.", cost: 4, owned: false, how: "Kaien at 50% mastery", progress: 42 },
+      ],
+      ultimates: [
+        { id: "rally", name: "Rally", text: "+2 hearts and +1 Focus.", cost: 2, owned: true, how: "Your starting ultimate", progress: null },
+        { id: "overdrive", name: "Overdrive", text: "Your next 2 right answers hit x1.6.", cost: 4, owned: false, how: "Skill tree: Overdrive", progress: null },
+      ],
+      perks: [{ id: "lucky_coin", name: "Lucky Coin", text: "+10% coins from fights.", cost: 1, owned: false, how: "Shop", for_sale: null }],
+      weaknesses: [{ id: "glass_body", name: "Glass Body", text: "You fight with 3 fewer hearts.", points: 3 }],
+      tree: [node("o1", "Sharpened", 2), node("o2", "Opening"), node("o3", "Combo Fuel"), node("o4", "Heavy Hands", 2), node("o5", "Finisher"), node("o6", "Overdrive"),
+        node("d1", "Tough", 2), node("d2", "Parry"), node("d3", "Thick Skin"), node("d4", "Steady"), node("d5", "Last Stand"), node("d6", "Aegis Dome"),
+        node("m1", "Recall", 2), node("m2", "Insightful"), node("m3", "Focus Flow"), node("m4", "Deep Focus"), node("m5", "Quick Study"), node("m6", "Clarity")],
+    },
+    looks_unlocked: [] as string[],
+  };
+  const forge = {
+    items: [{ id: "hat_headband_red", category: "headgear", tier: 1, xp: 120, bonus: 0, next: { xp: 100, coins: 150, common: 3, rare: 0 }, ready: true, worn: true, saddled: false }],
+    mount: null as string | null,
+    materials: [{ id: "bronze_ore", name: "Bronze ore", count: 4, rare: false }],
+    rules: { upgrades: [], saddle: { tier: 4, coins: 600, rare: 2 }, mount_bonus: {} },
+  };
 
   const scroll = <T extends { id: string; kind: string; title: string }>(o: T) => ({ text: "", progress: 0, target: 1, completed: false, claimed: false, reward: { xp: 300, coins: 150 }, call: { place: "arena" }, period: "", ...o });
   const questBoard = {
@@ -276,12 +314,26 @@ export async function mockApi(page: Page, { signedIn = true, advanced = true, do
       if (u) u.celebrated = true;
       return json(route, 200, { champion_id: body.champion_id, first, reward: first ? u!.reward : { xp: 0, coins: 0 }, state: championState() });
     }
+    // Your hero (GET / PUT /hero*): level 4, the starter kit, Kaien's style still locked at 42%
+    if (path === "/hero" && method === "GET") return json(route, 200, hero);
+    if (path === "/hero/look" && method === "PUT") { hero.look = (route.request().postDataJSON() as { look: unknown }).look as never; return json(route, 200, hero); }
+    if (path === "/hero/build" && method === "PUT") { hero.build = (route.request().postDataJSON() as { build: typeof hero.build }).build; return json(route, 200, hero); }
+    if (path === "/hero/tree" && method === "PUT") { hero.tree = (route.request().postDataJSON() as { tree: Record<string, number> }).tree; return json(route, 200, hero); }
+    // The forge (GET /forge): the worn Red Headband part-way to tier II, a little bronze ore
+    if (path === "/forge" && method === "GET") return json(route, 200, forge);
+    if (path === "/forge/upgrade" && method === "POST") {
+      const id = (route.request().postDataJSON() as { item: string }).item;
+      const it = forge.items.find((i) => i.id === id);
+      if (it) { it.tier += 1; it.xp = 0; it.ready = false; it.bonus = 0.05 * (it.tier - 1); }
+      return json(route, 200, forge);
+    }
     if (path === "/avatar/champion") {
       if (!signedIn) return json(route, 401, { error: { code: "unauthenticated", message: "Please log in to continue.", action: "relogin", details: null } });
       if (method === "PUT") {
         const body = route.request().postDataJSON() as { champion_id?: string };
-        if (!championState().champions.includes(body.champion_id ?? "")) return json(route, 422, { error: { code: "unknown_champion", message: "That champion doesn't exist.", action: null, details: null } });
-        if (!(championProgress[body.champion_id!].unlock as { unlocked: boolean }).unlocked) return json(route, 403, { error: { code: "champion_locked", message: "That champion hasn't joined you yet.", action: null, details: null } });
+        const isHero = body.champion_id === "hero";              // your hero is always there
+        if (!isHero && !championState().champions.includes(body.champion_id ?? "")) return json(route, 422, { error: { code: "unknown_champion", message: "That champion doesn't exist.", action: null, details: null } });
+        if (!isHero && !(championProgress[body.champion_id!].unlock as { unlocked: boolean }).unlocked) return json(route, 403, { error: { code: "champion_locked", message: "That champion hasn't joined you yet.", action: null, details: null } });
         champion.champion_id = body.champion_id!; champion.chosen = true;
       }
       return json(route, 200, championState());

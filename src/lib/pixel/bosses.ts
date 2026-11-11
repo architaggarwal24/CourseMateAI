@@ -46,15 +46,34 @@ export const BOSS_FRAME = { w: 280, h: 262, anchor: [150, 254] as Pt };
 const P0: BossParams = { t: 0, bob: 0, reach: 0, recoil: 0, mouth: 0, glow: 0, fall: 0, sink: 0 };
 const P = (o: Partial<BossParams>): BossParams => ({ ...P0, ...o });
 
-export const BOSS_ANIMS: Record<BossAnim, BossParams[]> = {
-  idle: [0, 1, 2, 3].map((i) => P({ t: i / 4, bob: [0, 1, 2, 1][i] })),
+/** The key poses; BOSS_ANIMS below adds an eased in-between after each (and a smooth 8-frame breath for idle). */
+const BOSS_KEYS: Record<Exclude<BossAnim, "idle">, BossParams[]> = {
   attack: [P({ reach: -0.7, mouth: 0.3, t: 0.1 }), P({ reach: 0.4, mouth: 1, t: 0.2 }), P({ reach: 1, mouth: 1, t: 0.3 }), P({ reach: 0.6, mouth: 0.4, t: 0.4 }), P({ t: 0.5, bob: 1 })],
   hit: [P({ recoil: 1, mouth: 0.7, t: 0.6 }), P({ recoil: 0.45, mouth: 0.3, t: 0.7 })],
   cast: [P({ glow: 0.6, mouth: 0.4, reach: -0.3 }), P({ glow: 1.4, mouth: 1, reach: -0.4, t: 0.3 }), P({ glow: 2, mouth: 1, reach: 0.2, t: 0.5 })],
   // KO: staggers and sags; the scene finishes it (flash, then the sprite crumbles into pixels).
   ko: [P({ recoil: 1, mouth: 1 }), P({ recoil: 1, mouth: 1, fall: -6, sink: 3 }), P({ recoil: 1, mouth: 0.6, fall: -11, sink: 7 }), P({ recoil: 1, mouth: 0.3, fall: -15, sink: 11 })],
 };
-export const BOSS_FPS: Record<BossAnim, number> = { idle: 4, attack: 10, hit: 9, cast: 7, ko: 6 };
+
+const mixParams = (a: BossParams, c: BossParams, u: number): BossParams => {
+  const o = { ...a };
+  for (const k of Object.keys(P0) as (keyof BossParams)[]) o[k] = a[k] + (c[k] - a[k]) * u;
+  return o;
+};
+const between = (keys: BossParams[]): BossParams[] => keys.flatMap((k, i) => (i < keys.length - 1 ? [k, mixParams(k, keys[i + 1], 0.5)] : [k]));
+
+export const BOSS_ANIMS: Record<BossAnim, BossParams[]> = {
+  // one slow breath over eight frames: the tails, tentacles and wings move on t
+  idle: Array.from({ length: 8 }, (_, i) => P({ t: i / 8, bob: (1 - Math.cos((i / 8) * Math.PI * 2)) })),
+  attack: between(BOSS_KEYS.attack),
+  hit: between(BOSS_KEYS.hit),
+  cast: between(BOSS_KEYS.cast),
+  ko: between(BOSS_KEYS.ko),
+};
+/** Frame rates: doubled with the in-betweens, so every move takes as long as before. */
+export const BOSS_FPS: Record<BossAnim, number> = { idle: 8, attack: 20, hit: 18, cast: 14, ko: 12 };
+/** The attack frame where the blow lands (key 2). */
+export const BOSS_IMPACT_FRAME = 4;
 
 // ── helpers ───────────────────────────────────────────────────────────────────
 const W = (h: string, o?: Parameters<typeof ramp>[1]) => ramp(h, o);
@@ -62,10 +81,22 @@ const TEETH = W("#f5f5f4", { contrast: 0.6 });
 const sin = (x: number) => Math.sin(x * Math.PI * 2);
 
 /** A smooth tube through points [x, y, radius] (necks, tails, tentacles, serpent bodies). */
-function tube(b: PixelBuffer, pts: [number, number, number][], m: Material, belly?: Material) {
+function tube(b: PixelBuffer, pts: [number, number, number][], m: Material, belly?: Material, scales = false) {
   for (let i = 0; i + 1 < pts.length; i++) {
     const [x0, y0, r0] = pts[i], [x1, y1, r1] = pts[i + 1];
     b.capsule(x0, y0, x1, y1, r0, r1, m, { rim: i === 0, smooth: true });
+  }
+  // scale rows: a short curved band across thick tubes every few pixels, darker on the shadow side
+  for (let i = 0; scales && i + 1 < pts.length; i++) {
+    const [x0, y0, r0] = pts[i], [x1, y1, r1] = pts[i + 1];
+    const len = Math.hypot(x1 - x0, y1 - y0);
+    if (Math.min(r0, r1) < 4 || len < 3) continue;
+    const ux = (x1 - x0) / len, uy = (y1 - y0) / len, nx = -uy, ny = ux;
+    for (let d = 3; d < len; d += 6) {
+      const r = r0 + (r1 - r0) * (d / len), cx = x0 + ux * d, cy = y0 + uy * d;
+      b.lineOn(cx - nx * r * 0.7, cy - ny * r * 0.7, cx + ux * 1.5, cy + uy * 1.5, m.ramp[1], m);
+      b.lineOn(cx + ux * 1.5, cy + uy * 1.5, cx + nx * r * 0.7, cy + ny * r * 0.7, m.ramp[1], m);
+    }
   }
   if (belly) {
     for (let i = 0; i + 1 < pts.length; i++) {
@@ -410,7 +441,7 @@ function hydra(scale: Material, belly: Material, eyeM: Material, crest: Material
   return (b: PixelBuffer, foot: Pt, p: BossParams) => {
     const bx = foot[0] - 20 - p.recoil * 8, by = foot[1] - 26 + p.sink;
     // coiled body mound + tail
-    tube(b, wave([bx - 70, foot[1] - 8], [bx - 20, foot[1] - 12], 6, 6, p.t * 6, 4, 14), scale, belly);
+    tube(b, wave([bx - 70, foot[1] - 8], [bx - 20, foot[1] - 12], 6, 6, p.t * 6, 4, 14), scale, belly, true);
     b.ellipse(bx, by, 46, 28, scale);
     b.ellipse(bx + 6, by + 12, 34, 13, belly, { clip: true, rim: false });
     // five necks: back to front
@@ -422,7 +453,7 @@ function hydra(scale: Material, belly: Material, eyeM: Material, crest: Material
       const sway = sin(p.t + ph) * 8;
       const tip: Pt = [base[0] + 30 + reach + sway + i * 4, base[1] - len * 0.85 + Math.max(0, p.reach) * 20 + p.recoil * 10 + (p.fall ? -p.fall * 1.2 : 0)];
       const pts = wave(base, tip, 7, 10, p.t * 6 + i, 10, 6);
-      tube(b, pts, far ? farSide(scale) : scale, far ? undefined : belly);
+      tube(b, pts, far ? farSide(scale) : scale, far ? undefined : belly, true);
       const last = pts[pts.length - 1], prev = pts[pts.length - 2];
       const ang = Math.atan2(last[0] - prev[0], last[1] - prev[1]) * 180 / Math.PI;
       head(b, last[0], last[1], (ang * 0.25 + 95 * 0.75) + (p.reach > 0 ? 15 : 0), { ...p, mouth: i === 3 ? p.mouth : p.mouth * 0.5 + sin(p.t + ph) * 0.15 });
@@ -436,7 +467,7 @@ function bigSerpent(scale: Material, belly: Material, eyeM: Material, fin: Mater
     const gy = foot[1] - 10 + p.sink;
     const lean = Math.max(0, p.reach) * 30 - p.recoil * 16;
     // ground coils (back)
-    tube(b, wave([foot[0] - 120, gy], [foot[0] + 40, gy - 4], 10, 8, p.t * 6, 6, 17), farSide(scale));
+    tube(b, wave([foot[0] - 120, gy], [foot[0] + 40, gy - 4], 10, 8, p.t * 6, 6, 17), farSide(scale), undefined, true);
     // rising body: S-curve
     const pts: [number, number, number][] = [];
     for (let i = 0; i <= 14; i++) {
@@ -445,7 +476,7 @@ function bigSerpent(scale: Material, belly: Material, eyeM: Material, fin: Mater
       const y = gy - u * 165 + p.recoil * u * 20 + Math.max(0, p.reach) * u * 30;
       pts.push([x, y, 19 - u * 6]);
     }
-    tube(b, pts, scale, belly);
+    tube(b, pts, scale, belly, true);
     // dorsal fin spikes
     for (let i = 3; i < 13; i += 2) {
       const [x, y, r] = pts[i];
@@ -460,7 +491,7 @@ function naga(scale: Material, belly: Material, skin: Material, gold: Material, 
   return (b: PixelBuffer, foot: Pt, p: BossParams) => {
     const gy = foot[1] - 10 + p.sink;
     // coiled serpent tail
-    tube(b, wave([foot[0] - 110, gy - 2], [foot[0] - 10, gy - 6], 9, 7, p.t * 6, 6, 18), scale, belly);
+    tube(b, wave([foot[0] - 110, gy - 2], [foot[0] - 10, gy - 6], 9, 7, p.t * 6, 6, 18), scale, belly, true);
     b.ellipse(foot[0] - 10, gy - 14, 30, 20, scale);
     // upright torso from the coil
     const lean = Math.max(0, p.reach) * 16 - p.recoil * 12;

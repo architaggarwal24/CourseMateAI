@@ -153,7 +153,7 @@ describe("the Scholar's desk", () => {
     const notes = screen.getByRole("list", { name: "Fight notes" });
     expect(notes.textContent).toContain("Beaten 2 of 3 fights (67%).");
     expect(notes.textContent).toContain("3 more victories for the silver seal");
-    expect(screen.getByRole("link", { name: "Hunt it again" }).getAttribute("href")).toBe("/hero?tab=arena&hunt=minotaur");
+    expect(screen.getByRole("link", { name: "Hunt it again" }).getAttribute("href")).toBe("/arena?hunt=minotaur");
     const sketch = screen.getByRole("button", { name: "Provoke the Minotaur" });
     fireEvent.click(sketch);
     expect(sketch.getAttribute("data-anim")).toBe("attack");
@@ -173,7 +173,7 @@ describe("the Scholar's desk", () => {
     expect(ledger.textContent).toContain("1:15 · Minotaur");
     expect(screen.getByText("Seals: 0 gold, 0 silver, 1 bronze")).toBeTruthy();
     expect(ledger.textContent).toContain("Next quarry");
-    expect(within(ledger).getByRole("link", { name: "Hunt" }).getAttribute("href")).toBe("/hero?tab=arena&hunt=oni");
+    expect(within(ledger).getByRole("link", { name: "Hunt" }).getAttribute("href")).toBe("/arena?hunt=oni");
   });
 
   it("the first visit replays nothing; a page written since shows as fresh ink, and opening it plays (and ends) its ritual", async () => {

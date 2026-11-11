@@ -19,13 +19,20 @@ import { DEFAULT_HERO, HEROES } from "@/lib/pixel/heroes";
 export const CHAMPION_CACHE_KEY = "cmai_champion";
 export const LEGACY_HERO_KEY = "cmai_arena_hero";
 
-const isChampion = (id: unknown): id is string => typeof id === "string" && HEROES.some((h) => h.id === id);
+/** One of the six champions, or "hero" (your hero, useMyHero). */
+const isChampion = (id: unknown): id is string => typeof id === "string" && (id === "hero" || HEROES.some((h) => h.id === id));
 
 /** A champion's progress (XP from battles fought with it), its kit and the mastery skins its levels unlock. */
 export interface ChampionProgress {
   xp: number; level: number; level_xp: number; next_level_xp: number | null; battles: number; wins: number;
   mastery: { id: string; slot: string; level: number }[];
-  kit: { passive: { name: string; text: string }; ultimate: { name: string; text: string } };
+  kit: { passive: { name: string; text: string }; ultimate: { name: string; text: string }; weakness?: { name: string; text: string } };
+  /** Champion mastery 0-100% (70% XP, 30% challenges) and its six challenges. Missing from older servers. */
+  mastery_pct?: number;
+  challenges?: { id: string; text: string; progress: number; target: number; done: boolean }[];
+  /** 50%: your hero can learn this champion's passive. 100% (mastered): style, emotes, ultimate and look. */
+  passive_learnable?: boolean;
+  mastered?: boolean;
   /** The champion's own mastery weapon (the level 10 skin): its perk, its finisher, and whether it is owned / worn. */
   signature?: { weapon: string; perk: { name: string; text: string }; finisher: string; owned: boolean; worn: boolean };
   /** Stage C1 locks: how the champion joins, how far along that is, and whether its ceremony was seen. */

@@ -4,10 +4,10 @@ import { DAILY_CALL, callHref, dailyScroll } from "./board";
 // Stage Q1: "Answer the call" opens the exact place a quest is done.
 describe("the quest board's links", () => {
   it("each place has its link; a hunt fills its topic in the arena", () => {
-    expect(callHref({ place: "arena", topic: "graph algorithms" })).toBe("/hero?tab=arena&topic=graph%20algorithms");
-    expect(callHref({ place: "arena" })).toBe("/hero?tab=arena");
+    expect(callHref({ place: "arena", topic: "graph algorithms" })).toBe("/arena?topic=graph%20algorithms");
+    expect(callHref({ place: "arena" })).toBe("/arena");
     expect(callHref({ place: "review" })).toBe("/study?tab=review");
-    expect(callHref({ place: "bestiary" })).toBe("/hero?tab=bestiary");
+    expect(callHref({ place: "bestiary" })).toBe("/bestiary");
     expect(callHref(undefined)).toBe("/today");
   });
 

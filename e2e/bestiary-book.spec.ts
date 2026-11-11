@@ -6,7 +6,7 @@ import { mockApi } from "./fixtures/api";
 test("a page curls over; the contents turn a stack of pages to the creature", async ({ page }, info) => {
   test.skip(info.project.name !== "desktop", "the two-page spread is a wide-screen view");
   await mockApi(page);
-  await page.goto("/hero?tab=bestiary");
+  await page.goto("/bestiary");
   const folio = page.locator(".tome-folio");
   await expect(folio).toHaveText("Pages 1–2 of 29");
 
@@ -35,7 +35,7 @@ test("a page curls over; the contents turn a stack of pages to the creature", as
 test("the desk: tier map, hunt record, a living page and its Hunt button", async ({ page }, info) => {
   await mockApi(page);
   await page.addInitScript(() => localStorage.setItem("cmai_tome_seen_v1", JSON.stringify({ written: [], tiers: [1] })));
-  await page.goto("/hero?tab=bestiary");
+  await page.goto("/bestiary");
   await expect(page.getByRole("navigation", { name: "The road through the book" })).toBeVisible();
   const ledger = page.getByRole("region", { name: "Hunt record" });
   await expect(ledger).toContainText("Next quarry");
@@ -51,7 +51,7 @@ test("the desk: tier map, hunt record, a living page and its Hunt button", async
   }
   await expect(page.getByText("Fresh ink")).toHaveCount(0, { timeout: 6000 });
   const hunt = page.getByRole("link", { name: "Hunt it again" });
-  await expect(hunt).toHaveAttribute("href", "/hero?tab=arena&hunt=minotaur");
+  await expect(hunt).toHaveAttribute("href", "/arena?hunt=minotaur");
   await page.getByRole("button", { name: "Provoke the Minotaur" }).click();
   if (process.env.SHOT_DIR) await page.screenshot({ path: `${process.env.SHOT_DIR}/desk-page-${info.project.name}.png` });
   await hunt.click();

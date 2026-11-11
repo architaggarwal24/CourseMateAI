@@ -9,7 +9,7 @@ const read = (p: string) => readFileSync(`${root}${p}`, "utf8");
 // Screens whose buttons, fields and modals all come from the kit.
 const MIGRATED = [
   "app/login/page.tsx", "app/(app)/account/settings/page.tsx", "app/(app)/account/page.tsx",
-  "components/hero/HeroArea.tsx", "components/hero/HeroHeader.tsx",
+  "components/hero/PlayArea.tsx", "components/hero/MasteryTab.tsx", "components/hero/HeroHeader.tsx",
   "components/ErrorBoundary.tsx",
 ];
 

@@ -6,7 +6,7 @@ import { settle } from "./helpers";
 // Stage R3: the daily chest opens with coins raining; a level gained anywhere gets its own screen.
 test("the daily chest: open it once, coins rain, the loot is shown", async ({ page }) => {
   await mockApi(page);
-  await page.goto("/hero?tab=quests");
+  await page.goto("/quests");
   const chest = page.getByRole("region", { name: "Daily chest" });
   await expect(chest).toContainText("Streak bonus: +20% coins");
   await settle(page);
@@ -26,7 +26,7 @@ test("a level gained shows the level-up screen once", async ({ page }) => {
   // this browser last saw level 6; the server says 7
   // (only on the first load: init scripts run again on reload)
   await page.addInitScript(() => { try { if (!sessionStorage.getItem("seeded")) { sessionStorage.setItem("seeded", "1"); localStorage.setItem("cmai_level_seen:1", "6"); } } catch { /* */ } });
-  await page.goto("/hero?tab=quests");
+  await page.goto("/quests");
   const dialog = page.getByRole("dialog", { name: "Level up!" });
   await expect(dialog).toBeVisible();
   await expect(dialog.getByLabel("Level 7")).toBeVisible();

@@ -36,9 +36,9 @@ export const DAILY_CALL: Record<string, Call> = {
 /** The link behind "Answer the call". */
 export function callHref(call: Call | undefined): string {
   switch (call?.place) {
-    case "arena": return call.topic ? `${ROUTES.heroArena}&topic=${encodeURIComponent(call.topic)}` : ROUTES.heroArena;
+    case "arena": return call.topic ? `${ROUTES.heroArena}?topic=${encodeURIComponent(call.topic)}` : ROUTES.heroArena;
     case "chat": case "quiz": case "review": case "notes": case "flashcards": case "exam": return ROUTES.studyTab(call.place);
-    case "bestiary": return ROUTES.heroTab("bestiary");
+    case "bestiary": return ROUTES.heroBestiary;
     default: return ROUTES.today;
   }
 }

@@ -143,4 +143,13 @@ describe("useChampion locks", () => {
     expect(api.POST).toHaveBeenCalledWith("/avatar/champion/celebrate", { body: { champion_id: "asha" } });
     expect(ceremonyDue(useChampion.getState().progress)).toBeNull();
   });
+
+  it("your hero can be picked like a champion (it is always there)", async () => {
+    api.GET.mockResolvedValue(res(server()));
+    await useChampion.getState().load({ signedIn: true });
+    api.PUT.mockResolvedValue(res(server({ champion_id: "hero", chosen: true })));
+    expect(await useChampion.getState().choose("hero")).toBe(true);
+    expect(api.PUT).toHaveBeenCalledWith("/avatar/champion", { body: { champion_id: "hero" } });
+    expect(useChampion.getState().championId).toBe("hero");
+  });
 });

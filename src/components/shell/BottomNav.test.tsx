@@ -11,14 +11,26 @@ beforeEach(() => { nav.path = "/study"; nav.query = "tab=chat"; useReview.setSta
 afterEach(cleanup);
 
 describe("the phone bottom bar", () => {
-  it("has Today, Study, Review (with the due count), Hero and Me, at the thumb", () => {
+  it("has Today, Study, Review (with the due count), Arena, Champion and Me, at the thumb", () => {
     render(<BottomNav />);
     const links = within(screen.getByRole("navigation", { name: "Main" })).getAllByRole("link");
-    expect(links.map((l) => l.textContent?.replace(/,.*$/, "").replace(/\d+$/, ""))).toEqual(["Today", "Study", "Review", "Hero", "Me"]);
+    expect(links.map((l) => l.textContent?.replace(/,.*$/, "").replace(/\d+$/, ""))).toEqual(["Today", "Study", "Review", "Arena", "Champion", "Me"]);
     expect(links[0].getAttribute("href")).toBe("/today");
     expect(links[2].getAttribute("href")).toBe("/study?tab=review");
     expect(links[2].textContent).toContain("3 cards to review");
-    expect(links[4].getAttribute("href")).toBe("/account");
+    expect(links[3].getAttribute("href")).toBe("/arena");
+    expect(links[4].getAttribute("href")).toBe("/champion");
+    expect(links[5].getAttribute("href")).toBe("/account");
+  });
+
+  it("Arena is current in the arena; Champion stands for the other play pages", () => {
+    for (const [path, current] of [["/arena", "Arena"], ["/champion", "Champion"], ["/quests", "Champion"], ["/bestiary", "Champion"]]) {
+      nav.path = path; nav.query = "";
+      render(<BottomNav />);
+      const nav_ = screen.getByRole("navigation", { name: "Main" });
+      expect(within(nav_).getByRole("link", { current: "page" }).textContent, path).toBe(current);
+      cleanup();
+    }
   });
 
   it("marks the current one (Review is a Study tab, so it wins over Study there)", () => {

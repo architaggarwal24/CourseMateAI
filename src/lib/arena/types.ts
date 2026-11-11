@@ -49,6 +49,8 @@ export interface MechanicOutcome {
 export interface KitHud {
   champion: string; meter: number; max: number; ready: boolean; active: boolean;
   passive: { name: string; text: string }; ultimate: { name: string; text: string };
+  /** The champion's con (a wrong Heavy costs a heart, fewer hearts...). Missing from older servers. */
+  weakness?: { name: string; text: string };
   effects: Partial<Record<"armed" | "wall" | "vanish" | "fortress", string | number>>;
   /** Fighting with the champion's own mastery weapon: its perk and the finisher that ends the fight. */
   signature?: { name: string; text: string; finisher: string } | null;
@@ -97,6 +99,10 @@ export interface BattleResult {
   bestiary?: BestiaryFight | null;
   /** Champions this win brought (a Bestiary tier finished); the unlock ceremony follows. */
   champions_unlocked?: string[];
+  /** Mastery challenges this fight finished, for the champion who fought it. */
+  challenges_done?: string[];
+  /** The forge: XP each worn item earned, and the materials a Bestiary win dropped. */
+  forge?: { item_xp: number; items: string[]; materials: { id: string; name: string; count: number; rare: boolean }[] };
   /** The taunt's extra +25% of the win's reward. */
   taunt_bonus?: { xp: number; coins: number };
   new_achievements?: { id: string; name: string; description: string }[];

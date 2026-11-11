@@ -86,7 +86,7 @@ describe("Today", () => {
     expect(screen.getByRole("region", { name: "Streak" }).textContent).toContain("6-day streak");
     const quests = screen.getByRole("region", { name: "Daily quests" });
     expect(quests.textContent).toContain("1 of 2 done");
-    expect(within(quests).getByRole("link").getAttribute("href")).toBe("/hero?tab=quests");
+    expect(within(quests).getByRole("link").getAttribute("href")).toBe("/quests");
     const hero = screen.getByRole("region", { name: "Hero" });
     expect(hero.textContent).toContain("Lv 7");
     expect(hero.textContent).toContain("1,240");

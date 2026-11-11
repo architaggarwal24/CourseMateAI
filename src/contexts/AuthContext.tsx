@@ -10,6 +10,8 @@ import * as authApi from "@/lib/auth/authApi";
 import type { AuthFailure, SignInResult, SignUpForm } from "@/lib/auth/authApi";
 import { ROUTES } from "@/lib/routes";
 import { useChampion } from "@/hooks/useChampion";
+import { useMyHero } from "@/hooks/useMyHero";
+import { useForge } from "@/hooks/useForge";
 import { useReview } from "@/hooks/useReview";
 import { useCourses } from "@/hooks/useCourses";
 
@@ -85,6 +87,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   async function logout() {
     try { await rawApi.POST("/auth/logout"); } catch { /* signed out here either way */ }
     useChampion.getState().reset();             // the next person on this browser starts from the default
+    useMyHero.getState().reset();
+    useForge.getState().reset();
     useReview.getState().reset();
     useCourses.getState().reset();
     // A full page load to the landing page: every cached store starts empty, and the app frame never sees a

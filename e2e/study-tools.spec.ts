@@ -57,7 +57,7 @@ test("notes and a half-typed question are still there after going to Hero and ba
   await page.getByRole("link", { name: "Chat", exact: true }).first().click();
   await page.getByRole("textbox", { name: "Message" }).fill("what is glycolysis");
 
-  await page.goto("/hero");
+  await page.goto("/quests");
   await page.goto("/study?tab=notes&doc=doc-1");
   await expect(page.getByRole("heading", { level: 1, name: "Cell energy" })).toBeVisible();
   await page.getByRole("link", { name: "Chat", exact: true }).first().click();

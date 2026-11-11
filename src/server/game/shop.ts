@@ -108,6 +108,7 @@ export async function equip(ctx: RequestContext, p: Player, itemId: string) {
       return;
     }
     equipped[slot] = itemId;
+    if (slot === "pet" && equipped.mount === itemId) delete equipped.mount;        // a pet walking beside you isn't carrying you
   });
   return err ? { ok: false, reason: err } : { ok: true, equipped: a.equipped };
 }

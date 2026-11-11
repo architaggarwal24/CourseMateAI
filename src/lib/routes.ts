@@ -1,17 +1,29 @@
-// The app's three areas and where everything lives. Study = the document workspace, Hero = the game layer
-// (play theme), Account = profile, settings and history. One place for paths, so links and redirects agree.
+// The app's three areas and where everything lives. Study = the document workspace, Play = the game layer
+// (play theme: Quests, Arena, Bestiary, Champion), Account = profile, settings and history. One place for paths, so links and redirects agree.
 
 /** "overview" is a course's page (shown only when the workspace is on a course). */
 export const STUDY_TABS = ["chat", "quiz", "notes", "flashcards", "map", "review", "exam", "overview"] as const;
 export type StudyTab = (typeof STUDY_TABS)[number];
 export const DEFAULT_STUDY_TAB: StudyTab = "chat";
 
-/** The Hero area is one page with tabs: /hero?tab=<tab>. */
-export const HERO_TABS = ["quests", "arena", "bestiary", "shop", "inventory", "champion", "achievements"] as const;
+/**
+ * The play pages (the side panel's Play group): Quests, Arena and Bestiary are pages of their own; Champion is one
+ * page with tabs (/champion?tab=<tab>). All of them share the play header (level, XP, coins, streak).
+ */
+export const PLAY_PAGES = ["quests", "arena", "bestiary"] as const;
+export type PlayPage = (typeof PLAY_PAGES)[number];
+export const CHAMPION_TABS = ["champion", "inventory", "forge", "shop", "achievements", "mastery"] as const;
+export type ChampionTab = (typeof CHAMPION_TABS)[number];
+export const DEFAULT_CHAMPION_TAB: ChampionTab = "champion";
+/** Every play screen by its old /hero?tab= name: the play pages and the Champion page's tabs. */
+export const HERO_TABS = [...PLAY_PAGES, ...CHAMPION_TABS] as const;
 export type HeroTab = (typeof HERO_TABS)[number];
-export const DEFAULT_HERO_TAB: HeroTab = "quests";
 /** Retired tabs and the tab that replaced them (the Avatar tab and the Hero Forge became the Champion tab). */
-export const LEGACY_HERO_TABS: Readonly<Record<string, HeroTab>> = { avatar: "champion", forge: "champion" };
+export const LEGACY_HERO_TABS: Readonly<Record<string, HeroTab>> = { avatar: "champion" };
+
+const isPlayPage = (t: HeroTab): t is PlayPage => (PLAY_PAGES as readonly string[]).includes(t);
+/** Where a play screen lives: /quests, /arena, /bestiary, or /champion?tab=<tab>. */
+const playHref = (tab: HeroTab) => (isPlayPage(tab) ? `/${tab}` : `/champion?tab=${tab}`);
 
 export const ROUTES = {
   /** The landing page for logged-out visitors (signed in, "/" goes to Today). */
@@ -34,18 +46,22 @@ export const ROUTES = {
     `/study?tab=${tab}&doc=${encodeURIComponent(documentId)}&topic=${encodeURIComponent(topic)}`,
   /** The arena's Quick Battle on a document (or course) with the boss topic filled in. */
   heroArenaTopic: (documentId: string, topic: string) =>
-    `/hero?tab=arena&doc=${encodeURIComponent(documentId)}&topic=${encodeURIComponent(topic)}`,
+    `/arena?doc=${encodeURIComponent(documentId)}&topic=${encodeURIComponent(topic)}`,
   /** A Hunt (the Bestiary's Hunt button): the arena's Quick Battle against that creature. */
-  heroHunt: (species: string) => `/hero?tab=arena&hunt=${encodeURIComponent(species)}`,
-  hero: "/hero",
-  /** /hero?tab=<tab> (the Hero area's tabs share one page and one header). */
-  heroTab: (tab: HeroTab) => `/hero?tab=${tab}`,
-  heroQuests: "/hero?tab=quests",
-  heroArena: "/hero?tab=arena",
-  heroShop: "/hero?tab=shop",
-  heroInventory: "/hero?tab=inventory",
-  heroChampion: "/hero?tab=champion",
-  heroAchievements: "/hero?tab=achievements",
+  heroHunt: (species: string) => `/arena?hunt=${encodeURIComponent(species)}`,
+  /** The Champion page (its first tab): the side panel's way into your champion, gear and progress. */
+  hero: "/champion",
+  champion: "/champion",
+  /** Any play screen: /quests, /arena, /bestiary, or a Champion tab (/champion?tab=<tab>). */
+  heroTab: playHref,
+  heroQuests: "/quests",
+  heroArena: "/arena",
+  heroBestiary: "/bestiary",
+  heroShop: playHref("shop"),
+  heroInventory: playHref("inventory"),
+  heroChampion: playHref("champion"),
+  heroAchievements: playHref("achievements"),
+  heroMastery: playHref("mastery"),
   account: "/account",
   accountSettings: "/account/settings",
   accountHistory: "/account/history",
@@ -61,6 +77,27 @@ export function isHeroTab(value: string | undefined | null): value is HeroTab {
   return !!value && (HERO_TABS as readonly string[]).includes(value);
 }
 
+export function isChampionTab(value: string | undefined | null): value is ChampionTab {
+  return !!value && (CHAMPION_TABS as readonly string[]).includes(value);
+}
+
+/** The play paths (all in the Play theme, all under the play header). /hero is the old one: it only redirects. */
+export const PLAY_PATHS = ["/quests", "/arena", "/bestiary", "/champion"] as const;
+
+/**
+ * An old /hero?tab=<tab>&... link and where it lives now: the tab picks the page (an unknown or missing tab was the
+ * quests tab), every other parameter (doc, topic, hunt) comes along.
+ */
+export function legacyHeroUrl(query: URLSearchParams): string {
+  const raw = query.get("tab");
+  const tab: HeroTab = isHeroTab(raw) ? raw : (raw && LEGACY_HERO_TABS[raw]) || "quests";
+  const rest = new URLSearchParams(query);
+  rest.delete("tab");
+  const more = rest.toString();
+  const base = playHref(tab);
+  return more ? `${base}${base.includes("?") ? "&" : "?"}${more}` : base;
+}
+
 export function isStudyTab(value: string | undefined): value is StudyTab {
   return !!value && (STUDY_TABS as readonly string[]).includes(value);
 }
@@ -73,15 +110,18 @@ export const LEGACY_REDIRECTS: ReadonlyArray<{ from: string; to: string }> = [
   { from: "/avatar/hero-forge", to: ROUTES.heroChampion },
   { from: "/profile", to: ROUTES.account },
   { from: "/settings", to: ROUTES.accountSettings },
-  { from: "/arena", to: ROUTES.heroArena },
-  // The Hero area used to be one page per screen: now one page, one tab each.
+  // The Hero area used to be one page per screen, then one page with tabs (/hero?tab=, see legacyHeroUrl); now
+  // Quests, Arena and Bestiary are pages and the rest are Champion tabs.
+  { from: "/hero/quests", to: ROUTES.heroQuests },
   { from: "/hero/arena", to: ROUTES.heroArena },
+  { from: "/hero/bestiary", to: ROUTES.heroBestiary },
   { from: "/hero/shop", to: ROUTES.heroShop },
   { from: "/hero/inventory", to: ROUTES.heroInventory },
   { from: "/hero/avatar", to: ROUTES.heroChampion },
-  { from: "/hero/forge", to: ROUTES.heroChampion },
+  { from: "/hero/forge", to: ROUTES.heroTab("forge") },
   { from: "/hero/champion", to: ROUTES.heroChampion },
   { from: "/hero/achievements", to: ROUTES.heroAchievements },
+  { from: "/hero/mastery", to: ROUTES.heroMastery },
 ];
 
 /** The old path-based tab URLs: /study/quiz -> /study?tab=quiz (the query string is kept). */
@@ -94,12 +134,14 @@ export type Area = "study" | "hero" | "account";
 
 export const AREAS: ReadonlyArray<{ id: Area; label: string; href: string }> = [
   { id: "study", label: "Study", href: ROUTES.study },
-  { id: "hero", label: "Hero", href: ROUTES.hero },
+  { id: "hero", label: "Play", href: ROUTES.champion },
   { id: "account", label: "Account", href: ROUTES.account },
 ];
 
 /** Which area a path belongs to (for the active nav item). */
 export function areaOf(pathname: string): Area | null {
   const first = pathname.split("/")[1];
-  return first === "study" || first === "hero" || first === "account" ? first : null;
+  if (first === "study" || first === "account") return first;
+  // the play pages (and the old /hero, which only redirects) are the play area
+  return first === "hero" || (PLAY_PATHS as readonly string[]).includes(`/${first}`) ? "hero" : null;
 }

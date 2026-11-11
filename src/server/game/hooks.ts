@@ -3,6 +3,10 @@
 import type { RequestContext } from "../context";
 import { award, bumpQuest, markActive, questsOnAction, updateStreak } from "./progression";
 import { incrementProgress, localDate, type Player } from "./store";
+import { recordStudy, type StudyEvent } from "./mastery";
+
+/** Studying moves the equipped champion's study challenges (and the streak one); never fails the study action. */
+const studied = (ctx: RequestContext, p: Player, event: StudyEvent | null) => safely("mastery", () => recordStudy(ctx, p.id, event));
 
 type Reward = Awaited<ReturnType<typeof award>> | null;
 
@@ -23,12 +27,17 @@ export function onChatAnswered(ctx: RequestContext, p: Player, question: string,
   });
 }
 
-export const onFlashcards = (ctx: RequestContext, p: Player) => safely("flashcards reward", () => award(ctx, p, "flashcard_complete"));
-export const onNotes = (ctx: RequestContext, p: Player) => safely("notes reward", () => award(ctx, p, "notes_generation"));
+export const onFlashcards = (ctx: RequestContext, p: Player) => safely("flashcards reward", async () => { const r = await award(ctx, p, "flashcard_complete"); await studied(ctx, p, null); return r; });
+export const onNotes = (ctx: RequestContext, p: Player) => safely("notes reward", async () => { const r = await award(ctx, p, "notes_generation"); await studied(ctx, p, null); return r; });
 export const onQuizStarted = (ctx: RequestContext, p: Player) => safely("quiz start", async () => { await markActive(ctx, p); return null; });
 
 export const onQuizFinished = (ctx: RequestContext, p: Player, quizId: string, accuracy: number) =>
-  safely("quiz reward", () => award(ctx, p, "quiz_complete", { accuracy, difficulty: 1.2, sourceId: quizId }));
+  safely("quiz reward", async () => {
+    const r = await award(ctx, p, "quiz_complete", { accuracy, difficulty: 1.2, sourceId: quizId });
+    // a quiz paid once (a retake of the same quiz isn't paid again) counts once for mastery too
+    if (r && r.ok) await studied(ctx, p, accuracy >= 0.8 ? "quiz80" : null);
+    return r;
+  });
 
 const EXAM_DIFFICULTY: Record<string, number> = { easy: 1, medium: 1.25, hard: 1.5, mixed: 1.25 };
 export const onExamGraded = (ctx: RequestContext, p: Player, examId: string, accuracy: number, difficulty: string) =>
@@ -40,6 +49,7 @@ export function onReviewGraded(ctx: RequestContext, p: Player, stats: { due: num
     await updateStreak(ctx, p);
     await markActive(ctx, p);
     await bumpQuest(ctx, p, "review_cards");
+    await studied(ctx, p, "review_card");
     if (stats.due !== 0 || stats.reviewed_today <= 0) return null;
     const r = await award(ctx, p, "review_complete", { sourceId: `review:${localDate(p.tz)}` });
     return r && r.ok ? r : null;

@@ -291,4 +291,5 @@
 /* ── Result: champion progress ─────────────────────────────────────────────────────────────────────────────── */
 .arena-result__champion { display: grid; justify-items: center; gap: var(--space-2); }
 .arena-result__unlocks { display: grid; gap: var(--space-2); margin: 0; padding: 0; list-style: none; }
+.arena-result__challenges { display: flex; flex-wrap: wrap; gap: var(--space-2); margin: 0 0 var(--space-2); padding: 0; list-style: none; }
 .arena-result__unlock { display: inline-flex; align-items: center; gap: var(--space-2); font-size: 0.875rem; }

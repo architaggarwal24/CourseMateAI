@@ -11,8 +11,9 @@ import { farSide, hex, ramp, type Material } from "./color";
 import { add, dirOf } from "./rig";
 
 export const PET_FRAME = { w: 64, h: 56, anchor: [30, 53] as Pt };
-export const PET_FRAMES = 4;
-export const PET_FPS = 5;
+export const PET_FRAMES = 8;
+export const PET_FPS = 10;
+const TAU = Math.PI * 2;
 
 type Ears = "point" | "flop" | "round";
 type Tail = "thin" | "bush" | "tuft" | "stub" | "flow";
@@ -69,15 +70,23 @@ export const petById = (id: string | null | undefined): PetDef | undefined => (i
 
 // ── painters ──────────────────────────────────────────────────────────────────
 
-function eyeDot(b: PixelBuffer, x: number, y: number, m: Material, big = false) {
+const GLINT = hex("#ffffff");
+
+/** A pet's eye: a 2 x 2 iris (dark top, bright bottom) with a white glint, or shut (a blink). */
+function eyeDot(b: PixelBuffer, x: number, y: number, m: Material, big = false, shut = false) {
   x = Math.round(x); y = Math.round(y);
-  b.set(x, y, m.ramp[big ? 3 : 2]); b.set(x, y + 1, m.ramp[1]);
-  if (big) { b.set(x + 1, y, m.ramp[4]); b.set(x + 1, y + 1, m.ramp[2]); }
+  if (shut) { b.set(x, y + 1, m.ramp[0]); b.set(x + 1, y + 1, m.ramp[0]); return; }
+  b.set(x, y, m.ramp[1]); b.set(x, y + 1, m.ramp[2]);
+  b.set(x + 1, y, big ? GLINT : m.ramp[3]); b.set(x + 1, y + 1, m.ramp[big ? 3 : 2]);
 }
+
+/** The idle beat: one smooth breath (0 -> 1 -> 0) per loop, and a blink near the end. */
+const breath = (t: number) => (1 - Math.cos(t * TAU)) / 2;
+const blinking = (f: number) => f === PET_FRAMES - 2;
 
 function paintBeast(b: PixelBuffer, foot: Pt, sp: BeastSpec, f: number) {
   const s = sp.size, t = f / PET_FRAMES;
-  const bob = [0, 0.5, 1, 0.5][f];
+  const bob = breath(t);
   const leg = (sp.tall ? 8 : sp.patches ? 3.5 : 5) * s;
   const rx = (sp.patches ? 8.5 : 8) * s, ry = (sp.patches ? 6 : 5) * s;
   const bx = foot[0] - 2 * s, by = foot[1] - leg - ry * 0.75 + bob * 0.5;
@@ -114,7 +123,16 @@ function paintBeast(b: PixelBuffer, foot: Pt, sp: BeastSpec, f: number) {
   b.ellipse(bx, by, rx, ry, sp.body);
   if (sp.patches) b.ellipse(bx + rx * 0.45, by - ry * 0.05, rx * 0.32, ry * 1.1, sp.dark, { clip: true }, 0.25);   // a panda's black shoulder band
   else b.ellipse(bx + rx * 0.15, by + ry * 0.55, rx * 0.65, ry * 0.45, sp.belly, { clip: true });
-  for (const lx of [bx - rx * 0.6, bx + rx * 0.5]) b.capsule(lx, by + ry * 0.3, lx + 0.5, foot[1] - 1, 2 * s, 1.7 * s, legM);
+  // fur: a lit stroke along the back, tufts on the haunch and the chest
+  for (let a = 215; a <= 300; a += 9) b.dotOn(bx + Math.cos((a * Math.PI) / 180) * rx * 0.78, by + Math.sin((a * Math.PI) / 180) * ry * 0.72, sp.body.ramp[3], sp.body);
+  b.lineOn(bx - rx * 0.55, by - ry * 0.1, bx - rx * 0.35, by + ry * 0.45, sp.body.ramp[1], sp.body);
+  b.lineOn(bx - rx * 0.3, by + ry * 0.05, bx - rx * 0.15, by + ry * 0.45, sp.body.ramp[1], sp.body);
+  for (const lx of [bx - rx * 0.6, bx + rx * 0.5]) {
+    b.capsule(lx, by + ry * 0.3, lx + 0.5, foot[1] - 1, 2 * s, 1.7 * s, legM);
+    // the paw: toes split by a dark line, lit on top
+    b.dotOn(lx + 1.2 * s, foot[1] - 1.5 * s, legM.ramp[0], legM);
+    b.dotOn(lx - 0.4 * s, foot[1] - 2.8 * s, legM.ramp[3], legM);
+  }
 
   // neck + head
   const hx = bx + rx * 0.95, hy = by - ry * (sp.tall ? 1.35 : 0.85) - 1 * s + bob * 0.3;
@@ -134,17 +152,22 @@ function paintBeast(b: PixelBuffer, foot: Pt, sp: BeastSpec, f: number) {
   };
   earF(-2.4 * s, farSide(sp.patches ? sp.dark : sp.body));
   b.ellipse(hx, hy, hr, hr * 0.92, sp.body);
+  // cheek fluff and a lit brow
+  b.lineOn(hx - hr * 0.6, hy + hr * 0.55, hx - hr * 0.2, hy + hr * 0.75, sp.body.ramp[1], sp.body);
+  b.dotOn(hx - hr * 0.2, hy - hr * 0.6, sp.body.ramp[4], sp.body);
   if (sp.mane && sp.tail === "flow") {
     // a unicorn's mane falls down the back of the neck
     for (let i = 0; i < 4; i++) b.capsule(hx - 2.5 * s - i * 1.2 * s, hy - 2.5 * s + i * 2.2 * s, hx - 5 * s - i * 1.4 * s - wag * 0.6 * s, hy + i * 2.4 * s, 1.9 * s, 1.2 * s, sp.mane);
   }
   earF(0.6 * s, sp.patches ? sp.dark : sp.body);
+  // the inside of the near ear, in the belly colour
+  if (sp.ears === "point") b.poly([[hx + 0.6 * s - 1.2 * s, hy - 3 * s], [hx + 0.6 * s - 0.5 * s, hy - 6.2 * s], [hx + 0.6 * s + 0.8 * s, hy - 3.2 * s]], sp.belly, { on: sp.body, rim: false, noRimLight: true });
   if (sp.ears === "flop") b.capsule(hx - 1.6 * s, hy - 2.6 * s, hx - 3.4 * s, hy + 2.4 * s, 1.8 * s, 1.5 * s, sp.dark);
   // snout, nose, eye
   b.ellipse(hx + hr * 0.75, hy + 1.3 * s, 2.5 * s, 1.9 * s, sp.patches ? sp.body : sp.belly);
   b.set(Math.round(hx + hr * 0.75 + 2.2 * s), Math.round(hy + 0.5 * s), sp.dark.ramp[0]);
   if (sp.patches) b.ellipse(hx + 1.2 * s, hy - 0.4 * s, 2.1 * s, 1.8 * s, sp.dark, { clip: true }, -0.4);
-  eyeDot(b, hx + 1.4 * s, hy - 0.8 * s, sp.patches ? R("#f5f5f4") : sp.eye);
+  eyeDot(b, hx + 1.4 * s, hy - 0.8 * s, sp.patches ? R("#f5f5f4") : sp.eye, true, blinking(f));
   if (sp.horn) {
     const hb: Pt = [hx + 1 * s, hy - hr * 0.8], ht = add(hb, dirOf(150), 7 * s);
     b.capsule(hb[0], hb[1], ht[0], ht[1], 1.3 * s, 0.3 * s, sp.horn);
@@ -153,22 +176,27 @@ function paintBeast(b: PixelBuffer, foot: Pt, sp: BeastSpec, f: number) {
 }
 
 function paintBird(b: PixelBuffer, foot: Pt, sp: BirdSpec, f: number) {
-  const s = sp.size;
-  const flap = [-1, 0, 1, 0][f];               // wings up, level, down, level
-  const cx = foot[0], cy = foot[1] - 26 * s + [0, -1, -2, -1][f];
+  const s = sp.size, t = f / PET_FRAMES;
+  const flap = -Math.cos(t * TAU);             // -1 wings up ... +1 wings down, smoothly
+  const cx = foot[0], cy = foot[1] - 26 * s - breath(t) * 2;
   const owl = !!sp.tufts;
   const bw = (owl ? 6 : 4.6) * s, bh = (owl ? 7 : 5.5) * s;
 
   // a wing is a long feathered oval hinged at the shoulder: up / level / down with the beat
   const wing = (m: Material, dx: number, dy: number) => {
     const len = (owl ? 7 : 9) * s;
-    const ang = [210, 245, 290][flap + 1];   // rig angles: up-back, back, down-back
+    const ang = 245 + flap * (flap < 0 ? 35 : 45);   // rig angles: up-back (210), back (245), down-back (290)
     const root: Pt = [cx - 1 * s + dx, cy - 2.5 * s + dy];
     const mid = add(root, dirOf(ang), len * 0.5);
     b.ellipse(mid[0], mid[1], len * 0.55, (owl ? 2.6 : 2.2) * s, m, {}, Math.atan2(dirOf(ang)[1], dirOf(ang)[0]));
     // flight feathers at the tip
     const tip = add(root, dirOf(ang), len);
     for (let i = -1; i <= 1; i++) b.capsule(mid[0], mid[1], ...add(tip, dirOf(ang + 90), i * 1.6 * s), 1.2 * s, 0.6 * s, m);
+    // feather rows across the wing
+    for (const u of [0.35, 0.6]) {
+      const c = add(root, dirOf(ang), len * u), side = dirOf(ang + 90);
+      b.lineOn(...add(c, side, -2.4 * s), ...add(add(c, side, 2.4 * s), dirOf(ang), 1.5 * s), m.ramp[1], m);
+    }
   };
   if (sp.plumes) {
     // long tail plumes trailing back and down
@@ -190,8 +218,12 @@ function paintBird(b: PixelBuffer, foot: Pt, sp: BirdSpec, f: number) {
     // ear tufts
     b.poly([[cx - 3 * s, cy - bh * 0.7], [cx - 4.2 * s, cy - bh - 3 * s], [cx - 0.8 * s, cy - bh * 0.85]], sp.body);
     b.poly([[cx + 1.5 * s, cy - bh * 0.8], [cx + 3.8 * s, cy - bh - 2.6 * s], [cx + 4 * s, cy - bh * 0.6]], sp.body);
-    eyeDot(b, cx + 0.2 * s, cy - 2.4 * s, sp.eye, true);
-    eyeDot(b, cx + 3 * s, cy - 2.4 * s, sp.eye, true);
+    eyeDot(b, cx + 0.2 * s, cy - 2.4 * s, sp.eye, true, blinking(f));
+    eyeDot(b, cx + 3 * s, cy - 2.4 * s, sp.eye, true, blinking(f));
+    // chest feathers: little V marks
+    for (const [dx, dy] of [[-1, 2.5], [1.6, 3.4], [-0.2, 5]] as const) {
+      b.dotOn(cx + dx * s, cy + dy * s, sp.face.ramp[1], sp.face); b.dotOn(cx + dx * s + 1, cy + dy * s + 1, sp.face.ramp[1], sp.face); b.dotOn(cx + dx * s + 2, cy + dy * s, sp.face.ramp[1], sp.face);
+    }
     b.set(Math.round(cx + 1.8 * s), Math.round(cy - 0.5 * s), sp.beak.ramp[2]);
     b.set(Math.round(cx + 1.8 * s), Math.round(cy + 0.5 * s), sp.beak.ramp[1]);
   } else {
@@ -203,7 +235,7 @@ function paintBird(b: PixelBuffer, foot: Pt, sp: BirdSpec, f: number) {
       b.capsule(base[0], base[1], tip[0], tip[1], 1.2 * s, 0.3 * s, sp.plumes ?? sp.face);
     }
     b.poly([[hx + 2.4 * s, hy - 0.3 * s], [hx + 5 * s, hy + 0.6 * s], [hx + 2.4 * s, hy + 1.4 * s]], sp.beak);
-    eyeDot(b, hx + 1 * s, hy - 0.8 * s, R("#1c1917"));
+    eyeDot(b, hx + 1 * s, hy - 0.8 * s, R("#1c1917"), false, blinking(f));
   }
   wing(sp.wing, -1 * s, 0);
   // talons tucked under
@@ -211,14 +243,17 @@ function paintBird(b: PixelBuffer, foot: Pt, sp: BirdSpec, f: number) {
 }
 
 function paintDragon(b: PixelBuffer, foot: Pt, sp: DragonSpec, f: number) {
-  const s = sp.size;
-  const flap = [-1, 0, 1, 0][f];
-  const cx = foot[0] - 2 * s, cy = foot[1] - 22 * s + [0, -1, -2, -1][f];
+  const s = sp.size, t = f / PET_FRAMES;
+  const flap = -Math.cos(t * TAU);
+  const cx = foot[0] - 2 * s, cy = foot[1] - 22 * s - breath(t) * 2;
   const wing = (m: Material, dx: number) => {
     const root: Pt = [cx + dx, cy - 3 * s];
     const tip = add(root, dirOf(205 - flap * 40), 14 * s);
     const mid = add(root, dirOf(240 - flap * 30), 9 * s);
-    b.poly([root, tip, add(tip, dirOf(10), 4 * s), mid, [cx - 3 * s + dx, cy + 1 * s]], m);
+    const low: Pt = [cx - 3 * s + dx, cy + 1 * s];
+    b.poly([root, tip, add(tip, dirOf(10), 4 * s), mid, low], m);
+    // the membrane's finger bones, fanning from the wrist
+    for (const to of [mid, lerp2(mid, low, 0.5)]) b.lineOn(tip[0], tip[1], to[0], to[1], m.ramp[0], m);
     b.capsule(root[0], root[1], tip[0], tip[1], 1 * s, 0.5 * s, sp.body);
   };
   wing(farSide(sp.wing), 2 * s);
@@ -234,6 +269,9 @@ function paintDragon(b: PixelBuffer, foot: Pt, sp: DragonSpec, f: number) {
   b.capsule(cx - 2 * s, cy + 3 * s, cx - 1 * s, cy + 7 * s, 1.8 * s, 1.3 * s, farSide(sp.body));
   b.ellipse(cx, cy, 7 * s, 4.8 * s, sp.body);
   b.ellipse(cx + 1 * s, cy + 2.4 * s, 4.6 * s, 2.4 * s, sp.belly, { clip: true });
+  // belly plates and a row of back spikes
+  for (const dx of [-2.5, 0, 2.5]) b.lineOn(cx + dx * s, cy + 1 * s, cx + (dx + 0.6) * s, cy + 4.5 * s, sp.belly.ramp[1], sp.belly);
+  for (const dx of [-4, -1.5, 1]) b.poly([[cx + (dx - 1) * s, cy - 4 * s], [cx + (dx - 0.4) * s, cy - 6.6 * s], [cx + (dx + 1) * s, cy - 4.2 * s]], sp.horn);
   b.capsule(cx + 3 * s, cy + 3 * s, cx + 4.5 * s, cy + 6.5 * s, 1.6 * s, 1.2 * s, sp.body);
   // neck + head
   const hx = cx + 8 * s, hy = cy - 6 * s;
@@ -242,7 +280,7 @@ function paintDragon(b: PixelBuffer, foot: Pt, sp: DragonSpec, f: number) {
   b.ellipse(hx, hy, 3.6 * s, 3.2 * s, sp.body);
   b.capsule(hx + 1 * s, hy + 0.8 * s, hx + 5.2 * s, hy + 1.4 * s, 2.2 * s, 1.6 * s, sp.body);
   b.capsule(hx, hy - 2.4 * s, hx - 3 * s, hy - 6.5 * s, 1.4 * s, 0.3 * s, sp.horn);
-  eyeDot(b, hx + 1 * s, hy - 1 * s, sp.eye);
+  eyeDot(b, hx + 1 * s, hy - 1 * s, sp.eye, true, blinking(f));
   b.set(Math.round(hx + 5 * s), Math.round(hy + 0.6 * s), sp.body.ramp[0]);
   wing(sp.wing, 0);
 }
@@ -252,23 +290,66 @@ function paintDragon(b: PixelBuffer, foot: Pt, sp: DragonSpec, f: number) {
 const OUTLINE = hex("#0b0a12");
 const cache = new Map<string, PixelBuffer>();
 
-/** One idle frame of a pet (cached), drawn in a PET_FRAME-sized buffer standing on PET_FRAME.anchor. */
-export function petFrame(id: string, index: number): PixelBuffer | null {
+/** How big a pet is at each growth stage (forge tiers: baby I, young II-III, adult IV-V). */
+export type PetStage = "baby" | "young" | "adult";
+const STAGE_SIZE: Record<PetStage, number> = { baby: 0.82, young: 1, adult: 1.18 };
+
+function paint(b: PixelBuffer, foot: Pt, sp: PetSpec, f: number) {
+  if (sp.plan === "beast") paintBeast(b, foot, sp, f);
+  else if (sp.plan === "bird") paintBird(b, foot, sp, f);
+  else paintDragon(b, foot, sp, f);
+}
+
+/** One idle frame of a pet (cached), drawn in a PET_FRAME-sized buffer standing on PET_FRAME.anchor. Adults glow brighter. */
+export function petFrame(id: string, index: number, stage: PetStage = "young"): PixelBuffer | null {
   const pet = PETS[id];
   if (!pet) return null;
   const f = ((index % PET_FRAMES) + PET_FRAMES) % PET_FRAMES;
-  const key = `${id}:${f}`;
+  const key = `${id}:${stage}:${f}`;
   const hit = cache.get(key);
   if (hit) return hit;
   const b = new PixelBuffer(PET_FRAME.w, PET_FRAME.h);
-  const sp = pet.spec;
-  if (sp.plan === "beast") paintBeast(b, PET_FRAME.anchor, sp, f);
-  else if (sp.plan === "bird") paintBird(b, PET_FRAME.anchor, sp, f);
-  else paintDragon(b, PET_FRAME.anchor, sp, f);
+  paint(b, PET_FRAME.anchor, { ...pet.spec, size: pet.spec.size * STAGE_SIZE[stage] } as PetSpec, f);
   b.outline(OUTLINE);
+  b.glow(stage === "adult" ? 0.8 : 0.55);
   cache.set(key, b);
   return b;
 }
 
+// ── mounts ────────────────────────────────────────────────────────────────────
+/** A saddled adult pet, drawn big enough to carry a fighter, with a saddle on its back. */
+export const MOUNT_FRAME = { w: 240, h: 200, anchor: [118, 196] as Pt };
+const MOUNT_SIZE: Record<PetSpec["plan"], number> = { beast: 3.6, bird: 3.4, dragon: 3.1 };
+const SADDLE = ramp("#7c2d12"), SADDLE_TRIM = ramp("#facc15", { shiny: true });
+const mountCache = new Map<string, { buf: PixelBuffer; seat: Pt }>();
+
+/** One frame of a mount and the point the rider's hips sit on (in frame pixels). */
+export function mountFrame(id: string, index: number): { buf: PixelBuffer; seat: Pt } | null {
+  const pet = PETS[id];
+  if (!pet) return null;
+  const f = ((index % PET_FRAMES) + PET_FRAMES) % PET_FRAMES;
+  const key = `${id}:${f}`;
+  const hit = mountCache.get(key);
+  if (hit) return hit;
+  const b = new PixelBuffer(MOUNT_FRAME.w, MOUNT_FRAME.h);
+  const sp = { ...pet.spec, size: pet.spec.size * MOUNT_SIZE[pet.spec.plan] } as PetSpec;
+  paint(b, MOUNT_FRAME.anchor, sp, f);
+  // the seat: the top of the back, a little behind the middle of the body
+  const x = MOUNT_FRAME.anchor[0] - Math.round((sp.plan === "beast" ? 3 : sp.plan === "dragon" ? 2 : 0) * sp.size);
+  let y = 0;
+  while (y < b.h && !b.get(x, y)) y++;
+  const seat: Pt = [x, y + 1];
+  b.ellipse(seat[0], seat[1] + 2, 9, 3.4, SADDLE, { noRimLight: true });
+  b.capsule(seat[0] - 8, seat[1] + 1, seat[0] + 8, seat[1], 1.1, 1.1, SADDLE_TRIM, { rim: false });
+  b.capsule(seat[0] + 1, seat[1] + 3, seat[0] + 2, seat[1] + 18, 1, 1, SADDLE, { rim: false, on: undefined });
+  b.outline(OUTLINE);
+  b.glow(0.6);
+  const out = { buf: b, seat };
+  mountCache.set(key, out);
+  return out;
+}
+
 /** Where a pet stands relative to its champion's ground point: behind them, a little back (the champion faces right). */
 export const PET_OFFSET: Pt = [-40, 2];
+
+const lerp2 = (a: Pt, c: Pt, t: number): Pt => [a[0] + (c[0] - a[0]) * t, a[1] + (c[1] - a[1]) * t];

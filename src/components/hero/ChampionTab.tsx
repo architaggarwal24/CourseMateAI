@@ -2,7 +2,10 @@
 
 import { useEffect, useState } from "react";
 import { useReducedMotionConfig } from "motion/react";
-import { ChevronDown, Crown, Lock, PawPrint, Shield, ShoppingBag, Sparkles, Swords, X, Zap } from "@/components/icons";
+import { ChevronDown, Crown, Lock, PawPrint, Shield, Shirt, ShoppingBag, Sparkles, Swords, AlertTriangle, X, Zap } from "@/components/icons";
+import LookEditor from "@/components/champion/LookEditor";
+import HeroBuilder from "@/components/champion/HeroBuilder";
+import { HERO_FIGHTER_ID } from "@/lib/pixel/appearance";
 import { xpPct } from "@/components/arena/pixel/Roster";
 import { useChampion, type ChampionProgress } from "@/hooks/useChampion";
 import PixelSprite from "@/components/arena/pixel/PixelSprite";
@@ -50,7 +53,7 @@ export function activeBonuses(shop: { equipped: Record<string, string>; items: S
 
 /** The live preview: the champion in its skins (and the item being tried on), with its pet, in a chosen animation. */
 function ChampionStage() {
-  const { hero, petId, loadout } = useChampionLook({ preview: true });
+  const { hero, petId, loadout, petStage } = useChampionLook({ preview: true });
   const shop = useHeroStore((s) => s.shop);
   const [anim, setAnim] = useState<AnimName>("idle");
   const [replay, setReplay] = useState(0);
@@ -68,7 +71,7 @@ function ChampionStage() {
   return (
     <div className="champ-stage" style={{ "--hero-accent": hero.accent } as React.CSSProperties}>
       <div className="hero-stage w-full" data-testid="champion-stage">
-        <PixelSprite key={`${anim}-${replay}`} hero={hero} pet={petId} anim={anim} label={description} className="champ-stage__figure" />
+        <PixelSprite key={`${anim}-${replay}`} hero={hero} pet={petId} petStage={petStage} anim={anim} label={description} className="champ-stage__figure" />
       </div>
       <div className="champ-anims" role="radiogroup" aria-label="Preview animation">
         {ANIMS.map((a) => (
@@ -113,7 +116,15 @@ function KitAndMastery({ championId, name, shop }: { championId: string; name: s
       <dl className="champ-kit__list">
         <div><dt><Zap size={14} aria-hidden="true" />Passive · {p.kit.passive.name}</dt><dd>{p.kit.passive.text}</dd></div>
         <div><dt><Sparkles size={14} aria-hidden="true" />Ultimate · {p.kit.ultimate.name} <kbd className="kbd">U</kbd></dt><dd>{p.kit.ultimate.text} Charges as you answer right in a fight.</dd></div>
+        {p.kit.weakness && <div data-testid="champion-weakness"><dt><AlertTriangle size={14} aria-hidden="true" />Weakness · {p.kit.weakness.name}</dt><dd>{p.kit.weakness.text}</dd></div>}
       </dl>
+      {p.mastery_pct !== undefined && (
+        <p className="champ-kit__mastery">
+          <span className="pixel-font">{p.mastered ? "Mastered" : `${p.mastery_pct}%`}</span>
+          <span className="text-sm text-fg-2">{name}&apos;s mastery</span>
+          <ButtonLink size="sm" variant="ghost" href={ROUTES.heroMastery} className="ml-auto">See challenges</ButtonLink>
+        </p>
+      )}
       <p className="hero-label mt-4">Mastery skins · earned in battle with {name}</p>
       <ul className="champ-mastery" aria-label={`${name}'s mastery skins`}>
         {p.mastery.map((m) => {
@@ -174,6 +185,8 @@ export default function ChampionTab() {
   const unequip = useHeroStore((s) => s.unequip);
   const { hero } = useChampionLook();
   const [openSlot, setOpenSlot] = useState<string | null>(null);
+  const [editing, setEditing] = useState(false);
+  const isHero = hero.id === HERO_FIGHTER_ID;
 
   if (loading || !shop) return <p role="status" className="p-6 text-fg-muted">Summoning your champion…</p>;
 
@@ -192,16 +205,22 @@ export default function ChampionTab() {
         <div className="mt-4 text-center">
           <Badge tone="reward">LV {level}</Badge>
           <h2 className="m-0 mt-2 text-lg font-bold text-fg">{(user?.username || "Hero").toUpperCase()}</h2>
-          <p className="m-0 text-sm text-fg-2"><span className="pixel-font">{hero.name}</span> · {hero.title}</p>
+          <p className="m-0 text-sm text-fg-2"><span className="pixel-font">{isHero ? "Your hero" : hero.name}</span> · {hero.title}</p>
           <p className="m-0 text-sm text-fg-muted">{equipped.title ? shop.items.find((i) => i.id === equipped.title)?.name ?? "" : "Aspiring Champion"}</p>
           {skinCount >= 4 && <Badge tone="epic" className="mt-2">Full kit</Badge>}
           {previewId && <p className="m-0 mt-2 text-sm text-ink-purple" role="status">Previewing {shop.items.find((i) => i.id === previewId)?.name}</p>}
+          {isHero && (
+            <Button className="mt-3" onClick={() => setEditing(true)} data-testid="customize-look">
+              <Shirt size={16} aria-hidden="true" />Change your look
+            </Button>
+          )}
         </div>
+        <LookEditor open={editing} onClose={() => setEditing(false)} />
       </aside>
 
       <section className="hero-split__main max-w-4xl" aria-label="Champion and skins">
         <div className="mb-6"><Roster /></div>
-        <KitAndMastery championId={hero.id} name={hero.name} shop={shop} />
+        {isHero ? <HeroBuilder onEditLook={() => setEditing(true)} /> : <KitAndMastery championId={hero.id} name={hero.name} shop={shop} />}
 
         <div className="flex flex-wrap gap-2 mb-5">
           <ButtonLink href={ROUTES.heroShop} variant="primary"><ShoppingBag size={16} aria-hidden="true" />Get skins</ButtonLink>

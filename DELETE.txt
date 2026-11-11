@@ -1,0 +1,5 @@
+Delete these (moved or replaced):
+src/app/(app)/hero/page.tsx
+src/app/(app)/hero/layout.tsx  (now src/app/(app)/(play)/layout.tsx)
+src/components/hero/HeroArea.tsx  (now PlayArea.tsx)
+src/components/hero/HeroArea.test.tsx  (now PlayArea.test.tsx)

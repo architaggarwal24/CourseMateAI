@@ -66,6 +66,50 @@ function ridge(b: PixelBuffer, base: number, amp: number, seed: number, color: R
     pts.push(base - amp * 0.4 + h);
   }
   for (let x = 0; x < b.w; x++) for (let y = Math.floor(pts[x]); y < bottom; y++) b.set(x, y, color);
+  // the crest catches the sky's light: a one-pixel rim, brighter where the slope faces the light (left)
+  for (let x = 1; x < b.w; x++) {
+    const y = Math.floor(pts[x]), up = pts[x] < pts[x - 1];
+    b.set(x, y, mix(color, hex("#ffffff"), up ? 0.22 : 0.1));
+  }
+}
+
+/** Blend one pixel toward a colour, keeping what material it is (the bloom pass still finds the fires and moons). */
+function tintPx(b: PixelBuffer, x: number, y: number, c: RGBA, t: number) {
+  const i = y * b.w + x;
+  b.px[i] = mix(b.px[i], c, t);
+}
+
+/** Aerial perspective: everything drawn so far between y0 and y1 drifts toward `color` (far things fade). */
+function haze(b: PixelBuffer, color: string, amount: number, y0 = 0, y1 = HORIZON + 8) {
+  const c = hex(color);
+  // it builds up toward the horizon, so there is no visible edge where it starts
+  for (let y = Math.max(0, y0); y < Math.min(b.h, y1); y++) {
+    const u = Math.min(1, (y - y0) / Math.max(1, HORIZON - y0)), k = amount * u * u * (3 - 2 * u);
+    for (let x = 0; x < b.w; x++) tintPx(b, x, y, c, k);
+  }
+}
+
+/** A low mist where the floor meets the far scenery: depth between the fighters and the backdrop. */
+function groundMist(b: PixelBuffer, color: string, top = HORIZON - 6, depth = 22, amount = 0.32) {
+  const c = hex(color);
+  for (let y = top; y < top + depth; y++) {
+    const u = 1 - Math.abs((y - top - depth * 0.45) / (depth * 0.55));
+    if (u <= 0) continue;
+    for (let x = 0; x < b.w; x++) {
+      const wisp = 0.75 + 0.25 * Math.sin(x / 23 + y * 0.4) * Math.sin(x / 61);
+      tintPx(b, x, y, c, amount * u * wisp);
+    }
+  }
+}
+
+/** Darker corners at the bottom of the frame: the eye goes to the middle, where the fight is. */
+function vignette(b: PixelBuffer, amount = 0.35) {
+  const black = hex("#05030a");
+  for (let y = HORIZON; y < b.h; y++) for (let x = 0; x < b.w; x++) {
+    const dx = (x - b.w / 2) / (b.w / 2), dy = (y - HORIZON) / (b.h - HORIZON);
+    const v = Math.max(0, Math.hypot(dx * 0.9, dy * 0.6) - 0.55) / 0.6;
+    if (v > 0) tintPx(b, x, y, black, Math.min(1, v) * amount);
+  }
 }
 
 function peaks(b: PixelBuffer, seed: number, n: number, base: number, hmin: number, hmax: number, color: RGBA, snow?: RGBA) {
@@ -164,6 +208,7 @@ export const STAGES: Record<string, StageDef> = {
       sky(b, ["#1e1b4b", "#7c2d12", "#ea580c", "#fdba74"]);
       peaks(b, 3, 7, HORIZON - 10, 20, 55, hex("#3b1e3f"));
       ridge(b, HORIZON - 14, 14, 4, hex("#2a1530"));
+      haze(b, "#ea580c", 0.18, 40);
       // maze walls receding
       for (const [x, w, h] of [[30, 70, 64], [130, 50, 46], [300, 52, 46], [380, 80, 66]] as const) {
         b.rect(x, HORIZON + 6 - h, w, h, DARK_STONE.ramp[1]);
@@ -172,6 +217,7 @@ export const STAGES: Record<string, StageDef> = {
       }
       column(b, 230, 70, HORIZON + 8, 16, MARBLE, 30);
       floor(b, HORIZON + 6, "#78716c", "#6b625b", "#3f3a36", 14);
+      groundMist(b, "#fdba74", HORIZON - 4, 20, 0.22);
       brazier(b, 70, 214, IRON); brazier(b, 410, 214, IRON);
     },
   },
@@ -181,10 +227,12 @@ export const STAGES: Record<string, StageDef> = {
     paint: (b) => {
       sky(b, ["#0c0a09", "#450a0a", "#9a3412", "#f97316"]);
       peaks(b, 9, 3, HORIZON, 50, 110, hex("#1c1917"));
+      haze(b, "#9a3412", 0.2, 50);
       // lava river glow at the horizon
       for (let x = 0; x < b.w; x++) for (let y = HORIZON - 4; y < HORIZON + 6; y++) b.set(x, y, (x + y * 3) % 11 === 0 ? hex("#fde047") : hex(y < HORIZON ? "#f97316" : "#dc2626"));
       for (const x of [60, 140, 350, 430]) { b.rect(x, HORIZON - 70, 14, 70, IRON.ramp[1]); b.rect(x - 3, HORIZON - 74, 20, 6, IRON.ramp[2]); }
       floor(b, HORIZON + 6, "#292524", "#1c1917", "#ea580c", 12);
+      groundMist(b, "#ef4444", HORIZON - 2, 16, 0.25);
       // anvil
       b.poly([[200, 222], [280, 222], [270, 212], [295, 204], [205, 204], [190, 210]], IRON);
     },
@@ -196,6 +244,7 @@ export const STAGES: Record<string, StageDef> = {
       sky(b, ["#020617", "#1e1b4b", "#312e81", "#6d28d9"]);
       moon(b, 360, 54, 26, "#fef9c3");
       peaks(b, 21, 5, HORIZON - 4, 30, 70, hex("#1e1b4b"));
+      haze(b, "#6d28d9", 0.22, 80);
       tree(b, 40, HORIZON + 6, 90, ramp("#1c1917"), "sakura", ramp("#f472b6"));
       tree(b, 450, HORIZON + 6, 80, ramp("#1c1917"), "sakura", ramp("#f9a8d4"));
       // torii gate
@@ -205,6 +254,7 @@ export const STAGES: Record<string, StageDef> = {
       b.poly([[176, 66], [304, 66], [312, 58], [168, 58]], ramp("#1c1917"), { flat: 2 });
       b.rect(186, 82, 108, 6, red.ramp[2]);
       floor(b, HORIZON + 6, "#78350f", "#713f12", "#3b1d0a", 10, "planks");
+      groundMist(b, "#a78bfa", HORIZON - 4, 18, 0.2);
       for (const x of [120, 360]) { b.rect(x - 4, 186, 8, 18, STONE.ramp[1]); b.rect(x - 8, 180, 16, 6, STONE.ramp[2]); b.rect(x - 5, 186, 10, 7, hex("#fde68a")); }
     },
   },
@@ -214,6 +264,7 @@ export const STAGES: Record<string, StageDef> = {
     paint: (b) => {
       sky(b, ["#052e16", "#134e4a", "#0f766e", "#fbbf24"]);
       ridge(b, HORIZON - 4, 18, 33, hex("#14532d"));
+      haze(b, "#0f766e", 0.2, 60);
       // shikhara towers
       const st = ramp("#57534e");
       for (const [x, h, w] of [[240, 130, 70], [150, 90, 44], [330, 90, 44]] as const) {
@@ -225,6 +276,7 @@ export const STAGES: Record<string, StageDef> = {
       }
       for (let i = 0; i < 12; i++) { const x = 10 + i * 42; b.capsule(x, 0, x + 4, 30 + (i % 3) * 18, 1.2, 1, ramp("#166534"), { flat: 2 }); }
       floor(b, HORIZON + 6, "#78716c", "#57534e", "#292524", 12);
+      groundMist(b, "#bef264", HORIZON - 2, 18, 0.16);
       brazier(b, 90, 214, ramp("#a16207")); brazier(b, 390, 214, ramp("#a16207"));
     },
   },
@@ -239,8 +291,10 @@ export const STAGES: Record<string, StageDef> = {
         for (let i = 0; i < 14; i++) if ((x + i) % 3 !== 0) b.set(x, y + i, mix(hex(k ? "#22d3ee" : "#4ade80"), hex("#0c4a6e"), i / 14));
       }
       peaks(b, 5, 6, HORIZON, 40, 95, hex("#334155"), hex("#e2e8f0"));
+      haze(b, "#155e75", 0.25, 60);
       for (let i = 0; i < 14; i++) tree(b, 10 + i * 36 + (i % 2) * 8, HORIZON + 8, 34 + (i % 3) * 10, ramp("#0f2b2b"), "pine");
       floor(b, HORIZON + 6, "#cbd5e1", "#b8c6d6", "#94a3b8", 12, "plain");
+      groundMist(b, "#f8fafc", HORIZON - 6, 24, 0.35);
     },
   },
   desert: {
@@ -253,9 +307,11 @@ export const STAGES: Record<string, StageDef> = {
         b.poly([[x - h, HORIZON + 4], [x, HORIZON + 4 - h], [x + h, HORIZON + 4]], ramp("#b45309"), { flat: 2, rim: false });
         b.poly([[x, HORIZON + 4 - h], [x + h, HORIZON + 4], [x + h * 0.2, HORIZON + 4]], ramp("#92400e"), { flat: 2, rim: false });
       }
+      haze(b, "#fb923c", 0.18, 60);
       ridge(b, HORIZON + 4, 8, 12, hex("#d97706"));
       for (const x of [40, 440]) { column(b, x, 60, HORIZON + 30, 22, ramp("#d6a75a")); for (let y = 70; y < 180; y += 9) b.rect(x - 4, y, 3, 3, hex("#1e3a8a")); }
       floor(b, HORIZON + 8, "#e9b86b", "#dca45a", "#c48a3e", 10, "plain");
+      groundMist(b, "#fde68a", HORIZON - 2, 16, 0.28);
     },
   },
   underworld: {
@@ -272,6 +328,7 @@ export const STAGES: Record<string, StageDef> = {
       b.capsule(310, 93, 314, 84, 1, 0.3, ramp("#f8fafc")); // the feather on the other
       for (const x of [30, 100, 380, 450]) column(b, x, 30, HORIZON + 10, 24, ramp("#3f3f46"));
       floor(b, HORIZON + 6, "#1f2937", "#18212f", "#14532d", 14);
+      groundMist(b, "#4ade80", HORIZON - 4, 22, 0.2);
       brazier(b, 60, 212, IRON); brazier(b, 420, 212, IRON);
     },
   },
@@ -281,9 +338,11 @@ export const STAGES: Record<string, StageDef> = {
     paint: (b) => {
       sky(b, ["#0f172a", "#1a2e05", "#365314", "#4d7c0f"]);
       ridge(b, HORIZON - 30, 22, 8, hex("#1a2e05"));
+      haze(b, "#4d7c0f", 0.2, 60);
       for (const [x, h] of [[40, 120], [120, 80], [380, 100], [450, 130]] as const) tree(b, x, HORIZON + 8, h, ramp("#1c1917"), "dead");
       column(b, 250, 100, HORIZON + 8, 18, ramp("#6b7280"), 20);
       floor(b, HORIZON + 6, "#3f6212", "#365314", "#1a2e05", 10, "plain");
+      groundMist(b, "#d9f99d", HORIZON - 6, 26, 0.24);
       // murky pools
       for (const [x, y, w] of [[90, 200, 70], [330, 222, 110], [210, 252, 90]] as const) b.ellipse(x, y, w / 2, 5, ramp("#164e63"), { flat: 2, rim: false });
     },
@@ -306,6 +365,7 @@ export const STAGES: Record<string, StageDef> = {
       b.rect(100, HORIZON - 80, 3, 62, hex("#1c1917"));
       b.poly([[103, HORIZON - 76], [130, HORIZON - 60], [103, HORIZON - 44]], ramp("#57534e"), { flat: 1 });
       floor(b, HORIZON + 6, "#334155", "#1e293b", "#0f172a", 12);
+      groundMist(b, "#94a3b8", HORIZON - 6, 20, 0.22);
     },
   },
   peaks: {
@@ -315,6 +375,7 @@ export const STAGES: Record<string, StageDef> = {
       sky(b, ["#1e3a8a", "#7c3aed", "#f472b6", "#fde68a"]);
       b.ellipse(240, HORIZON - 6, 40, 40, ramp("#fef3c7", { emissive: true }), { flat: 3 });
       peaks(b, 77, 5, HORIZON + 6, 50, 110, hex("#6d28d9"), hex("#fbcfe8"));
+      haze(b, "#f472b6", 0.22, 60);
       const r = rng(5);
       for (let i = 0; i < 18; i++) b.ellipse(r() * b.w, HORIZON - 10 + r() * 20, 30 + r() * 30, 7 + r() * 5, ramp("#fce7f3"), { flat: i % 2 ? 3 : 2, rim: false });
       floor(b, HORIZON + 8, "#8b8580", "#a19a94", "#5f5954", 10);
@@ -335,6 +396,8 @@ export function stageBackdrop(id: string): PixelBuffer {
   if (!buf) {
     buf = new PixelBuffer(STAGE_W, STAGE_H);
     stage.paint(buf);
+    buf.bloom(6, 0.5);          // fire, moons, suns and lava light what is around them
+    vignette(buf);
     cache.set(stage.id, buf);
   }
   return buf;

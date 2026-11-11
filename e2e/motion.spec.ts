@@ -29,7 +29,7 @@ test.describe("reduced motion", () => {
   test("the same Hero screen does animate when motion is not reduced", async ({ page, browser }) => {
     const context = await browser.newContext({ reducedMotion: "no-preference" });
     const p = await context.newPage();
-    await openPage(p, PAGES.find((x) => x.name === "hero: champion")!);
+    await openPage(p, PAGES.find((x) => x.name === "play: champion")!);
     const infinite = await p.evaluate(() => document.getAnimations().filter((a) => a.effect?.getComputedTiming().iterations === Infinity).length);
     expect(infinite, "the check above would be meaningless if nothing ever animated").toBeGreaterThan(0);
     await context.close();

@@ -6,16 +6,17 @@ import { eq } from "drizzle-orm";
 import type { RequestContext } from "../context";
 import { userAchievements } from "../db/schema";
 import { HttpError } from "../http";
-import { ACHIEVEMENTS, CHAMPIONS, DEFAULT_CHAMPION, LOADOUT_SLOTS, achievementRow, isChampion, xpProgress, type Champion } from "./content";
+import { ACHIEVEMENTS, CHAMPIONS, DEFAULT_CHAMPION, LOADOUT_SLOTS, achievementRow, isChampion, isFighter, xpProgress, type Fighter } from "./content";
 import { canEquipInSlot, EQUIP_SLOTS, masteryChampion } from "./items";
 import { KITS, LEVEL_XP, SIGNATURES, hasSignature, masteryUnlocks, nextLevelXp } from "./kits";
 import * as roster from "./roster";
+import * as mastery from "./mastery";
 import { activeBuffs, dailyQuestsFor } from "./progression";
 import { SHOP_LEVEL, shopState } from "./shop";
 import { getAvatar, getProgress, inventory, modifyAvatar, nowIso, progressView, type Avatar, type Player } from "./store";
 
-const championOf = (a: Avatar): [Champion, boolean] =>
-  [isChampion(a.championId) ? a.championId : DEFAULT_CHAMPION, !!a.championSetAt && isChampion(a.championId)];
+const championOf = (a: Avatar): [Fighter, boolean] =>
+  [isFighter(a.championId) ? a.championId : DEFAULT_CHAMPION, !!a.championSetAt && isFighter(a.championId)];
 
 /** Wear or remove items in place: only items that exist, fit the slot and are owned (or free). "" / "none" empties. */
 function applySlots(equipped: Record<string, string>, owned: string[], slots: Record<string, unknown>, allowed: Set<string> = EQUIP_SLOTS, champion?: string) {
@@ -48,12 +49,18 @@ export async function championState(ctx: RequestContext, userId: number) {
   // due unlocks are written here (Thorne's level, a tier finished in a run), and the champion already worn is kept
   await roster.grantDue(ctx, userId, reads, a.championId);
   const unlocks = roster.rosterView(reads);
+  const challengeRows = await mastery.challengeRows(ctx, userId);
   const progress = Object.fromEntries(CHAMPIONS.map((cid) => {
     const r = rows.get(cid) ?? { xp: 0, level: 1, battles: 0, wins: 0 };
+    const m = mastery.masteryOf(cid, r.xp, challengeRows);
     const sig = SIGNATURES[cid];
     return [cid, {
       xp: r.xp, level: r.level, next_level_xp: nextLevelXp(r.level), level_xp: LEVEL_XP[r.level - 1], battles: r.battles, wins: r.wins,
-      mastery: masteryUnlocks(cid), kit: { passive: { name: KITS[cid].passive_name, text: KITS[cid].passive_text }, ultimate: { name: KITS[cid].ultimate_name, text: KITS[cid].ultimate_text } },
+      mastery: masteryUnlocks(cid),
+      kit: { passive: { name: KITS[cid].passive_name, text: KITS[cid].passive_text }, ultimate: { name: KITS[cid].ultimate_name, text: KITS[cid].ultimate_text },
+             weakness: { name: KITS[cid].weakness_name, text: KITS[cid].weakness_text } },
+      // champion mastery 0-100% (mastery.ts): XP share + challenges
+      mastery_pct: m.pct, challenges: m.challenges, passive_learnable: m.passive_learnable, mastered: m.complete,
       signature: { weapon: sig.weapon, perk: { name: sig.perk_name, text: sig.perk_text }, finisher: sig.finisher, owned: a.owned.includes(sig.weapon), worn: cid === champion && hasSignature(cid, a.equipped) },
       unlock: unlocks[cid],
     }];
@@ -70,8 +77,9 @@ export async function celebrateChampion(ctx: RequestContext, userId: number, bod
 
 export async function chooseChampion(ctx: RequestContext, userId: number, body: Record<string, unknown>) {
   const cid = body.champion_id;
-  if (!isChampion(cid)) throw new HttpError(422, "unknown_champion", "That champion doesn't exist.", null, { champions: [...CHAMPIONS] });
-  if (cid !== DEFAULT_CHAMPION) {
+  if (!isFighter(cid)) throw new HttpError(422, "unknown_champion", "That champion doesn't exist.", null, { champions: [...CHAMPIONS] });
+  // your hero is always there; a champion must have joined
+  if (cid !== DEFAULT_CHAMPION && cid !== "hero") {
     const reads = await roster.rosterReads(ctx, userId);
     const rows = await roster.grantDue(ctx, userId, reads, (await getAvatar(ctx, userId)).championId);
     if (!roster.isUnlocked(cid, rows)) {

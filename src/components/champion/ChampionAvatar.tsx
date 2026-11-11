@@ -18,7 +18,7 @@ export default function ChampionAvatar({ size = 48, withPet = false, preview = f
   preview?: boolean;
   label?: string; className?: string;
 }) {
-  const { hero, petId } = useChampionLook({ preview });
+  const { hero, petId, petStage } = useChampionLook({ preview });
   return (
     <span className={cn("champ-avatar", className)} data-champion={hero.id} style={{ "--champ-size": `${size}px`, "--hero-accent": hero.accent } as React.CSSProperties}>
       <span className="champ-avatar__face">
@@ -26,7 +26,7 @@ export default function ChampionAvatar({ size = 48, withPet = false, preview = f
       </span>
       {withPet && petId && (
         <span className="champ-avatar__pet" data-pet={petId}>
-          <PixelSprite pet={petId} className="champ-avatar__pet-sprite" />
+          <PixelSprite pet={petId} petStage={petStage} className="champ-avatar__pet-sprite" />
         </span>
       )}
     </span>

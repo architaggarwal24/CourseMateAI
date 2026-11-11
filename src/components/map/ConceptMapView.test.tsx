@@ -100,7 +100,7 @@ describe("concept map", () => {
     expect(panel.textContent).toContain("4 of 4 answers right · explained on p.2");
     expect(within(panel).getByRole("link", { name: "Quick quiz on it" }).getAttribute("href")).toBe("/study?tab=quiz&doc=d1&topic=ATP");
     expect(within(panel).getByRole("link", { name: "Flashcards" }).getAttribute("href")).toBe("/study?tab=flashcards&doc=d1&topic=ATP");
-    expect(within(panel).getByRole("link", { name: "Summon its boss" }).getAttribute("href")).toBe("/hero?tab=arena&doc=d1&topic=ATP");
+    expect(within(panel).getByRole("link", { name: "Summon its boss" }).getAttribute("href")).toBe("/arena?doc=d1&topic=ATP");
     fireEvent.click(within(panel).getByRole("button", { name: "Mitochondria" }));             // jump along a link
     expect(screen.getByRole("region", { name: "Mitochondria" })).toBeTruthy();
     fireEvent.keyDown(stars[0], { key: "Escape" });

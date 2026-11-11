@@ -28,7 +28,13 @@ vi.mock("@/components/arena/ArenaArea", () => ({ default: () => <div>arena</div>
 import { useHUDStore } from "@/hooks/useHUD";
 import { useChampion } from "@/hooks/useChampion";
 import { useHeroStore } from "@/hooks/useHero";
-import HeroArea from "./HeroArea";
+import PlayArea from "./PlayArea";
+
+// the router's job, done here: /quests, /arena and /bestiary are their own pages, every other tab is /champion?tab=
+function HeroArea() {
+  const t = new URLSearchParams(nav.query).get("tab") ?? "";
+  return <PlayArea page={t === "quests" || t === "arena" || t === "bestiary" ? t : "champion"} />;
+}
 
 const item = (over: Record<string, any>) => ({
   id: "x", category: "headgear", name: "X", description: "d", price: 100, level_required: 1, consumable: false,
@@ -94,11 +100,11 @@ beforeEach(() => {
 });
 afterEach(() => { cleanup(); vi.restoreAllMocks(); });
 
-describe("<HeroArea />", () => {
-  it("keeps the header (level, XP bar, coins, streak) on top of every tab", async () => {
+describe("<PlayArea />", () => {
+  it("keeps the header (level, XP bar, coins, streak) on top of every play page and Champion tab", async () => {
     const { rerender } = render(<HeroArea />);
     await screen.findByText("Headgear", { selector: "h2" });
-    for (const q of ["tab=shop", "tab=inventory", "tab=champion", "tab=quests", "tab=arena", ""]) {
+    for (const q of ["tab=shop", "tab=inventory", "tab=champion", "tab=forge", "tab=mastery", "tab=quests", "tab=arena", "tab=bestiary", ""]) {
       nav.query = q;
       rerender(<HeroArea />);
       const header = screen.getByTestId("hero-header");
@@ -109,16 +115,36 @@ describe("<HeroArea />", () => {
     }
   });
 
-  it("one tab is current, and an unknown tab is the quests tab", async () => {
+  it("Champion has six tabs, one is current, and an unknown tab is the Champion tab", async () => {
     nav.query = "tab=nonsense";
     render(<HeroArea />);
-    const nav_ = screen.getByRole("navigation", { name: "Hero" });
+    const nav_ = screen.getByRole("navigation", { name: "Champion" });
     expect(within(nav_).getAllByRole("link").map((l) => l.textContent)).toEqual(
-      ["Quests", "Arena", "Bestiary", "Shop", "Inventory", "Champion", "Achievements"],
+      ["Champion", "Inventory", "Forge", "Shop", "Achievements", "Mastery"],
     );
-    expect(within(nav_).getByRole("link", { name: "Quests" }).getAttribute("aria-current")).toBe("page");
+    expect(within(nav_).getByRole("link", { name: "Champion" }).getAttribute("aria-current")).toBe("page");
     expect(within(nav_).getByRole("link", { name: "Shop" }).getAttribute("aria-current")).toBeNull();
-    expect(within(nav_).getByRole("link", { name: "Shop" }).getAttribute("href")).toBe("/hero?tab=shop");
+    expect(within(nav_).getByRole("link", { name: "Shop" }).getAttribute("href")).toBe("/champion?tab=shop");
+  });
+
+  it("Quests, Arena and Bestiary are pages of their own: the header, no tab bar", async () => {
+    for (const page of ["quests", "arena", "bestiary"] as const) {
+      render(<PlayArea page={page} />);
+      expect(screen.getByTestId("hero-header")).toBeTruthy();
+      expect(screen.queryByRole("navigation", { name: "Champion" })).toBeNull();
+      expect(document.querySelector("[data-hero-tab]")?.getAttribute("data-hero-tab")).toBe(page);
+      cleanup();
+    }
+  });
+
+  it("a Champion link to what is now its own page goes there (/champion?tab=arena -> /arena)", async () => {
+    for (const [q, to] of [["tab=arena", "/arena"], ["tab=quests", "/quests"], ["tab=bestiary", "/bestiary"]]) {
+      nav.query = q;
+      nav.replace.mockClear();
+      render(<PlayArea page="champion" />);
+      expect(nav.replace).toHaveBeenCalledWith(to);
+      cleanup();
+    }
   });
 
   it("buying an item updates coins, inventory and the champion preview with no reload", async () => {
@@ -176,14 +202,14 @@ describe("<HeroArea />", () => {
   describe("the Champion tab", () => {
     beforeEach(() => { nav.query = "tab=champion"; });
 
-    it("old Avatar and Hero Forge links open the Champion tab", async () => {
-      for (const q of ["tab=avatar", "tab=forge"]) {
+    it("old Avatar links open the Champion tab (?tab=forge is the Forge now)", async () => {
+      for (const q of ["tab=avatar"]) {
         nav.query = q;
         nav.replace.mockClear();
         render(<HeroArea />);
-        expect(within(screen.getByRole("navigation", { name: "Hero" })).getByRole("link", { name: "Champion" }).getAttribute("aria-current")).toBe("page");
+        expect(within(screen.getByRole("navigation", { name: "Champion" })).getByRole("link", { name: "Champion" }).getAttribute("aria-current")).toBe("page");
         await screen.findByRole("radiogroup", { name: "Choose your champion" });
-        expect(nav.replace).toHaveBeenCalledWith("/hero?tab=champion");
+        expect(nav.replace).toHaveBeenCalledWith("/champion?tab=champion");
         cleanup();
       }
     });
@@ -247,7 +273,7 @@ describe("<HeroArea />", () => {
   });
 });
 
-describe("<HeroArea />: champion levels and mastery skins (Phase 3 Stage 2)", () => {
+describe("<PlayArea />: champion levels and mastery skins (Phase 3 Stage 2)", () => {
   const progress = (over: Record<string, any> = {}) => ({
     xp: 120, level: 2, level_xp: 100, next_level_xp: 250, battles: 4, wins: 2,
     mastery: [{ id: "mastery_kaien_head", slot: "headgear", level: 3 }, { id: "mastery_kaien_weapon", slot: "weapon", level: 6 }],
@@ -291,5 +317,40 @@ describe("<HeroArea />: champion levels and mastery skins (Phase 3 Stage 2)", ()
     fireEvent.click(await screen.findByRole("button", { name: /Head piece/ }));
     expect(screen.getByRole("button", { name: "Wear Ninth Page Kabuto" })).toBeTruthy();
     expect(screen.queryByRole("button", { name: "Wear Archivist Hood" })).toBeNull();
+  });
+});
+
+describe("<PlayArea />: the Mastery tab", () => {
+  const progress = (over: Record<string, any> = {}) => ({
+    xp: 120, level: 2, level_xp: 100, next_level_xp: 250, battles: 4, wins: 2, mastery: [],
+    kit: { passive: { name: "Riposte", text: "A right Guard hits back." }, ultimate: { name: "Blade Storm", text: "Two right answers hit twice." } },
+    mastery_pct: 12, challenges: [{ id: "c1", text: "Win 5 battles", progress: 2, target: 5, done: false }],
+    passive_learnable: false, mastered: false, ...over,
+  });
+  beforeEach(() => {
+    nav.query = "tab=mastery";
+    server.champ.progress = {
+      kaien: progress(), asha: progress({ mastery_pct: 100, mastered: true, passive_learnable: true }), brak: progress(), mira: progress(), vex: progress(),
+      thorne: progress({ unlock: { unlocked: false, source: null, celebrated: false, how: "Finish the Bestiary's first tier", have: 3, need: 10, reward: { xp: 0, coins: 0 } } }),
+    };
+  });
+
+  it("lists all six champions with their mastery and challenges; locked ones say how they join", async () => {
+    render(<HeroArea />);
+    const tab = await screen.findByTestId("mastery");
+    await vi.waitFor(() => expect(within(tab).getByRole("progressbar", { name: "Kaien's mastery" }).getAttribute("aria-valuenow")).toBe("12"));
+    expect(within(tab).getByText("1/6")).toBeTruthy();                                       // Asha is mastered
+    expect(within(tab).getByRole("region", { name: "Asha" }).hasAttribute("data-mastered")).toBe(true);
+    expect(within(tab).getByRole("list", { name: "Kaien's mastery challenges" }).textContent).toContain("Win 5 battles");
+    expect(within(within(tab).getByRole("region", { name: "Thorne" })).getByText(/Finish the Bestiary's first tier \(3\/10\)/)).toBeTruthy();
+    expect(within(tab).queryByRole("progressbar", { name: "Thorne's mastery" })).toBeNull();
+  });
+
+  it("the Champion tab keeps a short mastery line that links here", async () => {
+    nav.query = "tab=champion";
+    render(<HeroArea />);
+    const kit = await screen.findByTestId("champion-kit");
+    expect(within(kit).getByRole("link", { name: "See challenges" }).getAttribute("href")).toBe("/champion?tab=mastery");
+    expect(within(kit).queryByRole("list", { name: "Kaien's mastery challenges" })).toBeNull();
   });
 });

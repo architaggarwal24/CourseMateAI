@@ -120,7 +120,7 @@ const BUDGET: Record<string, number> = {
   "GET /entitlements": 3,
   "GET /account/usage": 9,
   "GET /avatar": 3,
-  "GET /avatar/champion": 4,
+  "GET /avatar/champion": 5, // +1 champion mastery: the challenge rows
   "GET /courses": 5,
   "GET /courses/:id": 5,
   "GET /courses/:id/progress": 6,

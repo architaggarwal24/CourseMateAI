@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import { Check, Crown, Sparkles } from "@/components/icons";
 import PixelConfetti from "@/components/fx/PixelConfetti";
 import PixelSprite from "@/components/arena/pixel/PixelSprite";
-import { lookFor } from "@/components/champion/useChampionLook";
+import { lookFor, useMyHeroLook } from "@/components/champion/useChampionLook";
 import ThemeScope from "@/components/ThemeScope";
 import { Badge, Button, ButtonLink, Modal } from "@/components/ui";
 import { useChampion } from "@/hooks/useChampion";
@@ -108,7 +108,8 @@ function PlayWindow({ notice, t, rarity, actions, note, list, tag, onClose }: {
 }) {
   const shop = useHeroStore((s) => s.shop);
   const championId = useChampion((s) => s.championId);
-  const hero = lookFor(championId, shop).hero;
+  const mine = useMyHeroLook();
+  const hero = lookFor(championId, shop, null, mine).hero;
   return (
     <ThemeScope theme="play">
       <Modal open onClose={onClose} title={<span className="pixel-font">{t.shout}</span>} actions={actions} className="fx-up fx-up--play">

@@ -41,9 +41,9 @@ function LockedNotice({ title, level, need }: { title: string; level: number; ne
 
 /** The champion in its skins, wearing the item being tried on (and its pet, or the pet being tried on). */
 function ShopPreview() {
-  const { hero, petId } = useChampionLook({ preview: true });
+  const { hero, petId, petStage } = useChampionLook({ preview: true });
   const previewName = useHeroStore((s) => (s.previewId ? s.shop?.items.find((i) => i.id === s.previewId)?.name : undefined));
-  return <PixelSprite hero={hero} pet={petId} label={previewName ? `${hero.name}, trying on ${previewName}` : `${hero.name}, your champion`} className="hero-stage__sprite" />;
+  return <PixelSprite hero={hero} pet={petId} petStage={petStage} label={previewName ? `${hero.name}, trying on ${previewName}` : `${hero.name}, your champion`} className="hero-stage__sprite" />;
 }
 
 /** Everything that can be bought and then worn or used. */
