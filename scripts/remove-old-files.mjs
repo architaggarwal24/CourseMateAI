@@ -30,7 +30,7 @@ const OLD = [
   "src/components/PixelSprite.tsx",        // the old 16x16 item icon (the pixel sprite is components/arena/pixel/PixelSprite.tsx)
   "src/components/avatarRendering.test.tsx",
   "src/components/hero/AvatarTab.tsx",     // -> components/hero/ChampionTab.tsx
-  "src/components/hero/ForgeTab.tsx",
+  // (the old components/hero/ForgeTab.tsx was listed here: a new ForgeTab.tsx, the Forge, now lives at that path)
   "src/hooks/useArenaHero.ts",             // -> hooks/useChampion.ts (saved on the account)
   "src/app/dev/avatar",
   // Phase 4 / Stage 4.3: the server's AI only - no keys of one's own any more
@@ -75,6 +75,18 @@ const OLD = [
   // The Bestiary lives in its own tab (the book); the arena tab no longer shows the creature grid
   "src/components/arena/pixel/Bestiary.tsx",
   "src/components/arena/bestiary.test.tsx",
+  // Your hero: the per-champion look editor and its route were replaced by the hero's own look (/api/v1/hero/look)
+  "src/app/api/v1/avatar/champion/look",
+  // Play navigation: Quests, Arena, Bestiary and Champion are pages (app/(app)/(play)); /hero only redirects
+  // (app/hero/route.ts), and components/hero/HeroArea.tsx became PlayArea.tsx
+  "src/app/(app)/hero",
+  "src/components/hero/HeroArea.tsx",
+  "src/components/hero/HeroArea.test.tsx",
+  "DELETE.txt",                            // a note from a zip, unzipped into the root by mistake
+  // Next's generated route checks: rebuilt by `next dev` / `next build`, but a stale one still points at the routes
+  // above and fails the type check (npm run check) until then
+  ".next/types/validator.ts",
+  ".next/dev/types/validator.ts",
 ];
 
 for (const rel of OLD) {

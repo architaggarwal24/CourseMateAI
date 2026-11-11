@@ -8,8 +8,9 @@
 # Node / Next.js
 node_modules/
 .next/
-out/
-build/
+/out/
+# (anchored: a bare build/ also hid src/app/api/v1/hero/build/, so that route never reached GitHub)
+/build/
 *.tsbuildinfo
 
 # Cloudflare: the OpenNext build and wrangler's local state (any folder)
