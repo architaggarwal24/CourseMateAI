@@ -73,7 +73,7 @@ export default function CharacterSelect({ ready, failed, onPick, onRetry }: {
 
       <div className="arena-select__body">
         <figure className="arena-select__fighter" style={{ "--hero-accent": look.accent } as React.CSSProperties}>
-          <PixelSprite hero={look} anim="win" className="arena-select__sprite" label={`${name}, ready to fight`} />
+          <PixelSprite hero={look} anim="idle" fidget className="arena-select__sprite" label={`${name}, ready to fight`} />
           <figcaption className="arena-select__info">
             <span className="arena-select__name pixel-font">{name}</span>
             <span className="arena-select__style">{isHero ? styleName : `${STYLE_LABEL[look.style]} · ${look.blurb}`}</span>

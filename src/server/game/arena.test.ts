@@ -14,6 +14,11 @@ import * as forfeit from "@/app/api/v1/arena/battles/[id]/forfeit/route";
 import * as continueRoute from "@/app/api/v1/arena/battles/[id]/continue/route";
 import * as prepareRoute from "@/app/api/v1/arena/battles/[id]/prepare/route";
 import * as rearmRoute from "@/app/api/v1/arena/battles/[id]/rearm/route";
+import * as powerRoute from "@/app/api/v1/arena/power/route";
+import * as gauntlets from "@/app/api/v1/arena/gauntlets/route";
+import * as gauntletOne from "@/app/api/v1/arena/gauntlets/[id]/route";
+import * as gauntletNext from "@/app/api/v1/arena/gauntlets/[id]/next/route";
+import * as gauntletAbandon from "@/app/api/v1/arena/gauntlets/[id]/abandon/route";
 import * as board from "@/app/api/v1/arena/leaderboard/route";
 import * as weak from "@/app/api/v1/arena/weak-concepts/route";
 import * as runs from "@/app/api/v1/arena/runs/route";
@@ -269,6 +274,108 @@ describe("boss effects and the enraged form (Stage 3)", () => {
     expect(r.next_intent).toMatchObject({ kind: "fury", special: true });
     expect(s.boss.effects.unique).toContain(r.next_intent.effect.id);
     expect(species).toBeTruthy();
+  });
+});
+
+describe("power level, Boss Rush and Survival (Stage 6)", () => {
+  const ready = (b: Browser, battle: string) => prepareRoute.POST(post(b, `/api/v1/arena/battles/${battle}/prepare`), params({ id: battle })).then(json);
+  /** Win the fight in one blow: 1 HP left, a calm boss, a right answer. */
+  const winIt = async (b: Browser, battle: string) => {
+    await ready(b, battle);
+    await db().prepare("UPDATE arena_battles SET boss_json = json_set(boss_json, '$.current_hp', 1), boss_hp = 1, shield = 0, intent_json = ? WHERE id = ?")
+      .bind(JSON.stringify({ kind: "attack", name: "Bite", value: 1, description: "1." }), battle).run();
+    const q = await ask(b, battle, "strike");
+    return reply(b, battle, q.question.id, "ATP");
+  };
+  const begin = async (b: Browser, id: string, kind: string) => gauntlets.POST(post(b, "/api/v1/arena/gauntlets", { kind, session_id: id, topic: "mitochondria" }));
+  const overview = async (b: Browser) => json(await powerRoute.GET(b.request("/api/v1/arena/power")));
+  const hunt = (b: Browser, battle: string, species: string[]) => Promise.all(species.map((s) =>
+    db().prepare("INSERT INTO bestiary_records (user_id, species, fights, wins, updated_at) VALUES ((SELECT user_id FROM arena_battles WHERE id = ?), ?, 1, 1, '2026-11-12')").bind(battle, s).run()));
+
+  it("Survival: bosses matched to your power, hearts carried, a chest every 5, and it ends when a fight is lost", async () => {
+    const b = await person(mail, "survive@example.com", "free");
+    const id = await uploadPdf(b, "Bio.pdf", BIO);
+    const before = await overview(b);
+    expect(before.power).toMatchObject({ power: 10, hunted: [] });
+    expect(before.rush).toMatchObject({ unlocked: false, hunted: 0, need: 3 });
+    const s = await json(await begin(b, id, "survival"));
+    expect(s.gauntlet).toMatchObject({ kind: "survival", stage: 0, power: 10, next_power: 7, next_chest_at: 5 });
+    expect(s.battle).toMatchObject({ gauntlet_id: s.gauntlet.gauntlet_id, prepared: false, mode: "survival" });
+    const gid = s.gauntlet.gauntlet_id;
+    // a second one on the same document waits
+    expect((await begin(b, id, "survival")).status).toBe(409);
+
+    let r = await winIt(b, s.battle_id);
+    expect(r.battle.status).toBe("won");
+    expect(r.battle.result.gauntlet).toMatchObject({ stage: 1, over: false, chest: null, next: { power: 8 } });
+    expect(r.rewards.boss_defeat).toBeTruthy();                                // each boss pays as a fight does
+    // hearts carry: lose some before the next fight
+    await db().prepare("UPDATE arena_gauntlets SET hearts = 3 WHERE id = ?").bind(gid).run();
+    let n = await json(await gauntletNext.POST(post(b, `/api/v1/arena/gauntlets/${gid}/next`), params({ id: gid })));
+    expect(n.battle.player.hp).toBe(3);
+    expect(n.battle.boss.species).not.toBe(s.battle.boss.species);              // never the same creature twice in a row
+    // the champion is set after the first boss
+    expect((await rearmRoute.POST(post(b, `/api/v1/arena/battles/${n.battle_id}/rearm`), params({ id: n.battle_id }))).status).toBe(409);
+    // to boss 5: a chest
+    for (let i = 2; i <= 5; i++) {
+      r = await winIt(b, n.battle_id);
+      expect(r.battle.result.gauntlet.stage).toBe(i);
+      if (i < 5) n = await json(await gauntletNext.POST(post(b, `/api/v1/arena/gauntlets/${gid}/next`), params({ id: gid })));
+    }
+    expect(r.battle.result.gauntlet.chest).toMatchObject({ size: "chest", at: 5, coins: expect.any(Number), xp: 60 });
+    expect(r.battle.result.gauntlet.next_chest_at).toBe(10);
+    // a lost fight ends it
+    n = await json(await gauntletNext.POST(post(b, `/api/v1/arena/gauntlets/${gid}/next`), params({ id: gid })));
+    const lost = await json(await forfeit.POST(post(b, `/api/v1/arena/battles/${n.battle_id}/forfeit`), params({ id: n.battle_id })));
+    expect(lost.battle.result.gauntlet).toMatchObject({ over: true, status: "lost", result: { stage: 5, chests: 1 } });
+    const done = await json(await gauntletOne.GET(b.request(`/api/v1/arena/gauntlets/${gid}`), params({ id: gid })));
+    expect(done.gauntlet).toMatchObject({ status: "lost", stage: 5 });
+    const after = await overview(b);
+    expect(after.survival.best).toMatchObject({ stage: 5 });
+    expect(after.power.power).toBeGreaterThan(10);                              // score cards and hunts raised it
+  });
+
+  it("Boss Rush opens after 3 creatures hunted: your 3 strongest, weakest first; beat all 3 for the big chest", async () => {
+    const b = await person(mail, "rush@example.com", "free");
+    const id = await uploadPdf(b, "Bio.pdf", BIO);
+    const locked = await begin(b, id, "rush");
+    expect(locked.status).toBe(409);
+    expect((await json(locked)).error.code).toBe("rush_locked");
+    const tmp = await start(b, id);                                             // a battle row, to find the player's id
+    await forfeit.POST(post(b, `/api/v1/arena/battles/${tmp.battle_id}/forfeit`), params({ id: tmp.battle_id }));
+    await db().prepare("DELETE FROM bestiary_records WHERE user_id = (SELECT user_id FROM arena_battles WHERE id = ?)").bind(tmp.battle_id).run();
+    await hunt(b, tmp.battle_id, ["minotaur", "naga", "hydra", "cyclops"]);
+    const o = await overview(b);
+    expect(o.rush).toMatchObject({ unlocked: true, hunted: 4 });
+    expect(o.rush.bosses.map((x: { species: string }) => x.species)).toEqual(["hydra", "naga", "cyclops"]);   // by tier, then wins, then name
+    const s = await json(await begin(b, id, "rush"));
+    const gid = s.gauntlet.gauntlet_id;
+    expect(s.gauntlet.plan.map((p: { species: string }) => p.species)).toEqual(["cyclops", "naga", "hydra"]);
+    expect(s.battle.boss.species).toBe("cyclops");
+    let r = await winIt(b, s.battle_id);
+    expect(r.battle.result.gauntlet).toMatchObject({ stage: 1, over: false, next: { species: "naga" } });
+    let n = await json(await gauntletNext.POST(post(b, `/api/v1/arena/gauntlets/${gid}/next`), params({ id: gid })));
+    // asking again for the next fight gives the same one
+    const same = await json(await gauntletNext.POST(post(b, `/api/v1/arena/gauntlets/${gid}/next`), params({ id: gid })));
+    expect(same.battle_id).toBe(n.battle_id);
+    r = await winIt(b, n.battle_id);
+    n = await json(await gauntletNext.POST(post(b, `/api/v1/arena/gauntlets/${gid}/next`), params({ id: gid })));
+    expect(n.battle.boss.species).toBe("hydra");
+    r = await winIt(b, n.battle_id);
+    expect(r.battle.result.gauntlet).toMatchObject({ over: true, status: "won", chest: { size: "big", xp: 200 } });
+    expect(r.battle.result.gauntlet.chest.items.filter((i: { kind: string }) => i.kind === "potion")).toHaveLength(2);
+    expect((await overview(b)).rush.wins).toBe(1);
+  });
+
+  it("giving up ends the run and loses the fight in progress", async () => {
+    const b = await person(mail, "giveup@example.com", "free");
+    const id = await uploadPdf(b, "Bio.pdf", BIO);
+    const s = await json(await begin(b, id, "survival"));
+    const gid = s.gauntlet.gauntlet_id;
+    const out = await json(await gauntletAbandon.POST(post(b, `/api/v1/arena/gauntlets/${gid}/abandon`), params({ id: gid })));
+    expect(out.gauntlet.status).not.toBe("active");
+    const fight = await json(await battleOne.GET(b.request(`/api/v1/arena/battles/${s.battle_id}`), params({ id: s.battle_id })));
+    expect(fight.battle.status).toBe("lost");
   });
 });
 

@@ -162,7 +162,7 @@ function LiveSketch({ c }: { c: BestiaryEntry }) {
   };
   return (
     <button type="button" className="tome-art__sketch tome-art__sketch--live" onClick={provoke} aria-label={`Provoke the ${c.name}`} data-anim={anim}>
-      <PixelSprite boss={c.species} flip anim={anim} className="tome-art__sprite" />
+      <PixelSprite boss={c.species} flip anim={anim} fidget className="tome-art__sprite" />
     </button>
   );
 }

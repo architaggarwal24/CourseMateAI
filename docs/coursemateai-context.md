@@ -245,7 +245,30 @@ Each step was a set of stages with zips and checklists. Dates are 2026.
   Hero pixel UI: `components/play/pixel-ui.css` + play tokens (indigo panels, 0 radius, hard shadows, steps()
   motion, Press Start 2P labels, Pixelify Sans body; fonts given by AppShell's play ThemeScope). The last verdict
   waits 6 s (`AUTO_ADVANCE_MS.over`) so the KO/finisher plays.
-- Nothing is in progress (all 4 hero stages delivered). Ideas waiting in the backlog: chiptune sound, sharing a KO clip, campaign mode, more inputs
+- **The arcade arena (12 Nov, 7 stages; agreed in the arena brainstorm):**
+  1. Questions before the fight: `arena.prepare` writes 12 phase-1 and 8 phase-2 questions into `arena_questions`
+     (`PREPARED`); turns auto-advance (`AUTO_ADVANCE_MS`), Enter repeats the last move.
+  2. Layout: HUD on top, fighters in the middle, question at the bottom (`components/arena/fight.css`); phones play
+     sideways (a "turn your phone" notice upright); the mount stays under the champion all fight.
+  3. Enraged forms and effects (`server/game/effects.ts`): each boss draws 2-3 shared effects for its normal form
+     and uses its own 2-3 when enraged (clock, burns, locked moves, blind/fog/shuffle on the question...); enraged
+     bosses grow, tint red and get a new pattern (the hydra strikes with every head).
+  4. Combo (x2-x5 damage, points and ultimate charge; a combo special every 3rd right answer at x5), the FINAL MOVE
+     (at 15% HP one 12 s question: right = the champion's finisher, wrong = it staggers up +10%), a score card with
+     an S-D rank instead of K.O./grade, and CONTINUE? when knocked down (potion or coins 100/200/400, 3 a fight,
+     `continueBattle`; the champion lies down until then). Finisher names: `lib/arena/finishers.ts`.
+  5. Character select and VS while the questions are written: POST /arena/battles with `defer: true` makes the battle
+     at once, POST .../prepare writes its questions, POST .../rearm switches the champion before the first question.
+     No round call and no boss card in the fight (the card belongs to the Bestiary).
+  6. Power level, Boss Rush and Survival (they replace Multiplayer): `server/game/power.ts` (10 + best 5 score cards
+     / 40 + each hunted species by tier) and `gauntlet.ts` (`arena_gauntlets`, migration 0018, `arena_battles.gauntlet_id`).
+     Boss Rush = your 3 strongest hunted creatures, weakest first, at 0.9/1.05/1.2x your power, hearts carried, a big
+     chest; Survival = endless bosses from 70% of your power, +12% each, a chest every 5, over when a fight is lost.
+     Every fight pays as usual; chests: `chest.ts openGauntletChest`. Routes: GET /arena/power, /arena/gauntlets...
+  7. Idle fidgets: 3 per fighting style (`FIDGET_KEYS` in lib/pixel/heroes.ts), 2 per creature (`BOSS_FIDGET_KEYS`
+     in bosses.ts); the fight scene plays one after 4.5-9 s idle; `PixelSprite fidget` does the same on the select
+     screen, VS, the Champion tab and the Bestiary.
+- Nothing is in progress (all 4 hero stages and the 7 arcade stages delivered). Ideas waiting in the backlog: chiptune sound, sharing a KO clip, campaign mode, more inputs
   (YouTube, slides, OCR), ghost duels and other multiplayer, teacher mode.
 
 ---

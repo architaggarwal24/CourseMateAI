@@ -7,10 +7,10 @@ import { useHeroStore } from "@/hooks/useHero";
 import { useChampion } from "@/hooks/useChampion";
 import {
   castSpell, castUltimate, tauntBoss, fetchActiveBattle, fetchBattle, fetchQuestion, forfeitBattle, startBattle, submitAnswer, consumeItem as postItem,
-  continueBattle, prepareBattle, rearmBattle,
+  continueBattle, prepareBattle, rearmBattle, startGauntlet, nextGauntlet,
 } from "@/lib/arena/api";
 import type {
-  Battle, BattleRewards, BossProfile, Difficulty, ItemId, Move, Outcome, Question, Spell,
+  Battle, BattleRewards, BossProfile, Difficulty, GauntletKind, ItemId, Move, Outcome, Question, Spell,
 } from "@/lib/arena/types";
 
 /**
@@ -23,7 +23,8 @@ import type {
  *
  * select / versus (Stage 5): the battle exists at once and its questions are written meanwhile (`ready` once they
  * are): the player picks a champion, then faces the boss on the VS screen, and the fight opens when both are done.
- * An expedition's fight skips the pick (the run keeps its champion) and shows the VS screen.
+ * An expedition's fight skips the pick (the run keeps its champion) and shows the VS screen. Boss Rush / Survival
+ * (Stage 6): the first fight has the pick; each next one (after a win, hearts carried) goes straight to VS.
  *
  * Inside `fight` a turn goes through these stages:
  *   choosing   the boss's intent is shown; the player picks a move (strike / jab / heavy / guard)
@@ -276,7 +277,7 @@ export function useArenaBattle({ autoResume = true, documentId }: { autoResume?:
         if (active) {
           const boss = active.boss_profile ?? { name: active.boss.name };
           // reopened while its questions were still being written (character select): back to the pick
-          if (fresh(active) && !active.prepared && !active.run_id) preFight(active, boss, true);
+          if (fresh(active) && !active.prepared && !active.run_id) preFight(active, boss, !active.gauntlet_id);
           else enter(active, boss);
           return;
         }
@@ -351,6 +352,35 @@ export function useArenaBattle({ autoResume = true, documentId }: { autoResume?:
       patch({ phase: "summon" });
     }
   }, [patch, enter, preFight]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  /** Stage 6: start a Boss Rush or a Survival on a topic: its first fight opens on the champion select. */
+  const summonGauntlet = useCallback(async (kind: GauntletKind, topic: string) => {
+    const s = latest.current;
+    if (s.phase === "starting") return;
+    patch({ phase: "starting" });
+    try {
+      const r = await startGauntlet(kind, s.sessionId, topic.trim());
+      if (alive.current) preFight(r.battle, r.boss, true);
+    } catch (e) {
+      if (!alive.current) return;
+      toast.apiError(e);
+      patch({ phase: "summon" });
+    }
+  }, [patch, preFight]);
+
+  /** Stage 6: the next fight of the run (after a win): straight to the VS screen, hearts carried over. */
+  const nextGauntletFight = useCallback(async (gauntletId: string) => {
+    patch({ phase: "starting" });
+    try {
+      const r = await nextGauntlet(gauntletId);
+      if (!alive.current) return;
+      if (fresh(r.battle)) preFight(r.battle, r.boss, false); else enter(r.battle, r.boss);
+    } catch (e) {
+      if (!alive.current) return;
+      toast.apiError(e, { onRetry: () => { void nextGauntletFight(gauntletId); } });
+      patch({ phase: "result" });
+    }
+  }, [patch, preFight, enter]); // eslint-disable-line react-hooks/exhaustive-deps
 
   /** Pick this turn's move: asks the server for a question of the move's tier. */
   const chooseMove = useCallback((move: Move) => {
@@ -557,7 +587,7 @@ export function useArenaBattle({ autoResume = true, documentId }: { autoResume?:
   }, [patch]);
 
   return { ...state, summon, chooseMove, answer, next, holdVerdict, retryQuestion, applyItem, cast, ultimate, taunt, retreat, playAgain, enterById, continueWith, settleDown,
-    pickChampion, beginFight, retryPrepare };
+    pickChampion, beginFight, retryPrepare, summonGauntlet, nextGauntletFight };
 }
 
 /** Whole seconds left until `deadline` (ms since epoch); null when there is no clock. Ticks four times a second. */

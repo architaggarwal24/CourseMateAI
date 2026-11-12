@@ -10,7 +10,10 @@ import { PixelBuffer, type Pt } from "./buffer";
 import { farSide, ramp, type Material } from "./color";
 import { add, dirOf, drawHumanoid, lerpPt, type Build, type HumanoidLook, type Pose, type Skeleton } from "./rig";
 
-export type BossAnim = "idle" | "attack" | "hit" | "cast" | "ko";
+export type BossAnim = "idle" | "attack" | "hit" | "cast" | "ko"
+  // Stage 7: two idle fidgets per creature (played now and then while it waits)
+  | "fidget1" | "fidget2";
+export const BOSS_FIDGETS = ["fidget1", "fidget2"] as const;
 
 export interface BossParams {
   /** 0..1 around the idle loop (tails, tentacles, breathing). */
@@ -49,7 +52,7 @@ const P0: BossParams = { t: 0, bob: 0, reach: 0, recoil: 0, mouth: 0, glow: 0, f
 const P = (o: Partial<BossParams>): BossParams => ({ ...P0, ...o });
 
 /** The key poses; BOSS_ANIMS below adds an eased in-between after each (and a smooth 8-frame breath for idle). */
-const BOSS_KEYS: Record<Exclude<BossAnim, "idle">, BossParams[]> = {
+const BOSS_KEYS: Record<Exclude<BossAnim, "idle" | "fidget1" | "fidget2">, BossParams[]> = {
   attack: [P({ reach: -0.7, mouth: 0.3, t: 0.1 }), P({ reach: 0.4, mouth: 1, t: 0.2 }), P({ reach: 1, mouth: 1, t: 0.3 }), P({ reach: 0.6, mouth: 0.4, t: 0.4 }), P({ t: 0.5, bob: 1 })],
   hit: [P({ recoil: 1, mouth: 0.7, t: 0.6 }), P({ recoil: 0.45, mouth: 0.3, t: 0.7 })],
   cast: [P({ glow: 0.6, mouth: 0.4, reach: -0.3 }), P({ glow: 1.4, mouth: 1, reach: -0.4, t: 0.3 }), P({ glow: 2, mouth: 1, reach: 0.2, t: 0.5 })],
@@ -64,6 +67,53 @@ const mixParams = (a: BossParams, c: BossParams, u: number): BossParams => {
 };
 const between = (keys: BossParams[]): BossParams[] => keys.flatMap((k, i) => (i < keys.length - 1 ? [k, mixParams(k, keys[i + 1], 0.5)] : [k]));
 
+/**
+ * Stage 7: each creature's two idle fidgets, as key params (from rest, back to rest). Named for the docs and tests.
+ * t moves tails, tentacles, wings and heads; mouth opens the jaws; reach leans in or rears back; bob crouches; glow
+ * flares its magic; recoil rocks it back.
+ */
+export const BOSS_FIDGET_KEYS: Record<string, [{ name: string; keys: Partial<BossParams>[] }, { name: string; keys: Partial<BossParams>[] }]> = {
+  minotaur: [{ name: "Snort", keys: [{ mouth: 0.35, bob: 1.2 }, { mouth: 0, reach: -0.15 }, { mouth: 0.35, bob: 1 }] },
+    { name: "Axe heft", keys: [{ reach: 0.22, bob: -1, t: 0.2 }, { reach: -0.12, bob: 1.5, t: 0.35 }] }],
+  cyclops: [{ name: "Hammer rest", keys: [{ reach: -0.25, bob: 1.5 }, { reach: -0.3, bob: 2 }] },
+    { name: "Grumble", keys: [{ mouth: 0.5, recoil: 0.1 }, { mouth: 0.15 }, { mouth: 0.45, recoil: 0.12 }] }],
+  oni: [{ name: "Club pound", keys: [{ reach: 0.3, bob: -1 }, { reach: 0, bob: 2 }, { reach: 0.3, bob: -1 }] },
+    { name: "Fanged grin", keys: [{ mouth: 0.6, glow: 0.3 }, { mouth: 0.7, glow: 0.4, t: 0.25 }] }],
+  rakshasa: [{ name: "Claw flex", keys: [{ reach: 0.15, t: 0.3, glow: 0.3 }, { reach: -0.1, t: 0.6, glow: 0.2 }] },
+    { name: "Purr", keys: [{ mouth: 0.25, bob: 1.5 }, { mouth: 0.1, bob: 0.5 }, { mouth: 0.25, bob: 1.5 }] }],
+  fenrir: [{ name: "Shake off frost", keys: [{ recoil: 0.2, t: 0.2 }, { recoil: -0.1, t: 0.4 }, { recoil: 0.15, t: 0.6 }] },
+    { name: "Howl", keys: [{ reach: -0.3, mouth: 0.8 }, { reach: -0.35, mouth: 1, glow: 0.3 }] }],
+  kitsune: [{ name: "Tail fan", keys: [{ t: 0.25 }, { t: 0.5 }, { t: 0.75 }] },
+    { name: "Foxfire", keys: [{ glow: 0.8 }, { glow: 1.4, mouth: 0.2 }, { glow: 0.4 }] }],
+  sphinx: [{ name: "Riddle smile", keys: [{ mouth: 0.25, glow: 0.4 }, { mouth: 0.2, glow: 0.6 }] },
+    { name: "Wing stretch", keys: [{ t: 0.3, reach: -0.2 }, { t: 0.55, reach: -0.25, bob: -1 }] }],
+  ammit: [{ name: "Jaws snap", keys: [{ mouth: 1 }, { mouth: 0 }, { mouth: 0.9 }] },
+    { name: "Sniff the scales", keys: [{ reach: 0.25, bob: 1.5 }, { reach: 0.3, bob: 2, t: 0.3 }] }],
+  hydra: [{ name: "Heads bicker", keys: [{ t: 0.2, mouth: 0.5 }, { t: 0.45, mouth: 0.2 }, { t: 0.7, mouth: 0.6 }] },
+    { name: "Hiss", keys: [{ reach: -0.2, mouth: 0.7 }, { reach: -0.25, mouth: 0.8 }] }],
+  jormungandr: [{ name: "Coil", keys: [{ t: 0.3, bob: 1.5 }, { t: 0.6, bob: 0.5 }] },
+    { name: "Tongue taste", keys: [{ mouth: 0.4, reach: 0.15 }, { mouth: 0.1 }, { mouth: 0.4, reach: 0.15 }] }],
+  naga: [{ name: "Sway", keys: [{ t: 0.25, reach: 0.1 }, { t: 0.5, reach: -0.1 }, { t: 0.75, reach: 0.1 }] },
+    { name: "Hood flare", keys: [{ reach: -0.2, mouth: 0.5, glow: 0.3 }, { reach: -0.25, mouth: 0.6, glow: 0.4 }] }],
+  simurgh: [{ name: "Preen", keys: [{ t: 0.3, reach: 0.15, bob: 1 }, { t: 0.45, reach: 0.2, bob: 1.5 }] },
+    { name: "Wing beat", keys: [{ t: 0.2, bob: -1.5 }, { t: 0.6, bob: 1.5 }, { t: 0.9, bob: -1 }] }],
+  kraken: [{ name: "Tentacle curl", keys: [{ t: 0.3 }, { t: 0.6, reach: 0.1 }] },
+    { name: "Ink pulse", keys: [{ glow: 0.6, recoil: 0.1 }, { glow: 1, recoil: 0.15, mouth: 0.4 }] }],
+};
+const GENERIC_FIDGETS = BOSS_FIDGET_KEYS.minotaur;
+const fidgetFrames = (keys: Partial<BossParams>[]) => between([P({}), ...keys.map(P), P({})]);
+const fidgetCache = new Map<string, BossParams[]>();
+
+/** A creature's frames for an animation: its own fidgets, or the shared moves. */
+export function bossAnimFrames(bossId: string, anim: BossAnim): BossParams[] {
+  const i = (BOSS_FIDGETS as readonly string[]).indexOf(anim);
+  if (i < 0) return BOSS_ANIMS[anim];
+  const key = `${bossId}:${anim}`;
+  let f = fidgetCache.get(key);
+  if (!f) { f = fidgetFrames((BOSS_FIDGET_KEYS[bossId] ?? GENERIC_FIDGETS)[i].keys); fidgetCache.set(key, f); }
+  return f;
+}
+
 export const BOSS_ANIMS: Record<BossAnim, BossParams[]> = {
   // one slow breath over eight frames: the tails, tentacles and wings move on t
   idle: Array.from({ length: 8 }, (_, i) => P({ t: i / 8, bob: (1 - Math.cos((i / 8) * Math.PI * 2)) })),
@@ -71,9 +121,12 @@ export const BOSS_ANIMS: Record<BossAnim, BossParams[]> = {
   hit: between(BOSS_KEYS.hit),
   cast: between(BOSS_KEYS.cast),
   ko: between(BOSS_KEYS.ko),
+  // (each creature's own: bossAnimFrames; these are the stand-ins)
+  fidget1: between([P({}), P({ mouth: 0.3, bob: 1 }), P({})]),
+  fidget2: between([P({}), P({ t: 0.3, reach: -0.15 }), P({})]),
 };
 /** Frame rates: doubled with the in-betweens, so every move takes as long as before. */
-export const BOSS_FPS: Record<BossAnim, number> = { idle: 8, attack: 20, hit: 18, cast: 14, ko: 12 };
+export const BOSS_FPS: Record<BossAnim, number> = { idle: 8, attack: 20, hit: 18, cast: 14, ko: 12, fidget1: 7, fidget2: 7 };
 /** The attack frame where the blow lands (key 2). */
 export const BOSS_IMPACT_FRAME = 4;
 

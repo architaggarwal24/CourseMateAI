@@ -6,8 +6,9 @@ vi.mock("./canvas", () => ({ toCanvas: () => ({ width: 1, height: 1 }) }));
 vi.mock("./sheets", async (orig) => ({ ...(await orig<typeof import("./sheets")>()), sheetFor: async () => null, stageImageFor: async () => null }));
 
 import { DODGE_EVENTS } from "@/components/arena/BattleScreen";
-import { FightScene, MECHANIC_FX, type Beat, type BeatKind, type MechanicEffect } from "./fight";
-import { HEROES } from "./heroes";
+import { FIDGET_WAIT, FightScene, MECHANIC_FX, type Beat, type BeatKind, type MechanicEffect } from "./fight";
+import { BOSS_FIDGET_KEYS, BOSS_FIDGETS, BOSSES, bossAnimFrames } from "./bosses";
+import { FIDGET_KEYS, FIDGETS, HEROES, heroAnims, type Style } from "./heroes";
 
 // Every event the server can send (server/game/mechanics.ts and kits.ts: t.event("type", ...)) has a beat.
 const GAME = resolve(__dirname, "../../server/game");
@@ -77,6 +78,41 @@ describe("FightScene plays every new beat", () => {
     s.destroy();
   });
 
+  it("left idle, both fighters fidget now and then (Stage 7): never the same twice in a row, back to idle after", () => {
+    const { s } = scene(false);
+    const seen = { h: [] as string[], b: [] as string[] };
+    const actor = (k: "h" | "b") => (s as unknown as Record<string, { anim: string }>)[k].anim;
+    for (let t = 0; t < 60_000; t += 16) {
+      run(16);
+      for (const k of ["h", "b"] as const) {
+        const a = actor(k);
+        if (a.startsWith("fidget") && seen[k].at(-1) !== a) seen[k].push(a);
+        if (a === "idle" && seen[k].at(-1) !== "idle" && seen[k].length) seen[k].push("idle");
+      }
+    }
+    const plays = (k: "h" | "b") => seen[k].filter((a) => a !== "idle");
+    expect(plays("h").length).toBeGreaterThanOrEqual(60_000 / (FIDGET_WAIT[1] + 2000) - 1);
+    expect(plays("b").length).toBeGreaterThanOrEqual(3);
+    expect(plays("h").every((a) => (FIDGETS as readonly string[]).includes(a))).toBe(true);
+    expect(plays("b").every((a) => (BOSS_FIDGETS as readonly string[]).includes(a))).toBe(true);
+    for (const k of ["h", "b"] as const) plays(k).forEach((a, i, all) => { if (i) expect(a).not.toBe(all[i - 1]); });
+    expect(seen.h.filter((a) => a === "idle").length).toBeGreaterThan(0);          // each one ends back in idle
+    s.destroy();
+  });
+
+  it("no fidgets while something plays, or with reduced motion", () => {
+    const busy = scene(false).s;
+    run(1000);
+    for (let i = 0; i < 40; i++) busy.play({ kind: "boss-strike", key: i });     // a long queue of blows
+    let fidgeted = false;
+    for (let t = 0; t < FIDGET_WAIT[1] + 1000; t += 16) { run(16); if ((busy as unknown as { h: { anim: string } }).h.anim.startsWith("fidget")) fidgeted = true; }
+    expect(fidgeted).toBe(false);
+    busy.destroy();
+    const still = scene(true).s;
+    for (let t = 0; t < 30_000; t += 16) { run(16); expect((still as unknown as { h: { anim: string } }).h.anim.startsWith("fidget")).toBe(false); }
+    still.destroy();
+  });
+
   it("knocked down (Stage 4): the champion stays down through a new turn, and a continue brings them back up", () => {
     const { s, onBanner } = scene(false);
     run(1000);
@@ -93,5 +129,36 @@ describe("FightScene plays every new beat", () => {
     s.setDown(false);                                                // already up: nothing again
     expect(onBanner.mock.calls.filter(([t]) => t === "BACK UP!")).toHaveLength(1);
     s.destroy();
+  });
+});
+
+describe("idle fidgets (Stage 7)", () => {
+  const styles = Object.keys(FIDGET_KEYS) as Style[];
+  it("every fighting style has three named fidgets, each from its stance and back to it", () => {
+    expect(styles.sort()).toEqual(["blade", "fan", "fist", "heavy", "kamas", "lance", "mage", "sword", "twin", "whip"]);
+    for (const st of styles) {
+      expect(FIDGET_KEYS[st]).toHaveLength(3);
+      expect(new Set(FIDGET_KEYS[st].map((f) => f.name)).size).toBe(3);
+      const a = heroAnims(st);
+      for (const f of FIDGETS) {
+        expect(a[f].length).toBeGreaterThanOrEqual(4);
+        expect(a[f][0]).toEqual(a[f].at(-1));                                   // starts and ends in the stance
+      }
+      expect(a.fidget1).not.toEqual(a.fidget2);
+    }
+  });
+  it("every creature has two named fidgets of its own, from rest and back", () => {
+    expect(Object.keys(BOSS_FIDGET_KEYS).sort()).toEqual(Object.keys(BOSSES).sort());
+    const names = new Set<string>();
+    for (const id of Object.keys(BOSSES)) {
+      for (const f of BOSS_FIDGETS) {
+        const frames = bossAnimFrames(id, f);
+        expect(frames.length).toBeGreaterThanOrEqual(3);
+        expect(frames[0]).toEqual(frames.at(-1));
+      }
+      BOSS_FIDGET_KEYS[id].forEach((f) => names.add(`${id}:${f.name}`));
+    }
+    expect(names.size).toBe(Object.keys(BOSSES).length * 2);
+    expect(bossAnimFrames("hydra", "fidget1")).not.toEqual(bossAnimFrames("kraken", "fidget1"));
   });
 });

@@ -13,6 +13,7 @@ import { ROUTES } from "@/lib/routes";
 import { Badge, Button } from "@/components/ui";
 import PixelSprite from "./pixel/PixelSprite";
 import EmoteWheel from "./EmoteWheel";
+import { GauntletOutcome } from "./GauntletBar";
 import { announceAchievements } from "@/lib/fx/celebrate";
 import { sfx } from "@/lib/sound/chip";
 import { useFighter, useFighterPet } from "./pixel/useFighter";
@@ -73,6 +74,7 @@ export default function ResultPanel({ battle, rewards, retreated, bossName, onAg
       )}
       <h2 id="arena-result-title" ref={heading} tabIndex={-1} className="arena-result__headline pixel-font">{headline}</h2>
       <p className="arena__text">{line} <span className="text-muted">({battle.topic}, {DIFFICULTY_LABEL[battle.difficulty]})</span></p>
+      {result.gauntlet && <GauntletOutcome step={result.gauntlet} />}
       {won && result.grade && !result.score && <span className="arena-result__grade pixel-font" role="img" aria-label={`Grade ${result.grade}`}>{result.grade}</span>}
       {result.new_personal_best && <Badge tone="reward"><Trophy size={12} aria-hidden="true" />New best</Badge>}
 

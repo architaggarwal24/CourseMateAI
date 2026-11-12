@@ -626,6 +626,8 @@ export const arenaBattles = sqliteTable("arena_battles", {
   resultJson: text("result_json"),
   mode: text("mode").notNull().default("quick"),
   runId: text("run_id"),
+  /** Stage 6: the Boss Rush / Survival this fight belongs to. */
+  gauntletId: text("gauntlet_id"),
   focus: integer("focus").notNull().default(0),
   focusCap: integer("focus_cap").notNull().default(5),
   shield: integer("shield").notNull().default(0),
@@ -634,7 +636,7 @@ export const arenaBattles = sqliteTable("arena_battles", {
   updatedAt: text("updated_at").notNull(),
   finishedAt: text("finished_at"),
 }, (t) => [
-  index("arena_battles_user_idx").on(t.userId, t.createdAt), index("arena_battles_run_idx").on(t.runId),
+  index("arena_battles_user_idx").on(t.userId, t.createdAt), index("arena_battles_run_idx").on(t.runId), index("arena_battles_gauntlet_idx").on(t.gauntletId),
   uniqueIndex("arena_battles_active_idx").on(t.userId, t.sessionId).where(sql`status = 'active'`),
 ]);
 
@@ -722,6 +724,40 @@ export const arenaRuns = sqliteTable("arena_runs", {
   index("arena_runs_user_idx").on(t.userId, t.createdAt), index("arena_runs_board_idx").on(t.docHash, t.status, t.score),
   index("arena_runs_finished_idx").on(t.finishedAt, t.score),
   uniqueIndex("arena_runs_active_idx").on(t.userId, t.sessionId).where(sql`status = 'active'`),
+]);
+
+// ── Boss Rush and Survival (Stage 6: src/server/game/gauntlet.ts). Fights in a row, hearts carried over; Boss Rush is
+//    the three strongest creatures you've hunted, Survival bosses without end, matched to your power level. ──────────
+export const arenaGauntlets = sqliteTable("arena_gauntlets", {
+  id: text("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => user.id, { onDelete: "cascade" }),
+  sessionId: text("session_id").notNull(),
+  docHash: text("doc_hash").notNull(),
+  kind: text("kind").notNull(),
+  topic: text("topic").notNull(),
+  status: text("status").notNull().default("active"),
+  /** The power level when it started (the bosses are matched to it). */
+  power: integer("power").notNull(),
+  /** Bosses beaten so far. */
+  stage: integer("stage").notNull().default(0),
+  /** Boss Rush: the three bosses, in order ({species, difficulty, hp_scale, power}). */
+  planJson: text("plan_json").notNull().default("[]"),
+  hearts: integer("hearts").notNull(),
+  maxHearts: integer("max_hearts").notNull(),
+  battleId: text("battle_id"),
+  score: integer("score").notNull().default(0),
+  answered: integer("answered").notNull().default(0),
+  correct: integer("correct").notNull().default(0),
+  /** The chests won ({at, size, coins, xp, items}). */
+  chestsJson: text("chests_json").notNull().default("[]"),
+  lastSpecies: text("last_species"),
+  resultJson: text("result_json"),
+  createdAt: text("created_at").notNull(),
+  updatedAt: text("updated_at").notNull(),
+  finishedAt: text("finished_at"),
+}, (t) => [
+  index("arena_gauntlets_user_idx").on(t.userId, t.createdAt), index("arena_gauntlets_board_idx").on(t.kind, t.status, t.score),
+  uniqueIndex("arena_gauntlets_active_idx").on(t.userId, t.sessionId).where(sql`status = 'active'`),
 ]);
 
 // ── billing (Stage 4.6: src/server/account/billing.ts). Razorpay subscriptions; each webhook event handled once. ────────

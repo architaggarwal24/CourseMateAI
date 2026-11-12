@@ -71,7 +71,7 @@ function ChampionStage() {
   return (
     <div className="champ-stage" style={{ "--hero-accent": hero.accent } as React.CSSProperties}>
       <div className="hero-stage w-full" data-testid="champion-stage">
-        <PixelSprite key={`${anim}-${replay}`} hero={hero} pet={petId} petStage={petStage} anim={anim} label={description} className="champ-stage__figure" />
+        <PixelSprite key={`${anim}-${replay}`} hero={hero} pet={petId} petStage={petStage} anim={anim} fidget label={description} className="champ-stage__figure" />
       </div>
       <div className="champ-anims" role="radiogroup" aria-label="Preview animation">
         {ANIMS.map((a) => (

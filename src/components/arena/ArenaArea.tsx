@@ -4,11 +4,13 @@ import { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { useArenaBattle } from "@/hooks/useArenaBattle";
 import { useSessionStore } from "@/hooks/useSessions";
-import { fetchRun } from "@/lib/arena/api";
-import type { Run } from "@/lib/arena/types";
+import { fetchGauntlet, fetchRun } from "@/lib/arena/api";
+import type { Gauntlet, GauntletKind, Run } from "@/lib/arena/types";
 import ArenaHub, { type ArenaMode } from "./ArenaHub";
 import BattleScreen from "./BattleScreen";
 import CharacterSelect from "./CharacterSelect";
+import { GauntletBar } from "./GauntletBar";
+import GauntletPanel from "./GauntletPanel";
 import ResultPanel from "./ResultPanel";
 import RunScreen, { RunStatusBar } from "./RunScreen";
 import SummonPanel from "./SummonPanel";
@@ -20,7 +22,7 @@ import "./pixel/pixel.css";
 
 /**
  * The Arena tab of the Hero area (the Hero layout provides the Play theme). Opens on the battle already in progress,
- * if there is one; otherwise on the hub: Quick Battle, Nemesis, Expedition (Multiplayer: coming soon).
+ * if there is one; otherwise on the hub: Quick Battle, Nemesis, Expedition, Boss Rush and Survival (Stage 6).
  * Every fight is decided by the server (hooks/useArenaBattle); an expedition's map lives in RunScreen.
  */
 export default function ArenaArea() {
@@ -38,6 +40,17 @@ export default function ArenaArea() {
   useEffect(() => { if (docParam) refreshDocument(docParam).catch(() => {}); }, [docParam, refreshDocument]);
   const [run, setRun] = useState<Run | null>(null);
   const runId = arena.battle?.run_id ?? null;
+
+  // Stage 6: a fight of a Boss Rush / Survival shows where the run stands.
+  const gauntletId = arena.battle?.gauntlet_id ?? null;
+  const [gauntlet, setGauntlet] = useState<Gauntlet | null>(null);
+  useEffect(() => {
+    if (!gauntletId) { setGauntlet(null); return; }
+    let alive = true;
+    fetchGauntlet(gauntletId).then((r) => alive && setGauntlet(r.gauntlet)).catch(() => {});
+    return () => { alive = false; };
+  }, [gauntletId, arena.phase]);
+  const gauntletBar = gauntletId && gauntlet ? <GauntletBar gauntlet={gauntlet} /> : null;
 
   // A battle that belongs to an expedition shows the run's status above it.
   useEffect(() => {
@@ -61,6 +74,7 @@ export default function ArenaArea() {
     return (
       <div className="arena">
         {runId && run && <RunStatusBar run={run} />}
+        {gauntletBar}
         <VersusScreen key={arena.battle.battle_id} battle={arena.battle} ready={arena.ready} failed={arena.prepFailed}
           onBegin={() => void arena.beginFight()} onRetry={arena.retryPrepare} />
       </div>
@@ -69,21 +83,29 @@ export default function ArenaArea() {
 
   if (arena.phase === "result" && arena.battle) {
     const inRun = !!arena.battle.run_id;
+    const step = arena.battle.result?.gauntlet ?? null;
+    const gid = arena.battle.gauntlet_id ?? null;
+    const goOn = gid && step && !step.over && arena.battle.status === "won";
     return (
       <div className="arena">
         {inRun && run && <RunStatusBar run={run} />}
+        {gauntletBar}
         <ResultPanel
           battle={arena.battle} rewards={arena.rewards} retreated={arena.retreated}
           bossName={arena.boss?.name ?? arena.battle.boss.name}
-          onAgain={() => { arena.playAgain(); setMode(inRun ? "run" : mode ?? "quick"); }}
-          againLabel={inRun ? (arena.battle.status === "won" ? "Back to the map" : "See the expedition's end") : undefined}
+          onAgain={() => {
+            if (goOn) { void arena.nextGauntletFight(gid); return; }
+            arena.playAgain();
+            setMode(inRun ? "run" : gid ? null : mode ?? "quick");
+          }}
+          againLabel={inRun ? (arena.battle.status === "won" ? "Back to the map" : "See the expedition's end") : goOn ? "Next boss" : gid ? "Back to the arena" : undefined}
         />
       </div>
     );
   }
 
   if (arena.phase === "fight") {
-    return <BattleScreen arena={arena} context={runId && run ? <RunStatusBar run={run} /> : undefined} />;
+    return <BattleScreen arena={arena} context={runId && run ? <RunStatusBar run={run} /> : gauntletBar ?? undefined} />;
   }
 
   // The map stays mounted while a fight is being opened, so a failed open lands back on it (no remount, no retry loop).
@@ -93,6 +115,15 @@ export default function ArenaArea() {
         {arena.phase === "starting" && <p className="arena__status" role="status">Entering the fight…</p>}
         <RunScreen sessionId={arena.sessionId} onBattle={(id) => void arena.enterById(id)} onBack={() => setMode(null)} />
       </>
+    );
+  }
+
+  if (mode === "rush" || mode === "survival") {
+    return (
+      <div className="arena">
+        <GauntletPanel kind={mode as GauntletKind} sessionId={arena.sessionId} starting={arena.phase === "starting"}
+          onStart={(topic) => void arena.summonGauntlet(mode as GauntletKind, topic)} onBack={() => setMode(null)} />
+      </div>
     );
   }
 

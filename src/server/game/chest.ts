@@ -72,3 +72,40 @@ export async function openChest(ctx: RequestContext, p: Player, rng: () => numbe
   }
   return { ok: true, day, streak, bonus_pct: Math.round(bonus * 100), coins, items, totals: { coins: paid.coins, total_xp: paid.total_xp, level: paid.level } };
 }
+
+// ── Boss Rush / Survival chests (Stage 6) ────────────────────────────────────────────────────────────────────
+export type GauntletChestSize = "chest" | "big";
+export const GAUNTLET_CHEST = {
+  chest: { coins: 80, perLevel: 3, xp: 60, potions: 1, potionChance: 0.6, skinChance: 0.06 },
+  big: { coins: 300, perLevel: 10, xp: 200, potions: 2, potionChance: 1, skinChance: 0.35 },
+} as const;
+export interface GauntletChest { size: GauntletChestSize; coins: number; xp: number; items: { id: string; name: string; kind: "potion" | "skin" }[] }
+
+/**
+ * A chest won in a Boss Rush (the big one, at the end) or a Survival (one every 5 bosses): coins and XP (more at higher
+ * levels), potions, now and then a skin you don't own. Paid once per `key` (a replay pays nothing and returns null).
+ */
+export async function openGauntletChest(ctx: RequestContext, p: Player, size: GauntletChestSize, key: string, rng: () => number = Math.random): Promise<GauntletChest | null> {
+  const spec = GAUNTLET_CHEST[size];
+  const level = (await getProgress(ctx, p.id)).currentLevel;
+  const coins = Math.round(spec.coins + Math.min(level, 30) * spec.perLevel + rng() * spec.coins * 0.25);
+  const paid = await recordRewardEvent(ctx, p.id, "gauntlet_chest", spec.xp, coins, key, `u${p.id}:gchest:${key}`);
+  if (!paid.applied) return null;
+  const items: GauntletChest["items"] = [];
+  for (let i = 0; i < spec.potions; i++) {
+    if (rng() >= spec.potionChance) continue;
+    const id = CHEST_POTIONS[Math.floor(rng() * CHEST_POTIONS.length)];
+    await addInventory(ctx, p.id, id, 1);
+    items.push({ id, name: CATALOG.find((c) => c.id === id)?.name ?? id, kind: "potion" });
+  }
+  if (rng() < spec.skinChance) {
+    const owned = new Set((await getAvatar(ctx, p.id)).owned);
+    const pool = CATALOG.filter((c) => ["armor", "headgear", "weapon"].includes(c.type) && !c.mastery && c.price > 0 && c.price <= (size === "big" ? 1200 : 600) && !owned.has(c.id));
+    if (pool.length) {
+      const skin = pool[Math.floor(rng() * pool.length)];
+      await modifyAvatar(ctx, p.id, (_e, o) => { if (!o.includes(skin.id)) o.push(skin.id); });
+      items.push({ id: skin.id, name: skin.name, kind: "skin" });
+    }
+  }
+  return { size, coins, xp: spec.xp, items };
+}

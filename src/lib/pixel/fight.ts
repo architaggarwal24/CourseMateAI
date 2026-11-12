@@ -9,8 +9,8 @@
  */
 import { hex, toCss, type RGBA } from "./color";
 import { toCanvas } from "./canvas";
-import { BOSS_ANIMS, BOSS_FPS, BOSS_IMPACT_FRAME, bossById, type BossAnim, type BossDef } from "./bosses";
-import { ANIM_FPS, ANIM_LOOP, HERO_IMPACT_FRAME, heroAnims, type AnimName, type HeroDef } from "./heroes";
+import { BOSS_FIDGETS, BOSS_FPS, BOSS_IMPACT_FRAME, bossAnimFrames, bossById, type BossAnim, type BossDef } from "./bosses";
+import { ANIM_FPS, ANIM_LOOP, FIDGETS, HERO_IMPACT_FRAME, heroAnims, type AnimName, type HeroDef } from "./heroes";
 import { sheetFor, sheetFrame, stageImageFor, type LoadedSheet } from "./sheets";
 import { MOUNT_FRAME, PET_FPS, PET_FRAME, PET_OFFSET, mountFrame, petById, petFrame } from "./pets";
 import { solve } from "./rig";
@@ -135,6 +135,8 @@ export type IntentTint =
   | "attack" | "heavy" | "shield" | "drain" | "heal"
   | "grab" | "riddle" | "illusion" | "charge" | "aim" | "throw" | "hoard" | "stunned" | "fury" | "finale" | null;
 
+/** Stage 7: a fighter left idle fidgets after this long (ms, a random wait in the range), then again after another. */
+export const FIDGET_WAIT: [number, number] = [4500, 9000];
 const HERO_X = 128;
 /** The enraged form's size. */
 const RAGE_SCALE = 1.18;
@@ -163,6 +165,9 @@ interface Actor {
   dx: Tween; flashUntil: number; hidden: boolean;
   /** Drawn see-through until then (a dodge / Vanish). */
   ghostUntil: number;
+  /** Stage 7: when, still idle, it plays a fidget; and the last one it played (the next is another). */
+  fidgetAt?: number;
+  lastFidget?: string;
 }
 interface Particle { x: number; y: number; vx: number; vy: number; life: number; max: number; color: string; size: number; g: number; kind?: ParticleKind | "spark" | "mote" | "dust" }
 interface Fx { kind: "slash" | "ring" | "orb" | "banner-flash" | "bolt" | "star" | "burst"; x: number; y: number; start: number; dur: number; color: string; size: number; tx?: number; ty?: number; flip?: boolean }
@@ -245,8 +250,8 @@ export class FightScene {
     this.reduced = opts.reduced;
     const t = performance.now();
     this.now = t;
-    this.h = { anim: "idle", start: t, hold: false, dx: { from: 0, to: 0, start: t, dur: 1 }, flashUntil: 0, hidden: false, ghostUntil: 0 };
-    this.b = { anim: "idle", start: t, hold: false, dx: { from: 0, to: 0, start: t, dur: 1 }, flashUntil: 0, hidden: false, ghostUntil: 0 };
+    this.h = { anim: "idle", start: t, hold: false, dx: { from: 0, to: 0, start: t, dur: 1 }, flashUntil: 0, hidden: false, ghostUntil: 0, fidgetAt: t + FIDGET_WAIT[0] };
+    this.b = { anim: "idle", start: t, hold: false, dx: { from: 0, to: 0, start: t, dur: 1 }, flashUntil: 0, hidden: false, ghostUntil: 0, fidgetAt: t + FIDGET_WAIT[0] + 1500 };
     this.measureBoss();
     this.seedAmbient();
     this.loadHeroSheet(this.hero.id);
@@ -295,7 +300,7 @@ export class FightScene {
     for (const a of [this.h, this.b]) {
       if (a.hold) continue;                     // a KO / victory pose stays
       a.dx = { from: tweenAt(a.dx, this.now), to: 0, start: this.now, dur: this.reduced ? 1 : 160 };
-      a.anim = "idle"; a.start = this.now;
+      a.anim = "idle"; a.start = this.now; this.waitToFidget(a);
     }
   }
   /**
@@ -339,7 +344,37 @@ export class FightScene {
 
   private after(ms: number, fn: () => void) { this.timers.push({ at: this.now + ms, fn }); }
 
-  private setAnim(a: Actor, anim: string, hold = false) { a.anim = anim; a.start = this.now; a.hold = hold; }
+  private setAnim(a: Actor, anim: string, hold = false) {
+    a.anim = anim; a.start = this.now; a.hold = hold;
+    if (anim === "idle") this.waitToFidget(a);
+  }
+
+  // ── Stage 7: idle fidgets ──────────────────────────────────────────────────
+  /** Back to idle: the next fidget comes after a random wait. */
+  private waitToFidget(a: Actor) { a.fidgetAt = this.now + FIDGET_WAIT[0] + Math.random() * (FIDGET_WAIT[1] - FIDGET_WAIT[0]); }
+  /**
+   * Now and then, while nothing is happening, a fighter left idle plays one of its fidgets (the champion one of its
+   * style's three, the creature one of its two), never the same twice in a row, then goes back to idle. Not with
+   * reduced motion, a swapped-in sprite sheet, or (for the champion) on a mount.
+   */
+  private fidgets() {
+    if (this.reduced || this.now < this.busyUntil || this.queue.length) return;
+    const sides: [Actor, readonly string[], boolean][] = [
+      [this.h, FIDGETS, !this.heroSheet && !this.mount],
+      [this.b, BOSS_FIDGETS, !this.bossSheet],
+    ];
+    for (const [a, names, can] of sides) {
+      if (!can || a.hold || a.hidden || a.anim !== "idle" || this.now < (a.fidgetAt ?? Infinity)) continue;
+      const pick = names.filter((n) => n !== a.lastFidget);
+      const name = pick[Math.floor(Math.random() * pick.length)];
+      a.lastFidget = name;
+      this.setAnim(a, name);
+      const hero = a === this.h;
+      const frames = hero ? heroAnims(this.hero.style)[name as AnimName].length : bossAnimFrames(this.boss.id, name as BossAnim).length;
+      const fps = hero ? this.heroFps(name) : BOSS_FPS[name as BossAnim];
+      this.after(Math.ceil((frames / fps) * 1000) + 60, () => { if (a.anim === name) this.setAnim(a, "idle"); });
+    }
+  }
 
   private move(a: Actor, to: number, dur: number) {
     const from = tweenAt(a.dx, this.now);
@@ -874,7 +909,7 @@ export class FightScene {
 
   private bossAnimIndex(): { anim: BossAnim; i: number } {
     const anim = this.b.anim as BossAnim;
-    const n = this.bossSheet ? sheetFrame(this.bossSheet, anim, 0).frames : BOSS_ANIMS[anim].length;
+    const n = this.bossSheet ? sheetFrame(this.bossSheet, anim, 0).frames : bossAnimFrames(this.boss.id, anim).length;
     const raw = Math.floor(((this.now - this.b.start) / 1000) * BOSS_FPS[anim] * (this.rage && anim === "idle" ? 1.6 : 1));
     if (this.reduced && anim === "idle") return { anim, i: 0 };
     return { anim, i: anim === "idle" ? raw % n : Math.min(n - 1, raw) };
@@ -915,6 +950,7 @@ export class FightScene {
       this.timers = this.timers.filter((x) => x.at > this.now);
       for (const d of due) d.fn();
     }
+    this.fidgets();
     this.step(dt / 16.67);
     this.draw();
   }

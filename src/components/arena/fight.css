@@ -160,7 +160,8 @@
 .arena-continue__count { margin: 0; font-size: 2.5rem; line-height: 1; color: var(--color-reward); }
 .arena-continue[data-urgent] .arena-continue__count { color: var(--color-danger-text); animation: fight-blink 0.5s steps(2, end) infinite; }
 .arena-continue__actions { display: flex; flex-wrap: wrap; justify-content: center; gap: var(--space-2); }
-@keyframes fight-blink { 50% { opacity: 0.35; } }
+/* the blink swaps colours (both legible), it never fades the text */
+@keyframes fight-blink { 50% { color: var(--color-text); } }
 @media (prefers-reduced-motion: reduce) { .arena-finale__title, .arena-continue[data-urgent] .arena-continue__count { animation: none; } }
 .arena-score-card {
   display: grid; grid-template-columns: auto minmax(0, 1fr); gap: var(--space-4); align-items: center; width: 100%; max-width: 30rem;
@@ -250,3 +251,38 @@
   .arena-vs__sprite { height: 46vh; }
   .app-shell:has(.arena-vs) .side, .app-shell:has(.arena-vs) .bottom, .ws:has(.arena-vs) .hero-header { display: none; }
 }
+
+/* ── Stage 6: power level, Boss Rush and Survival ────────────────────────────────────────────────────────── */
+.arena-hub__power, .arena-gauntlet__power {
+  display: inline-flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); margin: var(--space-2) 0 0;
+  padding: 4px var(--space-3); border: 2px solid var(--color-reward); border-radius: var(--radius-sm, 4px); color: var(--color-text);
+}
+.arena-hub__power .pixel-font, .arena-gauntlet__power-num { color: var(--color-reward); font-size: 1rem; }
+.arena-gauntlet { display: grid; gap: var(--space-4); padding: var(--space-4); border: 2px solid var(--color-border); border-radius: var(--radius-md, 8px); background: var(--color-elevated); }
+.arena-gauntlet__power { margin: 0; justify-self: start; }
+.arena-gauntlet__locked { display: flex; align-items: center; gap: var(--space-2); margin: 0; color: var(--color-text-secondary); }
+.arena-gauntlet__lineup { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--space-2); margin: 0; padding: 0; list-style: none; }
+.arena-gauntlet__boss {
+  display: grid; justify-items: center; align-content: center; gap: 4px; padding: var(--space-2); text-align: center; font-size: 0.7rem;
+  border: 2px solid var(--color-border); border-radius: var(--radius-sm, 4px); background: var(--color-surface);
+}
+.arena-gauntlet__boss--chest { color: var(--color-reward); border-color: var(--color-reward); }
+.arena-gauntlet__face { width: 64px; height: 64px; image-rendering: pixelated; }
+.arena-gauntlet__facts { display: grid; gap: var(--space-1); margin: 0; padding: 0; list-style: none; font-size: 0.85rem; color: var(--color-text-secondary); }
+.arena-gauntlet__facts li { display: flex; align-items: center; gap: var(--space-2); }
+.gauntlet-bar { border: 2px solid var(--color-border); background: var(--color-elevated); }
+.gauntlet-outcome { display: grid; justify-items: center; gap: var(--space-2); width: 100%; text-align: center; }
+.gauntlet-outcome__line { margin: 0; color: var(--color-reward); font-size: 0.85rem; }
+.gauntlet-chest {
+  display: grid; justify-items: center; gap: var(--space-1); width: 100%; max-width: 26rem; padding: var(--space-3);
+  border: 2px solid var(--color-reward); border-radius: var(--radius-md, 8px); background: var(--color-surface);
+  animation: gauntlet-chest-pop 0.5s steps(5, end) both;
+}
+.gauntlet-chest[data-size="big"] { border-width: 3px; }
+.gauntlet-chest__icon { color: var(--color-reward); }
+.gauntlet-chest__title { margin: 0; font-size: 1rem; color: var(--color-reward); }
+.gauntlet-chest__loot { display: flex; flex-wrap: wrap; justify-content: center; gap: var(--space-2) var(--space-3); margin: 0; padding: 0; list-style: none; font-size: 0.85rem; }
+.gauntlet-chest__loot li { display: inline-flex; align-items: center; gap: 4px; }
+@keyframes gauntlet-chest-pop { from { transform: scale(0.4); opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .gauntlet-chest { animation: none; } }
+@media (max-width: 560px) { .arena-gauntlet__lineup { grid-template-columns: repeat(2, minmax(0, 1fr)); } }

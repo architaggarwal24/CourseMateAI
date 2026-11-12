@@ -6,6 +6,7 @@ import type {
   ActiveBattle, AnswerResponse, BattleGetResponse, ChooseResponse, CreateResponse, Difficulty, ForfeitResponse, ItemId,
   ItemResponse, LeaderboardResponse, Move, QuestionResponse, Run, RunBoardEntry, RunResponse, Spell, SpellResponse,
   TravelResponse, UltimateResponse, WeakConceptsResponse, BestiaryPage, BestiaryResponse, TauntResponse, EmoteEntry,
+  Gauntlet, GauntletFightResponse, GauntletKind, PowerOverview,
 } from "./types";
 import { API_BASE_URL, throwForResponse } from "@/lib/api/client";
 
@@ -133,6 +134,14 @@ export const continueBattle = (battleId: string, by: "potion" | "coins") =>
 export const prepareBattle = (battleId: string) => postJson<BattleGetResponse>(`/arena/battles/${encodeURIComponent(battleId)}/prepare`);
 /** Before the first question: fight as the champion now chosen on the account (409 battle_started). */
 export const rearmBattle = (battleId: string) => postJson<BattleGetResponse>(`/arena/battles/${encodeURIComponent(battleId)}/rearm`);
+/** Stage 6: power level, Boss Rush's lock and lineup, bests, a run of fights in progress. */
+export const fetchPower = (sessionId?: string) => getJson<PowerOverview>(`/arena/power${sessionId ? `?session_id=${encodeURIComponent(sessionId)}` : ""}`);
+/** Start a Boss Rush or Survival (409 rush_locked / gauntlet_in_progress / battle_in_progress). The first fight comes back deferred. */
+export const startGauntlet = (kind: GauntletKind, sessionId: string, topic: string) => postJson<GauntletFightResponse>("/arena/gauntlets", { kind, session_id: sessionId, topic });
+export const fetchGauntlet = (id: string) => getJson<{ ok: boolean; gauntlet: Gauntlet }>(`/arena/gauntlets/${encodeURIComponent(id)}`);
+/** The next fight after a win (hearts carried over); deferred like the first. */
+export const nextGauntlet = (id: string) => postJson<GauntletFightResponse>(`/arena/gauntlets/${encodeURIComponent(id)}/next`);
+export const abandonGauntlet = (id: string) => postJson<{ ok: boolean; gauntlet: Gauntlet }>(`/arena/gauntlets/${encodeURIComponent(id)}/abandon`);
 /** Every victory emote and whether the player has it. */
 export const fetchEmotes = () => getJson<{ emotes: EmoteEntry[] }>("/emotes");
 

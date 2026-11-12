@@ -6,7 +6,7 @@
  * (see ./sheets.ts and docs/pixel-sprites.md). This module is the procedural source.
  */
 import { PixelBuffer, type Pt } from "./buffer";
-import { BOSS_ANIMS, BOSS_FRAME, type BossAnim, type BossDef } from "./bosses";
+import { BOSS_FRAME, bossAnimFrames, type BossAnim, type BossDef } from "./bosses";
 import { hex, unpack, type RGBA } from "./color";
 import { HERO_IMPACT_FRAME, heroAnims, type AnimName, type HeroDef } from "./heroes";
 import { dirOf, drawHumanoid, solve, type HumanoidLook, type Pose } from "./rig";
@@ -106,7 +106,7 @@ export function clearSpriteCache() { cache.clear(); }
 
 /** A boss frame; `rage`: its enraged form (some creatures change shape: the hydra strikes with every head). */
 export function bossFrame(boss: BossDef, anim: BossAnim, index: number, rage = false): Frame {
-  const list = BOSS_ANIMS[anim];
+  const list = bossAnimFrames(boss.id, anim);
   const i = ((index % list.length) + list.length) % list.length;
   const key = `boss:${boss.id}:${anim}:${i}${rage ? ":rage" : ""}`;
   const hit = cache.get(key);

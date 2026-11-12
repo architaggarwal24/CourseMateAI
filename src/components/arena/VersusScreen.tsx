@@ -54,7 +54,7 @@ export default function VersusScreen({ battle, ready, failed, onBegin, onRetry }
       </div>
       <span className="arena-vs__vs pixel-font" aria-hidden="true">VS</span>
       <div className="arena-vs__side arena-vs__side--boss">
-        {battle.boss.species && <PixelSprite boss={battle.boss.species} anim="idle" flip className="arena-vs__sprite" />}
+        {battle.boss.species && <PixelSprite boss={battle.boss.species} anim="idle" fidget flip className="arena-vs__sprite" />}
         <span className="arena-vs__name pixel-font">{battle.boss.name}</span>
         {battle.boss.title && <span className="arena-vs__title">{battle.boss.title}</span>}
         <span className="arena-vs__tag pixel-font">{tag}</span>

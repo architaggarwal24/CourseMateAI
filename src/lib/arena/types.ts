@@ -125,6 +125,8 @@ export interface BattleResult {
   taunt_bonus?: { xp: number; coins: number };
   /** Stage 4: the score card. */
   score?: ScoreCard;
+  /** Stage 6: a Boss Rush / Survival fight: where the run stands now, a chest won, its end. */
+  gauntlet?: GauntletStep | null;
   new_achievements?: { id: string; name: string; description: string }[];
 }
 
@@ -188,6 +190,8 @@ export interface Battle {
   gear?: Gear;
   mode?: BattleMode;
   run_id?: string | null;
+  /** Stage 6: the Boss Rush / Survival this fight belongs to. */
+  gauntlet_id?: string | null;
   focus?: number;
   focus_cap?: number;
   shield?: number;
@@ -359,3 +363,30 @@ export interface RunResponse { ok: boolean; resumed?: boolean; run: Run }
 export interface TravelResponse { ok: boolean; run: Run; node: RunNode; battle_id?: string; boss?: BossProfile; battle?: Battle; gained?: Record<string, unknown> }
 export interface ChooseResponse { ok: boolean; run: Run; outcome: Record<string, unknown> }
 export interface RunBoardEntry { rank: number; username: string; score: number; depth: number; act: number; status: RunStatus; difficulty: Difficulty; date?: string; is_me: boolean }
+
+// ── Stage 6: power level, Boss Rush and Survival ─────────────────────────────────────────────────────────────
+export type GauntletKind = "rush" | "survival";
+export interface GauntletChest { size: "chest" | "big"; coins: number; xp: number; at?: number; items: { id: string; name: string; kind: "potion" | "skin" }[] }
+export interface GauntletResult { status: "won" | "lost" | "abandoned"; stage: number; score: number; power: number; chests: number; accuracy: number }
+/** What a fight of the run did to it (on the battle's result). */
+export interface GauntletStep {
+  gauntlet_id: string; kind: GauntletKind; stage: number; over: boolean; status: "active" | "won" | "lost";
+  chest: GauntletChest | null; result?: GauntletResult | null;
+  /** Boss Rush: the next boss; Survival: the next boss's power. */
+  next?: { species?: string; name?: string; difficulty?: string; power: number };
+  next_chest_at?: number;
+}
+export interface RushBoss { species: string; name: string; difficulty: string; power: number; beaten: boolean }
+export interface Gauntlet {
+  gauntlet_id: string; kind: GauntletKind; status: "active" | "won" | "lost" | "abandoned"; topic: string; session_id: string; power: number; stage: number;
+  hearts: number; max_hearts: number; battle_id: string | null; score: number; chests: GauntletChest[]; answered: number; correct: number;
+  bosses_total?: number; plan?: RushBoss[]; next_power?: number; next_chest_at?: number; result?: GauntletResult;
+}
+export interface PowerLevel { power: number; from_score: number; from_hunts: number; best_scores: number[]; hunted: string[] }
+export interface PowerOverview {
+  ok: boolean; power: PowerLevel;
+  rush: { unlocked: boolean; hunted: number; need: number; bosses: { species: string; name: string }[]; wins: number; best: { stage: number; score: number } | null };
+  survival: { best: { stage: number; score: number } | null };
+  active: Gauntlet | null;
+}
+export interface GauntletFightResponse { ok: boolean; gauntlet: Gauntlet; battle_id: string; boss: BossProfile; battle: Battle }

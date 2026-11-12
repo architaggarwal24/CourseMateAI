@@ -9,6 +9,7 @@ import { expeditionActs } from "./arena-ai";
 import * as arena from "./arena";
 import { VALID_DIFFICULTIES } from "./boss";
 import * as exp from "./expedition";
+import * as gauntlet from "./gauntlet";
 import { markActive } from "./progression";
 import type { Player } from "./store";
 
@@ -180,3 +181,31 @@ export async function travel(ctx: RequestContext, user: CurrentUser, runId: stri
   }
   return { ok: true, ...result };
 }
+
+// ── Boss Rush and Survival (Stage 6) ─────────────────────────────────────────────────────────────────────────────
+/** The hub: power level, Boss Rush's lock and bosses, bests, a run of fights in progress. */
+export const gauntletOverview = (ctx: RequestContext, user: CurrentUser, sessionId: string | null) => gauntlet.overview(ctx, user.id, sessionId || null);
+
+/** Start a Boss Rush or Survival on a topic: the first fight is made at once (questions by .../prepare, as Stage 5). */
+export async function createGauntlet(ctx: RequestContext, user: CurrentUser, player: Player, body: Body) {
+  const kind = body.kind === "rush" ? "rush" : body.kind === "survival" ? "survival" : null;
+  if (!kind) throw new HttpError(400, "invalid_input", "Choose Boss Rush or Survival.");
+  const topic = validateTopic(body.topic);
+  const sessionId = String(body.session_id ?? "");
+  const study = await studyDocs(ctx, user, sessionId);
+  const r = await gauntlet.create(ctx, user.id, { kind, sessionId, docHash: study.hash, topic });
+  await markActive(ctx, player);
+  return { ok: true, ...r };
+}
+
+export async function activeGauntlet(ctx: RequestContext, user: CurrentUser, sessionId: string | null) {
+  const g = await gauntlet.findActive(ctx, user.id, sessionId || null);
+  return { ok: true, gauntlet: g ? gauntlet.state(g) : null };
+}
+
+export const getGauntlet = async (ctx: RequestContext, user: CurrentUser, id: string) => ({ ok: true, gauntlet: await gauntlet.get(ctx, user.id, id) });
+
+/** The next fight after a win (or the one already made). */
+export const nextGauntletFight = async (ctx: RequestContext, user: CurrentUser, id: string) => ({ ok: true, ...(await gauntlet.next(ctx, user.id, id)) });
+
+export const abandonGauntlet = (ctx: RequestContext, player: Player, id: string) => gauntlet.abandon(ctx, player, id);

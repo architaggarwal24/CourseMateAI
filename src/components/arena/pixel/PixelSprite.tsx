@@ -1,11 +1,11 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useReducedMotionConfig } from "motion/react";
 import type { PixelBuffer } from "@/lib/pixel/buffer";
 import { toCanvas } from "@/lib/pixel/canvas";
-import { BOSS_ANIMS, BOSS_FPS, bossById, type BossAnim } from "@/lib/pixel/bosses";
-import { ANIM_FPS, ANIM_LOOP, heroAnims, type AnimName, type HeroDef } from "@/lib/pixel/heroes";
+import { BOSS_FIDGETS, BOSS_FPS, bossAnimFrames, bossById, type BossAnim } from "@/lib/pixel/bosses";
+import { ANIM_FPS, ANIM_LOOP, FIDGETS, heroAnims, type AnimName, type HeroDef } from "@/lib/pixel/heroes";
 import { PET_FPS, PET_FRAME, PET_FRAMES, PET_OFFSET, petById, petFrame } from "@/lib/pixel/pets";
 import { bossFrame, heroFrame, HERO_FRAME } from "@/lib/pixel/sprites";
 import { solve } from "@/lib/pixel/rig";
@@ -20,8 +20,13 @@ interface Layer { at: (i: number) => PixelBuffer; count: number; fps: number; lo
  *
  * Accessibility: give `label` for a sprite that means something on its own (role="img"); without it the canvas
  * is decorative (aria-hidden) and the words around it must carry the information.
+ *
+ * `fidget` (Stage 7): left idle, the sprite plays one of its idle fidgets now and then (a champion's style has three,
+ * a creature two), never the same twice in a row; its frame is sized for all of them so nothing jumps.
  */
-export default function PixelSprite({ hero, boss, pet, petStage = "young", anim = "idle", flip = false, className, label, crop = true, portrait = false, still = false }: {
+/** How long an idle sprite waits before a fidget (ms, a random wait in the range). */
+export const SPRITE_FIDGET_WAIT: [number, number] = [4500, 9000];
+export default function PixelSprite({ hero, boss, pet, petStage = "young", anim = "idle", flip = false, className, label, crop = true, portrait = false, still = false, fidget = false }: {
   hero?: HeroDef; boss?: string;
   /** A pet id: beside the champion (full body), or alone when no hero / boss is given. */
   pet?: string | null;
@@ -36,22 +41,49 @@ export default function PixelSprite({ hero, boss, pet, petStage = "young", anim 
   portrait?: boolean;
   /** One still frame, whatever the motion setting (rows of small previews: cheap to redraw). */
   still?: boolean;
+  /** Stage 7: idle fidgets now and then. */
+  fidget?: boolean;
 }) {
   const ref = useRef<HTMLCanvasElement>(null);
   const reduced = !!useReducedMotionConfig() || still;
   const petId = pet && petById(pet) ? pet : null;
+  // Stage 7: the fidget playing now (it takes the place of the idle until it ends)
+  const fidgets = !fidget || reduced || anim !== "idle" || portrait ? null : hero ? FIDGETS : boss ? BOSS_FIDGETS : null;
+  const [playing, setPlaying] = useState<string | null>(null);
+  const lastFidget = useRef<string | null>(null);
+  useEffect(() => {
+    if (!fidgets) { setPlaying(null); return; }
+    if (playing) {
+      const frames = hero ? heroAnims(hero.style)[playing as AnimName].length : bossAnimFrames(bossById(boss!).id, playing as BossAnim).length;
+      const fps = hero ? ANIM_FPS[playing as AnimName] : BOSS_FPS[playing as BossAnim];
+      const t = setTimeout(() => setPlaying(null), Math.ceil((frames / fps) * 1000) + 60);
+      return () => clearTimeout(t);
+    }
+    const t = setTimeout(() => {
+      const pick = fidgets.filter((f) => f !== lastFidget.current);
+      const next = pick[Math.floor(Math.random() * pick.length)];
+      lastFidget.current = next;
+      setPlaying(next);
+    }, SPRITE_FIDGET_WAIT[0] + Math.random() * (SPRITE_FIDGET_WAIT[1] - SPRITE_FIDGET_WAIT[0]));
+    return () => clearTimeout(t);
+  }, [playing, fidgets?.join(","), hero?.style, boss]); // eslint-disable-line react-hooks/exhaustive-deps
+  const shown = (playing ?? anim) as AnimName | BossAnim;
   useEffect(() => {
     const canvas = ref.current;
     const ctx = canvas?.getContext?.("2d");
     if (!canvas || !ctx) return;                       // no canvas support (tests, very old browsers): nothing drawn
 
     const layers: Layer[] = [];
+    // a sprite that fidgets is sized for its idle and every fidget (measured, never drawn)
+    const measure: Layer[] = [];
     if (hero) {
-      const a = anim as AnimName;
+      const a = shown as AnimName;
+      if (fidgets) for (const f of ["idle", ...FIDGETS] as AnimName[]) measure.push({ at: (i) => heroFrame(hero, f, i).buf, count: heroAnims(hero.style)[f].length, fps: 1, loop: false, dx: 0, dy: 0 });
       layers.push({ at: (i) => heroFrame(hero, a, i).buf, count: still ? 1 : heroAnims(hero.style)[a].length, fps: ANIM_FPS[a], loop: ANIM_LOOP[a], dx: 0, dy: 0 });
     } else if (boss) {
-      const a = anim as BossAnim, def = bossById(boss);
-      layers.push({ at: (i) => bossFrame(def, a, i).buf, count: BOSS_ANIMS[a].length, fps: BOSS_FPS[a], loop: a === "idle", dx: 0, dy: 0 });
+      const a = shown as BossAnim, def = bossById(boss);
+      if (fidgets) for (const f of ["idle", ...BOSS_FIDGETS] as BossAnim[]) measure.push({ at: (i) => bossFrame(def, f, i).buf, count: bossAnimFrames(def.id, f).length, fps: 1, loop: false, dx: 0, dy: 0 });
+      layers.push({ at: (i) => bossFrame(def, a, i).buf, count: bossAnimFrames(def.id, a).length, fps: BOSS_FPS[a], loop: a === "idle", dx: 0, dy: 0 });
     }
     if (petId && !portrait && !boss) {
       const [dx, dy] = hero ? [HERO_FRAME.anchor[0] + PET_OFFSET[0] - PET_FRAME.anchor[0], HERO_FRAME.anchor[1] + PET_OFFSET[1] - PET_FRAME.anchor[1]] : [0, 0];
@@ -65,7 +97,7 @@ export default function PixelSprite({ hero, boss, pet, petStage = "young", anim 
     const main = layers[layers.length - 1];
     if (crop) {
       let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
-      for (const l of layers) for (let i = 0; i < l.count; i++) {
+      for (const l of [...layers, ...measure]) for (let i = 0; i < l.count; i++) {
         const [x, y, w, h] = l.at(i).bounds();
         if (!w) continue;
         x0 = Math.min(x0, x + l.dx); y0 = Math.min(y0, y + l.dy); x1 = Math.max(x1, x + l.dx + w); y1 = Math.max(y1, y + l.dy + h);
@@ -111,7 +143,7 @@ export default function PixelSprite({ hero, boss, pet, petStage = "young", anim 
     };
     raf = requestAnimationFrame(draw);
     return () => cancelAnimationFrame(raf);
-  }, [hero, boss, petId, petStage, anim, flip, reduced, crop, portrait]);
+  }, [hero, boss, petId, petStage, shown, flip, reduced, crop, portrait, !!fidgets]); // eslint-disable-line react-hooks/exhaustive-deps
   return (
     <canvas
       ref={ref}
@@ -120,6 +152,7 @@ export default function PixelSprite({ hero, boss, pet, petStage = "young", anim 
       aria-label={label}
       aria-hidden={label ? undefined : true}
       data-playing={!reduced}
+      data-fidget={playing ?? undefined}
     />
   );
 }

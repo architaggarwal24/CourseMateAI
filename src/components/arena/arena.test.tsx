@@ -40,8 +40,10 @@ function server(opts: {
   knockOnMiss?: boolean; scoreCard?: any;
   /** Stage 5: writing the questions (.../prepare) takes this long; it fails once first. */
   prepareDelayMs?: number; failPrepareOnce?: boolean;
+  /** Stage 6: the battle is a Survival's (a chest when won). */
+  survival?: boolean;
 } = {}) {
-  const log = { calls: [] as string[], answers: [] as any[], items: [] as string[], forfeits: 0, created: [] as any[] };
+  const log = { calls: [] as string[], answers: [] as any[], items: [] as string[], forfeits: 0, created: [] as any[], gauntletStage: 0 };
   let prepFailed = false;
   let chosen = "kaien";
   const stock = { heal: 1, fifty_fifty: 1, ...opts.stock };
@@ -75,6 +77,14 @@ function server(opts: {
       ? { arena_round_complete: { ok: true, xp_gained: 20, coins_gained: 5 }, boss_defeat: { ok: true, xp_gained: 50, coins_gained: 25 } }
       : { arena_round_complete: null, boss_defeat: null };
     if (opts.champion) battle.result.champion = opts.champion;
+    if (battle.gauntlet_id) {
+      log.gauntletStage += status === "won" ? 1 : 0;
+      const st = log.gauntletStage;
+      battle.result.gauntlet = status === "won"
+        ? { gauntlet_id: "g1", kind: "survival", stage: st, over: false, status: "active", next: { power: 40 }, next_chest_at: 5,
+          chest: st === 1 ? { size: "chest", at: 5, coins: 120, xp: 60, items: [{ id: "fifty_fifty", name: "50/50", kind: "potion" }] } : null }
+        : { gauntlet_id: "g1", kind: "survival", stage: st, over: true, status: "lost", chest: null, result: { status: "lost", stage: st, score: 1200, power: 42, chests: 1, accuracy: 70 } };
+    }
   };
   if (opts.active) { battle = fresh(); battle.focus = opts.focus ?? 0; }
 
@@ -103,6 +113,24 @@ function server(opts: {
       battle.kit = { champion: chosen, meter: 0, max: 100, ready: false, active: false, effects: {},
         passive: { name: "Reach", text: "Longer blows." }, ultimate: { name: "Dawnbreaker Lance", text: "A big hit." } };
       return json(200, { ok: true, battle_id: "b1", boss: profile, battle });
+    }
+    if (path === "/arena/power") {
+      return json(200, { ok: true, power: { power: 42, from_score: 20, from_hunts: 12, best_scores: [800], hunted: ["minotaur"] },
+        rush: { unlocked: false, hunted: 1, need: 3, bosses: [{ species: "minotaur", name: "Minotaur" }], wins: 0, best: null },
+        survival: { best: { stage: 7, score: 9000 } }, active: null });
+    }
+    const gauntletState = () => ({ gauntlet_id: "g1", kind: "survival", status: battle?.status === "lost" ? "lost" : "active", topic: "cells", session_id: "sess-1", power: 42,
+      stage: log.gauntletStage, hearts: battle?.player.hp ?? 10, max_hearts: 10, battle_id: "b1", score: 1200, chests: [], answered: 0, correct: 0, next_power: 34, next_chest_at: 5 });
+    if (path === "/arena/gauntlets" && method === "POST") {
+      const body = await bodyOf(input, init);
+      log.created.push(body);
+      battle = fresh(); seq = -1; removed = []; battle.gauntlet_id = "g1"; battle.mode = "survival"; battle.prepared = false;
+      return json(200, { ok: true, gauntlet: gauntletState(), battle_id: "b1", boss: profile, battle });
+    }
+    if (path === "/arena/gauntlets/g1") return json(200, { ok: true, gauntlet: gauntletState() });
+    if (path === "/arena/gauntlets/g1/next") {
+      battle = fresh(); seq = -1; removed = []; battle.gauntlet_id = "g1"; battle.mode = "survival"; battle.prepared = false; battle.player.hp = 6;
+      return json(200, { ok: true, gauntlet: gauntletState(), battle_id: "b1", boss: profile, battle });
     }
     if (path === "/avatar/champion" && method === "PUT") {
       chosen = (await bodyOf(input, init)).champion_id;
@@ -498,11 +526,16 @@ describe("Arena v2: tactics", () => {
     await throughVs();
   });
 
-  it("the hub offers the modes; Multiplayer is coming soon and Nemesis is locked until 3 concepts are missed", async () => {
+  it("the hub offers the modes (Boss Rush and Survival where Multiplayer was) and your power level; Nemesis is locked until 3 concepts are missed", async () => {
     server();
     render(<ArenaArea />);
     await screen.findByRole("button", { name: /Quick Battle/ });
-    expect(screen.getByText("Coming soon")).toBeTruthy();
+    expect(screen.queryByText("Coming soon")).toBeNull();
+    expect(screen.getByRole("button", { name: /Boss Rush/ })).toBeTruthy();
+    expect(screen.getByRole("button", { name: /Survival/ })).toBeTruthy();
+    expect(await screen.findByText("1/3 hunted")).toBeTruthy();
+    expect(screen.getByText("Best: 7 bosses")).toBeTruthy();
+    expect(screen.getByText("Power level").parentElement!.textContent).toContain("42");
     expect(screen.getByRole("button", { name: /Expedition/ })).toBeTruthy();
     expect(await screen.findByText("0/3 missed")).toBeTruthy();
   });
@@ -788,5 +821,52 @@ describe("Arena: character select and the VS screen (Stage 5)", () => {
     server({ active: true, battleExtra: { prepared: false } });
     render(<ArenaArea />);
     await screen.findByRole("heading", { name: "Select your champion" });
+  });
+});
+
+describe("Arena: Boss Rush and Survival (Stage 6)", () => {
+  beforeEach(() => { useChampion.setState({ championId: "kaien", chosen: true, signedIn: true, loaded: true, progress: {} }); });
+
+  it("Boss Rush shows what opens it while it is locked", async () => {
+    server();
+    render(<ArenaArea />);
+    fireEvent.click(await screen.findByRole("button", { name: /Boss Rush/ }));
+    await screen.findByRole("heading", { name: "Boss Rush" });
+    expect(await screen.findByText(/Hunt 3 different creatures to open Boss Rush \(1\/3\)/)).toBeTruthy();
+    fireEvent.change(screen.getByLabelText("Topic for every fight"), { target: { value: "cells" } });
+    expect((screen.getByRole("button", { name: /Start the Boss Rush/ }) as HTMLButtonElement).disabled).toBe(true);
+  });
+
+  it("Survival: pick your champion for the first boss, win, open the chest, and the next boss goes straight to VS with your hearts", async () => {
+    const { log } = server();
+    render(<ArenaArea />);
+    fireEvent.click(await screen.findByRole("button", { name: /Survival/ }));
+    await screen.findByRole("heading", { name: "Survival" });
+    expect(await screen.findByText(/The first boss at power 29/)).toBeTruthy();       // 70% of 42
+    fireEvent.change(screen.getByLabelText("Topic for every fight"), { target: { value: "cells" } });
+    fireEvent.click(screen.getByRole("button", { name: /Start Survival/ }));
+    await throughVs();
+    expect(log.created[0]).toEqual({ kind: "survival", session_id: expect.any(String), topic: "cells" });
+    expect(await screen.findByRole("region", { name: "Survival status" })).toBeTruthy();
+    await strike();
+    await screen.findByText("Which organelle makes ATP?");
+    press("2");
+    await screen.findByText("Correct!");
+    fireEvent.click(screen.getByRole("button", { name: /Continue/ }));
+    await strike();
+    await screen.findByText("Where is DNA stored?");
+    press("2");
+    fireEvent.click(await screen.findByRole("button", { name: /See result/ }));
+    expect(await screen.findByText(/Boss 1 down\. The next one comes at power 40/)).toBeTruthy();
+    const chest = screen.getByRole("region", { name: "Chest! Boss 5" });
+    expect(chest.textContent).toContain("120 coins");
+    expect(chest.textContent).toContain("50/50");
+    fireEvent.click(screen.getByRole("button", { name: "Next boss" }));
+    // no champion select this time: VS, then the fight with the hearts the last one left
+    await screen.findByText("Ready. Press Enter to fight.");
+    expect(screen.queryByRole("heading", { name: "Select your champion" })).toBeNull();
+    expect(log.calls).toContain("POST /arena/gauntlets/g1/next");
+    press("Enter");
+    await screen.findByRole("heading", { name: "Cell Warden" });
   });
 });

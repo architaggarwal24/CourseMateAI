@@ -5,7 +5,10 @@
 import { hex, ramp, tint, type Material } from "./color";
 import { HERO_BUILD, type HumanoidLook, type Pose } from "./rig";
 
-export type AnimName = "idle" | "attack" | "hit" | "guard" | "cast" | "ko" | "win" | "dash" | "ride";
+export type AnimName = "idle" | "attack" | "hit" | "guard" | "cast" | "ko" | "win" | "dash" | "ride"
+  // Stage 7: three idle fidgets per fighting style (played now and then while the fighter waits)
+  | "fidget1" | "fidget2" | "fidget3";
+export const FIDGETS = ["fidget1", "fidget2", "fidget3"] as const;
 export type Style = "blade" | "heavy" | "lance" | "fist" | "mage" | "twin"
   // your hero's original styles (Apprentice Blade, Chain Whip, War Fan, Twin Kamas)
   | "sword" | "whip" | "fan" | "kamas";
@@ -149,6 +152,8 @@ export function heroAnims(style: Style): Record<AnimName, Pose[]> {
     // riding a mount: seated, thighs forward, shins down, a small bob with the mount's stride
     const st = STANCE[style];
     a.ride = inbetween([m(st, { lean: 4, head: -2, fh: 82, fk: -88, bh: 72, bk: -86, x: 0, y: 0, sway: 0.2 }), m(st, { lean: 6, head: -1, fh: 80, fk: -86, bh: 70, bk: -84, x: 0, y: -1, sway: 0.5 })], true);
+    // the fidgets: from the stance, through their keys, back to the stance (so they slot into the idle loop)
+    FIDGET_KEYS[style].forEach((f, i) => { a![FIDGETS[i]] = inbetween([st, ...f.keys.map((k) => m(st, k)), st], false); });
     animCache.set(style, a);
   }
   return a;
@@ -208,7 +213,64 @@ function breathe(st: Pose): Pose[] {
   });
 }
 
-function heroKeys(style: Style): Record<Exclude<AnimName, "ride">, Pose[]> {
+/**
+ * Stage 7: each fighting style's three idle fidgets, as key poses over its stance (named for the docs and tests).
+ * A champion fidgets in their style; your hero in the style you built.
+ */
+export const FIDGET_KEYS: Record<Style, { name: string; keys: Pose[] }[]> = {
+  blade: [
+    { name: "Edge check", keys: [{ head: 10, fe: 95, wpn: 70 }, { head: 12, fe: 100, wpn: 82, eyes: "closed" }, { head: 6, fe: 90, wpn: 62 }] },
+    { name: "Shoulder roll", keys: [{ bs: 75, be: 40, lean: 2, sway: 0.4 }, { bs: 20, be: 95, lean: 11, sway: -0.3 }, { bs: 55, be: 55 }] },
+    { name: "Stance shift", keys: [{ fh: 10, fk: -8, bh: -8, x: -2, y: 0 }, { fh: 32, fk: -28, x: 1, y: 3, sway: 0.5 }] },
+  ],
+  heavy: [
+    { name: "Shoulder the blade", keys: [{ fs: 15, fe: 105, wpn: 120 }, { fs: 8, fe: 112, wpn: 132, head: -6, y: 1 }, { fs: 12, fe: 108, wpn: 126 }] },
+    { name: "Neck crack", keys: [{ head: -16 }, { head: 14, eyes: "closed" }, { head: -6 }] },
+    { name: "Stomp", keys: [{ fh: 44, fk: -54, y: 0, lean: 0 }, { fh: 22, fk: -18, y: 5, sway: 0.8 }] },
+  ],
+  lance: [
+    { name: "Spear twirl", keys: [{ wpn: 110 }, { wpn: 200 }, { wpn: 290 }, { wpn: 382 }] },
+    { name: "Plant the spear", keys: [{ fs: 20, fe: 10, wpn: 78, lean: 0 }, { fs: 20, fe: 10, wpn: 84, lean: -2, head: 5, eyes: "closed" }] },
+    { name: "Scan the horizon", keys: [{ head: -14, lean: 2, bs: 100, be: 120 }, { head: -10, lean: 0, bs: 105, be: 125 }] },
+  ],
+  fist: [
+    { name: "Knuckle crack", keys: [{ fs: 60, fe: 122, bs: 55, be: 122 }, { fs: 66, fe: 128, bs: 62, be: 128, head: 6, eyes: "closed" }] },
+    { name: "Shadow jab", keys: [{ fs: 86, fe: 5, x: 2 }, { fs: 40, fe: 85 }, { fs: 86, fe: 5, x: 2, eyes: "angry" }] },
+    { name: "Bounce", keys: [{ y: 0, fk: -10, bk: -6 }, { y: 6 }, { y: 0, fk: -10, bk: -6 }, { y: 5 }] },
+  ],
+  mage: [
+    { name: "Glow flare", keys: [{ glow: 0.8, fe: 75 }, { glow: 1.2, fe: 82, eyes: "closed" }, { glow: 0.5 }] },
+    { name: "Stretch", keys: [{ bs: 125, be: 20, lean: -4, head: -10 }, { bs: 135, be: 10, lean: -6, head: -12, eyes: "closed" }] },
+    { name: "Staff tap", keys: [{ wpn: 80, y: -1 }, { wpn: 96, y: 1 }, { wpn: 80, y: -1 }] },
+  ],
+  twin: [
+    { name: "Dagger spin", keys: [{ wpn: 130 }, { wpn: 250 }, { wpn: 370 }] },
+    { name: "Crouch low", keys: [{ y: 9, fk: -55, bk: -34, lean: 22 }, { y: 10, fk: -58, bk: -36, lean: 24, head: -12 }] },
+    { name: "Look back", keys: [{ head: 22, lean: 6 }, { head: 18, lean: 4, eyes: "angry" }] },
+  ],
+  sword: [
+    { name: "Practice swing", keys: [{ fs: 85, fe: 30, wpn: 60 }, { fs: 10, fe: 60, wpn: 20 }] },
+    { name: "Wipe the blade", keys: [{ bs: 50, be: 100, fe: 92, wpn: 82, head: 8 }, { bs: 60, be: 95, fe: 88, wpn: 76, head: 9 }] },
+    { name: "Deep breath", keys: [{ lean: -2, head: -8, eyes: "closed", y: 0 }, { lean: -3, head: -9, eyes: "closed", y: -1 }] },
+  ],
+  whip: [
+    { name: "Lash crack", keys: [{ lash: 0.8, fs: 72, fe: 20 }, { lash: 1, fs: 92, fe: 10 }, { lash: 0.2, fs: 20 }] },
+    { name: "Coil the chain", keys: [{ fs: 40, fe: 100, lash: 0 }, { fs: 46, fe: 112 }, { fs: 40, fe: 100 }] },
+    { name: "Shrug", keys: [{ bs: 52, fs: 36, head: 4 }, { bs: 30, fs: 20 }] },
+  ],
+  fan: [
+    { name: "Fan flourish", keys: [{ wpn: 160, fs: 82 }, { wpn: 60, fs: 70 }] },
+    { name: "Fan the face", keys: [{ fs: 82, fe: 120, wpn: 140 }, { fs: 86, fe: 126, wpn: 118 }, { fs: 82, fe: 120, wpn: 140 }] },
+    { name: "Twirl step", keys: [{ x: 2, sway: 0.8 }, { x: -1, sway: -0.6 }] },
+  ],
+  kamas: [
+    { name: "Sickle spin", keys: [{ wpn: 140 }, { wpn: 280 }, { wpn: 380 }] },
+    { name: "Sharpen", keys: [{ bs: 50, be: 92, fs: 40, fe: 102, wpn: 90 }, { bs: 56, be: 86, fs: 42, fe: 98, wpn: 96 }] },
+    { name: "Hunched glare", keys: [{ lean: 22, head: -12, eyes: "angry" }, { lean: 24, head: -14, eyes: "angry" }] },
+  ],
+};
+
+function heroKeys(style: Style): Record<Exclude<AnimName, "ride" | (typeof FIDGETS)[number]>, Pose[]> {
   const st = STANCE[style];
   const idle = [0, 1, 2, 1].map((i) => m(st, { y: (st.y ?? 0) + i * 0.8, sway: [0, 0.3, 0.5, 0.3][i], fs: (st.fs ?? 0) + i * 1.5, bs: (st.bs ?? 0) - i }));
   const hit = [m(st, { lean: -14, head: 14, x: -3, fs: 15, fe: 30, bs: -20, be: 40, eyes: "hurt", fh: 10, bh: -30, sway: 1, shout: true }),
@@ -360,7 +422,7 @@ function heroKeys(style: Style): Record<Exclude<AnimName, "ride">, Pose[]> {
   }
 }
 
-export const ANIM_FPS: Record<AnimName, number> = { idle: 10, attack: 28, hit: 20, guard: 16, cast: 16, ko: 16, win: 8, dash: 24, ride: 10 };
-export const ANIM_LOOP: Record<AnimName, boolean> = { idle: true, attack: false, hit: false, guard: true, cast: false, ko: false, win: true, dash: true, ride: true };
+export const ANIM_FPS: Record<AnimName, number> = { idle: 10, attack: 28, hit: 20, guard: 16, cast: 16, ko: 16, win: 8, dash: 24, ride: 10, fidget1: 9, fidget2: 9, fidget3: 9 };
+export const ANIM_LOOP: Record<AnimName, boolean> = { idle: true, attack: false, hit: false, guard: true, cast: false, ko: false, win: true, dash: true, ride: true, fidget1: false, fidget2: false, fidget3: false };
 
 export const SHADOW = hex("#000000", 70);

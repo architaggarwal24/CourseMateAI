@@ -14,7 +14,7 @@ import { and, asc, count, desc, eq, gte, isNull, ne, sql } from "drizzle-orm";
 import { FINISHERS, STYLE_FINISHERS } from "@/lib/arena/finishers";
 import { background } from "../env";
 import type { RequestContext } from "../context";
-import { arenaBattles, arenaPersonalBests, arenaQuestions, arenaScores, championProgress, courseDocuments, courses, documents, user as userTable } from "../db/schema";
+import { arenaBattles, arenaGauntlets, arenaPersonalBests, arenaQuestions, arenaScores, championProgress, courseDocuments, courses, documents, user as userTable } from "../db/schema";
 import { HttpError } from "../http";
 import type { Caller } from "../ai/run";
 import { record as recordMastery } from "../study/mastery";
@@ -183,7 +183,7 @@ export function state(b: Row) {
     battle_id: b.id, status: b.status, session_id: b.sessionId, topic: b.topic, difficulty: b.difficulty, phase: b.phase, rage: !!boss.rage, prepared: !!boss.prepared,
     boss: { name: boss.name, hp: b.bossHp, max_hp: b.bossMaxHp, species: boss.species, title: boss.title, origin: boss.origin },
     player: { hp: b.playerHp, max_hp: b.playerMaxHp }, combo: b.combo, max_combo: b.maxCombo, answered: b.answered, correct: b.correct,
-    heals_used: b.healsUsed, fifty_used: b.fiftyUsed, gear: boss.gear ?? {}, mode: b.mode, run_id: b.runId, focus: b.focus,
+    heals_used: b.healsUsed, fifty_used: b.fiftyUsed, gear: boss.gear ?? {}, mode: b.mode, run_id: b.runId, gauntlet_id: b.gauntletId ?? null, focus: b.focus,
     focus_cap: b.focusCap, shield: b.shield, intent: b.intentJson && b.status === "active" ? J(b.intentJson, null) : null,
     relics: [...relicsOf(boss)].sort(), heavy_cost: heavyCost(boss), question_issued: b.status === "active" && b.currentSeq !== null,
     free_timewarp: relicsOf(boss).has("hourglass") && !boss.mods?.hourglass_used, mechanic: mechanicHud(boss, b.difficulty),
@@ -305,6 +305,11 @@ export async function rearm(ctx: RequestContext, userId: number, battleId: strin
     if (b.status !== "active" || b.runId || b.answered > 0 || b.currentSeq !== null) {
       throw err("battle_started", "This fight has already started: your champion is set for it.");
     }
+    // Boss Rush / Survival: the champion is picked for the first boss; after it, hearts carry over with them
+    if (b.gauntletId) {
+      const g = await ctx.db.select({ stage: arenaGauntlets.stage }).from(arenaGauntlets).where(eq(arenaGauntlets.id, b.gauntletId)).get();
+      if ((g?.stage ?? 0) > 0) throw err("battle_started", "Your champion is set for this run of fights.");
+    }
     const boss: Boss = J(b.bossJson, {});
     await armFighter(ctx, userId, boss);
     const open = openingFor(boss, boss.mods ?? {});
@@ -320,6 +325,7 @@ export async function rearm(ctx: RequestContext, userId: number, battleId: strin
 export async function createBattle(ctx: RequestContext, userId: number, o: {
   sessionId: string; docHash: string; topic: string; difficulty: string; boss: Boss; mode?: string; runId?: string | null;
   hearts?: number | null; maxHearts?: number | null; mods?: Record<string, unknown>; hpScale?: number; targets?: string[] | null; focusCap?: number;
+  gauntletId?: string | null;
 }): Promise<Row> {
   const boss = sanitizeBoss({ ...o.boss }, o.difficulty);
   // Bestiary tier: more HP (and, through boss.tier, less time and harder blows); the bane shows once it is known.
@@ -351,7 +357,7 @@ export async function createBattle(ctx: RequestContext, userId: number, o: {
     await ctx.db.insert(arenaBattles).values({
       id, userId, sessionId: o.sessionId, docHash: o.docHash, topic: o.topic, difficulty: o.difficulty, boardKey: boardKey(o.topic, o.difficulty, o.docHash),
       bossJson: JSON.stringify(boss), bossHp: boss.max_hp, bossMaxHp: boss.max_hp, playerHp: hearts, playerMaxHp: maxHearts, createdAt: now,
-      updatedAt: now, mode: o.mode ?? "quick", runId: o.runId ?? null, focus, focusCap, intentJson: JSON.stringify(intent),
+      updatedAt: now, mode: o.mode ?? "quick", runId: o.runId ?? null, gauntletId: o.gauntletId ?? null, focus, focusCap, intentJson: JSON.stringify(intent),
     });
   } catch (e) {
     if (String((e as Error)?.message ?? e).includes("UNIQUE")) throw err("battle_in_progress", "You already have a battle running for this document.");
@@ -867,6 +873,9 @@ type RunEnd = (ctx: RequestContext, player: Player, b: Row, status: string) => P
 let onRunBattleEnd: RunEnd | null = null;
 /** The expedition takes over the end of its battles (expedition.ts registers itself). */
 export function setRunBattleEnd(fn: RunEnd) { onRunBattleEnd = fn; }
+let onGauntletBattleEnd: RunEnd | null = null;
+/** Boss Rush / Survival hear about the end of their fights (gauntlet.ts registers itself); the fight pays as usual. */
+export function setGauntletBattleEnd(fn: RunEnd) { onGauntletBattleEnd = fn; }
 
 async function missed(ctx: RequestContext, battleId: string) {
   const rows = await ctx.db.select().from(arenaQuestions).where(and(eq(arenaQuestions.battleId, battleId), eq(arenaQuestions.status, "answered"), eq(arenaQuestions.correct, 0))).orderBy(asc(arenaQuestions.seq)).all();
@@ -970,6 +979,9 @@ export async function end(ctx: RequestContext, player: Player, battleId: string,
     const newly = await checkAchievements(ctx, player.id);
     if (newly.length) result.new_achievements = newly;
   }
+  // the run's module registers its hook when loaded; a route that only loaded this one loads it now
+  if (b.runId && !onRunBattleEnd) await import("./expedition");
+  if (b.gauntletId && !onGauntletBattleEnd) await import("./gauntlet");
   if (b.runId) {
     if (onRunBattleEnd) result.run = await onRunBattleEnd(ctx, player, { ...b, status }, status);
   } else {
@@ -995,6 +1007,7 @@ export async function end(ctx: RequestContext, player: Player, battleId: string,
       }
     }
   }
+  if (b.gauntletId && onGauntletBattleEnd) result.gauntlet = await onGauntletBattleEnd(ctx, player, { ...b, status, resultJson: JSON.stringify(result) }, status);
   await ctx.db.update(arenaBattles).set({ rewardsJson: JSON.stringify(paid), resultJson: JSON.stringify(result) }).where(eq(arenaBattles.id, battleId));
   return paid;
 }

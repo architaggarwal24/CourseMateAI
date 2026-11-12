@@ -25,15 +25,16 @@ async function battleServer(page: Page, opts: { signature?: boolean; joins?: str
     battle.rewards = { arena_round_complete: null, boss_defeat: status === "won" ? { ok: true, xp_gained: 50, coins_gained: 25 } : null };
     if (status === "won" && opts.joins) battle.result.champions_unlocked = [opts.joins];
     if (status === "won" && battle.taunted) battle.result.taunt_bonus = { xp: 13, coins: 6 };
+    if (battle.gauntlet_id) {
+      if (status === "won") stage += 1;
+      battle.result.gauntlet = status === "won"
+        ? { gauntlet_id: "g1", kind: "survival", stage, over: false, status: "active", next: { power: 30 + 5 * stage }, next_chest_at: 5,
+          chest: { size: "chest", at: 5, coins: 120, xp: 60, items: [{ id: "potion_health_small", name: "Small Health Potion", kind: "potion" }] } }
+        : { gauntlet_id: "g1", kind: "survival", stage, over: true, status: "lost", chest: null, result: { status: "lost", stage, score: 1500, power: 42, chests: 1, accuracy: 60 } };
+    }
     battle.result.score = { points: 840, speed: 140, finisher: opts.finale && status === "won" ? 1000 : 0, hearts: status === "won" ? 500 : 0, best_combo: battle.max_combo, best_level: 1, specials: 0, continues: 0, total: 2340, rank: "S" };
   };
-  // Registered after mockApi, so it answers first.
-  await page.route("**/api/v1/arena/battles**", async (route) => {
-    const req = route.request();
-    const path = new URL(req.url()).pathname.replace("/api/v1", "");
-    if (path === "/arena/battles/active") return json(route, { ok: true, battle: battle?.status === "active" ? { ...battle, boss_profile: PROFILE } : null });
-    if (path === "/arena/battles") {
-      battle = { battle_id: "b1", status: "active", session_id: "s", topic: "cells", difficulty: "medium", phase: 1, rage: false, prepared: true,
+  const makeBattle = (): any => ({ battle_id: "b1", status: "active", session_id: "s", topic: "cells", difficulty: "medium", phase: 1, rage: false, prepared: true,
         boss: { name: "Cell Warden", hp: 20, max_hp: 20, species: "minotaur", title: "Warden of cells" }, player: { hp: 10, max_hp: 10 }, combo: 0, max_combo: 0, answered: 0, correct: 0, heals_used: 0, fifty_used: 0,
         mode: "quick", run_id: null, focus: 0, focus_cap: 5, shield: 0, heavy_cost: 2, free_timewarp: false, relics: [],
         intent: { kind: "attack", name: "Concept Crush", value: 5, description: "Hits for 5 on a wrong answer." },
@@ -43,7 +44,31 @@ async function battleServer(page: Page, opts: { signature?: boolean; joins?: str
         kit: { champion: "kaien", meter: 100, max: 100, ready: true, active: false, effects: {},
           passive: { name: "Riposte", text: "A right Guard against a blow hits back for half a Strike." },
           ultimate: { name: "Ninth Page Cut", text: "Your next right answer hits x2.5 and cuts through shields." },
-          signature: opts.signature ? { name: "Edge of the Ninth Page", text: "Riposte hits back for 75% of a Strike (not half).", finisher: "Final Cut" } : null } };
+          signature: opts.signature ? { name: "Edge of the Ninth Page", text: "Riposte hits back for 75% of a Strike (not half).", finisher: "Final Cut" } : null } });
+  // Stage 6: a Survival around the same fights (its first boss's win opens a chest)
+  let stage = 0;
+  const gauntlet = () => ({ gauntlet_id: "g1", kind: "survival", status: "active", topic: "cells", session_id: "s", power: 42, stage, hearts: battle?.player.hp ?? 10,
+    max_hearts: 10, battle_id: "b1", score: 1500, chests: [], answered: 0, correct: 0, next_power: 30 + 5 * stage, next_chest_at: 5 });
+  await page.route("**/api/v1/arena/power**", (route) => json(route, { ok: true, power: { power: 42, from_score: 20, from_hunts: 12, best_scores: [900], hunted: ["minotaur"] },
+    rush: { unlocked: false, hunted: 1, need: 3, bosses: [{ species: "minotaur", name: "Minotaur" }], wins: 0, best: null }, survival: { best: null }, active: null }));
+  await page.route("**/api/v1/arena/gauntlets**", async (route) => {
+    const path = new URL(route.request().url()).pathname.replace("/api/v1", "");
+    if (path === "/arena/gauntlets" || path.endsWith("/next")) {
+      const hp = battle?.player.hp;
+      battle = { ...makeBattle(), gauntlet_id: "g1", mode: "survival", prepared: false };
+      if (path.endsWith("/next") && hp) battle.player.hp = hp;
+      seq = -1; answered = false;
+      return json(route, { ok: true, gauntlet: gauntlet(), battle_id: "b1", boss: PROFILE, battle });
+    }
+    return json(route, { ok: true, gauntlet: gauntlet() });
+  });
+  // Registered after mockApi, so it answers first.
+  await page.route("**/api/v1/arena/battles**", async (route) => {
+    const req = route.request();
+    const path = new URL(req.url()).pathname.replace("/api/v1", "");
+    if (path === "/arena/battles/active") return json(route, { ok: true, battle: battle?.status === "active" ? { ...battle, boss_profile: PROFILE } : null });
+    if (path === "/arena/battles") {
+      battle = makeBattle();
       seq = -1; answered = false;
       return json(route, { ok: true, battle_id: "b1", resumed: false, boss: PROFILE, battle });
     }
@@ -260,6 +285,38 @@ test("character select: the arrows pick another champion, the fight is armed for
   await armed;
   await expect(page.getByRole("heading", { name: `${name} versus Cell Warden` })).toBeAttached();
   await expect(page.getByText("Ready. Press Enter to fight.")).toBeVisible();
+  await page.keyboard.press("Enter");
+  await expect(page.getByRole("heading", { name: "Cell Warden" })).toBeVisible();
+});
+
+test("Survival from the hub: power level, the first boss, the chest, and the next boss straight to VS", async ({ page }) => {
+  test.setTimeout(120_000);
+  await battleServer(page);
+  await page.goto("/arena");
+  await expect(page.getByText("Power level")).toBeVisible();
+  await expect(page.getByRole("button", { name: /Boss Rush/ })).toContainText("1/3 hunted");
+  await page.getByRole("button", { name: /Survival/ }).click();
+  await expect(page.getByRole("heading", { name: "Survival" })).toBeVisible();
+  await axeClean(page, "survival start");
+  await page.getByLabel("Topic for every fight").fill("cells");
+  await page.getByRole("button", { name: /Start Survival/ }).click();
+  await throughVs(page);
+  await expect(page.getByRole("region", { name: "Survival status" })).toBeVisible();
+  await strike(page);
+  await expect(page.getByText("Which organelle makes ATP?")).toBeVisible();
+  await page.keyboard.press("2");
+  await expect(page.getByText("Correct!")).toBeVisible();
+  await page.keyboard.press("Enter");
+  await strike(page);
+  await expect(page.getByText("Where is DNA stored?")).toBeVisible();
+  await page.keyboard.press("2");
+  await page.getByRole("button", { name: "See result" }).click();
+  await expect(page.getByText(/Boss 1 down/)).toBeVisible();
+  await expect(page.getByRole("region", { name: "Chest! Boss 5" })).toContainText("120 coins");
+  await axeClean(page, "survival result with chest");
+  await page.getByRole("button", { name: "Next boss" }).click();
+  await expect(page.getByText("Ready. Press Enter to fight.")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Select your champion" })).toBeHidden();
   await page.keyboard.press("Enter");
   await expect(page.getByRole("heading", { name: "Cell Warden" })).toBeVisible();
 });

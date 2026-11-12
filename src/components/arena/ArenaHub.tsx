@@ -2,25 +2,26 @@
 
 import { useEffect, useState } from "react";
 import { motion } from "motion/react";
-import { Lock, Map as MapIcon, Swords, Target, Users } from "@/components/ui/icons";
+import { Crown, Gauge, HeartPulse, Lock, Map as MapIcon, Swords, Target } from "@/components/ui/icons";
 import { Badge } from "@/components/ui";
-import { fetchActiveRun, fetchLeaderboard, fetchWeakConcepts } from "@/lib/arena/api";
-import { DIFFICULTY_LABEL, type LeaderboardEntry, type Run, type WeakConceptsResponse } from "@/lib/arena/types";
+import { fetchActiveRun, fetchLeaderboard, fetchPower, fetchWeakConcepts } from "@/lib/arena/api";
+import { DIFFICULTY_LABEL, type LeaderboardEntry, type PowerOverview, type Run, type WeakConceptsResponse } from "@/lib/arena/types";
 import { Roster } from "./pixel/Roster";
 
-export type ArenaMode = "quick" | "nemesis" | "run";
+export type ArenaMode = "quick" | "nemesis" | "run" | "rush" | "survival";
 
 const mmss = (seconds: number) => `${Math.floor(seconds / 60)}m ${Math.round(seconds % 60)}s`;
 
 /**
- * The arena's front door: four modes as cards (Quick Battle, Nemesis, Expedition, and Multiplayer - coming soon),
- * with what each needs or holds (an expedition in progress, the weak spots that feed the Nemesis), and this week's
- * board across every topic.
+ * The arena's front door: the modes as cards (Quick Battle, Nemesis, Expedition, Boss Rush, Survival) with what each
+ * needs or holds (an expedition in progress, the weak spots that feed the Nemesis, the hunts that open Boss Rush, your
+ * bests), your power level (Stage 6: the bosses of Boss Rush and Survival are matched to it), and this week's board.
  */
 export default function ArenaHub({ sessionId, onPick }: { sessionId: string; onPick: (m: ArenaMode) => void }) {
   const [weak, setWeak] = useState<WeakConceptsResponse | null>(null);
   const [run, setRun] = useState<Run | null>(null);
   const [board, setBoard] = useState<LeaderboardEntry[]>([]);
+  const [power, setPower] = useState<PowerOverview | null>(null);
 
   useEffect(() => {
     let alive = true;
@@ -28,6 +29,7 @@ export default function ArenaHub({ sessionId, onPick }: { sessionId: string; onP
       fetchWeakConcepts(sessionId).then((r) => alive && setWeak(r)).catch(() => {});
       fetchActiveRun(sessionId).then((r) => alive && setRun(r)).catch(() => {});
     }
+    fetchPower(sessionId || undefined).then((r) => alive && setPower(r)).catch(() => {});
     fetchLeaderboard("", "medium", undefined, "global").then((r) => alive && setBoard(r.entries ?? [])).catch(() => {});
     return () => { alive = false; };
   }, [sessionId]);
@@ -40,6 +42,11 @@ export default function ArenaHub({ sessionId, onPick }: { sessionId: string; onP
       locked: weak ? !weak.nemesis_ready : false },
     { id: "run" as const, title: "Expedition", Icon: MapIcon, tone: "reward", blurb: "A roguelite run through your document: three acts, branching paths, relics, one life.",
       chip: run ? `In progress · Act ${run.act}` : "Roguelite" },
+    { id: "rush" as const, title: "Boss Rush", Icon: Crown, tone: "epic", blurb: "Your three strongest hunted creatures in a row. Hearts carry over. Clear all three for the big chest.",
+      chip: power ? (power.rush.unlocked ? (power.rush.wins ? `Cleared ${power.rush.wins}x` : "3 bosses") : `${power.rush.hunted}/${power.rush.need} hunted`) : "3 bosses",
+      locked: power ? !power.rush.unlocked : false },
+    { id: "survival" as const, title: "Survival", Icon: HeartPulse, tone: "accent", blurb: "Boss after boss matched to your power, each stronger. A chest every 5. How far can you go?",
+      chip: power?.survival.best ? `Best: ${power.survival.best.stage} bosses` : "Endless" },
   ];
 
   return (
@@ -47,6 +54,11 @@ export default function ArenaHub({ sessionId, onPick }: { sessionId: string; onP
       <div className="arena-hub__head">
         <h2 className="arena__title text-gradient-accent">Battle Arena</h2>
         <p className="arena__sub">Turn what you studied into fights. Choose how you want to play.</p>
+        {power && (
+          <p className="arena-hub__power" title={`${power.power.from_score} from your best scores, ${power.power.from_hunts} from ${power.power.hunted.length} creatures hunted`}>
+            <Gauge size={16} aria-hidden="true" /><span>Power level</span><span className="pixel-font">{power.power.power}</span>
+          </p>
+        )}
       </div>
 
       <ul className="arena-hub__modes">
@@ -62,16 +74,6 @@ export default function ArenaHub({ sessionId, onPick }: { sessionId: string; onP
             </div>
           </motion.li>
         ))}
-        <motion.li initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.21 }}>
-          <div className="arena-mode arena-mode--soon" aria-disabled="true">
-            <div className="arena-mode__btn">
-              <span className="arena-mode__icon" aria-hidden="true"><Users size={26} /></span>
-              <span className="arena-mode__title">Multiplayer</span>
-              <span className="arena-mode__blurb">Duel a friend on the same document, or raid a boss together.</span>
-              <Badge><Lock size={10} aria-hidden="true" />Coming soon</Badge>
-            </div>
-          </div>
-        </motion.li>
       </ul>
 
       <Roster />
