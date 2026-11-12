@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import LoreTip from "@/components/fx/LoreTip";
 
 /**
  * Waiting while a fight is prepared: the server writes the whole fight's questions from the PDF before it starts (so
@@ -28,6 +29,7 @@ export default function ForgingWait({ preparing = true }: { preparing?: boolean 
       <span className="arena-wait__orb" aria-hidden="true" />
       <span>{text}</span>
       {preparing && secs >= 3 && <span className="arena-wait__secs pixel-font" aria-hidden="true">{secs}s</span>}
+      {preparing && <LoreTip />}
     </div>
   );
 }

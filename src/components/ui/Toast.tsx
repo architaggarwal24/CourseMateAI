@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useSyncExternalStore, type ReactNode } from "react";
 import { AlertCircle, CheckCircle2, Info, X } from "@/components/ui/icons";
+import Typewriter from "@/components/fx/Typewriter";
 import ThemeScope, { type Theme } from "@/components/ui/ThemeScope";
 import { describeError, withoutActions, type ErrorActionKind } from "@/lib/api/error-actions";
 import Button from "./Button";
@@ -121,7 +122,10 @@ function ToastView({ item }: { item: ToastItem }) {
       >
         <span className="ui-toast__icon" aria-hidden="true">{item.icon ?? ICONS[item.kind]}</span>
         <div className="ui-toast__main">
-          <div>{item.message}</div>
+          {/* the Hero world speaks in dialogue boxes: the Scribe says it, typed out (the two worlds, Stage 3) */}
+          {item.theme === "play" && typeof item.message === "string"
+            ? <div><span className="ui-toast__speaker">Scribe</span><Typewriter text={item.message} /></div>
+            : <div>{item.message}</div>}
           {item.description && <div className="ui-toast__desc">{item.description}</div>}
           {item.action && <div className="ui-toast__action">{item.action}</div>}
         </div>

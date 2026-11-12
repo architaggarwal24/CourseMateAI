@@ -14,6 +14,7 @@ vi.mock("@/hooks/useHero", () => ({
 import ArenaArea from "./ArenaArea";
 import { AUTO_ADVANCE_MS } from "@/hooks/useArenaBattle";
 import { useChampion } from "@/hooks/useChampion";
+import { usePause } from "@/hooks/usePause";
 import { VS_HOLD_MS } from "./VersusScreen";
 
 // The verdict normally moves on by itself; most tests click Continue themselves, so it waits (one test checks the timer).
@@ -109,6 +110,8 @@ function server(opts: {
       battle.prepared = true;
       return json(200, { ok: true, battle_id: "b1", boss: profile, battle });
     }
+    if (path === "/arena/battles/b1/pause") { battle.paused = true; battle.pauses_left = 2; return json(200, { ok: true, paused: true, battle }); }
+    if (path === "/arena/battles/b1/resume") { battle.paused = false; return json(200, { ok: true, battle }); }
     if (path === "/arena/battles/b1/rearm") {
       battle.kit = { champion: chosen, meter: 0, max: 100, ready: false, active: false, effects: {},
         passive: { name: "Reach", text: "Longer blows." }, ultimate: { name: "Dawnbreaker Lance", text: "A big hit." } };
@@ -868,5 +871,40 @@ describe("Arena: Boss Rush and Survival (Stage 6)", () => {
     expect(log.calls).toContain("POST /arena/gauntlets/g1/next");
     press("Enter");
     await screen.findByRole("heading", { name: "Cell Warden" });
+  });
+});
+
+describe("Arena: the pause menu pauses the fight (two worlds, Stage 3)", () => {
+  beforeEach(() => { useChampion.setState({ championId: "kaien", chosen: true, signedIn: true, loaded: true, progress: {} }); usePause.setState({ open: false, view: "menu" }); });
+
+  it("pausing during a question hides it and stops its clock on the server; resuming brings it back", async () => {
+    const { log } = server();
+    render(<ArenaArea />);
+    await summonBoss();
+    await screen.findByText("Which organelle makes ATP?");
+    act(() => { usePause.getState().show(); });
+    expect(await screen.findByRole("heading", { name: "Paused" })).toBeTruthy();
+    expect(screen.queryByText("Which organelle makes ATP?")).toBeNull();
+    await waitFor(() => expect(log.calls).toContain("POST /arena/battles/b1/pause"));
+    expect(screen.getByText(/2 pauses left this fight/)).toBeTruthy();
+    press("2");                                                              // no answering while paused
+    expect(log.answers).toHaveLength(0);
+    act(() => { usePause.getState().close(); });
+    expect(await screen.findByText("Which organelle makes ATP?")).toBeTruthy();
+    expect(log.calls).toContain("POST /arena/battles/b1/resume");
+    press("2");
+    await screen.findByText("Correct!");
+  });
+
+  it("opened between questions it pauses nothing on the server (the turn waits for you anyway)", async () => {
+    const { log } = server();
+    render(<ArenaArea />);
+    await summonBoss();
+    await screen.findByText("Which organelle makes ATP?");
+    press("2");
+    await screen.findByText("Correct!");
+    act(() => { usePause.getState().show(); });
+    act(() => { usePause.getState().close(); });
+    expect(log.calls).not.toContain("POST /arena/battles/b1/pause");
   });
 });

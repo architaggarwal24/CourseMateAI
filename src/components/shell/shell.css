@@ -13,7 +13,8 @@
 }
 @media (min-width: 768px) { .app-shell { flex-direction: row; padding-bottom: var(--safe-bottom); } }
 .app-backdrop { position: absolute; inset: 0; z-index: 0; pointer-events: none; overflow: hidden; }
-.app-shell > :not(.app-backdrop, .fx-coin-rain, .fx-ach) { position: relative; z-index: 1; }
+/* everything in the frame stacks over the backdrop, except the overlays that float above it (fixed) */
+.app-shell > :not(.app-backdrop, .fx-coin-rain, .fx-ach, .portal-fx, .focusbar) { position: relative; z-index: 1; }
 
 /* ── Sidebar ─────────────────────────────────────────────────────────────────────────────────────────────────── *
  * Expanded: logo, search, three labelled groups, you at the bottom. Collapsed (html[data-sidebar="collapsed"], set

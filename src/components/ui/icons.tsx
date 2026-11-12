@@ -131,6 +131,9 @@ import {
   Skull as LSkull,
   Snowflake as LSnowflake,
   CloudFog as LCloudFog,
+  Coffee as LCoffee,
+  Pause as LPause,
+  Play as LPlay,
   SunMoon as LSunMoon,
   Sword as LSword,
   Swords as LSwords,
@@ -300,3 +303,6 @@ export const Swords = lucide(LSwords, "Swords");
 export const Target = lucide(LTarget, "Target");
 export const Type = lucide(LType, "Type");
 export const UserCog = lucide(LUserCog, "UserCog");
+export const Coffee = lucide(LCoffee, "Coffee");
+export const Pause = lucide(LPause, "Pause");
+export const Play = lucide(LPlay, "Play");

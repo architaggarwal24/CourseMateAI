@@ -32,6 +32,11 @@ describe("reward ceremonies", () => {
     expect(screen.queryByRole("dialog")).toBeNull();                              // first visit: remembered quietly
     expect(localStorage.getItem("cmai_level_seen:9")).toBe("4");
     act(() => { useHUDStore.setState({ level: 6, _lastRefresh: 2 }); });
+    // the fanfare comes first (the whole screen); a key skips it to the window
+    expect(screen.getByTestId("level-fanfare").getAttribute("aria-label")).toBe("Level up! Level 6");
+    expect(screen.queryByRole("dialog")).toBeNull();
+    act(() => { fireEvent.keyDown(window, { key: "Enter" }); });
+    expect(screen.queryByTestId("level-fanfare")).toBeNull();
     expect(screen.getByRole("dialog", { name: "Level up!" })).toBeTruthy();
     expect(screen.getByLabelText("Level 6")).toBeTruthy();
     expect(screen.getByTestId("level-up").textContent).toContain(`+${(5 + 6) * 50} coins`);

@@ -13,6 +13,12 @@ import { loadMetadata } from "@/lib/study/sessions";
 import { greeting, lastSession, reviewProgress, todaySummary, type LastSession } from "@/lib/study/today";
 import { ROUTES, type StudyTab } from "@/lib/routes";
 import { cn } from "@/lib/utils";
+import ChampionAvatar from "@/components/champion/ChampionAvatar";
+import PortalLink from "@/components/shell/PortalLink";
+import InsightMeter from "@/components/shell/InsightMeter";
+import { useFocusMode } from "@/hooks/useFocusMode";
+import { InvasionTeaser } from "@/components/play/BridgeCards";
+import { SeasonTeaser } from "@/components/play/SeasonBanner";
 import "./today.css";
 
 /** A card on the Today grid: a labelled region (Law of Common Region), one of them filled with the accent. */
@@ -73,10 +79,19 @@ export default function TodayView() {
   return (
     <div className="today">
       <header className="today__hello">
-        <h1>{greeting(now)}, {firstName(user)}</h1>
+        <h1>
+          {/* Study's calm motif (two worlds, Stage 6): a small open book */}
+          <svg className="study-book" viewBox="0 0 36 24" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round">
+            <path d="M18 5 C13 2 7 2 2 4 V21 C7 19 13 19 18 22 C23 19 29 19 34 21 V4 C29 2 23 2 18 5 Z" /><path d="M18 5 V22" />
+          </svg>
+          {greeting(now)}, {firstName(user)}
+        </h1>
         <p>{todaySummary({ due: review.locked ? 0 : review.due, questsLeft })}</p>
+        <button type="button" className="today__focus" onClick={() => useFocusMode.getState().start()}>Start a focus session</button>
       </header>
 
+      <InvasionTeaser />
+      <SeasonTeaser sessionId={latest?.id ?? null} />
       <div className="today__grid">
         <Tile id="today-review" title="Review" icon={<Repeat size={18} />} emphasis={!review.locked && review.due > 0} className="today-tile--wide">
           {review.locked ? (
@@ -125,11 +140,18 @@ export default function TodayView() {
           <Link href={ROUTES.heroQuests} className="today-tile__link">See quests<ArrowRight size={16} /></Link>
         </Tile>
 
-        <Tile id="today-hero" title="Hero" icon={<Swords size={18} />}>
-          <p className="today-big">Lv <span className="num">{level}</span></p>
+        <Tile id="today-hero" title="Hero" icon={<Swords size={18} />} className="today-portal">
+          <div className="today-portal__row">
+            <ChampionAvatar size={52} withPet />
+            <div>
+              <p className="today-big">Lv <span className="num">{level}</span></p>
+              <p className="today-tile__meta num"><Coins size={16} /> {coins.toLocaleString("en-IN")} coins</p>
+            </div>
+          </div>
           <Bar pct={xpPct} label="XP to the next level" />
-          <p className="today-tile__meta num"><Coins size={16} /> {coins.toLocaleString("en-IN")} coins</p>
-          <Link href={ROUTES.heroArena} className="today-tile__link">Enter the arena<ArrowRight size={16} /></Link>
+          <InsightMeter compact />
+          {/* the two worlds: the Hero world is through a portal (Stage 2) */}
+          <PortalLink to="hero" className="today-portal__go" label="Step into the Hero world" peek={false} />
         </Tile>
 
         <Tile id="today-courses" title="Your courses" icon={<BookMarked size={18} />} className="today-tile--wide">

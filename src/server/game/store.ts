@@ -63,7 +63,7 @@ export function progressView(p: Progress) {
     total_bosses_defeated: p.totalBossesDefeated, total_quizzes_completed: p.totalQuizzesCompleted,
     total_chat_questions: p.totalChatQuestions, total_chat_bundles: p.totalChatBundles, total_notes_generated: p.totalNotesGenerated,
     total_flashcards_studied: p.totalFlashcardsStudied, best_quiz_accuracy: p.bestQuizAccuracy,
-    nightmare_bosses_defeated: p.nightmareBossesDefeated, created_at: p.createdAt, updated_at: p.updatedAt,
+    nightmare_bosses_defeated: p.nightmareBossesDefeated, insight: p.insight ?? 0, created_at: p.createdAt, updated_at: p.updatedAt,
   };
 }
 

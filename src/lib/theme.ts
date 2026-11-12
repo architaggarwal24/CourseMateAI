@@ -54,5 +54,22 @@ export function watchSystemMode(): () => void {
   return () => mql?.removeEventListener("change", onChange);
 }
 
-/** Runs in <head> before the first paint: mode, text size and Reduce animations. Dark when anything goes wrong. */
-export const THEME_SCRIPT = `(function(){var h=document.documentElement;try{var p=JSON.parse(localStorage.getItem('${KEY}')||'{}');var t=p.theme==='light'||p.theme==='dark'?p.theme:(window.matchMedia&&window.matchMedia('${DARK_QUERY}').matches===false?'light':'dark');h.dataset.mode=t;if(p.fontSize==='large')h.classList.add('text-lg-mode');if(p.reduceAnimations)h.classList.add('reduce-animations');}catch(e){h.dataset.mode='dark';try{localStorage.removeItem('${KEY}');}catch(e2){}}})();`;
+// ── Study's accent colour (the two worlds, Stage 6: Study's own calm identity) ─────────────────────────────────────
+export const ACCENTS = ["ink", "teal", "plum", "forest", "ember"] as const;
+export type Accent = (typeof ACCENTS)[number];
+export function readAccent(): Accent {
+  const a = readPrefs().accent;
+  return (ACCENTS as readonly unknown[]).includes(a) ? (a as Accent) : "ink";
+}
+/** Show an accent on <html> (data-accent; Ink, the default, has none). */
+export function applyAccent(a: Accent = readAccent()) {
+  if (a === "ink") delete document.documentElement.dataset.accent; else document.documentElement.dataset.accent = a;
+}
+export function setAccent(a: Accent) {
+  try { localStorage.setItem(KEY, JSON.stringify({ ...readPrefs(), accent: a })); } catch { /* private mode: still applies */ }
+  window.dispatchEvent(new CustomEvent("cmai:accent", { detail: a }));
+  applyAccent(a);
+}
+
+/** Runs in <head> before the first paint: mode, accent, text size and Reduce animations. Dark when anything goes wrong. */
+export const THEME_SCRIPT = `(function(){var h=document.documentElement;try{var p=JSON.parse(localStorage.getItem('${KEY}')||'{}');var t=p.theme==='light'||p.theme==='dark'?p.theme:(window.matchMedia&&window.matchMedia('${DARK_QUERY}').matches===false?'light':'dark');h.dataset.mode=t;if(['teal','plum','forest','ember'].indexOf(p.accent)>-1)h.dataset.accent=p.accent;if(p.fontSize==='large')h.classList.add('text-lg-mode');if(p.reduceAnimations)h.classList.add('reduce-animations');}catch(e){h.dataset.mode='dark';try{localStorage.removeItem('${KEY}');}catch(e2){}}})();`;

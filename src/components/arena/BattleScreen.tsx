@@ -28,6 +28,7 @@ import { mechanicLines } from "./verdict";
 import ForgingWait from "./ForgingWait";
 import EffectChips, { EffectIcon, useQuestionFx } from "./EffectChips";
 import ContinueScreen from "./ContinueScreen";
+import { usePause } from "@/hooks/usePause";
 
 type Arena = ReturnType<typeof useArenaBattle>;
 
@@ -192,6 +193,13 @@ export default function BattleScreen({ arena, context }: { arena: Arena; context
   const pet = useFighterPet();
   const { petStage, mount } = useFighterMount();
 
+  // two worlds, Stage 3: the pause menu stops an open question's clock (and hides it); closing it resumes
+  const pauseOpen = usePause((s) => s.open);
+  const { pauseFight, resumeFight } = arena;
+  useEffect(() => { if (pauseOpen) pauseFight(); else void resumeFight(); }, [pauseOpen]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // two worlds, Stage 5: Insight (from studying) brought a free 50/50 to this fight
+  const fifties = stock.fifty_fifty + (battle?.insight?.fifty ? 1 : 0);
   const clock = stage === "asking" || stage === "answering" ? deadline : null;
   const expired = useExpired(clock);
   const asking = stage === "asking" && question !== null && !expired;
@@ -310,6 +318,12 @@ export default function BattleScreen({ arena, context }: { arena: Arena; context
             <span className="arena-stat__label" aria-hidden="true">Score</span>
             <span className="pixel-font" aria-hidden="true">{String(battle.score ?? 0).padStart(6, "0")}</span>
           </span>
+          {battle.insight && (
+            <span className="arena-insight" title="Insight from your studying: +1 Focus and a free 50/50 this fight">
+              <Brain size={13} aria-hidden="true" /><span className="sr-only">Insight: +1 Focus and a free 50/50 this fight{battle.insight.fifty ? "" : " (50/50 used)"}</span>
+              <span className="arena-stat__label" aria-hidden="true">Insight</span>
+            </span>
+          )}
           <SoundToggle kind="music" className="arena-hud__music" />
         </div>
 
@@ -356,11 +370,11 @@ export default function BattleScreen({ arena, context }: { arena: Arena; context
           <FlaskConical size={16} aria-hidden="true" /><span className="fight-tray__label">Heal</span> <span className="arena-item-count pixel-font">x{stock.heal}</span>
         </Button>
         <Button
-          disabled={stage !== "asking" || stock.fifty_fifty <= 0 || !!question?.fifty_used || (question?.options.length ?? 0) <= 2 || itemBusy !== null || !!battle.cursed}
+          disabled={stage !== "asking" || fifties <= 0 || !!question?.fifty_used || (question?.options.length ?? 0) <= 2 || itemBusy !== null || !!battle.cursed}
           title={battle.cursed ? "Cursed: no potions for now" : undefined}
           loading={itemBusy === "fifty_fifty"} onClick={() => void arena.applyItem("fifty_fifty")}
         >
-          <Scissors size={16} aria-hidden="true" /><span className="fight-tray__label">50/50</span> <span className="arena-item-count pixel-font">x{stock.fifty_fifty}</span>
+          <Scissors size={16} aria-hidden="true" /><span className="fight-tray__label">50/50</span> <span className="arena-item-count pixel-font">x{fifties}</span>
         </Button>
         {!over && <UltimateMeter kit={battle.kit} onCast={() => void arena.ultimate()} busy={itemBusy === "ultimate"} signature={false}
                                  disabled={!(stage === "choosing" || asking) || (itemBusy !== null && itemBusy !== "ultimate")} />}
@@ -388,7 +402,7 @@ export default function BattleScreen({ arena, context }: { arena: Arena; context
       </div>
       <div className="fight__screen">
       <PixelArena
-        hero={fighter} pet={pet} petStage={petStage} mount={mount} bossId={creature.id} rage={battle.rage} down={!!battle.down} intent={intentTint} shield={battle.shield ?? 0}
+        hero={fighter} pet={pet} petStage={petStage} mount={mount} bossId={creature.id} stageId={battle.stage ?? undefined} rage={battle.rage} down={!!battle.down} intent={intentTint} shield={battle.shield ?? 0}
         beats={beats} beatKey={beatKey} floaters={floaters} speech={speech}
         heroSpeech={arena.tauntCast ? { text: tauntLine(fighter.id, arena.tauntCast.key), key: arena.tauntCast.key } : undefined}
         callout={showingVerdict && outcome && outcome.correct ? comboCallout(outcome.combo, outcome.bane?.landed, outcome.weakness) : undefined}
@@ -416,6 +430,14 @@ export default function BattleScreen({ arena, context }: { arena: Arena; context
 
       {stage === "down" && !over && battle.down && (
         <ContinueScreen battle={battle} potions={stock.heal} onContinue={arena.continueWith} onGiveUp={() => void arena.retreat()} onTimeout={() => void arena.settleDown()} />
+      )}
+
+      {stage === "paused" && (
+        <motion.div key="paused" className="arena-verdict arena-paused" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+          <h3 className="arena-verdict__head pixel-font">Paused</h3>
+          <p className="arena-verdict__line">The question is hidden and its clock has stopped. {battle.pauses_left !== undefined && `${battle.pauses_left} ${battle.pauses_left === 1 ? "pause" : "pauses"} left this fight.`}</p>
+          {!pauseOpen && <div className="arena-verdict__actions"><Button variant="primary" onClick={() => void resumeFight()}>Resume</Button></div>}
+        </motion.div>
       )}
 
       {stage === "fetching" && (

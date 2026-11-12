@@ -413,6 +413,15 @@ export async function mockApi(page: Page, { signedIn = true, advanced = true, do
     if (path === "/arena/leaderboard") return json(route, 200, { ok: true, entries: [], total: 0 });
     if (path === "/arena/weak-concepts") return json(route, 200, { concepts: [], missed_total: 0, nemesis_ready: false });
     if (path === "/arena/runs/active") return json(route, 200, { ok: true, run: null });
+    if (path === "/arena/power") return json(route, 200, { ok: true, power: { power: 30, from_score: 10, from_hunts: 10, best_scores: [], hunted: ["minotaur", "cyclops"] },
+      rush: { unlocked: false, hunted: 2, need: 3, bosses: [], wins: 0, best: null }, survival: { best: null }, active: null });
+    if (path === "/arena/gauntlets/active") return json(route, 200, { ok: true, gauntlet: null });
+    if (path === "/arena/season") return json(route, 200, { ok: true, season: { id: "finals", name: "Finals Week", tagline: "The Exam Warden rises from everything you studied this month.",
+      boss: "sphinx", boss_name: "The Exam Warden", stage: "exam-hall", tint: "#fde68a", reward: { xp: 200, coins: 250 } }, ready: true, concepts: ["ATP", "DNA", "RNA"], needed: 3, beaten: false });
+    if (path === "/adventurer") return json(route, 200, { ok: true, name: "alice", champion: "kaien", level: 7, streak: 4, power: 58, survival_best: 7, rush_wins: 1,
+      bestiary: { beaten: 5, total: 13 }, achievements: { unlocked: 9, total: 30, recent: ["First Blood"] } });
+    if (path === "/arena/invasion") return json(route, 200, { ok: true, week: "2026-11-09", ready: true, concepts: ["ATP", "Mitochondria", "Nucleus"], needed: 3,
+      species: "kraken", name: "Kraken", repelled: false, reward: { xp: 120, coins: 150 } });
     if (path === "/study/review-deck") return json(route, 200, { cards: [], total: 0 });
     if (path === "/arena/battles/active") return json(route, 200, { ok: true, battle: null });
     if (path === "/history") return json(route, 200, { history: [] });

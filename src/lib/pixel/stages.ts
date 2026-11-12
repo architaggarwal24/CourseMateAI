@@ -381,6 +381,37 @@ export const STAGES: Record<string, StageDef> = {
       floor(b, HORIZON + 8, "#8b8580", "#a19a94", "#5f5954", 10);
     },
   },
+  // the two worlds, Stage 7: Finals Week's own stage - a moonlit exam hall, rows of desks, the clock that never stops
+  "exam-hall": {
+    id: "exam-hall", name: "The Exam Hall", particles: { kind: "dust", color: "#e5e7eb", count: 22 },
+    lights: [[110, 118, 46, "#fde68a"], [370, 118, 46, "#fde68a"]],
+    paint: (b) => {
+      sky(b, ["#0b1022", "#111a33", "#1b2546", "#26315a"]);
+      b.rect(0, 30, b.w, HORIZON - 22, hex("#161d36"));
+      b.rect(0, 30, b.w, 4, hex("#2b3560"));
+      for (const x of [34, 128, 314, 408]) {                     // tall windows, moonlight through them
+        b.rect(x, 52, 38, 78, hex("#0a0f20"));
+        b.rect(x + 2, 54, 34, 74, hex("#1e2b5a"));
+        b.rect(x + 18, 54, 2, 74, hex("#2b3560"));
+        b.rect(x + 2, 90, 34, 2, hex("#2b3560"));
+      }
+      moon(b, 91, 40, 7, "#e5e7eb");
+      b.ellipse(240, 78, 20, 20, ramp("#e7e5e4"), { flat: 2 });  // the clock
+      b.ellipse(240, 78, 16, 16, ramp("#fafaf9"), { flat: 3, rim: false });
+      b.rect(239, 66, 2, 13, hex("#111827"));
+      b.rect(240, 77, 9, 2, hex("#111827"));
+      column(b, 200, 40, HORIZON + 8, 12, ramp("#a8a29e"));
+      column(b, 280, 40, HORIZON + 8, 12, ramp("#a8a29e"));
+      floor(b, HORIZON + 6, "#3f3a36", "#4a443f", "#2a2623", 12, "planks");
+      for (const [x, y] of [[40, 196], [120, 196], [330, 196], [410, 196], [80, 222], [370, 222]] as const) {   // desks
+        b.rect(x - 22, y, 44, 6, hex("#6b4f3a"));
+        b.rect(x - 20, y + 6, 3, 14, hex("#4a3628"));
+        b.rect(x + 17, y + 6, 3, 14, hex("#4a3628"));
+        b.rect(x - 10, y - 2, 16, 2, hex("#f5f5f4"));             // a paper on each
+      }
+      groundMist(b, "#94a3b8", HORIZON - 2, 18, 0.16);
+    },
+  },
 };
 
 export const STAGE_FOR_ORIGIN: Record<string, string> = {

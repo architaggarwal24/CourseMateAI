@@ -10,7 +10,9 @@ export interface Note { t: number; f: number; to?: number; d: number; w: Wave; v
 
 export type Sfx =
   | "swing" | "hit" | "crit" | "block" | "hurt" | "cast" | "heal" | "shield" | "rage" | "taunt" | "ko" | "fight" | "ult" | "dodge"
-  | "win" | "lose" | "coin" | "chest" | "buy" | "levelup" | "quest" | "achievement" | "click" | "select" | "emote";
+  | "win" | "lose" | "coin" | "chest" | "buy" | "levelup" | "quest" | "achievement" | "click" | "select" | "emote"
+  // the two worlds: crossing into the Hero world (a rising whoosh) and back to Study (a falling one)
+  | "portal" | "portalBack";
 
 const NOTE_INDEX: Record<string, number> = { C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 11 };
 /** "A4" → 440, "G#5", "Bb3". */
@@ -52,6 +54,8 @@ export const SFX: Record<Sfx, Note[]> = {
   click: [{ t: 0, f: 1200, d: 0.02, w: "pulse12", v: 0.1 }],
   select: [{ t: 0, f: 660, d: 0.03, w: "pulse25", v: 0.12 }, { t: 0.035, f: 990, d: 0.05, w: "pulse25", v: 0.12 }],
   emote: [{ t: 0, f: 330, to: 660, d: 0.1, w: "pulse25", v: 0.18 }, { t: 0.11, f: 660, to: 440, d: 0.12, w: "pulse25", v: 0.16 }],
+  portal: [{ t: 0, f: 600, to: 5000, d: 0.45, w: "noise", v: 0.14 }, ...arp(["C4", "G4", "C5", "G5", "C6"], 0.07, 0.08, "pulse12", 0.12), { t: 0.36, f: n("E6"), d: 0.3, w: "pulse25", v: 0.12 }],
+  portalBack: [{ t: 0, f: 5000, to: 500, d: 0.4, w: "noise", v: 0.12 }, ...arp(["C6", "G5", "E5", "C5"], 0.07, 0.08, "triangle", 0.2)],
 };
 
 // ── music ───────────────────────────────────────────────────────────────────────────────────────────────────────
@@ -71,6 +75,16 @@ export const TRACKS = {
     bass: [bar("A2", "A3", "E3"), bar("F2", "F3", "C3"), bar("C3", "C4", "G3"), bar("G2", "G3", "D3"),
       bar("A2", "A3", "E3"), bar("F2", "F3", "C3"), bar("G2", "G3", "D3"), bar("E2", "E3", "B2")].join(" "),
     drums: "k.h.s.hkk.h.s.h.".repeat(7) + "k.h.s.hks.s.ssss",
+  },
+  // the Hero world's lobby (two worlds, Stage 4): slow, warm, a tavern by the arena at night
+  lobby: {
+    bpm: 92,
+    lead: [
+      "C5 - - - E5 - G5 - A5 - - - G5 - E5 -", "F5 - - - A5 - C6 - B5 - A5 - G5 - - -",
+      "E5 - - - G5 - C6 - D6 - C6 - A5 - G5 -", "F5 - E5 - D5 - - - C5 - - - . . . .",
+    ].join(" "),
+    bass: [bar("C3", "C4", "G3"), bar("F2", "F3", "C3"), bar("A2", "A3", "E3"), bar("G2", "G3", "D3")].join(" "),
+    drums: "k...h...k...h...".repeat(3) + "k...h...k.h.h.h.",
   },
 } satisfies Record<string, Track>;
 export type TrackName = keyof typeof TRACKS;
@@ -189,8 +203,12 @@ function voice(e: Engine, bus: AudioNode, note: Note, t0: number, gain = 1) {
 }
 
 const lastPlayed = new Map<Sfx, number>();
+/** Who hears every effect, sound on or off (the Hero panel's champion reacts to them: the two worlds, Stage 3). */
+const sfxListeners = new Set<(name: Sfx) => void>();
+export function onSfx(fn: (name: Sfx) => void): () => void { sfxListeners.add(fn); return () => { sfxListeners.delete(fn); }; }
 /** Play an effect (if sound is on). The same effect twice within 40 ms plays once. */
 export function sfx(name: Sfx) {
+  for (const fn of sfxListeners) { try { fn(name); } catch { /* a listener's problem is not the sound's */ } }
   const s = useSound.getState();
   if (!s.loaded) s.load();
   if (!useSound.getState().on) return;
@@ -207,6 +225,8 @@ const tokens = (s: string) => s.trim().split(/\s+/);
 interface Playing { name: TrackName; lead: string[]; bass: string[]; drums: string; step: number; next: number; timer: ReturnType<typeof setInterval> }
 let playing: Playing | null = null;
 let wanted: TrackName | null = null;
+/** What plays when nothing else does (the Hero world's lobby music). */
+let background: TrackName | null = null;
 let intense = false;
 
 function len(tok: string[], i: number) { let k = 1; while (tok[(i + k) % tok.length] === "-" && k < tok.length) k++; return k; }
@@ -244,7 +264,8 @@ function stopPlaying() {
 
 function sync() {
   const s = useSound.getState();
-  const should = wanted && s.on && s.music ? wanted : null;
+  const want = wanted ?? background;
+  const should = want && s.on && s.music ? want : null;
   if (playing && playing.name !== should) stopPlaying();
   if (should && !playing) startPlaying(should);
 }
@@ -254,10 +275,12 @@ export const music = {
   /** Play this track (looped) while sound and music are on; again with the same name does nothing. */
   play(name: TrackName) { useSound.getState().load(); wanted = name; sync(); },
   stop() { wanted = null; intense = false; sync(); },
+  /** The track to fall back to when nothing else is playing (null: silence). */
+  background(name: TrackName | null) { if (name) useSound.getState().load(); background = name; sync(); },
   /** Faster, busier drums (the boss is raging). */
   intensity(on: boolean) { intense = on; },
   get playing() { return playing?.name ?? null; },
 };
 
 /** Tests only: forget the audio engine (a fresh fake AudioContext next time). */
-export function __resetSound() { stopPlaying(); wanted = null; intense = false; engine = null; lastPlayed.clear(); useSound.setState({ loaded: false, on: true, music: true }); }
+export function __resetSound() { stopPlaying(); wanted = null; background = null; intense = false; engine = null; lastPlayed.clear(); useSound.setState({ loaded: false, on: true, music: true }); }

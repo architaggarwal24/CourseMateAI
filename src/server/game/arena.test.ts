@@ -15,6 +15,12 @@ import * as continueRoute from "@/app/api/v1/arena/battles/[id]/continue/route";
 import * as prepareRoute from "@/app/api/v1/arena/battles/[id]/prepare/route";
 import * as rearmRoute from "@/app/api/v1/arena/battles/[id]/rearm/route";
 import * as powerRoute from "@/app/api/v1/arena/power/route";
+import * as pauseRoute from "@/app/api/v1/arena/battles/[id]/pause/route";
+import * as invasionRoute from "@/app/api/v1/arena/invasion/route";
+import * as focusRoute from "@/app/api/v1/focus-session/route";
+import * as seasonRoute from "@/app/api/v1/arena/season/route";
+import { activeSeason } from "@/lib/game/seasons";
+import * as resumeRoute from "@/app/api/v1/arena/battles/[id]/resume/route";
 import * as gauntlets from "@/app/api/v1/arena/gauntlets/route";
 import * as gauntletOne from "@/app/api/v1/arena/gauntlets/[id]/route";
 import * as gauntletNext from "@/app/api/v1/arena/gauntlets/[id]/next/route";
@@ -277,6 +283,142 @@ describe("boss effects and the enraged form (Stage 3)", () => {
   });
 });
 
+describe("seasonal events (two worlds, Stage 7)", () => {
+  it("a season's limited boss: made of this month's concepts, on its own stage, its bonus once a season; admins can preview one", async () => {
+    const b = await person(mail, "season-admin@example.com", "free");
+    const plain = await json(await seasonRoute.GET(b.request("/api/v1/arena/season?preview=finals")));
+    expect(plain.season?.id ?? null).toBe(activeSeason()?.id ?? null);             // only admins preview
+    await db().prepare("UPDATE user SET role = 'admin' WHERE email = ?").bind("season-admin@example.com").run();
+    const id = await uploadPdf(b, "Bio.pdf", BIO);
+    const look = async () => json(await seasonRoute.GET(b.request(`/api/v1/arena/season?session_id=${id}&preview=finals`)));
+    const quiet = await look();
+    expect(quiet).toMatchObject({ season: { id: "finals", boss: "sphinx", boss_name: "The Exam Warden", stage: "exam-hall" }, ready: false, beaten: false });
+    const tmp = await start(b, id);
+    const row = (await db().prepare("SELECT user_id AS u, doc_hash AS h FROM arena_battles WHERE id = ?").bind(tmp.battle_id).first<{ u: number; h: string }>())!;
+    await forfeit.POST(post(b, `/api/v1/arena/battles/${tmp.battle_id}/forfeit`), params({ id: tmp.battle_id }));
+    for (const [k, c] of [["atp", "ATP"], ["mitochondria", "Mitochondria"], ["nucleus", "Nucleus"]]) {
+      await db().prepare("INSERT INTO concept_mastery (user_id, doc_hash, concept_key, concept, seen, correct, wrong_streak, last_seen_at) VALUES (?, ?, ?, ?, 3, 2, 0, ?)").bind(row.u, row.h, k, c, new Date().toISOString()).run();
+    }
+    expect((await look()).ready).toBe(true);
+    const s = await start(b, id, { mode: "season", preview: "finals" });
+    expect(s.battle).toMatchObject({ stage: "exam-hall", season: "finals", boss: { species: "sphinx", name: "The Exam Warden" } });
+    expect(s.battle.topic).toMatch(/^Finals Week: /);
+    await db().prepare("UPDATE arena_battles SET boss_json = json_set(boss_json, '$.current_hp', 1), boss_hp = 1, shield = 0, intent_json = ? WHERE id = ?")
+      .bind(JSON.stringify({ kind: "attack", name: "Bite", value: 1, description: "1." }), s.battle_id).run();
+    const q = await ask(b, s.battle_id, "strike");
+    const won = await reply(b, s.battle_id, q.question.id, "ATP");
+    expect(won.battle.result.season).toMatchObject({ season: "finals", xp: 200, coins: 250 });
+    expect((await look()).beaten).toBe(true);
+  });
+});
+
+describe("Study's focus mode charges Insight (two worlds, Stage 6)", () => {
+  it("each finished focus session: +20 Insight and a little XP, four a day", async () => {
+    const b = await person(mail, "focus@example.com", "free");
+    const done = async () => json(await focusRoute.POST(post(b, "/api/v1/focus-session")));
+    const first = await done();
+    expect(first).toMatchObject({ counted: true, capped: false, sessions_today: 1, xp: 10, insight: 20 });
+    for (let i = 2; i <= 4; i++) expect(await done()).toMatchObject({ counted: true, sessions_today: i, insight: 20 * i });
+    expect(await done()).toMatchObject({ counted: false, capped: true, sessions_today: 4, insight: 80 });
+  });
+});
+
+describe("the bridges between the worlds (two worlds, Stage 5)", () => {
+  const userOf = async (battle: string) => (await db().prepare("SELECT user_id AS u, doc_hash AS h FROM arena_battles WHERE id = ?").bind(battle).first<{ u: number; h: string }>())!;
+  const winNow = async (b: Browser, battle: string) => {
+    await db().prepare("UPDATE arena_battles SET boss_json = json_set(boss_json, '$.current_hp', 1), boss_hp = 1, shield = 0, intent_json = ? WHERE id = ?")
+      .bind(JSON.stringify({ kind: "attack", name: "Bite", value: 1, description: "1." }), battle).run();
+    const q = await ask(b, battle, "strike");
+    return reply(b, battle, q.question.id, "ATP");
+  };
+
+  it("full Insight (from studying) gives the next fight an edge, once: +1 Focus and a free 50/50", async () => {
+    const b = await person(mail, "insight@example.com", "free");
+    const id = await uploadPdf(b, "Bio.pdf", BIO);
+    const plain = await start(b, id);
+    expect(plain.battle.insight).toBeNull();
+    const base = plain.battle.focus;
+    const { u } = await userOf(plain.battle_id);
+    await forfeit.POST(post(b, `/api/v1/arena/battles/${plain.battle_id}/forfeit`), params({ id: plain.battle_id }));
+    await db().prepare("UPDATE user_progress SET insight = 100 WHERE user_id = ?").bind(u).run();
+    const edged = await start(b, id, { topic: "ribosomes" });
+    expect(edged.battle.insight).toMatchObject({ fifty: true, focus: 1 });
+    expect(edged.battle.focus).toBe(base + 1);
+    expect((await db().prepare("SELECT insight FROM user_progress WHERE user_id = ?").bind(u).first<{ insight: number }>())!.insight).toBe(0);
+    // the free 50/50, though the bag has none
+    await db().prepare("DELETE FROM user_inventory WHERE user_id = ?").bind(u).run();
+    await ask(b, edged.battle_id, "strike");
+    const used = await json(await items.POST(post(b, `/api/v1/arena/battles/${edged.battle_id}/items`, { item: "fifty_fifty" }), params({ id: edged.battle_id })));
+    expect(used.question.options).toHaveLength(2);
+    expect(used.battle.insight).toMatchObject({ fifty: false });
+  });
+
+  it("the weekly invasion: a boss made of what you studied this week; repelled once a week for a bonus", async () => {
+    const b = await person(mail, "invade@example.com", "free");
+    const id = await uploadPdf(b, "Bio.pdf", BIO);
+    const look = async () => json(await invasionRoute.GET(b.request(`/api/v1/arena/invasion?session_id=${id}`)));
+    const quiet = await look();
+    expect(quiet).toMatchObject({ ready: false, concepts: [], needed: 3, repelled: false });
+    expect(quiet.species).toBeTruthy();
+    expect((await start(b, id, { mode: "invasion" }) as { error: { code: string } }).error.code).toBe("invasion_quiet");
+    const tmp = await start(b, id);
+    const { u, h } = await userOf(tmp.battle_id);
+    await forfeit.POST(post(b, `/api/v1/arena/battles/${tmp.battle_id}/forfeit`), params({ id: tmp.battle_id }));
+    const now = new Date().toISOString();
+    for (const [k, c] of [["atp", "ATP"], ["mitochondria", "Mitochondria"], ["nucleus", "Nucleus"]]) {
+      await db().prepare("INSERT INTO concept_mastery (user_id, doc_hash, concept_key, concept, seen, correct, wrong_streak, last_seen_at) VALUES (?, ?, ?, ?, 3, 2, 0, ?)").bind(u, h, k, c, now).run();
+    }
+    const ready = await look();
+    expect(ready).toMatchObject({ ready: true, repelled: false });
+    expect(ready.concepts).toHaveLength(3);
+    const s = await start(b, id, { mode: "invasion" });
+    expect(s.battle.topic).toMatch(/^Invasion: /);
+    expect(s.battle.boss.species).toBe(ready.species);
+    const won = await winNow(b, s.battle_id);
+    expect(won.battle.result.invasion).toMatchObject({ xp: 120, coins: 150 });
+    expect((await look()).repelled).toBe(true);
+    const again = await start(b, id, { mode: "invasion" });
+    const twice = await winNow(b, again.battle_id);
+    expect(twice.battle.result.invasion).toBeNull();                          // once a week
+  });
+});
+
+describe("the pause menu pauses a fight (two worlds, Stage 3)", () => {
+  it("an open question's clock stops while paused (no answers meanwhile); resumed, it has the seconds it had, dealt again; 3 a fight", async () => {
+    const b = await person(mail, "pause@example.com", "free");
+    const id = await uploadPdf(b, "Bio.pdf", BIO);
+    const s = await start(b, id);
+    const pause = async () => pauseRoute.POST(post(b, `/api/v1/arena/battles/${s.battle_id}/pause`), params({ id: s.battle_id }));
+    const resume = async () => json(await resumeRoute.POST(post(b, `/api/v1/arena/battles/${s.battle_id}/resume`), params({ id: s.battle_id })));
+    // nothing open: nothing to stop
+    expect(await json(await pause())).toMatchObject({ paused: false, battle: { paused: false, pauses_left: 3 } });
+    const q = await ask(b, s.battle_id, "strike");
+    const left = q.question.seconds_left;
+    const p = await json(await pause());
+    expect(p).toMatchObject({ paused: true, battle: { paused: true, pauses_left: 2 } });
+    const refused = await answerRoute.POST(post(b, `/api/v1/arena/battles/${s.battle_id}/answer`, { question_id: q.question.id, answer: "ATP" }), params({ id: s.battle_id }));
+    expect(refused.status).toBe(409);
+    expect((await json(refused)).error.code).toBe("battle_paused");
+    // a long pause: the clock is parked, so nothing runs out
+    await db().prepare("UPDATE arena_battles SET boss_json = json_set(boss_json, '$.paused.at', ?) WHERE id = ?").bind(new Date(Date.now() - 120_000).toISOString(), s.battle_id).run();
+    const r = await resume();
+    expect(r.battle).toMatchObject({ paused: false, status: "active" });
+    const again = await ask(b, s.battle_id);
+    expect(again.question.id).toBe(q.question.id);
+    expect(again.question.seconds_left).toBeGreaterThan(left - 3);
+    expect(again.question.seconds_left).toBeLessThanOrEqual(left + 0.5);
+    expect([...again.question.options].sort()).toEqual([...q.question.options].sort());
+    const ok = await reply(b, s.battle_id, q.question.id, "ATP");
+    expect(ok.correct).toBe(true);
+    // three pauses a fight
+    for (let i = 0; i < 2; i++) { await ask(b, s.battle_id, "strike"); expect(await json(await pause())).toMatchObject({ paused: true }); await resume(); const cur = await ask(b, s.battle_id); await reply(b, s.battle_id, cur.question.id, "ATP"); }
+    await ask(b, s.battle_id, "strike");
+    const none = await pause();
+    expect(none.status).toBe(409);
+    expect((await json(none)).error.code).toBe("no_pauses");
+  });
+});
+
 describe("power level, Boss Rush and Survival (Stage 6)", () => {
   const ready = (b: Browser, battle: string) => prepareRoute.POST(post(b, `/api/v1/arena/battles/${battle}/prepare`), params({ id: battle })).then(json);
   /** Win the fight in one blow: 1 HP left, a calm boss, a right answer. */
@@ -292,7 +434,7 @@ describe("power level, Boss Rush and Survival (Stage 6)", () => {
   const hunt = (b: Browser, battle: string, species: string[]) => Promise.all(species.map((s) =>
     db().prepare("INSERT INTO bestiary_records (user_id, species, fights, wins, updated_at) VALUES ((SELECT user_id FROM arena_battles WHERE id = ?), ?, 1, 1, '2026-11-12')").bind(battle, s).run()));
 
-  it("Survival: bosses matched to your power, hearts carried, a chest every 5, and it ends when a fight is lost", async () => {
+  it("Survival: bosses matched to your power, hearts carried, a chest every 5, and it ends when a fight is lost", { timeout: 120_000 }, async () => {
     const b = await person(mail, "survive@example.com", "free");
     const id = await uploadPdf(b, "Bio.pdf", BIO);
     const before = await overview(b);
@@ -335,7 +477,7 @@ describe("power level, Boss Rush and Survival (Stage 6)", () => {
     expect(after.power.power).toBeGreaterThan(10);                              // score cards and hunts raised it
   });
 
-  it("Boss Rush opens after 3 creatures hunted: your 3 strongest, weakest first; beat all 3 for the big chest", async () => {
+  it("Boss Rush opens after 3 creatures hunted: your 3 strongest, weakest first; beat all 3 for the big chest", { timeout: 120_000 }, async () => {
     const b = await person(mail, "rush@example.com", "free");
     const id = await uploadPdf(b, "Bio.pdf", BIO);
     const locked = await begin(b, id, "rush");

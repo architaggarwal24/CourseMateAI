@@ -6,9 +6,10 @@ import type {
   ActiveBattle, AnswerResponse, BattleGetResponse, ChooseResponse, CreateResponse, Difficulty, ForfeitResponse, ItemId,
   ItemResponse, LeaderboardResponse, Move, QuestionResponse, Run, RunBoardEntry, RunResponse, Spell, SpellResponse,
   TravelResponse, UltimateResponse, WeakConceptsResponse, BestiaryPage, BestiaryResponse, TauntResponse, EmoteEntry,
-  Gauntlet, GauntletFightResponse, GauntletKind, PowerOverview,
+  Gauntlet, GauntletFightResponse, GauntletKind, PowerOverview, Battle, InvasionInfo, SeasonInfo, AdventurerCardData,
 } from "./types";
 import { API_BASE_URL, throwForResponse } from "@/lib/api/client";
+import { seasonPreview } from "@/lib/game/seasons";
 
 // The generated schema types these bodies loosely, so the real shapes (types.ts) are asserted here, in one place.
 const as = <T,>(data: unknown) => data as T;
@@ -16,9 +17,10 @@ const as = <T,>(data: unknown) => data as T;
 /** `species`: a Hunt (the Bestiary's Hunt button) - that creature, whatever the topic would summon. */
 /** `defer` (Stage 5): the battle comes back at once and its questions are written by prepareBattle (character select
  *  and the VS screen run meanwhile). */
-export async function startBattle(sessionId: string, topic: string, difficulty: Difficulty, mode: "quick" | "nemesis" = "quick", species?: string | null, defer = false): Promise<CreateResponse> {
-  const extra = defer ? { defer: true } : {};
-  const body = mode === "nemesis" ? { session_id: sessionId, difficulty, mode, ...extra }
+export async function startBattle(sessionId: string, topic: string, difficulty: Difficulty, mode: "quick" | "nemesis" | "invasion" | "season" = "quick", species?: string | null, defer = false): Promise<CreateResponse> {
+  const preview = mode === "season" ? seasonPreview() : null;
+  const extra = { ...(defer ? { defer: true } : {}), ...(preview ? { preview } : {}) };
+  const body = mode !== "quick" ? { session_id: sessionId, difficulty, mode, ...extra }
     : { session_id: sessionId, topic, difficulty, mode, ...(species ? { species } : {}), ...extra };
   const { data } = await api.POST("/arena/battles", { body: body as never });
   return as<CreateResponse>(data);
@@ -134,6 +136,21 @@ export const continueBattle = (battleId: string, by: "potion" | "coins") =>
 export const prepareBattle = (battleId: string) => postJson<BattleGetResponse>(`/arena/battles/${encodeURIComponent(battleId)}/prepare`);
 /** Before the first question: fight as the champion now chosen on the account (409 battle_started). */
 export const rearmBattle = (battleId: string) => postJson<BattleGetResponse>(`/arena/battles/${encodeURIComponent(battleId)}/rearm`);
+/** Two worlds, Stage 3: pause a fight (an open question's clock stops; 409 no_pauses) and resume it. */
+export const pauseBattle = (battleId: string) => postJson<{ ok: boolean; paused: boolean; battle: Battle }>(`/arena/battles/${encodeURIComponent(battleId)}/pause`);
+export const resumeBattle = (battleId: string) => postJson<{ ok: boolean; battle: Battle }>(`/arena/battles/${encodeURIComponent(battleId)}/resume`);
+/** The season on now and its boss on a document. */
+export const fetchSeason = (sessionId?: string | null) => {
+  const q = new URLSearchParams();
+  if (sessionId) q.set("session_id", sessionId);
+  const p = seasonPreview();
+  if (p) q.set("preview", p);
+  return getJson<SeasonInfo>(`/arena/season${q.size ? `?${q}` : ""}`);
+};
+/** Your Adventurer card's numbers. */
+export const fetchAdventurer = () => getJson<AdventurerCardData>("/adventurer");
+/** Two worlds, Stage 5: this week's invasion on a document (or course). */
+export const fetchInvasion = (sessionId?: string | null) => getJson<InvasionInfo>(`/arena/invasion${sessionId ? `?session_id=${encodeURIComponent(sessionId)}` : ""}`);
 /** Stage 6: power level, Boss Rush's lock and lineup, bests, a run of fights in progress. */
 export const fetchPower = (sessionId?: string) => getJson<PowerOverview>(`/arena/power${sessionId ? `?session_id=${encodeURIComponent(sessionId)}` : ""}`);
 /** Start a Boss Rush or Survival (409 rush_locked / gauntlet_in_progress / battle_in_progress). The first fight comes back deferred. */

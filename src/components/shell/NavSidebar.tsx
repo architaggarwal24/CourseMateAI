@@ -3,7 +3,7 @@
 import { Suspense, useEffect, useSyncExternalStore, type ReactNode } from "react";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
-import { BookOpen, Crown, GraduationCap, Home, PanelLeft, Repeat, ScrollText, Search, Skull, Swords, type IconType } from "@/components/ui/icons";
+import { BookOpen, GraduationCap, Home, PanelLeft, Repeat, Search, type IconType } from "@/components/ui/icons";
 import UserMenu from "@/components/shell/UserMenu";
 import Logo from "@/components/brand/Logo";
 import { dueBadge, useReview } from "@/hooks/useReview";
@@ -13,6 +13,24 @@ import { isSidebarCollapsed, SIDEBAR_EVENT, toggleSidebar } from "@/lib/sidebar"
 import { ROUTES } from "@/lib/routes";
 import ReviewBadge from "./ReviewBadge";
 import { openCommandPalette } from "./CommandPaletteLoader";
+import PortalLink from "./PortalLink";
+import InsightMeter from "./InsightMeter";
+import { useFocusMode } from "@/hooks/useFocusMode";
+import { Hourglass as Timer } from "@/components/ui/icons";
+import { useHUDStore } from "@/hooks/useHUD";
+import { Flame } from "@/components/ui/icons";
+
+/** The light bridge (two worlds, Stage 5): your level, streak and Insight, small, over the portal to the Hero world. */
+function HeroChip() {
+  const level = useHUDStore((s) => s.level);
+  const streak = useHUDStore((s) => s.streakDays);
+  return (
+    <div className="side__hero-chip" data-testid="study-hero-chip">
+      <p className="side__hero-line"><span>Lv {level}</span><span className="side__hero-streak"><Flame size={12} aria-hidden="true" />{streak}<span className="sr-only">-day streak</span></span></p>
+      <InsightMeter compact />
+    </div>
+  );
+}
 
 const subscribe = (cb: () => void) => { window.addEventListener(SIDEBAR_EVENT, cb); return () => window.removeEventListener(SIDEBAR_EVENT, cb); };
 /** Collapsed or not (on <html data-sidebar>, set before first paint); the server renders it expanded. */
@@ -44,10 +62,24 @@ function Group({ id, title, children }: { id: string; title: string; children: R
 const typing = (t: EventTarget | null) =>
   t instanceof HTMLElement && (t.isContentEditable || ["INPUT", "TEXTAREA", "SELECT"].includes(t.tagName));
 
+/** Ctrl+B (Cmd+B) collapses / expands the side panel, in either world. */
+export function useSidebarShortcut() {
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (!(e.ctrlKey || e.metaKey) || e.altKey || e.key.toLowerCase() !== "b" || typing(e.target)) return;
+      if (document.querySelector('[aria-modal="true"]')) return;
+      e.preventDefault();
+      toggleSidebar();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
+}
+
 /**
- * The desktop sidebar (hidden below md; phones get BottomNav). Search (Ctrl K) on top, then three groups:
- * Study (Today, Study, Review with its due count, Mock exam), your Courses (when the plan has them) and Play (Quests, Arena, Bestiary, Champion), and you at
- * the bottom. It collapses to a 64px icon rail (the button beside the logo, or Ctrl+B): every link keeps its name
+ * The Study world's sidebar (hidden below md; phones get BottomNav). Search (Ctrl K) on top, then Study (Today,
+ * Study, Review with its due count, Mock exam) and your Courses (when the plan has them), the portal into the Hero
+ * world, and you at the bottom (the Hero world has a panel of its own: HeroSidebar). It collapses to a 64px icon rail (the button beside the logo, or Ctrl+B): every link keeps its name
  * for screen readers and shows it as a tooltip on hover and focus.
  */
 export default function NavSidebar() {
@@ -67,16 +99,7 @@ function Sidebar({ tab, doc }: { tab: string | null; doc: string | null }) {
   const due = useReview((s) => dueBadge(s.stats));
   const { courses, locked } = useCourses();
 
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (!(e.ctrlKey || e.metaKey) || e.altKey || e.key.toLowerCase() !== "b" || typing(e.target)) return;
-      if (document.querySelector('[aria-modal="true"]')) return;
-      e.preventDefault();
-      toggleSidebar();
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, []);
+  useSidebarShortcut();
 
   const inStudy = pathname === ROUTES.study;
   const study: Item[] = [
@@ -84,13 +107,6 @@ function Sidebar({ tab, doc }: { tab: string | null; doc: string | null }) {
     { label: "Study", href: ROUTES.study, Icon: BookOpen, current: inStudy && tab !== "review" && tab !== "exam" && !(tab === "overview" && courses.some((c) => c.id === doc)) },
     { label: "Review", href: ROUTES.studyTab("review"), Icon: Repeat, current: inStudy && tab === "review", extra: <ReviewBadge due={due} /> },
     { label: "Mock exam", href: ROUTES.studyTab("exam"), Icon: GraduationCap, current: inStudy && tab === "exam" },
-  ];
-  // Quests, Arena and Bestiary are pages of their own; Champion's own tab bar (Inventory, Forge, Shop, ...) does the rest
-  const play: Item[] = [
-    { label: "Quests", href: ROUTES.heroQuests, Icon: ScrollText, current: pathname === ROUTES.heroQuests },
-    { label: "Arena", href: ROUTES.heroArena, Icon: Swords, current: pathname === ROUTES.heroArena },
-    { label: "Bestiary", href: ROUTES.heroBestiary, Icon: Skull, current: pathname === ROUTES.heroBestiary },
-    { label: "Champion", href: ROUTES.champion, Icon: Crown, current: pathname === ROUTES.champion },
   ];
 
   return (
@@ -110,7 +126,12 @@ function Sidebar({ tab, doc }: { tab: string | null; doc: string | null }) {
       </button>
 
       <nav aria-label="Main" className="side__nav">
-        <Group id="side-study" title="Study">{study.map((i) => <NavLink key={i.label} {...i} />)}</Group>
+        <Group id="side-study" title="Study">
+          {study.map((i) => <NavLink key={i.label} {...i} />)}
+          <button type="button" className="side__link side__focus" onClick={() => useFocusMode.getState().start()} data-tip="Focus mode">
+            <Timer size={18} aria-hidden="true" className="side__icon" /><span className="side__label">Focus mode</span>
+          </button>
+        </Group>
         {!locked && courses.length > 0 && (
           <Group id="side-courses" title="Courses">
             {courses.slice(0, 6).map((c) => (
@@ -124,8 +145,10 @@ function Sidebar({ tab, doc }: { tab: string | null; doc: string | null }) {
             ))}
           </Group>
         )}
-        <Group id="side-hero" title="Play">{play.map((i) => <NavLink key={i.label} {...i} />)}</Group>
       </nav>
+
+      <HeroChip />
+      <PortalLink to="hero" className="side__portal" rail />
 
       <div className="side__foot">
         <UserMenu />

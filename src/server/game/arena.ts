@@ -12,6 +12,9 @@
 // (ctx.waitUntil) well before they run low; a model failure never decides a fight: the request is retryable.
 import { and, asc, count, desc, eq, gte, isNull, ne, sql } from "drizzle-orm";
 import { FINISHERS, STYLE_FINISHERS } from "@/lib/arena/finishers";
+import * as insight from "./insight";
+/** Two worlds, Stage 5: the Focus full Insight adds to a fight's start. */
+export const INSIGHT_FOCUS = 1;
 import { background } from "../env";
 import type { RequestContext } from "../context";
 import { arenaBattles, arenaGauntlets, arenaPersonalBests, arenaQuestions, arenaScores, championProgress, courseDocuments, courses, documents, user as userTable } from "../db/schema";
@@ -182,6 +185,8 @@ export function state(b: Row) {
   return {
     battle_id: b.id, status: b.status, session_id: b.sessionId, topic: b.topic, difficulty: b.difficulty, phase: b.phase, rage: !!boss.rage, prepared: !!boss.prepared,
     boss: { name: boss.name, hp: b.bossHp, max_hp: b.bossMaxHp, species: boss.species, title: boss.title, origin: boss.origin },
+    /** Two worlds, Stage 7: a season's boss fights on its own stage. */
+    stage: boss.stage ?? null, season: boss.season ?? null,
     player: { hp: b.playerHp, max_hp: b.playerMaxHp }, combo: b.combo, max_combo: b.maxCombo, answered: b.answered, correct: b.correct,
     heals_used: b.healsUsed, fifty_used: b.fiftyUsed, gear: boss.gear ?? {}, mode: b.mode, run_id: b.runId, gauntlet_id: b.gauntletId ?? null, focus: b.focus,
     focus_cap: b.focusCap, shield: b.shield, intent: b.intentJson && b.status === "active" ? J(b.intentJson, null) : null,
@@ -190,6 +195,8 @@ export function state(b: Row) {
     kit: boss.kit ? kits.kitHud(boss.kit) : null, tier: boss.tier ?? 1, bane: tome.baneHud(boss), taunted: !!boss.mods?.taunted,
     effects: effects.hud(boss), locked_moves: lockedMoves(boss), silenced: effects.silenced(boss), cursed: effects.cursed(boss),
     combo_level: comboLevel(b.combo), score: boss.score?.total ?? 0, finale: !!boss.finale?.armed,
+    paused: !!boss.paused, pauses_left: Math.max(0, MAX_PAUSES - Number(boss.pauses ?? 0)),
+    insight: boss.mods?.insight ? { fifty: !!boss.mods.insight.fifty, focus: INSIGHT_FOCUS } : null,
     down: b.status === "active" && boss.down ? { deadline: boss.down.deadline, continues: Number(boss.continues ?? 0), max: MAX_CONTINUES,
       coins: continueCoins(Number(boss.continues ?? 0)), can_continue: Number(boss.continues ?? 0) < MAX_CONTINUES } : null,
     ...(b.status !== "active" ? { result: J(b.resultJson, {}), rewards: J(b.rewardsJson, null) } : {}),
@@ -290,7 +297,8 @@ async function armFighter(ctx: RequestContext, userId: number, boss: Boss) {
 function openingFor(boss: Boss, mods: Record<string, any>, focusCapBase = FOCUS_CAP) {
   const hearts = kits.heartsFor(boss.kit.champion, PLAYER_MAX_HP + boss.gear.hp, boss.kit);
   const focusCap = kits.focusCapFor(boss.kit, focusCapBase);
-  const focus = Math.min(focusCap, ((mods.relics ?? []).includes("focus_crystal") ? FOCUS_CRYSTAL_START : 0) + Number(mods.focus_bonus ?? 0) + kits.startFocusFor(boss.kit));
+  const focus = Math.min(focusCap, ((mods.relics ?? []).includes("focus_crystal") ? FOCUS_CRYSTAL_START : 0) + Number(mods.focus_bonus ?? 0) + kits.startFocusFor(boss.kit)
+    + (mods.insight ? INSIGHT_FOCUS : 0));
   return { hearts, focusCap, focus };
 }
 
@@ -339,6 +347,8 @@ export async function createBattle(ctx: RequestContext, userId: number, o: {
   const mods: Record<string, any> = { ...(o.mods ?? {}) };
   mods.relics ??= [];
   Object.assign(mods, { aegis_used: false, hourglass_used: false });
+  // two worlds, Stage 5: full Insight (from studying) gives this fight an edge, once: +1 Focus and a free 50/50
+  if (await insight.takeInsight(ctx, userId)) mods.insight = { fifty: true };
   boss.mods = mods;
   if (o.targets?.length) boss.target_concepts = [...o.targets];
   const open = openingFor(boss, mods, o.focusCap ?? FOCUS_CAP);
@@ -625,6 +635,7 @@ export async function answer(ctx: RequestContext, player: Player, battleId: stri
   if (q.status === "answered") return { ...J(q.outcomeJson, {}), ok: true, replayed: true, battle: state(b), rewards: null };
   if (b.status !== "active") throw err("battle_finished", "That battle is over.");
   if (q.status !== "issued" || b.currentSeq !== q.seq) throw err("question_not_current", "Ask for the next question before answering it.");
+  if (J<Boss>(b.bossJson, {}).paused) throw err("battle_paused", "The fight is paused: resume it first.");
   const late = Date.now() > Date.parse(q.deadlineAt!) + DEADLINE_GRACE_MS;
   let picked: string | null = null;
   if (!late) {
@@ -1008,6 +1019,13 @@ export async function end(ctx: RequestContext, player: Player, battleId: string,
     }
   }
   if (b.gauntletId && onGauntletBattleEnd) result.gauntlet = await onGauntletBattleEnd(ctx, player, { ...b, status, resultJson: JSON.stringify(result) }, status);
+  // two worlds, Stage 5: the weekly invasion repelled (its bonus, once a week)
+  if (status === "won" && b.mode === "invasion") result.invasion = await (await import("./invasion")).repel(ctx, player);
+  // two worlds, Stage 7: a season's limited boss beaten (its bonus, once a season)
+  if (status === "won" && b.mode === "season") {
+    const s = (await import("@/lib/game/seasons")).seasonById(String(J<Boss>(b.bossJson, {}).season ?? ""));
+    if (s) result.season = await (await import("./season")).seasonWon(ctx, player, s);
+  }
   await ctx.db.update(arenaBattles).set({ rewardsJson: JSON.stringify(paid), resultJson: JSON.stringify(result) }).where(eq(arenaBattles.id, battleId));
   return paid;
 }
@@ -1080,7 +1098,11 @@ export async function useItem(ctx: RequestContext, player: Player, battleId: str
     const q = b.currentSeq !== null ? await qrow(ctx, battleId, b.currentSeq) : undefined;
     if (!q || q.status !== "issued") throw err("no_question", "There is no question to use that on.");
     if (q.removedJson) throw err("already_used", "You already used 50/50 on this question.");
-    if (!await consume(ctx, player.id, "fifty_fifty")) throw err("no_stock", "You don't have a 50/50 charge.");
+    const bossNow: Boss = J(b.bossJson, {});
+    if (bossNow.mods?.insight?.fifty) {                                // Insight's free 50/50 goes first
+      bossNow.mods.insight.fifty = false;
+      await ctx.db.update(arenaBattles).set({ bossJson: JSON.stringify(bossNow) }).where(eq(arenaBattles.id, battleId));
+    } else if (!await consume(ctx, player.id, "fifty_fifty")) throw err("no_stock", "You don't have a 50/50 charge.");
     await ctx.db.update(arenaQuestions).set({ removedJson: JSON.stringify(twoWrong(q, J(b.bossJson, {}))) }).where(and(eq(arenaQuestions.battleId, battleId), eq(arenaQuestions.seq, q.seq)));
     await ctx.db.update(arenaBattles).set({ fiftyUsed: sql`${arenaBattles.fiftyUsed} + 1`, updatedAt: iso() }).where(eq(arenaBattles.id, battleId));
   }
@@ -1113,6 +1135,63 @@ export async function useUltimate(ctx: RequestContext, player: Player, battleId:
   if ((fx.insight || fx.timewarp) && open) await freeSpells(ctx, battleId, q!.seq, boss, J(b.intentJson, null));
   b = await need(ctx, battleId, player.id);
   return { ok: true, ultimate: { ...fx, hearts }, battle: state(b), question: open ? publicQuestion((await qrow(ctx, battleId, q!.seq))!, b) : null };
+}
+
+// ── the pause menu (the two worlds, Stage 3): Esc in the Hero world pauses a fight ───────────────────────────────
+export const MAX_PAUSES = 3;
+/** While paused the question's clock is parked this far ahead (a pause left open longer runs out after all). */
+const PAUSE_HOLD_MS = 10 * 60 * 1000;
+
+/**
+ * Pause the fight while a question is open: its clock stops (the seconds left are kept) and it can't be answered
+ * until the fight resumes. Three pauses a fight. Nothing open: nothing to stop (the turn waits for you anyway).
+ */
+export async function pauseBattle(ctx: RequestContext, player: Player, battleId: string) {
+  await need(ctx, battleId, player.id);
+  await settleTimeout(ctx, battleId, player.id, player);
+  for (let i = 0; i < 3; i++) {
+    const b = await need(ctx, battleId, player.id);
+    if (b.status !== "active") throw err("battle_finished", "That battle is over.");
+    const boss: Boss = J(b.bossJson, {});
+    if (boss.paused) return { ok: true, paused: true, battle: state(b) };
+    const q = b.currentSeq !== null ? await qrow(ctx, battleId, b.currentSeq) : undefined;
+    const left = q && q.status === "issued" ? Date.parse(q.deadlineAt!) - Date.now() : 0;
+    if (!q || q.status !== "issued" || left <= 0) return { ok: true, paused: false, battle: state(b) };
+    if (Number(boss.pauses ?? 0) >= MAX_PAUSES) throw err("no_pauses", `You've used your ${MAX_PAUSES} pauses this fight: the clock keeps running.`);
+    boss.paused = { at: iso(), seq: q.seq, left_ms: left };
+    boss.pauses = Number(boss.pauses ?? 0) + 1;
+    const done = await ctx.db.update(arenaBattles).set({ bossJson: JSON.stringify(boss), updatedAt: iso() })
+      .where(and(eq(arenaBattles.id, battleId), eq(arenaBattles.bossJson, b.bossJson))).returning({ id: arenaBattles.id }).all();
+    if (!done.length) continue;
+    await ctx.db.update(arenaQuestions).set({ deadlineAt: iso(new Date(Date.now() + PAUSE_HOLD_MS)) }).where(and(eq(arenaQuestions.battleId, battleId), eq(arenaQuestions.seq, q.seq)));
+    return { ok: true, paused: true, battle: state(await need(ctx, battleId, player.id)) };
+  }
+  throw err("battle_busy", "The fight changed meanwhile. Try again.");
+}
+
+/** Resume: the question's clock picks up with the seconds it had left, and its options are dealt again. */
+export async function resumeBattle(ctx: RequestContext, player: Player, battleId: string) {
+  for (let i = 0; i < 3; i++) {
+    const b = await need(ctx, battleId, player.id);
+    const boss: Boss = J(b.bossJson, {});
+    const p = boss.paused as { at: string; seq: number; left_ms: number } | undefined;
+    if (!p) return { ok: true, battle: state(b) };
+    boss.paused = null;
+    const done = await ctx.db.update(arenaBattles).set({ bossJson: JSON.stringify(boss), updatedAt: iso() })
+      .where(and(eq(arenaBattles.id, battleId), eq(arenaBattles.bossJson, b.bossJson))).returning({ id: arenaBattles.id }).all();
+    if (!done.length) continue;
+    const q = await qrow(ctx, battleId, p.seq);
+    if (q && q.status === "issued") {
+      const away = Date.now() - Date.parse(p.at);
+      const options = J<string[]>(q.optionsJson, []);
+      for (let k = options.length - 1; k > 0; k--) { const j = Math.floor(Math.random() * (k + 1)); [options[k], options[j]] = [options[j], options[k]]; }
+      await ctx.db.update(arenaQuestions).set({
+        deadlineAt: iso(new Date(Date.now() + Math.max(1000, p.left_ms))), issuedAt: iso(new Date(Date.parse(q.issuedAt!) + away)), optionsJson: JSON.stringify(options),
+      }).where(and(eq(arenaQuestions.battleId, battleId), eq(arenaQuestions.seq, p.seq)));
+    }
+    return { ok: true, battle: state(await need(ctx, battleId, player.id)) };
+  }
+  throw err("battle_busy", "The fight changed meanwhile. Try again.");
 }
 
 // ── the taunt (Stage A2): once a fight, enrage the boss for a charged ultimate and a bigger reward ───────────────

@@ -5,6 +5,7 @@ import { Button } from "@/components/ui";
 import { shortcutBlocked } from "@/lib/keys";
 import { DIFFICULTY_LABEL, type Battle } from "@/lib/arena/types";
 import PixelSprite from "./pixel/PixelSprite";
+import LoreTip from "@/components/fx/LoreTip";
 import { useFighter, useFighterPet } from "./pixel/useFighter";
 
 /** How long the VS screen holds once the questions are ready (Enter skips it). */
@@ -67,6 +68,7 @@ export default function VersusScreen({ battle, ready, failed, onBegin, onRetry }
         </p>
         {failed && <Button variant="primary" onClick={onRetry}>Try again</Button>}
         {ready && !failed && <Button variant="primary" onClick={begin} aria-keyshortcuts="Enter">Fight!</Button>}
+        {!ready && !failed && <LoreTip />}
       </div>
     </section>
   );

@@ -101,6 +101,21 @@ export default function ResultPanel({ battle, rewards, retreated, bossName, onAg
           {result.taunt_bonus.coins > 0 && <Badge tone="reward"><Coins size={12} aria-hidden="true" />+{result.taunt_bonus.coins} coins</Badge>}
         </p>
       )}
+      {/* the two worlds: the weekly invasion repelled (Stage 5), a season's boss beaten (Stage 7) */}
+      {result.invasion && (
+        <p className="arena-result__rewards">
+          <Badge tone="danger">Invasion repelled</Badge>
+          <Badge tone="accent"><Sparkles size={12} aria-hidden="true" />+{result.invasion.xp} XP</Badge>
+          <Badge tone="reward"><Coins size={12} aria-hidden="true" />+{result.invasion.coins} coins</Badge>
+        </p>
+      )}
+      {result.season && (
+        <p className="arena-result__rewards">
+          <Badge tone="reward">{result.season.name}</Badge>
+          <Badge tone="accent"><Sparkles size={12} aria-hidden="true" />+{result.season.xp} XP</Badge>
+          <Badge tone="reward"><Coins size={12} aria-hidden="true" />+{result.season.coins} coins</Badge>
+        </p>
+      )}
       <ChampionXpLine battle={battle} />
       <BestiaryLine battle={battle} />
       <JoinedLine battle={battle} />

@@ -2,6 +2,7 @@
 // reward_service, streak_service, quest_service, achievement_service, buff_service). Every payout is one ledger
 // event with a unique key (store.recordRewardEvent), so nothing can be paid twice.
 import { STUDY_SHARE as HERO_STUDY_SHARE, addXp as addHeroXp, xpBoost as heroXpBoost } from "./build";
+import { addInsight } from "./insight";
 import { scrollEvent } from "./scrolls";
 import { bestiaryStats } from "./tome";
 import { and, eq, sql } from "drizzle-orm";
@@ -317,6 +318,8 @@ export async function award(ctx: RequestContext, p: Player, action: RewardAction
   if (!t.applied) return capped;
   const counter = COUNTERS[action];
   if (counter) await incrementProgress(ctx, p.id, counter);
+  // two worlds, Stage 5: studying fills Insight (an edge in your next fight)
+  await addInsight(ctx, p.id, action);
   // your hero grows from everything you do: a share of every payout's XP (build.ts)
   if (xp > 0) {
     const boost = await heroXpBoost(ctx, p.id, action === "review_complete");

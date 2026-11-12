@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useReducedMotionConfig } from "motion/react";
 import { Coins, Sparkles } from "@/components/ui/icons";
 import PixelConfetti from "@/components/fx/PixelConfetti";
 import PixelSprite from "@/components/arena/pixel/PixelSprite";
@@ -17,6 +18,8 @@ import { useCeremonyQueue } from "./ceremony-queue";
 const KEY = (uid: string) => `cmai_level_seen:${uid}`;
 /** The coins a level-up pays (server rewards.json level_up_bonus_coins_per_level). */
 export const LEVEL_BONUS_PER_LEVEL = 50;
+/** How long the full-screen LEVEL UP holds before the window (any key or tap skips it). */
+export const FANFARE_MS = 1800;
 
 function seen(uid: string): number | null {
   try { const v = localStorage.getItem(KEY(uid)); return v ? Number(v) : null; } catch { return null; }
@@ -37,6 +40,18 @@ export default function LevelUpCeremony() {
   const championId = useChampion((s) => s.championId);
   const mine = useMyHeroLook();
   const [up, setUp] = useState<{ from: number; to: number } | null>(null);
+  // the fanfare (the two worlds, Stage 3): a full-screen LEVEL UP first, then the window with what it brought
+  const reduce = !!useReducedMotionConfig();
+  const [fanfare, setFanfare] = useState(false);
+  useEffect(() => {
+    if (!up || reduce) { setFanfare(false); return; }
+    setFanfare(true);
+    const skip = () => setFanfare(false);
+    const t = setTimeout(skip, FANFARE_MS);
+    window.addEventListener("keydown", skip);
+    window.addEventListener("pointerdown", skip);
+    return () => { clearTimeout(t); window.removeEventListener("keydown", skip); window.removeEventListener("pointerdown", skip); };
+  }, [up, reduce]);
 
   useEffect(() => {
     if (guest || uid === "guest" || !refreshed) return;
@@ -55,6 +70,17 @@ export default function LevelUpCeremony() {
   const unlocked = (shop?.items ?? []).filter((i) => i.price > 0 && i.level_required > up.from && i.level_required <= up.to && !i.mastery);
   const bonus = Array.from({ length: up.to - up.from }, (_, k) => (up.from + k + 1) * LEVEL_BONUS_PER_LEVEL).reduce((a, b) => a + b, 0);
 
+  if (fanfare) {
+    return (
+      <ThemeScope theme="play">
+        <div className="fx-fanfare" role="status" aria-label={`Level up! Level ${up.to}`} data-testid="level-fanfare">
+          <PixelConfetti burst={up.to % 10 === 0 ? "legendary" : "epic"} className="fx-fanfare__confetti" />
+          <p className="fx-fanfare__title pixel-font" aria-hidden="true">LEVEL UP!</p>
+          <p className="fx-fanfare__num pixel-font" aria-hidden="true">{up.to}</p>
+        </div>
+      </ThemeScope>
+    );
+  }
   // the Play look wherever it shows up (the modal takes the theme of the scope it is called from)
   return (
     <ThemeScope theme="play">

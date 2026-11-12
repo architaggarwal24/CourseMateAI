@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { useArenaBattle } from "@/hooks/useArenaBattle";
 import { useSessionStore } from "@/hooks/useSessions";
@@ -33,6 +33,9 @@ export default function ArenaArea() {
   // ?hunt=<species> (the Bestiary's Hunt button): a Quick Battle against that creature
   const huntParam = params?.get("hunt") || undefined;
   const [hunt, setHunt] = useState<string | null>(huntParam ?? null);
+  // ?invasion=1 (the Quests page's "Face the invasion": two worlds, Stage 5): this week's invasion, at once
+  const invasionParam = params?.get("invasion") === "1";
+  const invaded = useRef(false);
   const arena = useArenaBattle({ documentId: docParam });
   const [mode, setMode] = useState<ArenaMode | null>(topicParam || huntParam ? "quick" : null);
   // A course from the map isn't in the document list: fetch its record so the uploader names it.
@@ -59,6 +62,12 @@ export default function ArenaArea() {
     fetchRun(runId).then((r) => alive && setRun(r)).catch(() => {});
     return () => { alive = false; };
   }, [runId, arena.phase]);
+
+  useEffect(() => {
+    if (!invasionParam || invaded.current || arena.phase !== "summon" || !arena.sessionId) return;
+    invaded.current = true;
+    void arena.summon("", "medium", "invasion");
+  }, [invasionParam, arena.phase, arena.sessionId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (arena.phase === "loading") return <p className="arena__status" role="status">Looking for your battle…</p>;
 
@@ -138,5 +147,5 @@ export default function ArenaArea() {
     );
   }
 
-  return <ArenaHub sessionId={arena.sessionId} onPick={setMode} />;
+  return <ArenaHub sessionId={arena.sessionId} onPick={setMode} starting={arena.phase === "starting"} onSeason={() => void arena.summon("", "hard", "season")} />;
 }

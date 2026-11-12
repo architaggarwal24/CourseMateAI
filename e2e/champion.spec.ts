@@ -7,7 +7,9 @@ import { settle } from "./helpers";
 // drawn in the Hero header, the sidebar menu, the shop and the inventory; old Avatar / Hero Forge links land here.
 
 const roster = (page: Page) => page.getByRole("radiogroup", { name: "Choose your champion" });
-const header = (page: Page) => page.getByTestId("hero-header-champion");
+/** The champion on top of every play page: the Hero panel's on a desktop (two worlds), the Hero header's on a phone. */
+const header = (page: Page) => page.locator('[data-testid="hero-panel-stage"] canvas[role="img"], [data-testid="hero-header-champion"]').filter({ visible: true }).first();
+const headerChampion = (page: Page, id: string) => page.locator(`[data-testid="hero-panel-stage"][data-champion="${id}"], [data-testid="hero-header-champion"] .champ-avatar[data-champion="${id}"]`).filter({ visible: true }).first();
 
 test("choosing a champion saves it on the account and every avatar shows it", async ({ page }) => {
   await mockApi(page);
@@ -20,7 +22,7 @@ test("choosing a champion saves it on the account and every avatar shows it", as
   await roster(page).getByRole("radio", { name: /Mira/ }).click();
   expect((await saved).postDataJSON()).toEqual({ champion_id: "mira" });
   await expect(header(page)).toHaveAttribute("aria-label", /^Your champion, Mira/);
-  await expect(header(page).locator(".champ-avatar[data-champion='mira']")).toBeVisible();
+  await expect(headerChampion(page, "mira")).toBeVisible();
   // the picked champion's kit and mastery skins follow the pick (Phase 3 Stage 2)
   await expect(page.getByTestId("champion-kit")).toContainText("Passive · Quiet Study");
   await expect(page.getByRole("list", { name: "Mira's mastery skins" }).getByRole("listitem")).toHaveCount(3);
@@ -202,22 +204,63 @@ test("the forge: gear XP, materials and an upgrade", async ({ page }) => {
   expect(unanswered).toEqual([]);
 });
 
-test("play is in the side panel: Quests, Arena, Bestiary and Champion, whose tabs hold the rest", async ({ page }, info) => {
-  test.skip(info.project.name.startsWith("mobile"), "the side panel is desktop only (phones: Arena and Champion in the bottom bar)");
+test("two worlds: Study's portal opens the Hero world, whose own panel holds the play pages and the way back", async ({ page }, info) => {
+  test.skip(info.project.name.startsWith("mobile"), "the side panel is desktop only (phones: the Hero tab bar)");
   const { unanswered } = await mockApi(page);
   await page.goto("/today");
-  const play = page.getByRole("navigation", { name: "Main" }).getByRole("group", { name: "Play" });
-  await expect(play.getByRole("link")).toHaveText(["Quests", "Arena", "Bestiary", "Champion"]);
-  await play.getByRole("link", { name: "Bestiary" }).click();
+  const main = page.getByRole("navigation", { name: "Main" }).filter({ visible: true });
+  await expect(main.getByRole("group", { name: "Play" })).toHaveCount(0);
+  await page.getByRole("link", { name: "Enter the Hero world" }).click();
+  await expect(page).toHaveURL(/\/arena$/);
+  await expect(page.locator(".app-shell")).toHaveAttribute("data-world", "hero");
+  const status = page.getByRole("region", { name: "Hero status" }).filter({ visible: true });
+  await expect(status.getByTestId("hero-panel-level")).toHaveText(/^LV \d+$/);
+  await expect(page.getByTestId("hero-header")).toBeHidden();                  // the panel holds the stats now
+  const menu = page.getByRole("navigation", { name: "Main" }).filter({ visible: true });
+  await expect(menu.getByRole("link")).toHaveText(["Arena", "Quests", "Bestiary", "Champion", "Inventory", "Forge", "Shop", "Achievements", "Mastery"]);
+  await expect(menu.getByRole("link", { name: "Arena" })).toHaveAttribute("aria-current", "page");
+  // the arrow keys walk the menu
+  await menu.getByRole("link", { name: "Arena" }).focus();
+  await page.keyboard.press("ArrowDown");
+  await expect(menu.getByRole("link", { name: "Quests" })).toBeFocused();
+  await menu.getByRole("link", { name: "Bestiary" }).click();
   await expect(page).toHaveURL(/\/bestiary$/);
-  await expect(page.getByTestId("hero-header")).toBeVisible();
-  await expect(page.getByRole("navigation", { name: "Champion" })).toHaveCount(0);
-  await play.getByRole("link", { name: "Champion" }).click();
+  await menu.getByRole("link", { name: "Champion", exact: true }).click();
   await expect(page).toHaveURL(/\/champion$/);
   const tabs = page.getByRole("navigation", { name: "Champion" });
   await expect(tabs.getByRole("link")).toHaveText(["Champion", "Inventory", "Forge", "Shop", "Achievements", "Mastery"]);
-  await expect(tabs.getByRole("link", { name: "Champion" })).toHaveAttribute("aria-current", "page");
   await expect(roster(page)).toBeVisible();
+  await menu.getByRole("link", { name: "Shop" }).click();
+  await expect(page).toHaveURL(/\/champion\?tab=shop$/);
+  await expect(menu.getByRole("link", { name: "Shop" })).toHaveAttribute("aria-current", "page");
+  await page.getByRole("link", { name: "Return to Study" }).click();
+  await expect(page).toHaveURL(/\/today$/);
+  await expect(page.locator(".app-shell")).toHaveAttribute("data-world", "study");
+  expect(unanswered).toEqual([]);
+});
+
+test("the portal: pixel blocks cover the crossing, it's announced, and each world remembers your page", async ({ page }, info) => {
+  const { unanswered } = await mockApi(page);
+  await page.goto("/champion?tab=shop");
+  const phone = info.project.name.startsWith("mobile");
+  const toStudy = phone ? page.getByRole("navigation", { name: "Main" }).filter({ visible: true }).getByRole("link", { name: /return to Study/ })
+    : page.getByRole("link", { name: "Return to Study" });
+  if (!phone) {
+    await toStudy.hover();
+    await expect(page.getByRole("tooltip").filter({ visible: true })).toContainText(/caught up|to review/);
+  }
+  await toStudy.click();
+  await expect(page.getByTestId("portal-fx")).toBeAttached();
+  await expect(page).toHaveURL(/\/today$/);
+  await expect(page.getByRole("status").filter({ hasText: "Back in Study" })).toBeAttached();
+  await expect(page.getByTestId("portal-fx")).toHaveCount(0);
+  await expect(page.locator(".app-shell")).toHaveAttribute("data-world", "study");
+  // back through: the Hero world opens on the page you left
+  const toHero = phone ? page.getByRole("navigation", { name: "Main" }).filter({ visible: true }).getByRole("link", { name: /enter the Hero world/ })
+    : page.getByRole("link", { name: "Enter the Hero world" });
+  await toHero.click();
+  await expect(page).toHaveURL(/\/champion\?tab=shop$/);
+  await expect(page.getByRole("status").filter({ hasText: "Entered the Hero world" })).toBeAttached();
   expect(unanswered).toEqual([]);
 });
 

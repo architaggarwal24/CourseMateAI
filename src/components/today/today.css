@@ -51,3 +51,8 @@
 .today-list__item:hover .today-list__name { text-decoration: underline; text-underline-offset: 3px; }
 .today-list__item svg { flex: none; color: var(--color-muted); }
 .today-list__name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* the Hero tile is the portal into the Hero world (the two worlds, Stage 2) */
+.today-portal__row { display: flex; align-items: center; gap: var(--space-3); }
+.today-portal__go { margin-top: var(--space-2); border: 1px dashed color-mix(in srgb, #8b5cf6 60%, var(--color-border)); }
+.today-portal__go:hover { background: var(--glass-tint); }

@@ -9,10 +9,19 @@ import { useAuth } from "@/contexts/AuthContext";
 import ThemeScope from "@/components/ui/ThemeScope";
 import { areaOf, ROUTES } from "@/lib/routes";
 import NavSidebar from "./NavSidebar";
+import HeroSidebar from "./HeroSidebar";
+import PortalTransition from "./PortalTransition";
+import PauseMenu from "./PauseMenu";
+import HeroWorldFx from "./HeroWorldFx";
+import HealthyNudge from "./HealthyNudge";
+import FocusBar from "./FocusBar";
+import { useFocusMode } from "@/hooks/useFocusMode";
+import { rememberPage } from "@/lib/worlds";
 import BottomNav from "./BottomNav";
 import CommandPalette from "./CommandPaletteLoader";
 import dynamic from "next/dynamic";
 import CoinRain from "@/components/fx/CoinRain";
+import LoreTip from "@/components/fx/LoreTip";
 import AchievementBanner from "@/components/fx/AchievementBanner";
 
 // the level-up screen draws the champion (the pixel engine): loaded on its own, only for a signed-in player
@@ -20,11 +29,13 @@ const LevelUpCeremony = dynamic(() => import("@/components/fx/LevelUpCeremony"),
 // "you've been upgraded": a plan given by an admin, an invite code or a payment, shown once
 const UpgradeCeremony = dynamic(() => import("@/components/fx/UpgradeCeremony"), { ssr: false });
 import "./shell.css";
+import "./worlds.css";
 
 /**
- * The frame around Study, Hero and Account: the sectioned sidebar on desktop (it collapses to an icon rail), a tab
- * bar along the bottom on phones, the screen in between. The frame always stays in the Study theme (light or dark, as
- * chosen); in Hero only the screen switches to Play, so the sidebar does not flip from light to dark.
+ * The frame around Study, Hero and Account: the sidebar on desktop (it collapses to an icon rail), a tab bar along the
+ * bottom on phones, the screen in between. Two worlds (the two-worlds UI): Study and Account keep the Study frame
+ * (light or dark, as chosen); the play pages are the Hero world, whose whole frame turns to Play - its own pixel
+ * pause-menu panel (HeroSidebar), its own tab bar, the darker Ink - as if you stepped into another dimension.
  * It also keeps what the old home page kept for the whole session: the HUD refresh (and the review queue's due count).
  * ⌘K opens the command palette.
  */
@@ -33,6 +44,12 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const loadHud = useHUDStore((s) => s.load);
   const area = areaOf(usePathname());
   const play = area === "hero";
+  const pathname = usePathname();
+  // Study's focus mode (two worlds, Stage 6): only in Study; crossing into the Hero world ends it
+  const focusOn = useFocusMode((s) => s.on) && !play;
+  useEffect(() => { if (play && useFocusMode.getState().on) useFocusMode.getState().exit(); }, [play]);
+  // each world remembers the page you were on (the portal goes back there)
+  useEffect(() => { rememberPage(play ? "hero" : "study", window.location.pathname + window.location.search); }, [pathname, play]);
   const router = useRouter();
 
   // The app needs an account: signed out (never signed in, logged out elsewhere, or the session expired), go to the
@@ -55,21 +72,27 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   useRevalidate(loadReview, signedIn);
 
   return (
-    <ThemeScope theme="study">
-    <div className="app-shell" data-area={area ?? undefined}>
-      <NavSidebar />
+    <ThemeScope theme={play ? "play" : "study"}>
+    <div className="app-shell" data-area={area ?? undefined} data-world={play ? "hero" : "study"} data-focus={focusOn || undefined}>
+      {focusOn && <FocusBar />}
+      {play ? <HeroSidebar /> : <NavSidebar />}
       <main id="main-content" tabIndex={-1} className="app-main" data-theme={play ? "play" : undefined}>
         {authLoading || signedOut ? (
           <div className="flex flex-1 items-center justify-center">
-            <div className="text-center app-loading">
+            <div className="text-center app-loading" data-world={play ? "hero" : "study"}>
               <span className="app-loading__orb" aria-hidden="true" />
-              <p className="text-fg-muted text-sm mt-5">{signedOut ? "Taking you to the login page…" : "Loading CourseMateAI…"}</p>
+              <p className="text-fg-muted text-sm mt-5">{signedOut ? "Taking you to the login page…" : play ? "Opening the Hero world…" : "Loading CourseMateAI…"}</p>
+              {play && !signedOut && <LoreTip />}
             </div>
           </div>
-        ) : play ? <ThemeScope theme="play">{children}</ThemeScope> /* the Hero area's pixel fonts and look */ : children}
+        ) : children}
       </main>
       <BottomNav />
       <CommandPalette />
+      <PortalTransition world={play ? "hero" : "study"} />
+      {play && user && <PauseMenu />}
+      {play && <HeroWorldFx />}
+      {play && user && <HealthyNudge />}
       {/* reward ceremonies, from anywhere in the app (Stage R3) */}
       <CoinRain />
       <AchievementBanner />

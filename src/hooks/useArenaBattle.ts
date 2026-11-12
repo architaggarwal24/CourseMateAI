@@ -7,7 +7,7 @@ import { useHeroStore } from "@/hooks/useHero";
 import { useChampion } from "@/hooks/useChampion";
 import {
   castSpell, castUltimate, tauntBoss, fetchActiveBattle, fetchBattle, fetchQuestion, forfeitBattle, startBattle, submitAnswer, consumeItem as postItem,
-  continueBattle, prepareBattle, rearmBattle, startGauntlet, nextGauntlet,
+  continueBattle, prepareBattle, rearmBattle, startGauntlet, nextGauntlet, pauseBattle, resumeBattle,
 } from "@/lib/arena/api";
 import type {
   Battle, BattleRewards, BossProfile, Difficulty, GauntletKind, ItemId, Move, Outcome, Question, Spell,
@@ -41,8 +41,10 @@ import type {
 export type ArenaPhase = "loading" | "summon" | "starting" | "select" | "versus" | "fight" | "result";
 export type ArenaStage = "choosing" | "fetching" | "asking" | "answering" | "feedback" | "failed"
   // Stage 4: knocked down: CONTINUE? (a potion, coins, or give up)
-  | "down";
-export type SummonMode = "quick" | "nemesis";
+  | "down"
+  // two worlds, Stage 3: paused from the pause menu (the question hidden, its clock stopped on the server)
+  | "paused";
+export type SummonMode = "quick" | "nemesis" | "invasion" | "season";
 
 /** The server gives a late answer this long (after the clock reaches zero) before it counts the question as missed. */
 export const DEADLINE_GRACE_MS = 3000;
@@ -176,10 +178,10 @@ export function useArenaBattle({ autoResume = true, documentId }: { autoResume?:
     }
     patch({
       phase: "fight", sessionId: battle.session_id, battle, boss, question: null, deadline: null, outcome: null,
-      advanceAt: null, rewards: null, retreated: false, stage: battle.down ? "down" : "choosing",
+      advanceAt: null, rewards: null, retreated: false, stage: battle.down ? "down" : battle.paused ? "paused" : "choosing",
     });
     // A question already out (refresh mid-question): back to it - its move was chosen and its clock is running.
-    if (battle.question_issued) void loadQuestionRef.current(battle.battle_id);
+    if (battle.question_issued && !battle.paused) void loadQuestionRef.current(battle.battle_id);
   }, [patch, finish]);
 
   // ── Stage 5: character select and the VS screen, while the questions are written ─────────────────────────────
@@ -381,6 +383,35 @@ export function useArenaBattle({ autoResume = true, documentId }: { autoResume?:
       patch({ phase: "result" });
     }
   }, [patch, preFight, enter]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  /** Two worlds, Stage 3: the pause menu opened. An open question is hidden and its clock stopped (3 a fight). */
+  const pausing = useRef<Promise<unknown>>(Promise.resolve());
+  const pauseFight = useCallback(() => {
+    const { battle, stage } = latest.current;
+    if (!battle || stage !== "asking") return;
+    generation.current++;
+    patch({ stage: "paused" });
+    pausing.current = (async () => { try {
+      const r = await pauseBattle(battle.battle_id);
+      if (!alive.current) return;
+      if (!r.paused) { void loadQuestion(battle.battle_id); return; }           // it had run out: carry on
+      patch({ battle: r.battle });
+    } catch (e) {
+      if (!alive.current) return;
+      toast.apiError(e);
+      void loadQuestion(battle.battle_id);                                      // no pauses left: back to the question
+    } })();
+  }, [patch, loadQuestion]);
+
+  /** The pause menu closed (or Resume on the paused screen): the question comes back with the seconds it had. */
+  const resumeFight = useCallback(async () => {
+    const { battle, stage } = latest.current;
+    if (!battle || stage !== "paused") return;
+    await pausing.current;                                                      // a pause still on its way lands first
+    if (latest.current.stage !== "paused") return;
+    try { await resumeBattle(battle.battle_id); } catch (e) { toast.apiError(e); }
+    if (alive.current) void loadQuestion(battle.battle_id);
+  }, [loadQuestion]);
 
   /** Pick this turn's move: asks the server for a question of the move's tier. */
   const chooseMove = useCallback((move: Move) => {
@@ -587,7 +618,7 @@ export function useArenaBattle({ autoResume = true, documentId }: { autoResume?:
   }, [patch]);
 
   return { ...state, summon, chooseMove, answer, next, holdVerdict, retryQuestion, applyItem, cast, ultimate, taunt, retreat, playAgain, enterById, continueWith, settleDown,
-    pickChampion, beginFight, retryPrepare, summonGauntlet, nextGauntletFight };
+    pickChampion, beginFight, retryPrepare, summonGauntlet, nextGauntletFight, pauseFight, resumeFight };
 }
 
 /** Whole seconds left until `deadline` (ms since epoch); null when there is no clock. Ticks four times a second. */

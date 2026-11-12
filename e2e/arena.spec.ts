@@ -75,6 +75,8 @@ async function battleServer(page: Page, opts: { signature?: boolean; joins?: str
     if (path === "/arena/battles/b1" && req.method() === "GET") return json(route, { ok: true, battle_id: "b1", boss: PROFILE, battle });
     if (path.endsWith("/prepare")) { battle.prepared = true; return json(route, { ok: true, battle_id: "b1", boss: PROFILE, battle }); }
     if (path.endsWith("/rearm")) return json(route, { ok: true, battle_id: "b1", boss: PROFILE, battle });
+    if (path.endsWith("/pause")) { battle.paused = true; battle.pauses_left = 2; return json(route, { ok: true, paused: true, battle }); }
+    if (path.endsWith("/resume")) { battle.paused = false; return json(route, { ok: true, battle }); }
     if (path.endsWith("/question")) {
       if (seq < 0 || answered) { seq += 1; answered = false; }
       const q = BANK[seq];
@@ -321,6 +323,26 @@ test("Survival from the hub: power level, the first boss, the chest, and the nex
   await expect(page.getByRole("heading", { name: "Cell Warden" })).toBeVisible();
 });
 
+test("Esc pauses the fight: the question hides and its clock stops; Controls lists the keys; Resume brings it back", async ({ page }) => {
+  await battleServer(page);
+  await summon(page);
+  const paused = page.waitForRequest((r) => r.url().endsWith("/pause") && r.method() === "POST");
+  await page.keyboard.press("Escape");
+  const dialog = page.getByRole("dialog", { name: "Paused" });
+  await expect(dialog).toBeVisible();
+  await paused;
+  await expect(page.getByText("Which organelle makes ATP?")).toBeHidden();
+  await axeClean(page, "pause menu");
+  await dialog.getByRole("button", { name: "Controls" }).click();
+  const controls = page.getByRole("dialog", { name: "Controls" });
+  await expect(controls.getByRole("region", { name: "In a fight: your move" })).toContainText("Strike");
+  await controls.getByRole("button", { name: "Back" }).click();
+  const resumed = page.waitForRequest((r) => r.url().endsWith("/resume") && r.method() === "POST");
+  await page.getByRole("dialog", { name: "Paused" }).getByRole("button", { name: "Resume" }).click();
+  await resumed;
+  await expect(page.getByText("Which organelle makes ATP?")).toBeVisible();
+});
+
 test("WIN with the keyboard: the boss is drawn, the HUD is complete, and every state passes axe", async ({ page }) => {
   test.setTimeout(150_000);                                                 // four full axe scans: slow on a busy machine
   await battleServer(page);
@@ -367,7 +389,7 @@ test("LOSE: two wrong answers end the fight; the result screen offers another ba
   await page.keyboard.press("1");
   await expect(page.getByText("Not quite")).toBeVisible();
   await expect(page.getByRole("img", { name: "5 of 10 hearts" })).toBeVisible();
-  await page.getByRole("button", { name: /Continue/ }).click();
+  await page.keyboard.press("Enter");                                    // the verdict moves on (or already had)
   await strike(page);
   await expect(page.getByText("Where is DNA stored?")).toBeVisible();
   await page.keyboard.press("1");
@@ -435,7 +457,7 @@ test("the signature weapon's finisher ends the fight, and a champion who joins i
   // (a phone held sideways keeps the HUD to one slim row: the signature weapon's line is on desktop)
   if (!test.info().project.name.startsWith("mobile")) await expect(page.getByText("Signature weapon · Edge of the Ninth Page")).toBeVisible();
   await page.keyboard.press("2");
-  await page.getByRole("button", { name: /Continue/ }).click();
+  await page.keyboard.press("Enter");                                    // the verdict moves on (or already had)
   await strike(page);
   await expect(page.getByText("Where is DNA stored?")).toBeVisible();
   await page.keyboard.press("2");
@@ -471,7 +493,7 @@ test("taunt the boss mid-fight, win, and act out a victory emote", async ({ page
   await expect.poll(() => page.evaluate(() => (window as unknown as { __banners: string[] }).__banners), { timeout: 10_000 }).toContain("ENRAGED!");
 
   await page.keyboard.press("2");
-  await page.getByRole("button", { name: /Continue/ }).click();
+  await page.keyboard.press("Enter");                                    // the verdict moves on (or already had)
   await strike(page);
   await expect(page.getByText("Where is DNA stored?")).toBeVisible();
   await page.keyboard.press("2");

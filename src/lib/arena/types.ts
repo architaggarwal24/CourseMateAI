@@ -127,6 +127,10 @@ export interface BattleResult {
   score?: ScoreCard;
   /** Stage 6: a Boss Rush / Survival fight: where the run stands now, a chest won, its end. */
   gauntlet?: GauntletStep | null;
+  /** Two worlds, Stage 5: this week's invasion repelled (its bonus, once a week). */
+  invasion?: { week: string; xp: number; coins: number } | null;
+  /** Two worlds, Stage 7: a season's boss beaten (its bonus, once a season). */
+  season?: { season: string; name: string; xp: number; coins: number } | null;
   new_achievements?: { id: string; name: string; description: string }[];
 }
 
@@ -192,6 +196,14 @@ export interface Battle {
   run_id?: string | null;
   /** Stage 6: the Boss Rush / Survival this fight belongs to. */
   gauntlet_id?: string | null;
+  /** Two worlds, Stage 3: paused from the pause menu (an open question's clock stopped), and the pauses left. */
+  paused?: boolean;
+  pauses_left?: number;
+  /** Two worlds, Stage 7: a season's boss fights on its own stage. */
+  stage?: string | null;
+  season?: string | null;
+  /** Two worlds, Stage 5: full Insight (from studying) gave this fight +1 Focus and a free 50/50 (still unused?). */
+  insight?: { fifty: boolean; focus: number } | null;
   focus?: number;
   focus_cap?: number;
   shield?: number;
@@ -390,3 +402,20 @@ export interface PowerOverview {
   active: Gauntlet | null;
 }
 export interface GauntletFightResponse { ok: boolean; gauntlet: Gauntlet; battle_id: string; boss: BossProfile; battle: Battle }
+
+// ── two worlds, Stage 5: the weekly invasion ────────────────────────────────────────────────────────────────
+export interface InvasionInfo {
+  ok: boolean; week: string; ready: boolean; concepts: string[]; needed: number; species: string; name: string; repelled: boolean;
+  reward: { xp: number; coins: number };
+}
+
+// ── two worlds, Stage 7: seasons and the Adventurer card ──────────────────────────────────────────────────────
+export interface SeasonInfo {
+  ok: boolean;
+  season: { id: string; name: string; tagline: string; boss: string; boss_name: string; stage: string; tint: string; reward: { xp: number; coins: number } } | null;
+  ready?: boolean; concepts?: string[]; needed?: number; beaten?: boolean;
+}
+export interface AdventurerCardData {
+  ok: boolean; name: string; champion: string; level: number; streak: number; power: number; survival_best: number; rush_wins: number;
+  bestiary: { beaten: number; total: number }; achievements: { unlocked: number; total: number; recent: string[] };
+}

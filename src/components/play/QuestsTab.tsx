@@ -1,5 +1,6 @@
 "use client";
 
+import { InvasionCard, ReviewScroll } from "./BridgeCards";
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { Swords } from "@/components/ui/icons";
@@ -81,6 +82,9 @@ export default function QuestsTab() {
     <div className="qboard max-w-5xl mx-auto p-4 md:p-6">
       <div className="qboard__main">
         {!guest && <DailyChest />}
+        {/* the bridges from Study (two worlds, Stage 5): reviews due, and this week's invasion */}
+        {!guest && <ReviewScroll />}
+        {!guest && <InvasionCard />}
         <Section id="daily" title="Today's quests" empty={guest ? "Sign in to get daily quests." : "No quests today."}>
           {daily.map((s) => <QuestScroll key={s.id} scroll={s} onClaim={claim} busy={!!pending[`quest:${s.id.slice(6)}`]} />)}
         </Section>

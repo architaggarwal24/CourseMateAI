@@ -8,6 +8,7 @@ import { THEME_SCRIPT } from "@/lib/theme";
 import { SIDEBAR_SCRIPT } from "@/lib/sidebar";
 import { SHARE_IMAGE, SITE_NAME, siteOrigin } from "@/lib/site";
 import "@/styles/tokens.css";
+import "@/styles/accents.css";
 import "@/styles/retro.css";
 import "@/components/ui/ui.css";
 import "@/components/fx/fx.css";

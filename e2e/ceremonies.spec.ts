@@ -27,6 +27,7 @@ test("a level gained shows the level-up screen once", async ({ page }) => {
   // (only on the first load: init scripts run again on reload)
   await page.addInitScript(() => { try { if (!sessionStorage.getItem("seeded")) { sessionStorage.setItem("seeded", "1"); localStorage.setItem("cmai_level_seen:1", "6"); } } catch { /* */ } });
   await page.goto("/quests");
+  await expect(page.getByTestId("level-fanfare")).toBeVisible();              // the whole-screen LEVEL UP comes first
   const dialog = page.getByRole("dialog", { name: "Level up!" });
   await expect(dialog).toBeVisible();
   await expect(dialog.getByLabel("Level 7")).toBeVisible();

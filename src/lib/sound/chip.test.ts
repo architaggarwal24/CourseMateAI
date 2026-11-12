@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { SFX, TRACKS, __resetSound, freq, music, sfx, useSound } from "./chip";
+import { SFX, TRACKS, __resetSound, freq, music, onSfx, sfx, useSound } from "./chip";
 
 /** A fake AudioContext that counts the sounds started. */
 class FakeParam { value = 0; setValueAtTime() { return this; } linearRampToValueAtTime() { return this; } exponentialRampToValueAtTime(v: number) { if (v <= 0) throw new RangeError("exp ramp to 0"); return this; } }
@@ -95,6 +95,28 @@ describe("chiptune sound", () => {
     expect(music.playing).toBe("arena");
     music.stop();
     expect(music.playing).toBe(null);
+  });
+
+  it("the Hero world's lobby music plays in the background; a fight's track takes over and hands back (two worlds, Stage 4)", () => {
+    vi.useFakeTimers();
+    music.background("lobby");
+    expect(music.playing).toBe("lobby");
+    music.play("arena");
+    expect(music.playing).toBe("arena");
+    music.stop();
+    expect(music.playing).toBe("lobby");
+    music.background(null);
+    expect(music.playing).toBe(null);
+  });
+
+  it("every effect is heard by listeners, sound on or off (the Hero panel reacts to them)", () => {
+    const heard: string[] = [];
+    const off = onSfx((n) => heard.push(n));
+    useSound.getState().setOn(false);
+    sfx("quest");
+    off();
+    sfx("win");
+    expect(heard).toEqual(["quest"]);
   });
 
   it("no music while all sound is off", () => {

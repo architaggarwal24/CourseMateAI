@@ -1,0 +1,24 @@
+/* Study's accent colours (the two worlds, Stage 6), from Settings -> Appearance (data-accent on <html>; Ink, the
+ * default, is tokens.css). Each pair keeps AA contrast: --color-accent-text against the page in that mode, white on
+ * --color-accent. The Hero world ([data-theme="play"]) keeps its own palette. */
+:root[data-accent="teal"], :root[data-accent="teal"] [data-theme="study"] { --color-accent: #0f766e; --color-accent-text: #2dd4bf; }
+:root[data-accent="plum"], :root[data-accent="plum"] [data-theme="study"] { --color-accent: #7e22ce; --color-accent-text: #c084fc; }
+:root[data-accent="forest"], :root[data-accent="forest"] [data-theme="study"] { --color-accent: #15803d; --color-accent-text: #4ade80; }
+:root[data-accent="ember"], :root[data-accent="ember"] [data-theme="study"] { --color-accent: #c2410c; --color-accent-text: #fb923c; }
+:root[data-mode="light"][data-accent="teal"], :root[data-mode="light"][data-accent="teal"] [data-theme="study"] { --color-accent: #0f766e; --color-accent-text: #0f766e; }
+:root[data-mode="light"][data-accent="plum"], :root[data-mode="light"][data-accent="plum"] [data-theme="study"] { --color-accent: #7e22ce; --color-accent-text: #7e22ce; }
+:root[data-mode="light"][data-accent="forest"], :root[data-mode="light"][data-accent="forest"] [data-theme="study"] { --color-accent: #15803d; --color-accent-text: #15803d; }
+:root[data-mode="light"][data-accent="ember"], :root[data-mode="light"][data-accent="ember"] [data-theme="study"] { --color-accent: #c2410c; --color-accent-text: #c2410c; }
+
+/* the swatches in Settings */
+.accent-switch__dot { display: inline-block; width: 0.7rem; height: 0.7rem; border-radius: 50%; background: #3550c8; }
+[data-accent-swatch="teal"] .accent-switch__dot { background: #0f766e; }
+[data-accent-swatch="plum"] .accent-switch__dot { background: #7e22ce; }
+[data-accent-swatch="forest"] .accent-switch__dot { background: #15803d; }
+[data-accent-swatch="ember"] .accent-switch__dot { background: #c2410c; }
+
+/* Study's calm motif: a faint notebook dot grid behind the Study screens, and a small open book on Today */
+.app-shell[data-world="study"] .app-main {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='22' height='22'%3E%3Crect x='10' y='10' width='1.5' height='1.5' fill='%23888' fill-opacity='0.16'/%3E%3C/svg%3E");
+}
+.study-book { display: inline-block; width: 2.25rem; height: 1.5rem; vertical-align: middle; margin-right: var(--space-2); color: var(--color-accent-text); }

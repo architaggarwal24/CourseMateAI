@@ -14,6 +14,7 @@ import { parseApiError, rawApi } from "@/lib/api";
 import { loadMetadata, deleteSession } from "@/lib/study/sessions";
 import InstallApp from "@/components/pwa/InstallApp";
 import ThemeSwitch from "@/components/account/ThemeSwitch";
+import AccentSwitch from "@/components/account/AccentSwitch";
 import SectionIndex from "@/components/account/SectionIndex";
 import MyModel from "@/components/account/MyModel";
 import SoundSettings from "@/components/account/SoundSettings";
@@ -320,6 +321,10 @@ export default function SettingsPage() {
         <Section title="Appearance">
           <FieldRow label="Theme" hint="System follows your device's light or dark setting. Changes apply at once.">
             <div className="mt-1"><ThemeSwitch /></div>
+          </FieldRow>
+
+          <FieldRow label="Accent colour" hint="Study's own colour. The Hero world keeps its pixel palette.">
+            <div className="mt-1"><AccentSwitch /></div>
           </FieldRow>
 
           <FieldRow label="Font Size">

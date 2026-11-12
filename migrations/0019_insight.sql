@@ -1,0 +1,1 @@
+ALTER TABLE `user_progress` ADD `insight` integer DEFAULT 0 NOT NULL;

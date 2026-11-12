@@ -11,6 +11,10 @@ interface HUDState {
   xpToNext: number;
   streakDays: number;
   streakFreezes: number;
+  /** When you last studied (UTC ISO; the Hero world's weather reads it: two worlds, Stage 4). */
+  lastActiveUtc?: string | null;
+  /** Insight 0-100 (two worlds, Stage 5): studying fills it; full, your next fight starts with an edge. */
+  insight?: number;
   quests: any[];
   shop: any;
   buffs: Record<string, any>;
@@ -153,6 +157,8 @@ async function fetchInto(seq: number, epoch: number): Promise<void> {
         xpToNext: progress.xp_to_next || 100,
         streakDays: progress.streak_days || 0,
         streakFreezes: progress.streak_freezes || 0,
+        lastActiveUtc: progress.last_active_utc ?? null,
+        insight: Number(progress.insight ?? 0),
         quests: data.quests || [],
         shop: data.shop || { shop_unlocked: false, items: [] },
         buffs: data.buffs || {},

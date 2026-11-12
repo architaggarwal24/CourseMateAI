@@ -10,6 +10,7 @@ vi.mock("next/navigation", () => ({
 }));
 vi.mock("@/contexts/AuthContext", () => ({ useAuth: () => auth }));
 vi.mock("./NavSidebar", () => ({ default: () => <aside data-testid="side" /> }));
+vi.mock("./HeroSidebar", () => ({ default: () => <aside data-testid="hero-side" /> }));
 vi.mock("./BottomNav", () => ({ default: () => <nav data-testid="bottom" /> }));
 vi.mock("./CommandPaletteLoader", () => ({ default: () => null, openCommandPalette: () => {} }));
 
@@ -20,12 +21,14 @@ afterEach(() => { cleanup(); nav.replace.mockReset(); auth.user = { user_id: 1 }
 const themeOf = (el: Element) => el.closest("[data-theme]")?.getAttribute("data-theme");
 
 describe("the app shell", () => {
-  it("keeps the sidebar and tab bar in the Study theme in Hero; only the screen goes Play", () => {
-    nav.path = "/hero";
+  it("two worlds: in Hero the whole frame turns Play, with the Hero panel instead of the Study sidebar", () => {
+    nav.path = "/arena";
     render(<AppShell><p>arena</p></AppShell>);
-    expect(themeOf(screen.getByTestId("side"))).toBe("study");
-    expect(themeOf(screen.getByTestId("bottom"))).toBe("study");
+    expect(screen.queryByTestId("side")).toBeNull();
+    expect(themeOf(screen.getByTestId("hero-side"))).toBe("play");
+    expect(themeOf(screen.getByTestId("bottom"))).toBe("play");
     expect(themeOf(screen.getByText("arena"))).toBe("play");
+    expect(screen.getByText("arena").closest(".app-shell")!.getAttribute("data-world")).toBe("hero");
   });
 
   it("needs an account: signed out, it shows no app screen and goes to the login page, coming back here after", () => {

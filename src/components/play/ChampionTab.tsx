@@ -1,5 +1,6 @@
 "use client";
 
+import AdventurerCard from "./AdventurerCard";
 import { useEffect, useState } from "react";
 import { useReducedMotionConfig } from "motion/react";
 import { ChevronDown, Crown, Lock, PawPrint, Shield, Shirt, ShoppingBag, Sparkles, Swords, AlertTriangle, X, Zap } from "@/components/ui/icons";
@@ -317,6 +318,8 @@ export default function ChampionTab() {
             );
           })}
         </ul>
+        {/* the two worlds, Stage 7: your card, to keep or share (in the main column, not a third one) */}
+        <AdventurerCard />
       </section>
     </div>
   );

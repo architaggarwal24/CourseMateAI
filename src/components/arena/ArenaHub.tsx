@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui";
 import { fetchActiveRun, fetchLeaderboard, fetchPower, fetchWeakConcepts } from "@/lib/arena/api";
 import { DIFFICULTY_LABEL, type LeaderboardEntry, type PowerOverview, type Run, type WeakConceptsResponse } from "@/lib/arena/types";
 import { Roster } from "./pixel/Roster";
+import SeasonBanner from "@/components/play/SeasonBanner";
 
 export type ArenaMode = "quick" | "nemesis" | "run" | "rush" | "survival";
 
@@ -17,7 +18,7 @@ const mmss = (seconds: number) => `${Math.floor(seconds / 60)}m ${Math.round(sec
  * needs or holds (an expedition in progress, the weak spots that feed the Nemesis, the hunts that open Boss Rush, your
  * bests), your power level (Stage 6: the bosses of Boss Rush and Survival are matched to it), and this week's board.
  */
-export default function ArenaHub({ sessionId, onPick }: { sessionId: string; onPick: (m: ArenaMode) => void }) {
+export default function ArenaHub({ sessionId, onPick, onSeason, starting }: { sessionId: string; onPick: (m: ArenaMode) => void; onSeason?: () => void; starting?: boolean }) {
   const [weak, setWeak] = useState<WeakConceptsResponse | null>(null);
   const [run, setRun] = useState<Run | null>(null);
   const [board, setBoard] = useState<LeaderboardEntry[]>([]);
@@ -60,6 +61,8 @@ export default function ArenaHub({ sessionId, onPick }: { sessionId: string; onP
           </p>
         )}
       </div>
+
+      {onSeason && <SeasonBanner sessionId={sessionId || null} onFace={onSeason} starting={starting} />}
 
       <ul className="arena-hub__modes">
         {modes.map((m, i) => (

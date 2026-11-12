@@ -268,7 +268,28 @@ Each step was a set of stages with zips and checklists. Dates are 2026.
   7. Idle fidgets: 3 per fighting style (`FIDGET_KEYS` in lib/pixel/heroes.ts), 2 per creature (`BOSS_FIDGET_KEYS`
      in bosses.ts); the fight scene plays one after 4.5-9 s idle; `PixelSprite fidget` does the same on the select
      screen, VS, the Champion tab and the Bestiary.
-- Nothing is in progress (all 4 hero stages and the 7 arcade stages delivered). Ideas waiting in the backlog: chiptune sound, sharing a KO clip, campaign mode, more inputs
+- **The two worlds (12 Nov, 7 stages):** Study and Hero each have their own frame; `lib/worlds.ts` holds the Hero
+  menu and world helpers.
+  1. Frames: `AppShell` turns the whole frame Play in Hero, with `HeroSidebar` (JRPG pause-menu panel: champion,
+     level, XP, coins, streak, the menu with Champion's screens under it, ↑↓ cursor) instead of `NavSidebar`; the
+     phone tab bar has a set per world. The Hero header shows on phones only.
+  2. The crossing: `PortalLink` / `PortalTransition` (pixel blocks cover the screen, the page changes, they fall away;
+     a fade with reduced motion), each world remembers its last page (`rememberPage` / `lastPage`), a peek on hover,
+     the portal card on Today.
+  3. Game feel: `PauseMenu` (Esc in Hero; pauses a fight's question on the server: POST .../pause and .../resume,
+     3 a fight), Controls, Hero toasts as the Scribe's typewriter dialogue, `LoreTip` on Hero loading screens, the
+     full-screen LEVEL UP before the level-up window, a living panel (`useHeroMood`: cheers, flinches, dozes).
+  4. Extras (`useHeroPrefs`, in Options): pixel cursor, menu sounds, lobby music (`music.background`), scanlines;
+     `HeroScene` behind the panel (day/night by your clock, weather by your streak).
+  5. Bridges: due reviews as a quest scroll in Hero; level/streak/Insight chip in Study; Insight
+     (`user_progress.insight`, migration 0019; studying fills it, full = +1 Focus and a free 50/50 in the next fight);
+     the weekly invasion (`server/game/invasion.ts`, mode "invasion"); the healthy-play nudge after 40 min in Hero.
+  6. Study's identity: focus mode (`FocusBar`, Pomodoro 25/5, generated ambient sound `lib/sound/ambient.ts`; each
+     session +20 Insight, 4 a day: POST /focus-session) and Study accent colours (`styles/accents.css`).
+  7. The Adventurer card (`/adventurer`, Champion tab, downloads as PNG) and seasons (`lib/game/seasons.ts`: Finals
+     Week in Dec and late Apr-May on the new Exam Hall stage, Lantern Night in late Oct; mode "season"; admins can
+     preview with `?season-preview=finals`).
+- Nothing is in progress (the 4 hero stages, the 7 arcade stages and the 7 two-worlds stages delivered). Ideas waiting in the backlog: chiptune sound, sharing a KO clip, campaign mode, more inputs
   (YouTube, slides, OCR), ghost duels and other multiplayer, teacher mode.
 
 ---

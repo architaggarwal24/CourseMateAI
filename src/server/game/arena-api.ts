@@ -10,6 +10,9 @@ import * as arena from "./arena";
 import { VALID_DIFFICULTIES } from "./boss";
 import * as exp from "./expedition";
 import * as gauntlet from "./gauntlet";
+import * as invasion from "./invasion";
+import * as seasons from "./season";
+import { SEASON_MIN_CONCEPTS } from "@/lib/game/seasons";
 import { markActive } from "./progression";
 import type { Player } from "./store";
 
@@ -52,20 +55,41 @@ async function nemesisTargets(ctx: RequestContext, userId: number, hash: string)
 
 /** Start a battle, or resume the one already running on this document with the same mode, topic and difficulty. */
 export async function createBattle(ctx: RequestContext, user: CurrentUser, player: Player, body: Body) {
-  const mode = body.mode === "nemesis" ? "nemesis" : "quick";
+  const mode = body.mode === "nemesis" ? "nemesis" : body.mode === "invasion" ? "invasion" : body.mode === "season" ? "season" : "quick";
   let topic = mode === "quick" ? validateTopic(body.topic) : "";
   const difficulty = checkDifficulty(body.difficulty);
   const sessionId = String(body.session_id ?? "");
   const study = await studyDocs(ctx, user, sessionId);
   let targets: string[] | null = null;
   if (mode === "nemesis") { targets = await nemesisTargets(ctx, user.id, study.hash); topic = `Nemesis: ${targets.join(", ")}`.slice(0, 100); }
+  // two worlds, Stage 5: the weekly invasion - a boss made of what you studied this week
+  let invader: string | null = null;
+  if (mode === "invasion") {
+    targets = await invasion.weekConcepts(ctx, user.id, study.hash);
+    if (targets.length < invasion.INVASION_MIN) {
+      throw new HttpError(409, "invasion_quiet", `Nothing stirs yet: study at least ${invasion.INVASION_MIN} concepts on this document this week.`, null, { concepts: targets.length, needed: invasion.INVASION_MIN });
+    }
+    topic = `Invasion: ${targets.join(", ")}`.slice(0, 100);
+    invader = invasion.invader(user.id, invasion.weekKey(), await arena.summonable(ctx, user.id));
+  }
+  // two worlds, Stage 7: the season's limited boss - made of this month's concepts, on its own stage
+  const season = mode === "season" ? seasons.seasonFor(body.preview, user.admin) : null;
+  if (mode === "season") {
+    if (!season) throw new HttpError(409, "no_season", "No season is on right now.");
+    targets = await seasons.monthConcepts(ctx, user.id, study.hash);
+    if (targets.length < SEASON_MIN_CONCEPTS) {
+      throw new HttpError(409, "season_quiet", `${season.bossName} needs more to feed on: study at least ${SEASON_MIN_CONCEPTS} concepts on this document this month.`, null, { concepts: targets.length, needed: SEASON_MIN_CONCEPTS });
+    }
+    topic = `${season.name}: ${targets.join(", ")}`.slice(0, 100);
+    invader = season.boss;
+  }
   const caller = await callerFor(ctx, user);
   // defer (Stage 5): the battle is made at once and its questions written by POST .../prepare, while the player
   // picks a champion and faces the boss on the VS screen
   const defer = body.defer === true;
   const existing = await arena.findActive(ctx, user.id, sessionId);
   if (existing) {
-    if (existing.mode === mode && existing.difficulty === difficulty && (mode === "nemesis" || existing.topic === topic)) {
+    if (existing.mode === mode && existing.difficulty === difficulty && (mode !== "quick" || existing.topic === topic)) {
       if (!defer) await arena.prepare(ctx, caller, existing.id, user.id);          // (one whose questions failed to come: again)
       arena.prefetch(ctx, caller, existing.id, user.id);
       const now = await arena.getBattle(ctx, user.id, existing.id);
@@ -76,11 +100,12 @@ export async function createBattle(ctx: RequestContext, user: CurrentUser, playe
   // only creatures whose Bestiary tier is open answer a topic (a locked one sends the closest open creature). A Hunt
   // (the Bestiary's Hunt button) asks for one creature: it must be open.
   const open = await arena.summonable(ctx, user.id);
-  const hunt = mode === "quick" && typeof body.species === "string" && body.species ? body.species : null;
-  if (hunt && !open.has(hunt)) {
+  const hunt = mode === "quick" && typeof body.species === "string" && body.species ? body.species : invader;
+  if (hunt && mode === "quick" && !open.has(hunt)) {
     throw new HttpError(409, "creature_sealed", "That creature's page is still sealed. Beat creatures of the tier before it first.", null, { species: hunt });
   }
   const boss = await arena.newBoss(topic, difficulty, open, hunt);
+  if (season) Object.assign(boss, { name: season.bossName, season: season.id, stage: season.stage });
   const created = await arena.createBattle(ctx, user.id, { sessionId, docHash: study.hash, topic, difficulty, boss, mode, targets });
   await markActive(ctx, player);
   // the whole fight's questions are written before it starts (now, or by .../prepare), so it never stops to wait
@@ -209,3 +234,17 @@ export const getGauntlet = async (ctx: RequestContext, user: CurrentUser, id: st
 export const nextGauntletFight = async (ctx: RequestContext, user: CurrentUser, id: string) => ({ ok: true, ...(await gauntlet.next(ctx, user.id, id)) });
 
 export const abandonGauntlet = (ctx: RequestContext, player: Player, id: string) => gauntlet.abandon(ctx, player, id);
+
+/** Two worlds, Stage 5: this week's invasion on a document (ready, who, of what, already repelled). */
+export async function invasionInfo(ctx: RequestContext, user: CurrentUser, sessionId: string | null) {
+  let hash: string | null = null;
+  if (sessionId) { try { hash = (await studyDocs(ctx, user, sessionId)).hash; } catch { hash = null; } }
+  return invasion.invasionState(ctx, user.id, hash, await arena.summonable(ctx, user.id));
+}
+
+/** Two worlds, Stage 7: the season on now (an admin can ?preview=<id> one out of its dates) and its boss on a document. */
+export async function seasonInfo(ctx: RequestContext, user: CurrentUser, sessionId: string | null, preview: string | null) {
+  let hash: string | null = null;
+  if (sessionId) { try { hash = (await studyDocs(ctx, user, sessionId)).hash; } catch { hash = null; } }
+  return seasons.seasonState(ctx, user.id, hash, seasons.seasonFor(preview, user.admin));
+}

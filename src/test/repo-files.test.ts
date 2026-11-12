@@ -52,7 +52,7 @@ describe("the project layout", () => {
   });
 
   it("only app-wide modules sit at the top of src/lib; the rest are in a feature folder", () => {
-    const appWide = ["keys", "monitoring", "pwa", "routes", "sidebar", "site", "site-url", "theme", "undo", "utils"];
+    const appWide = ["keys", "monitoring", "pwa", "routes", "sidebar", "site", "site-url", "theme", "undo", "utils", "worlds"];
     const extra = topLevel("src/lib").map((n) => n.replace(/(\.test)?\.tsx?$/, "")).filter((n) => !appWide.includes(n));
     expect(extra, "a new module belongs in a feature folder (or, if it is truly app-wide, in this list)").toEqual([]);
   });

@@ -417,6 +417,8 @@ export const userProgress = sqliteTable("user_progress", {
   totalFlashcardsStudied: integer("total_flashcards_studied").notNull().default(0),
   bestQuizAccuracy: integer("best_quiz_accuracy").notNull().default(0),
   nightmareBossesDefeated: integer("nightmare_bosses_defeated").notNull().default(0),
+  /** Two worlds, Stage 5: Insight (0-100), filled by studying; full, it gives your next fight an edge. */
+  insight: integer("insight").notNull().default(0),
   createdAt: text("created_at").notNull(),
   updatedAt: text("updated_at").notNull(),
 });
