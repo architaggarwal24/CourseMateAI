@@ -7,7 +7,7 @@ vi.mock("next/navigation", () => ({
   useSearchParams: () => new URLSearchParams(nav.query),
   useRouter: () => ({ push: vi.fn() }),
 }));
-vi.mock("@/components/UserMenu", () => ({ default: () => <button type="button">Alice: account menu</button> }));
+vi.mock("@/components/shell/UserMenu", () => ({ default: () => <button type="button">Alice: account menu</button> }));
 
 import NavSidebar from "./NavSidebar";
 import { useCourses } from "@/hooks/useCourses";

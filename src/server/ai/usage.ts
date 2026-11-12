@@ -8,7 +8,7 @@
 import { and, eq, gte, like, sql } from "drizzle-orm";
 import type { Db } from "../db";
 import { aiUsage, appSettings, usageDaily } from "../db/schema";
-import { limits, nowIso, planLimit, type Tier } from "../plans";
+import { limits, nowIso, planLimit, type Tier } from "../account/plans";
 import type { Job, Target } from "./models";
 
 export const ESTIMATE: [number, number] = [1, 4];

@@ -1,6 +1,6 @@
 // The concepts of this document the player keeps missing, weakest first (what a Nemesis is made of).
 import { requireUser } from "@/server/context";
-import * as A from "@/server/game/arenaApi";
+import * as A from "@/server/game/arena-api";
 import { api } from "@/server/route";
 
 export const dynamic = "force-dynamic";

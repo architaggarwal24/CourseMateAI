@@ -29,8 +29,9 @@ const OLD = [
   "src/components/PixelAvatar.tsx",
   "src/components/PixelSprite.tsx",        // the old 16x16 item icon (the pixel sprite is components/arena/pixel/PixelSprite.tsx)
   "src/components/avatarRendering.test.tsx",
-  "src/components/hero/AvatarTab.tsx",     // -> components/hero/ChampionTab.tsx
-  // (the old components/hero/ForgeTab.tsx was listed here: a new ForgeTab.tsx, the Forge, now lives at that path)
+  "src/components/hero/AvatarTab.tsx",     // -> components/play/ChampionTab.tsx
+  // (the old components/hero/ForgeTab.tsx was listed here: a new ForgeTab.tsx, the Forge, took that path; it is now
+  // components/play/ForgeTab.tsx)
   "src/hooks/useArenaHero.ts",             // -> hooks/useChampion.ts (saved on the account)
   "src/app/dev/avatar",
   // Phase 4 / Stage 4.3: the server's AI only - no keys of one's own any more
@@ -70,7 +71,7 @@ const OLD = [
   "src/components/fx/usePointerVars.ts",
   // Performance pass: an empty leftover file
   "src/hooks/useApi.ts",
-  // Stage Q1: the quest board's scrolls (components/hero/QuestScroll.tsx) replaced the old quest list
+  // Stage Q1: the quest board's scrolls (components/play/QuestScroll.tsx) replaced the old quest list
   "src/components/QuestPanel.tsx",
   // The Bestiary lives in its own tab (the book); the arena tab no longer shows the creature grid
   "src/components/arena/pixel/Bestiary.tsx",

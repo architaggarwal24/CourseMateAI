@@ -1,5 +1,5 @@
 import { requireUser } from "@/server/context";
-import { deleteDocument, getDocumentOrCourse } from "@/server/documents";
+import { deleteDocument, getDocumentOrCourse } from "@/server/study/documents";
 import { rateLimit } from "@/server/http";
 import { api } from "@/server/route";
 import { searchDeps } from "@/server/search";

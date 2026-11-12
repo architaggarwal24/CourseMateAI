@@ -1,6 +1,6 @@
 import { requireAdmin } from "@/server/context";
 import { HttpError, rateLimit } from "@/server/http";
-import { revokeInvite } from "@/server/invites";
+import { revokeInvite } from "@/server/account/invites";
 import { api } from "@/server/route";
 
 export const dynamic = "force-dynamic";

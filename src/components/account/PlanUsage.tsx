@@ -1,8 +1,8 @@
 "use client";
 
-import { showUpgradeNow } from "@/lib/account/upgradeNotice";
+import { showUpgradeNow } from "@/lib/account/upgrade-notice";
 import { useCallback, useEffect, useState } from "react";
-import { Check, CreditCard, FileText, KeyRound, Sparkles, Ticket, Trash2 } from "@/components/icons";
+import { Check, CreditCard, FileText, KeyRound, Sparkles, Ticket, Trash2 } from "@/components/ui/icons";
 import { Badge, Button, Card, Input, Modal, Skeleton, toast } from "@/components/ui";
 import { undoable } from "@/lib/undo";
 import { ApiError } from "@/lib/api";

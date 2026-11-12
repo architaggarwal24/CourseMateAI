@@ -2,8 +2,8 @@ import { useEffect, useMemo } from "react";
 import { create } from "zustand";
 import { useAuth } from "@/contexts/AuthContext";
 import { deleteDocument, fetchDocument, fetchDocuments, uploadPDF, type DocumentInfo } from "@/lib/api";
-import { isInFlight, POLL_INTERVAL_MS, SLOW_POLL_AFTER, SLOW_POLL_INTERVAL_MS } from "@/lib/documents";
-import { sendUpload } from "@/lib/upload";
+import { isInFlight, POLL_INTERVAL_MS, SLOW_POLL_AFTER, SLOW_POLL_INTERVAL_MS } from "@/lib/study/documents";
+import { sendUpload } from "@/lib/study/upload";
 import { useCourses } from "@/hooks/useCourses";
 
 interface SessionStore {

@@ -108,7 +108,7 @@ describe("UX details", () => {
     }
   });
   it("progress tracks show against the page (border colour, not the near-black sunken surface)", () => {
-    for (const [file, sel] of [["components/hero/hero.css", ".quest__bar"], ["components/account/plan-usage.css", ".pu-meter__bar"],
+    for (const [file, sel] of [["components/play/hero.css", ".quest__bar"], ["components/account/plan-usage.css", ".pu-meter__bar"],
       ["components/map/map.css", ".cmap-progress__bar"], ["components/today/today.css", ".today-bar"],
       ["components/study/study.css", ".study-progress"]] as const) {
       expect(block(read(file), sel), sel).toMatch(/background:\s*var\(--color-border\)/);

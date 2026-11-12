@@ -2,7 +2,7 @@
 
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { motion } from "motion/react";
-import { Brain, ChevronRight, Flag, Flame, FlaskConical, Hourglass, Scissors, ShieldCheck, Zap } from "@/components/icons";
+import { Brain, ChevronRight, Flag, Flame, FlaskConical, Hourglass, Scissors, ShieldCheck, Zap } from "@/components/ui/icons";
 import { tauntLine } from "@/lib/arena/emotes";
 import { music } from "@/lib/sound/chip";
 import SoundToggle from "@/components/fx/SoundToggle";

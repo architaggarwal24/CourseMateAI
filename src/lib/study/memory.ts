@@ -2,7 +2,7 @@
 // chat, the notes, the quiz half-way through) and whatever was typed but not sent - after switching tools, going to
 // Hero, a reload or a restart, until New is pressed. History keeps the older sessions. Kept in this browser.
 import { useCallback, useEffect, useRef, useState } from "react";
-import { STORAGE_PREFIX } from "@/lib/sessions";
+import { STORAGE_PREFIX } from "@/lib/study/sessions";
 
 const activeKey = (tool: string, scope: string) => `${STORAGE_PREFIX}active_${tool}_${scope}`;
 const draftKey = (tool: string, scope: string) => `${STORAGE_PREFIX}draft_${tool}_${scope}`;

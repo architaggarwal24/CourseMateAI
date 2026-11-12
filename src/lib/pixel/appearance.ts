@@ -1,9 +1,9 @@
 /**
- * A built-your-own look drawn on a champion: the appearance (lib/appearance.ts) becomes the rig's HumanoidLook.
+ * A built-your-own look drawn on a champion: the appearance (lib/game/appearance.ts) becomes the rig's HumanoidLook.
  * The champion keeps its weapon (and so its fighting style); everything else - body, face, hair, outfit - comes
  * from the appearance. Shop skins then dress it as usual (skins.ts dressed()).
  */
-import { CLOTH_COLORS, DEFAULT_HERO_LOOK, EYE_COLORS, HAIR_COLORS, METAL_CLOTH, SKIN_TONES, appearanceKey, type Appearance, type BuildId, type ClothColor } from "../appearance";
+import { CLOTH_COLORS, DEFAULT_HERO_LOOK, EYE_COLORS, HAIR_COLORS, METAL_CLOTH, SKIN_TONES, appearanceKey, type Appearance, type BuildId, type ClothColor } from "../game/appearance";
 import { ramp, type Material } from "./color";
 import { HEROES, type HeroDef, type Style } from "./heroes";
 import { HERO_BUILD, type Build, type HumanoidLook, type WeaponKind } from "./rig";

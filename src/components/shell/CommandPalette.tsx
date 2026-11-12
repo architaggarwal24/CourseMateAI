@@ -7,8 +7,8 @@ import { Dialog } from "radix-ui";
 import {
   Backpack, BookOpen, Brain, CornerDownLeft, FileText, Gauge, GraduationCap, History, Home, Layers, LogOut, MessageSquare,
   Crown, Hammer, Network, ScrollText, Repeat, Search, Settings, Shield, ShieldCheck, ShoppingBag, SunMoon, Swords, Trophy, User, UserCircle,
-} from "@/components/icons";
-import ThemeScope from "@/components/ThemeScope";
+} from "@/components/ui/icons";
+import ThemeScope from "@/components/ui/ThemeScope";
 import { useAuth } from "@/contexts/AuthContext";
 import { useShortcutLabel } from "@/hooks/useShortcutLabel";
 import { ROUTES } from "@/lib/routes";

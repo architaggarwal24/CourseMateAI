@@ -1,11 +1,11 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent, type PointerEvent as ReactPointerEvent } from "react";
-import { Minus, Plus } from "@/components/icons";
+import { Minus, Plus } from "@/components/ui/icons";
 import { Button } from "@/components/ui";
 import {
   heatLabel, layoutMindMap, MIND_MORE, MIND_ROOT, mindLabel, neighbours, type MapConcept, type MapRelation, type MindNode,
-} from "@/lib/study/conceptMap";
+} from "@/lib/study/concept-map";
 
 const BRANCHES = 8;                       // branch colours (map.css --mm-0 .. --mm-7)
 const ZOOMS = [0.5, 0.65, 0.8, 1, 1.2, 1.45];
@@ -26,7 +26,7 @@ function arc(a: MindNode, b: MindNode): string {
 
 /**
  * The concept map as a mind map: the course or PDF in the middle, its main ideas branching to both sides, details
- * hanging off them (lib/study/conceptMap.ts layoutMindMap). Each branch has its colour; a dot in each pill says how
+ * hanging off them (lib/study/concept-map.ts layoutMindMap). Each branch has its colour; a dot in each pill says how
  * well you know it. Hover or focus a concept to see everything it's linked to. Zoom with the buttons, drag to pan.
  * Keyboard: Tab reaches the map (one stop); Right / Left go out to a detail or back towards the middle, Up / Down
  * move between neighbours in the column, Home goes to the most central concept, Enter / Space opens it, Esc closes.

@@ -1,4 +1,4 @@
-import { Heart } from "@/components/icons";
+import { Heart } from "@/components/ui/icons";
 
 /** The player's hearts: one icon per point of HP, filled while it is left. Read as one image by a screen reader. */
 export default function Hearts({ hp, max }: { hp: number; max: number }) {

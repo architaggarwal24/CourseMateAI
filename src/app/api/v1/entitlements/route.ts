@@ -1,5 +1,5 @@
 import { requireUser } from "@/server/context";
-import { entitlementsSummary } from "@/server/plans";
+import { entitlementsSummary } from "@/server/account/plans";
 import { api } from "@/server/route";
 
 export const dynamic = "force-dynamic";

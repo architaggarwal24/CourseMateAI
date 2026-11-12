@@ -2,7 +2,7 @@
 
 import { usePlanChanged } from "@/hooks/usePlanChanged";
 import { useEffect, useRef, useState } from "react";
-import { ChevronLeft, ChevronRight, FileWarning, Lock, X } from "@/components/icons";
+import { ChevronLeft, ChevronRight, FileWarning, Lock, X } from "@/components/ui/icons";
 import { Button, Skeleton } from "@/components/ui";
 import { citationText, type Citation } from "@/lib/study/citations";
 import { documentFileUrl, loadPdfJs, passageItems } from "@/lib/study/pdf";

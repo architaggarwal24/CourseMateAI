@@ -2,7 +2,7 @@
 
 import { useEffect } from "react";
 import { AnimatePresence, motion, useReducedMotionConfig } from "motion/react";
-import { Trophy } from "@/components/icons";
+import { Trophy } from "@/components/ui/icons";
 import { useCelebrate } from "@/lib/fx/celebrate";
 
 /**

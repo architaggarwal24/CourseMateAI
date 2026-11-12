@@ -1,6 +1,6 @@
 "use client";
 
-import { Check } from "@/components/icons";
+import { Check } from "@/components/ui/icons";
 import type { ChampionProgress } from "@/hooks/useChampion";
 
 /** Champion mastery 0-100%: the bar, the six challenges, and what 50% and 100% bring. */

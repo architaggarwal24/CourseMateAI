@@ -6,7 +6,7 @@
 // A route is an ordered list of slots per plan and job: the first configured one answers, the next ones are the
 // fallbacks. MODEL_ROUTES_JSON overrides any of it, e.g. {"apprentice": {"strong": ["fast", "small"]}}.
 // An API slot needs its provider's key: GOOGLE_API_KEY, OPENAI_API_KEY, ANTHROPIC_API_KEY or NVIDIA_API_KEY.
-import { TIERS, type Tier } from "../plans";
+import { TIERS, type Tier } from "../account/plans";
 
 export const JOBS = ["small", "strong"] as const;
 export type Job = (typeof JOBS)[number];

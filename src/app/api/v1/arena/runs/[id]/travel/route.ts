@@ -2,7 +2,7 @@
 import { requireUser } from "@/server/context";
 import { rateLimit, readJson } from "@/server/http";
 import { api } from "@/server/route";
-import * as A from "@/server/game/arenaApi";
+import * as A from "@/server/game/arena-api";
 
 export const dynamic = "force-dynamic";
 

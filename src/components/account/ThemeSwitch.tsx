@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, type KeyboardEvent } from "react";
-import { Monitor, Moon, Sun } from "@/components/icons";
+import { Monitor, Moon, Sun } from "@/components/ui/icons";
 import { readThemePref, setThemePref, type ThemePref } from "@/lib/theme";
 import { cn } from "@/lib/utils";
 

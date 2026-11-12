@@ -11,7 +11,7 @@ import { and, eq, isNotNull } from "drizzle-orm";
 import type { RequestContext } from "../context";
 import { championProgress, heroState, questScrolls } from "../db/schema";
 import { HttpError } from "../http";
-import { STARTER_LOOKS, cleanAppearance, sameAppearance, type Appearance } from "@/lib/appearance";
+import { STARTER_LOOKS, cleanAppearance, sameAppearance, type Appearance } from "@/lib/game/appearance";
 import { CHAMPIONS, type Champion } from "./content";
 import {
   CHAMPION_KIT, EXTRA_WEAKNESSES, PASSIVES, PERKS, STYLES, ULTIMATES, WEAKNESSES, initHeroKit,

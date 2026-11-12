@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Dices, Lock, RotateCcw } from "@/components/icons";
+import { Dices, Lock, RotateCcw } from "@/components/ui/icons";
 import PixelSprite from "@/components/arena/pixel/PixelSprite";
 import { useChampionLook } from "@/components/champion/useChampionLook";
 import { Button, Modal, Tabs, toast } from "@/components/ui";
@@ -10,7 +10,7 @@ import { useMyHero } from "@/hooks/useMyHero";
 import {
   BUILDS, CLOTH_COLORS, DEFAULT_HERO_LOOK, EYE_COLORS, HAIR_COLORS, HAIR_STYLES, OUTFITS, SKIN_TONES, SLEEVES, STARTER_LOOKS,
   sameAppearance, starterLook, type Appearance, type ClothColor,
-} from "@/lib/appearance";
+} from "@/lib/game/appearance";
 import { HERO_FIGHTER_ID, heroFighter } from "@/lib/pixel/appearance";
 import { HEROES } from "@/lib/pixel/heroes";
 import { cn } from "@/lib/utils";

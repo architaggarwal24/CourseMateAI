@@ -1,9 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { MailCheck } from "@/components/icons";
+import { MailCheck } from "@/components/ui/icons";
 import { Button, Card } from "@/components/ui";
-import { sendVerificationCode, verifyEmail } from "@/lib/auth/authApi";
+import { sendVerificationCode, verifyEmail } from "@/lib/auth/auth-api";
 import CodeField from "./CodeField";
 
 /**

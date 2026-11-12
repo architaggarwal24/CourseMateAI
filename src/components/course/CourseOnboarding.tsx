@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { BookMarked, FileText, MessageSquare, Sparkles } from "@/components/icons";
+import { BookMarked, FileText, MessageSquare, Sparkles } from "@/components/ui/icons";
 import { Button, Input, toast } from "@/components/ui";
 import { useCourses } from "@/hooks/useCourses";
 import type { Course } from "@/lib/study/courses";

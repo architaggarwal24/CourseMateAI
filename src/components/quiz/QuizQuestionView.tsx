@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useLayoutEffect } from "react";
-import { ArrowRight, CheckCircle2, XCircle } from "@/components/icons";
+import { ArrowRight, CheckCircle2, XCircle } from "@/components/ui/icons";
 import { motion } from "motion/react";
 import { Button, Card } from "@/components/ui";
 import type { QuizFeedback, QuizQuestion } from "@/types";

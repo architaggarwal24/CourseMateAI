@@ -4,8 +4,8 @@ import Link from "next/link";
 import dynamic from "next/dynamic";
 import {
   BookMarked, Brain, CheckCircle2, FileText, GraduationCap, Layers, Map as MapIcon, MessageSquare, ShieldCheck, Sparkles, Swords, Trophy,
-} from "@/components/icons";
-import ThemeScope from "@/components/ThemeScope";
+} from "@/components/ui/icons";
+import ThemeScope from "@/components/ui/ThemeScope";
 import { ButtonLink } from "@/components/ui";
 import { ROUTES } from "@/lib/routes";
 import { SiteFooter, SiteHeader } from "./SiteChrome";

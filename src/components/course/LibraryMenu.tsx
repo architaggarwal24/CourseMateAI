@@ -1,8 +1,8 @@
 "use client";
 
 import { DropdownMenu } from "radix-ui";
-import { BookMarked, Check, ChevronsUpDown, FileText, FolderPlus, Trash2 } from "@/components/icons";
-import ThemeScope from "@/components/ThemeScope";
+import { BookMarked, Check, ChevronsUpDown, FileText, FolderPlus, Trash2 } from "@/components/ui/icons";
+import ThemeScope from "@/components/ui/ThemeScope";
 import type { DocumentInfo } from "@/lib/api";
 import type { Course } from "@/lib/study/courses";
 

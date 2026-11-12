@@ -1,6 +1,6 @@
 # Payments: Razorpay subscriptions (Phase 3 Stage 4c; on the Worker since Phase 4 Stage 4.6)
 
-Payments are off unless `PAYMENTS_ENABLED=1`. While they are off, plans come only from the admin panel (Admin → Users → plan) and invite codes, and the upgrade buttons say "coming soon". Settings go in the Cloudflare dashboard (Workers → `coursemateai` → Settings → Variables and Secrets), or in `.dev.vars` locally. The code is `src/server/billing.ts`.
+Payments are off unless `PAYMENTS_ENABLED=1`. While they are off, plans come only from the admin panel (Admin → Users → plan) and invite codes, and the upgrade buttons say "coming soon". Settings go in the Cloudflare dashboard (Workers → `coursemateai` → Settings → Variables and Secrets), or in `.dev.vars` locally. The code is `src/server/account/billing.ts`.
 
 ## Providers
 

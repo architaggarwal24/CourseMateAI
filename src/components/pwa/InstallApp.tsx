@@ -1,6 +1,6 @@
 "use client";
 
-import { Download, MonitorSmartphone } from "@/components/icons";
+import { Download, MonitorSmartphone } from "@/components/ui/icons";
 import { Button } from "@/components/ui";
 import { usePwa } from "@/lib/pwa";
 

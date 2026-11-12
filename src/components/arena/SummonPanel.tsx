@@ -1,17 +1,17 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { ArrowLeft, Flame, Skull, Swords, Target, Trophy } from "@/components/icons";
+import { ArrowLeft, Flame, Skull, Swords, Target, Trophy } from "@/components/ui/icons";
 import GearChips from "@/components/champion/GearChips";
 import PixelSprite from "./pixel/PixelSprite";
 import { useFighter, useFighterPet } from "./pixel/useFighter";
 import { bossById } from "@/lib/pixel/bosses";
 
 const huntName = (species: string) => bossById(species)?.name ?? "creature";
-import FileUploader from "@/components/FileUploader";
+import FileUploader from "@/components/pdf/FileUploader";
 import { Badge, Button, Input } from "@/components/ui";
 import { previewEquipped, useHeroStore } from "@/hooks/useHero";
-import { totalGear } from "@/lib/gear";
+import { totalGear } from "@/lib/game/gear";
 import { fetchLeaderboard, fetchWeakConcepts } from "@/lib/arena/api";
 import { DIFFICULTIES, DIFFICULTY_BLURB, DIFFICULTY_LABEL, type Difficulty, type LeaderboardEntry, type WeakConceptsResponse } from "@/lib/arena/types";
 

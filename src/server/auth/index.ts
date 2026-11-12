@@ -3,7 +3,7 @@
 //     and to reset a password (email-otp plugin); Google and GitHub sign-in, each when its client id and secret are set
 //   * two-step sign-in the user can turn on later (authenticator app, or an emailed code), with backup codes
 //   * usernames, roles and bans (username + admin plugins; the admin's own endpoints are switched off: the /admin
-//     page uses src/server/admin.ts, which protects the owner)
+//     page uses src/server/account/admin.ts, which protects the owner)
 //   * OWNER_EMAIL: that account, once its email is verified, is always an admin and on the top plan
 // One instance per request: the D1 binding and the site's address come with the request.
 import { betterAuth, type BetterAuthOptions } from "better-auth";
@@ -95,7 +95,7 @@ export function usernameFromEmail(email: string, suffix: number): string {
   return suffix ? `${padded}${suffix}` : padded;
 }
 
-// The admin plugin's own HTTP endpoints: off. Admin work goes through src/server/admin.ts.
+// The admin plugin's own HTTP endpoints: off. Admin work goes through src/server/account/admin.ts.
 const ADMIN_PLUGIN_PATHS = [
   "ban-user", "create-user", "get-user", "has-permission", "impersonate-user", "list-user-sessions", "list-users",
   "remove-user", "revoke-user-session", "revoke-user-sessions", "set-role", "set-user-password", "stop-impersonating",

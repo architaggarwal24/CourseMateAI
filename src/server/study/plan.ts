@@ -1,6 +1,6 @@
 // Plan checks the study tools share.
 import type { CurrentUser, RequestContext } from "../context";
-import { has, requireFeature, tierFor, type Feature } from "../plans";
+import { has, requireFeature, tierFor, type Feature } from "../account/plans";
 
 export async function hasFeature(ctx: RequestContext, user: CurrentUser, f: Feature) {
   return has(await tierFor(ctx.db, user), f);

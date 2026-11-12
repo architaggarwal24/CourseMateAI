@@ -4,7 +4,7 @@ import { idempotencyKey } from "./idempotency";
 import { startExam } from "@/lib/study/exam";
 import { createCourse } from "@/lib/study/courses";
 import { startCheckout } from "@/lib/account/billing";
-import { adminApi } from "@/lib/admin/adminApi";
+import { adminApi } from "@/lib/admin/admin-api";
 
 afterEach(() => vi.unstubAllGlobals());
 

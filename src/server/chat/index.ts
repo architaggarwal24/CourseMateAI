@@ -6,9 +6,9 @@
 //   RELEVANCE_CLARIFY_BELOW (0.45) loosely (it may ask what the student means), else a normal answer (a strong job).
 //   The student picks how it teaches: explain, socratic, quiz me, simplify.
 import type { CurrentUser, RequestContext } from "../context";
-import { studyDocs } from "../documents";
+import { studyDocs } from "../study/documents";
 import { HttpError } from "../http";
-import { tierFor } from "../plans";
+import { tierFor } from "../account/plans";
 import { searchDeps, searchPassages, type Passage } from "../search";
 import { generate, type Caller } from "../ai/run";
 import { logActivity } from "../study/core";

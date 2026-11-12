@@ -50,7 +50,7 @@ export const rawApi = createClient<V1Paths>({ baseUrl, credentials: "include", f
 // of firing a second network request. Mutations always fire.
 const inFlight = new Map<string, Promise<Response>>();
 
-/** Where requests go (this origin's /api/v1). Exported for the one call that streams (lib/chatStream.ts). */
+/** Where requests go (this origin's /api/v1). Exported for the one call that streams (lib/chat/chat-stream.ts). */
 export const API_BASE_URL = baseUrl;
 
 async function failWith(res: Response): Promise<never> {

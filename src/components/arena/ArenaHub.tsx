@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { motion } from "motion/react";
-import { Lock, Map as MapIcon, Swords, Target, Users } from "@/components/icons";
+import { Lock, Map as MapIcon, Swords, Target, Users } from "@/components/ui/icons";
 import { Badge } from "@/components/ui";
 import { fetchActiveRun, fetchLeaderboard, fetchWeakConcepts } from "@/lib/arena/api";
 import { DIFFICULTY_LABEL, type LeaderboardEntry, type Run, type WeakConceptsResponse } from "@/lib/arena/types";

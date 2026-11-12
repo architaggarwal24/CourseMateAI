@@ -17,7 +17,7 @@ import { HttpError } from "../http";
 import type { Caller } from "../ai/run";
 import { record as recordMastery } from "../study/mastery";
 import { questionKey, sameAnswer } from "../study/text";
-import { bossFlavor, generateBattleQuiz, questionTier, type BattleQuestion } from "./arenaAi";
+import { bossFlavor, generateBattleQuiz, questionTier, type BattleQuestion } from "./arena-ai";
 import { baseBoss, summon } from "./bestiary";
 import * as tome from "./tome";
 import * as roster from "./roster";

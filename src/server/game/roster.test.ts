@@ -9,7 +9,7 @@ import * as heroLook from "@/app/api/v1/hero/look/route";
 import * as heroBuild from "@/app/api/v1/hero/build/route";
 import * as heroTree from "@/app/api/v1/hero/tree/route";
 import * as heroBuy from "@/app/api/v1/hero/buy/route";
-import { STARTER_LOOKS } from "@/lib/appearance";
+import { STARTER_LOOKS } from "@/lib/game/appearance";
 import * as build from "./build";
 import * as battles from "@/app/api/v1/arena/battles/route";
 import * as battleOne from "@/app/api/v1/arena/battles/[id]/route";

@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
-import { ChevronLeft, ChevronRight } from "@/components/icons";
+import { ChevronLeft, ChevronRight } from "@/components/ui/icons";
 import PixelSprite from "@/components/arena/pixel/PixelSprite";
 import { useChampion } from "@/hooks/useChampion";
 import { useHUDStore } from "@/hooks/useHUD";

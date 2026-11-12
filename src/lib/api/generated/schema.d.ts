@@ -2570,7 +2570,7 @@ export interface components {
         } & {
             [key: string]: unknown;
         };
-        /** PlanNotice: "you've been upgraded" (src/server/planNotices.ts) */
+        /** PlanNotice: "you've been upgraded" (src/server/account/plan-notices.ts) */
         PlanNotice: {
             id: number;
             /** @enum {string} */

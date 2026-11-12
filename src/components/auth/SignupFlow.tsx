@@ -1,8 +1,8 @@
 "use client";
 
-import { showUpgradeNow } from "@/lib/account/upgradeNotice";
+import { showUpgradeNow } from "@/lib/account/upgrade-notice";
 import { useEffect, useRef, useState } from "react";
-import { Check, Eye, EyeOff } from "@/components/icons";
+import { Check, Eye, EyeOff } from "@/components/ui/icons";
 import { Button, Card, Input, toast } from "@/components/ui";
 import { useAuth } from "@/contexts/AuthContext";
 import { parseApiError, rawApi } from "@/lib/api";
@@ -10,7 +10,7 @@ import { fetchAuthConfig } from "@/lib/auth/config";
 import {
   ACCOUNT_FIELDS, emptyAccountForm, fieldForFailure, validateAccount, validateField,
   type AccountErrors, type AccountField, type AccountForm,
-} from "@/lib/signup";
+} from "@/lib/auth/signup";
 import VerifyEmailStep from "./VerifyEmailStep";
 
 const STEPS = ["Account", "Verify email"] as const;

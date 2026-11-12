@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Coins, Sparkles } from "@/components/icons";
+import { Coins, Sparkles } from "@/components/ui/icons";
 import PixelSprite from "@/components/arena/pixel/PixelSprite";
 import { Badge, Button, Modal, toast } from "@/components/ui";
 import { lookFor } from "@/components/champion/useChampionLook";

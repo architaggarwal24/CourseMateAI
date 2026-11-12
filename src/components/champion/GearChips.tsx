@@ -1,4 +1,4 @@
-import { gearChips, type BattleStats } from "@/lib/gear";
+import { gearChips, type BattleStats } from "@/lib/game/gear";
 import { cn } from "@/lib/utils";
 import "./gear.css";
 

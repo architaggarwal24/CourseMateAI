@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { AlertTriangle, Coins, Lock, Minus, Plus, RotateCcw, Shirt, Sparkles, Swords, Zap } from "@/components/icons";
+import { AlertTriangle, Coins, Lock, Minus, Plus, RotateCcw, Shirt, Sparkles, Swords, Zap } from "@/components/ui/icons";
 import PixelSprite from "@/components/arena/pixel/PixelSprite";
 import { Badge, Button, Tabs } from "@/components/ui";
 import { useMyHero, type HeroBuild, type HeroView } from "@/hooks/useMyHero";

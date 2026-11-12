@@ -6,7 +6,7 @@ import type { Db } from "@/server/db";
 import { capCeilingUsd, costReport, setCapUsd } from "@/server/ai/usage";
 import { requireAdmin } from "@/server/context";
 import { HttpError, rateLimit, readJson } from "@/server/http";
-import { TIERS } from "@/server/plans";
+import { TIERS } from "@/server/account/plans";
 import { api } from "@/server/route";
 
 export const dynamic = "force-dynamic";

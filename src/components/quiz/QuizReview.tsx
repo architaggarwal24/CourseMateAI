@@ -1,6 +1,6 @@
 "use client";
 
-import { CheckCircle2, MinusCircle, Repeat, RotateCcw, Target, XCircle } from "@/components/icons";
+import { CheckCircle2, MinusCircle, Repeat, RotateCcw, Target, XCircle } from "@/components/ui/icons";
 import { Button } from "@/components/ui";
 import { AnimatedNumber } from "@/components/fx";
 import type { QuizFeedback, QuizQuestion } from "@/types";

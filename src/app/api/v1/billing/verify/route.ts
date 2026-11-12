@@ -1,5 +1,5 @@
 // Checkout's success handler: the signature is checked and the plan switches on.
-import { verify } from "@/server/billing";
+import { verify } from "@/server/account/billing";
 import { requireUser } from "@/server/context";
 import { rateLimit, readJson } from "@/server/http";
 import { api } from "@/server/route";

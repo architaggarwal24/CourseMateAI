@@ -1,9 +1,9 @@
 // The illustration on each feature page: a still drawn in the landing page's style (the same cards as its hero), with
 // made-up example content - not a screenshot. Decorative: the page's words carry the information.
 import dynamic from "next/dynamic";
-import ThemeScope from "@/components/ThemeScope";
-import { CheckCircle2, FileText, Layers, RotateCcw } from "@/components/icons";
-import type { FeaturePage } from "@/lib/features";
+import ThemeScope from "@/components/ui/ThemeScope";
+import { CheckCircle2, FileText, Layers, RotateCcw } from "@/components/ui/icons";
+import type { FeaturePage } from "@/lib/landing/features";
 
 const LandingDuel = dynamic(() => import("./LandingDuel"));
 

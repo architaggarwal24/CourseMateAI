@@ -1,4 +1,4 @@
-import { setRole } from "@/server/admin";
+import { setRole } from "@/server/account/admin";
 import { requireAdmin } from "@/server/context";
 import { rateLimit, readJson } from "@/server/http";
 import { api, intParam } from "@/server/route";

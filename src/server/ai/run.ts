@@ -3,7 +3,7 @@
 // Users can't bring their own keys: every call is the server's (and counts against the plan).
 import type { Db } from "../db";
 import { HttpError } from "../http";
-import type { Tier } from "../plans";
+import type { Tier } from "../account/plans";
 import { route, type Job, type Target } from "./models";
 import { apiLlm, DEFAULT_MAX_OUTPUT } from "./providers";
 import { isCapped, recordCall, releaseCall, reserveCall } from "./usage";

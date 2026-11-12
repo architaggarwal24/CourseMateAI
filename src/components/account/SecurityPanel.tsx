@@ -4,12 +4,12 @@
 // an emailed code works as the second step too once emails go out).
 import { useState } from "react";
 import { encode } from "uqr";
-import { CheckCircle2, ShieldCheck } from "@/components/icons";
+import { CheckCircle2, ShieldCheck } from "@/components/ui/icons";
 import { Badge, Button, Card, Input, toast } from "@/components/ui";
 import VerifyEmailStep from "@/components/auth/VerifyEmailStep";
 import CodeField from "@/components/auth/CodeField";
 import { useAuth } from "@/contexts/AuthContext";
-import { PROVIDER_NAMES, disableTwoFactor, enableTwoFactor, verifyTwoFactor, type SocialProvider } from "@/lib/auth/authApi";
+import { PROVIDER_NAMES, disableTwoFactor, enableTwoFactor, verifyTwoFactor, type SocialProvider } from "@/lib/auth/auth-api";
 
 /** The otpauth:// link as a QR code, drawn as SVG squares (no image, no network). */
 export function QrCode({ text, label }: { text: string; label: string }) {

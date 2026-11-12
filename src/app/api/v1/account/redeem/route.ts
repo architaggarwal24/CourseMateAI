@@ -1,8 +1,8 @@
 // Use an invite code: the user's plan becomes the code's.
-import { accountUsage } from "@/server/account-usage";
+import { accountUsage } from "@/server/account/usage";
 import { requireUser } from "@/server/context";
 import { rateLimit, readJson } from "@/server/http";
-import { redeemInvite } from "@/server/invites";
+import { redeemInvite } from "@/server/account/invites";
 import { api } from "@/server/route";
 
 export const dynamic = "force-dynamic";

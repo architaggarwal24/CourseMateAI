@@ -2,7 +2,7 @@
 
 import { usePlanChanged } from "@/hooks/usePlanChanged";
 import { useCallback, useEffect, useState } from "react";
-import { CheckCircle2, Download, GraduationCap, Plus, Repeat, X, XCircle } from "@/components/icons";
+import { CheckCircle2, Download, GraduationCap, Plus, Repeat, X, XCircle } from "@/components/ui/icons";
 import StudyToolbar from "@/components/study/StudyToolbar";
 import UpgradeCard from "@/components/study/UpgradeCard";
 import { Badge, Button, ButtonLink, Card, EmptyState, Input, Skeleton, toast } from "@/components/ui";

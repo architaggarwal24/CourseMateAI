@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Button, Input, Select, Skeleton, toast } from "@/components/ui";
-import { adminApi, type AiModels } from "@/lib/admin/adminApi";
+import { adminApi, type AiModels } from "@/lib/admin/admin-api";
 import TestConnection from "./TestConnection";
 
 const NORMAL = "";

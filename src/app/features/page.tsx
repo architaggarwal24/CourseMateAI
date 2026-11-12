@@ -2,7 +2,7 @@
 import Link from "next/link";
 import { ButtonLink } from "@/components/ui";
 import { SITE_LINKS, SiteFooter, SiteHeader } from "@/components/landing/SiteChrome";
-import { FEATURE_PAGES, FEATURES_HUB, featurePath } from "@/lib/features";
+import { FEATURE_PAGES, FEATURES_HUB, featurePath } from "@/lib/landing/features";
 import { absoluteUrl, jsonLdScript, pageMetadata } from "@/lib/site";
 import { ROUTES } from "@/lib/routes";
 import "@/components/landing/landing.css";

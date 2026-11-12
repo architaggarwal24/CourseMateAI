@@ -1,9 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { Eye, EyeOff, KeyRound } from "@/components/icons";
+import { Eye, EyeOff, KeyRound } from "@/components/ui/icons";
 import { Button, Card, Input } from "@/components/ui";
-import { requestPasswordReset, resetPassword } from "@/lib/auth/authApi";
+import { requestPasswordReset, resetPassword } from "@/lib/auth/auth-api";
 import CodeField from "./CodeField";
 
 /** Forgot password: email -> a 6-digit code -> a new password. */

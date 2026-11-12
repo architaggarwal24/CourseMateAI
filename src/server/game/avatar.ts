@@ -1,6 +1,6 @@
 // The avatar (port of backend/routers/avatar.py): the player's pixel champion and the skins it wears, plus the
 // profile, HUD and achievements views (routers/progression.py).
-import { pendingPlanNotice } from "../planNotices";
+import { pendingPlanNotice } from "../account/plan-notices";
 import { bestiaryStats } from "./tome";
 import { eq } from "drizzle-orm";
 import type { RequestContext } from "../context";
@@ -125,7 +125,7 @@ export async function hud(ctx: RequestContext, p: Player | null) {
   return {
     progress: { ...progressView(prog), xp_into_level: into, xp_to_next: toNext }, quests, shop,
     buffs, consumable_inventory: consumables, guest_mode: false,
-    plan_notice: planNotice,           // "you've been upgraded", once (src/server/planNotices.ts)
+    plan_notice: planNotice,           // "you've been upgraded", once (src/server/account/plan-notices.ts)
   };
 }
 

@@ -1,5 +1,5 @@
 import { requireUser } from "@/server/context";
-import { addPages } from "@/server/documents";
+import { addPages } from "@/server/study/documents";
 import { HttpError, rateLimit, readJson } from "@/server/http";
 import { api } from "@/server/route";
 import { searchDeps } from "@/server/search";

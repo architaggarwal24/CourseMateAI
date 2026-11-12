@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { Button } from "@/components/ui";
-import { PROVIDER_NAMES, signInWithProvider, type SocialProvider } from "@/lib/auth/authApi";
+import { PROVIDER_NAMES, signInWithProvider, type SocialProvider } from "@/lib/auth/auth-api";
 
 /** The providers' own marks, as their sign-in guidelines ask. */
 const LOGOS: Record<SocialProvider, React.ReactNode> = {

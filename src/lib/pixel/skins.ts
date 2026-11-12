@@ -21,7 +21,7 @@ export interface Loadout {
   pet?: string | null;
 }
 
-/** The rarities that light a weapon up (same tiers as lib/rarity.ts; common has no glow). */
+/** The rarities that light a weapon up (same tiers as lib/game/rarity.ts; common has no glow). */
 export const RARITY_GLOW: Record<string, string> = { rare: "#60a5fa", epic: "#c084fc", legendary: "#facc15" };
 
 // ── armor: outfit palettes ────────────────────────────────────────────────────

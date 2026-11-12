@@ -4,7 +4,7 @@
 import { requireUser } from "@/server/context";
 import { rateLimit, readJson } from "@/server/http";
 import { api } from "@/server/route";
-import { build, gate, view } from "@/server/study/conceptMap";
+import { build, gate, view } from "@/server/study/concept-map";
 
 export const dynamic = "force-dynamic";
 

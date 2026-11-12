@@ -1,7 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { History, Plus } from "@/components/icons";
+import { History, Plus } from "@/components/ui/icons";
 import { Button } from "@/components/ui";
 
 interface Props {

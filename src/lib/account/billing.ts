@@ -1,4 +1,4 @@
-// Subscriptions (server/billing.ts; docs/payments.md): Razorpay Checkout, or the test stub.
+// Subscriptions (server/account/billing.ts; docs/payments.md): Razorpay Checkout, or the test stub.
 import { api } from "@/lib/api/client";
 import { idempotencyKey } from "@/lib/api/idempotency";
 import type { components } from "@/lib/api/generated/schema";

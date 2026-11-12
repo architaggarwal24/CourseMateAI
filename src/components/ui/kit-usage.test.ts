@@ -9,8 +9,8 @@ const read = (p: string) => readFileSync(`${root}${p}`, "utf8");
 // Screens whose buttons, fields and modals all come from the kit.
 const MIGRATED = [
   "app/login/page.tsx", "app/(app)/account/settings/page.tsx", "app/(app)/account/page.tsx",
-  "components/hero/PlayArea.tsx", "components/hero/MasteryTab.tsx", "components/hero/HeroHeader.tsx",
-  "components/ErrorBoundary.tsx",
+  "components/play/PlayArea.tsx", "components/play/MasteryTab.tsx", "components/play/HeroHeader.tsx",
+  "components/shell/ErrorBoundary.tsx",
 ];
 
 function walk(dir: string, out: string[] = []) {
@@ -42,11 +42,5 @@ describe("UI kit usage", () => {
     expect(css).not.toMatch(/(?:linear|radial|conic)-gradient\(/);
     expect(css.match(/#[0-9a-fA-F]{3,8}\b/g)).toBeNull();
     expect(css.match(/rgba?\([^)]*\)/g) ?? []).toEqual([]);
-  });
-
-  it("the dev kit page is a page.dev.tsx, which next.config.ts only counts as a page outside production", () => {
-    const config = readFileSync(fileURLToPath(new URL("../../../next.config.ts", import.meta.url)), "utf8");
-    expect(config).toMatch(/process\.env\.NODE_ENV === "production" \? \[\] : \["dev\.tsx"\]/);
-    expect(readdirSync(`${root}app/dev/kit`)).toEqual(["page.dev.tsx"]);
   });
 });

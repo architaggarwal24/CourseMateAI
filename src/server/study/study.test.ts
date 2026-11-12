@@ -39,7 +39,7 @@ import { params, person, uploadPdf } from "../test/flows";
 import { extractJson, normalizeCorrectAnswer, sameAnswer, stripOptionPrefixes } from "./text";
 import { conceptMapDraft, quizBatch } from "./schemas";
 import { plan as examPlan } from "./exams";
-import { digest as mapDigest } from "./conceptMap";
+import { digest as mapDigest } from "./concept-map";
 import { shuffleOptions } from "./tools";
 
 let p: LocalPlatform;

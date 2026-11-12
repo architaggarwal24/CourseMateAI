@@ -18,7 +18,7 @@ vi.mock("@/lib/study/pdf", async (orig) => ({
   }),
 }));
 
-import ChatView from "@/components/ChatView";
+import ChatView from "@/components/chat/ChatView";
 import { resetPdfCache } from "./PdfViewer";
 
 const CITES = [

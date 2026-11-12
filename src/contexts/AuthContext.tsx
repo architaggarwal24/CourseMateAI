@@ -1,13 +1,13 @@
 "use client";
 
 // Who is signed in, and the account actions every screen shares. Since Stage 4.1 accounts live on the Worker
-// (Better Auth, src/server/auth): sign-in, sign-up and codes go to /api/auth/* (src/lib/auth/authApi.ts), and
+// (Better Auth, src/server/auth): sign-in, sign-up and codes go to /api/auth/* (src/lib/auth/auth-api.ts), and
 // GET /api/v1/auth/me says who you are, with your plan and whether you are an admin.
 import { createContext, useCallback, useContext, useEffect, useState } from "react";
 import { useHUDStore } from "@/hooks/useHUD";
 import { rawApi } from "@/lib/api";
-import * as authApi from "@/lib/auth/authApi";
-import type { AuthFailure, SignInResult, SignUpForm } from "@/lib/auth/authApi";
+import * as authApi from "@/lib/auth/auth-api";
+import type { AuthFailure, SignInResult, SignUpForm } from "@/lib/auth/auth-api";
 import { ROUTES } from "@/lib/routes";
 import { useChampion } from "@/hooks/useChampion";
 import { useMyHero } from "@/hooks/useMyHero";

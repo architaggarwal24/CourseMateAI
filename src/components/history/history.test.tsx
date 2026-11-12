@@ -4,11 +4,11 @@ import { act, cleanup, fireEvent, render, screen, within } from "@testing-librar
 const toasts = vi.hoisted(() => ({ success: vi.fn(), error: vi.fn(), info: vi.fn(), apiError: vi.fn(), dismiss: vi.fn() }));
 vi.mock("@/components/ui/Toast", async (orig) => ({ ...(await orig<typeof import("@/components/ui/Toast")>()), toast: toasts }));
 
-import HistoryPanel from "@/components/HistoryPanel";
-import HistoryView from "@/components/HistoryView";
-import { loadMetadata, saveMetadata } from "@/lib/sessions";
+import HistoryPanel from "@/components/history/HistoryPanel";
+import HistoryView from "@/components/history/HistoryView";
+import { loadMetadata, saveMetadata } from "@/lib/study/sessions";
 import { flushUndoables } from "@/lib/undo";
-import { formatWhen } from "./sessionMeta";
+import { formatWhen } from "./session-meta";
 
 const hoursAgo = (h: number) => new Date(Date.now() - h * 3600_000).toISOString();
 const seed = () => saveMetadata({

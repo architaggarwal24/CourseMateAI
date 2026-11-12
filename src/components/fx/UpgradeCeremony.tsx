@@ -2,21 +2,21 @@
 
 import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
-import { Check, Crown, Sparkles } from "@/components/icons";
+import { Check, Crown, Sparkles } from "@/components/ui/icons";
 import PixelConfetti from "@/components/fx/PixelConfetti";
 import PixelSprite from "@/components/arena/pixel/PixelSprite";
 import { lookFor, useMyHeroLook } from "@/components/champion/useChampionLook";
-import ThemeScope from "@/components/ThemeScope";
+import ThemeScope from "@/components/ui/ThemeScope";
 import { Badge, Button, ButtonLink, Modal } from "@/components/ui";
 import { useChampion } from "@/hooks/useChampion";
 import { useHUDStore } from "@/hooks/useHUD";
 import { useHeroStore } from "@/hooks/useHero";
 import { useRevalidate } from "@/hooks/useRevalidate";
 import { markPlanNoticeSeen } from "@/lib/api";
-import { PLAN_CHANGED_EVENT, TIER_RARITY, noticeTexts, type PlanNotice } from "@/lib/planNotice";
+import { PLAN_CHANGED_EVENT, TIER_RARITY, noticeTexts, type PlanNotice } from "@/lib/account/plan-notice";
 import { areaOf } from "@/lib/routes";
 import { sfx } from "@/lib/sound/chip";
-import { useCeremonyQueue } from "./ceremonyQueue";
+import { useCeremonyQueue } from "./ceremony-queue";
 
 /** Notices already opened in this tab: a HUD answer that was in flight when one was marked seen can't reopen it. */
 const opened = new Set<number>();

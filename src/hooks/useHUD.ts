@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import { fetchHUD } from "@/lib/api";
-import type { PlanNotice } from "@/lib/planNotice";
+import type { PlanNotice } from "@/lib/account/plan-notice";
 
 interface HUDState {
   userId: string;

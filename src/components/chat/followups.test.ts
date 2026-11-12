@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { parseFollowUps } from "@/components/ChatView";
+import { parseFollowUps } from "@/components/chat/ChatView";
 
 describe("the tutor's next questions", () => {
   it("become chips whatever list style or rule the model used", () => {

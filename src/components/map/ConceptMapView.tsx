@@ -2,7 +2,7 @@
 
 import { usePlanChanged } from "@/hooks/usePlanChanged";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Brain, Layers, List, Network, RefreshCw, Sparkles, Swords, X } from "@/components/icons";
+import { Brain, Layers, List, Network, RefreshCw, Sparkles, Swords, X } from "@/components/ui/icons";
 import StudyToolbar from "@/components/study/StudyToolbar";
 import UpgradeCard from "@/components/study/UpgradeCard";
 import { Badge, Button, ButtonLink, EmptyState, Skeleton, toast, type BadgeTone } from "@/components/ui";
@@ -10,7 +10,7 @@ import { ApiError } from "@/lib/api";
 import { ROUTES } from "@/lib/routes";
 import {
   buildConceptMap, fetchConceptMap, heatLabel, HEATS, neighbours, type ConceptMap, type Heat, type MapConcept,
-} from "@/lib/study/conceptMap";
+} from "@/lib/study/concept-map";
 import MindMap from "./MindMap";
 import "./map.css";
 

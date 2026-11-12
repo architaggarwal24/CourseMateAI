@@ -1,5 +1,5 @@
 // The test provider's "payment" (PAYMENTS_PROVIDER=stub only).
-import { stubComplete } from "@/server/billing";
+import { stubComplete } from "@/server/account/billing";
 import { requireUser } from "@/server/context";
 import { rateLimit, readJson } from "@/server/http";
 import { api } from "@/server/route";

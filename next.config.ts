@@ -14,15 +14,10 @@ const NOINDEX_PATHS = ["/today", "/study", "/quests", "/arena", "/bestiary", "/c
 // The API: the browser only ever calls this site (/api/*), answered by the Worker's routes under src/app/api/
 // (an unknown path is a JSON 404). One site, so no CORS and a first-party cookie.
 
-// Dev-only pages are files named page.dev.tsx (e.g. src/app/dev/kit/page.dev.tsx). They are routes only while
-// `next dev` runs: a production build does not count "dev.tsx" as a page extension, so they are not built or served.
-const PAGE_EXTENSIONS = ["tsx", "ts", "jsx", "js", ...(process.env.NODE_ENV === "production" ? [] : ["dev.tsx"])];
-
 const nextConfig: NextConfig = {
   // This folder is the project root, even when a parent folder has its own package-lock.json (otherwise Turbopack
   // guesses the parent and warns about "multiple lockfiles").
   turbopack: { root: typeof __dirname !== "undefined" ? __dirname : process.cwd() },
-  pageExtensions: PAGE_EXTENSIONS,
   // A self-contained server (.next/standalone) so the Docker image ships no node_modules.
   output: "standalone",
   // The old top-level pages now live under /study, /hero and /account (src/lib/routes.ts). The query string is kept.

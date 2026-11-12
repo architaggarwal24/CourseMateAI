@@ -1,5 +1,5 @@
 // Cancel at the end of the paid period.
-import { cancel } from "@/server/billing";
+import { cancel } from "@/server/account/billing";
 import { requireUser } from "@/server/context";
 import { rateLimit } from "@/server/http";
 import { api } from "@/server/route";

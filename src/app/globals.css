@@ -298,7 +298,7 @@ html.text-lg-mode .pixel-font {
 }
 
 /* Reduce animations: the same as the OS "reduce motion" setting, for this app only. (Motion-library animations
- * follow it too: components/Providers.tsx switches MotionConfig to reducedMotion="always".) */
+ * follow it too: components/shell/Providers.tsx switches MotionConfig to reducedMotion="always".) */
 html.reduce-animations *,
 html.reduce-animations *::before,
 html.reduce-animations *::after {

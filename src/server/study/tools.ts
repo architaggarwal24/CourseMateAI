@@ -7,7 +7,7 @@
 import { and, count, eq, isNull, sql } from "drizzle-orm";
 import type { CurrentUser, RequestContext } from "../context";
 import { quizAnswers, quizBank, quizzes } from "../db/schema";
-import { notFound, studyDocs } from "../documents";
+import { notFound, studyDocs } from "./documents";
 import { HttpError } from "../http";
 import { generate, type Caller } from "../ai/run";
 import { callerFor } from "../chat";

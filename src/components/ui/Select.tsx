@@ -1,7 +1,7 @@
 "use client";
 
 import { forwardRef, type SelectHTMLAttributes } from "react";
-import { ChevronDown } from "@/components/icons";
+import { ChevronDown } from "@/components/ui/icons";
 import { cn } from "@/lib/utils";
 import { describedBy, FieldFrame, useFieldIds, type FieldProps } from "./field";
 

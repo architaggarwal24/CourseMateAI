@@ -1,4 +1,4 @@
-import { Lock, Sparkles } from "@/components/icons";
+import { Lock, Sparkles } from "@/components/ui/icons";
 import { Badge, ButtonLink } from "@/components/ui";
 import { ROUTES } from "@/lib/routes";
 

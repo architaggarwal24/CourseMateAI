@@ -1,7 +1,7 @@
 // "You've been upgraded": the window was shown, so it never shows again, on any device.
 import { requireUser } from "@/server/context";
 import { HttpError, readJson } from "@/server/http";
-import { markPlanNoticeSeen, pendingPlanNotice } from "@/server/planNotices";
+import { markPlanNoticeSeen, pendingPlanNotice } from "@/server/account/plan-notices";
 import { api } from "@/server/route";
 
 export const dynamic = "force-dynamic";

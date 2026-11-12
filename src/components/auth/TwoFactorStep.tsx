@@ -1,9 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { ShieldCheck } from "@/components/icons";
+import { ShieldCheck } from "@/components/ui/icons";
 import { Button, Checkbox } from "@/components/ui";
-import { sendTwoFactorCode, verifyTwoFactor, type TwoFactorMethod } from "@/lib/auth/authApi";
+import { sendTwoFactorCode, verifyTwoFactor, type TwoFactorMethod } from "@/lib/auth/auth-api";
 import CodeField from "./CodeField";
 
 /** The second step of signing in: a code from the authenticator app, an emailed code, or a backup code. */

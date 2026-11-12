@@ -3,7 +3,7 @@
 import { Suspense } from "react";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
-import { BookOpen, Crown, Home, Repeat, Swords, UserCircle, type IconType } from "@/components/icons";
+import { BookOpen, Crown, Home, Repeat, Swords, UserCircle, type IconType } from "@/components/ui/icons";
 import { areaOf, ROUTES } from "@/lib/routes";
 import { dueBadge, useReview } from "@/hooks/useReview";
 import ReviewBadge from "./ReviewBadge";

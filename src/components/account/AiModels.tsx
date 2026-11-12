@@ -1,9 +1,9 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Cpu } from "@/components/icons";
+import { Cpu } from "@/components/ui/icons";
 import { Badge, Button, Card, Input, Skeleton, toast } from "@/components/ui";
-import { adminApi, type AiModels, type SlotName } from "@/lib/admin/adminApi";
+import { adminApi, type AiModels, type SlotName } from "@/lib/admin/admin-api";
 import TestConnection from "./TestConnection";
 
 const SLOTS: { id: SlotName; label: string; hint: string }[] = [

@@ -1,4 +1,4 @@
-import { me } from "@/server/account";
+import { me } from "@/server/auth/account";
 import { requireUser } from "@/server/context";
 import { api } from "@/server/route";
 

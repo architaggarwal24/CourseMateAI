@@ -9,14 +9,14 @@ const src = (p: string) => fileURLToPath(new URL(`../${p}`, import.meta.url));
 // Study is Ink: flat panels from the kit and the .glass utilities (historic name), paint (raw colours) lives in
 // styles/tokens.css only, and the pixel font never appears.
 const STUDY_FILES = [
-  "components/ChatView.tsx", "components/QuizView.tsx", "components/FlashcardView.tsx", "components/NotesView.tsx",
-  "components/HistoryView.tsx", "components/HistoryPanel.tsx", "components/SessionList.tsx", "components/FileUploader.tsx", "components/shell/DocumentHeader.tsx",
-  "components/UserMenu.tsx", "components/shell/AppShell.tsx", "components/shell/NavSidebar.tsx",
+  "components/chat/ChatView.tsx", "components/quiz/QuizView.tsx", "components/flashcards/FlashcardView.tsx", "components/notes/NotesView.tsx",
+  "components/history/HistoryView.tsx", "components/history/HistoryPanel.tsx", "components/pdf/FileUploader.tsx", "components/shell/DocumentHeader.tsx",
+  "components/shell/UserMenu.tsx", "components/shell/AppShell.tsx", "components/shell/NavSidebar.tsx",
   "components/shell/BottomNav.tsx", "components/shell/StudyWorkspace.tsx", "components/shell/AccountNav.tsx",
-  "components/Providers.tsx",
+  "components/shell/Providers.tsx",
   "components/chat/ChatMarkdown.tsx", "components/chat/SourceChips.tsx", "components/chat/NotFoundCard.tsx",
   "components/quiz/QuizQuestionView.tsx", "components/quiz/QuizReview.tsx",
-  "components/study/StudyToolbar.tsx", "components/history/sessionMeta.tsx",
+  "components/study/StudyToolbar.tsx", "components/history/session-meta.tsx",
   "app/login/page.tsx", "app/(app)/account/settings/page.tsx", "app/(app)/account/page.tsx",
   "app/(app)/account/history/page.tsx", "app/layout.tsx", "app/globals.css",
   "components/review/ReviewView.tsx", "components/review/review.css", "components/study/UpgradeCard.tsx",
@@ -32,15 +32,15 @@ const PLAY_ROUTES = [
   "app/(app)/(play)/layout.tsx",
 ];
 const HERO_COMPONENTS = [
-  "components/hero/PlayArea.tsx", "components/hero/MasteryTab.tsx", "components/hero/ForgeTab.tsx", "components/hero/HeroHeader.tsx", "components/hero/ItemCard.tsx",
-  "components/hero/QuestsTab.tsx", "components/hero/ShopTab.tsx", "components/hero/InventoryTab.tsx",
-  "components/hero/ChampionTab.tsx", "components/champion/ChampionAvatar.tsx", "components/champion/ItemArt.tsx",
+  "components/play/PlayArea.tsx", "components/play/MasteryTab.tsx", "components/play/ForgeTab.tsx", "components/play/HeroHeader.tsx", "components/play/ItemCard.tsx",
+  "components/play/QuestsTab.tsx", "components/play/ShopTab.tsx", "components/play/InventoryTab.tsx",
+  "components/play/ChampionTab.tsx", "components/champion/ChampionAvatar.tsx", "components/champion/ItemArt.tsx",
 ];
 const PLAY_FILES = [
   ...HERO_COMPONENTS,
   "components/arena/ArenaArea.tsx", "components/arena/BattleScreen.tsx", "components/arena/SummonPanel.tsx",
   "components/arena/ResultPanel.tsx", "components/arena/pixel/PixelArena.tsx", "components/arena/TimerRing.tsx", "components/arena/pixel/Roster.tsx",
-  "components/arena/Hearts.tsx", "components/AchievementsView.tsx", "components/hero/QuestScroll.tsx",
+  "components/arena/Hearts.tsx", "components/play/AchievementsView.tsx", "components/play/QuestScroll.tsx",
 ];
 
 describe("Study screens", () => {
@@ -55,8 +55,8 @@ describe("Study screens", () => {
 // The Study tools: no Play styling (gold / purple accents, heavy borders) and no hand-mixed colours: glass and glow come
 // from the kit and the .glass utilities, not from ad-hoc rgba() or Tailwind blur/shadow presets.
 const KIT_STUDY_FILES = [
-  "components/ChatView.tsx", "components/QuizView.tsx", "components/NotesView.tsx", "components/FlashcardView.tsx",
-  "components/HistoryView.tsx", "components/HistoryPanel.tsx", "components/FileUploader.tsx",
+  "components/chat/ChatView.tsx", "components/quiz/QuizView.tsx", "components/notes/NotesView.tsx", "components/flashcards/FlashcardView.tsx",
+  "components/history/HistoryView.tsx", "components/history/HistoryPanel.tsx", "components/pdf/FileUploader.tsx",
   "components/chat/ChatMarkdown.tsx", "components/chat/SourceChips.tsx", "components/chat/NotFoundCard.tsx",
   "components/quiz/QuizQuestionView.tsx", "components/quiz/QuizReview.tsx", "components/study/StudyToolbar.tsx",
   "components/review/ReviewView.tsx", "components/study/UpgradeCard.tsx", "components/exam/ExamView.tsx",
@@ -89,7 +89,7 @@ describe("Play screens", () => {
   });
 
   it("the Hero styles use tokens only: no raw colours, and gradients only through the --gradient-* tokens", () => {
-    for (const file of ["components/hero/hero.css", "components/arena/arena.css", "components/arena/arena-v2.css"]) {
+    for (const file of ["components/play/hero.css", "components/arena/arena.css", "components/arena/arena-v2.css"]) {
       const css = readFileSync(src(file), "utf8").replace(/\/\*[\s\S]*?\*\//g, "");
       expect(css, file).not.toMatch(/(?:linear|radial|conic)-gradient\(/);
       expect(css.match(/#[0-9a-fA-F]{3,8}\b/g), file).toBeNull();
@@ -97,16 +97,16 @@ describe("Play screens", () => {
     }
   });
 
-  it.each([...HERO_COMPONENTS, "components/AchievementsView.tsx"])("%s colours rarity through the rarity tokens, not Tailwind palette colours", (file) => {
+  it.each([...HERO_COMPONENTS, "components/play/AchievementsView.tsx"])("%s colours rarity through the rarity tokens, not Tailwind palette colours", (file) => {
     const text = readFileSync(src(file), "utf8");
     expect(text).not.toMatch(/\b(?:bg|text|border|from|to|shadow)-(?:slate|blue|cyan|purple|violet|yellow|orange|green|red)-\d{3}/);
     expect(text).not.toMatch(/gradient/);
   });
 
   it("shop and inventory draw items with the same card, and the card takes its rarity from lib/rarity", () => {
-    expect(readFileSync(src("components/hero/ShopTab.tsx"), "utf8")).toContain("<ItemCard");
-    expect(readFileSync(src("components/hero/InventoryTab.tsx"), "utf8")).toContain("<ItemCard");
-    const card = readFileSync(src("components/hero/ItemCard.tsx"), "utf8");
+    expect(readFileSync(src("components/play/ShopTab.tsx"), "utf8")).toContain("<ItemCard");
+    expect(readFileSync(src("components/play/InventoryTab.tsx"), "utf8")).toContain("<ItemCard");
+    const card = readFileSync(src("components/play/ItemCard.tsx"), "utf8");
     expect(card).toContain("rarityOf(item)");
     expect(card).toContain("rarityClass(rarity)");
   });

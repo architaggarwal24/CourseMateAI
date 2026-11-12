@@ -1,5 +1,5 @@
 import { requireUser } from "@/server/context";
-import { courseProgress } from "@/server/courses";
+import { courseProgress } from "@/server/study/courses";
 import { api } from "@/server/route";
 
 export const dynamic = "force-dynamic";

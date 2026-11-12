@@ -7,7 +7,7 @@
 // localhost canonical can never ship. Only `next dev` and the tests fall back to localhost.
 import type { Metadata } from "next";
 import { parseSiteUrl } from "./site-url";
-import { FEATURE_PAGES, FEATURES_HUB, featurePath } from "./features";
+import { FEATURE_PAGES, FEATURES_HUB, featurePath } from "./landing/features";
 
 export { parseSiteUrl };
 

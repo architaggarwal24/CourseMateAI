@@ -1,5 +1,5 @@
 // Start a subscription for a plan and period (the browser then opens Razorpay Checkout).
-import { checkout } from "@/server/billing";
+import { checkout } from "@/server/account/billing";
 import { requireUser } from "@/server/context";
 import { rateLimit, readJson } from "@/server/http";
 import { idempotent } from "@/server/idempotency";

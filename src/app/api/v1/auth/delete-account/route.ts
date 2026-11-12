@@ -1,4 +1,4 @@
-import { deleteAccount } from "@/server/account";
+import { deleteAccount } from "@/server/auth/account";
 import { requireUser } from "@/server/context";
 import { rateLimit, readJson } from "@/server/http";
 import { api } from "@/server/route";

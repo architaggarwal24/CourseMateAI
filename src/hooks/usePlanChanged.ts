@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useRef } from "react";
-import { PLAN_CHANGED_EVENT } from "@/lib/planNotice";
+import { PLAN_CHANGED_EVENT } from "@/lib/account/plan-notice";
 
 /**
  * Run `fn` when the user's plan just went up (the "you've been upgraded" window opened). A screen showing a locked

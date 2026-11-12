@@ -1,17 +1,17 @@
 "use client";
 
 // Account -> Admin (Stage 4.1): find any account and give it any plan, for some days or for good; ban and unban;
-// make admins (the owner only); invite codes that grant a plan. Server rules: src/server/admin.ts.
+// make admins (the owner only); invite codes that grant a plan. Server rules: src/server/account/admin.ts.
 import { useCallback, useEffect, useState } from "react";
-import { Ban, Crown, Search, ShieldCheck, Sparkles, Ticket, UserCog } from "@/components/icons";
+import { Ban, Crown, Search, ShieldCheck, Sparkles, Ticket, UserCog } from "@/components/ui/icons";
 import { Badge, Button, Card, EmptyState, Input, Modal, Select, Skeleton, Textarea, toast } from "@/components/ui";
 import { UpgradeWindow } from "@/components/fx/UpgradeCeremony";
 import { fetchPlans } from "@/lib/account/plans";
-import { previewNotice, type PlanNotice } from "@/lib/planNotice";
+import { previewNotice, type PlanNotice } from "@/lib/account/plan-notice";
 import { useAuth } from "@/contexts/AuthContext";
 import { useHUDStore } from "@/hooks/useHUD";
 import AiModelsCard from "./AiModels";
-import { adminApi, shortDate, TIER_OPTIONS, usd, type AdminUser, type AiReport, type Invite, type Tier } from "@/lib/admin/adminApi";
+import { adminApi, shortDate, TIER_OPTIONS, usd, type AdminUser, type AiReport, type Invite, type Tier } from "@/lib/admin/admin-api";
 
 const PAGE = 25;
 

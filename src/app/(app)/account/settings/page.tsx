@@ -7,11 +7,11 @@ import {
   User, Lock, Trash2, Loader2, Save,
   Eye, EyeOff, CheckCircle2, XCircle,
   Type, Zap, Database, Download, AlertTriangle,
-} from "@/components/icons";
+} from "@/components/ui/icons";
 import { Button, Card, Checkbox, Input } from "@/components/ui";
 import { toast } from "@/components/ui/Toast";
 import { parseApiError, rawApi } from "@/lib/api";
-import { loadMetadata, deleteSession } from "@/lib/sessions";
+import { loadMetadata, deleteSession } from "@/lib/study/sessions";
 import InstallApp from "@/components/pwa/InstallApp";
 import ThemeSwitch from "@/components/account/ThemeSwitch";
 import SectionIndex from "@/components/account/SectionIndex";

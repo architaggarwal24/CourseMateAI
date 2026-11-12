@@ -1,4 +1,4 @@
-import { FileText } from "@/components/icons";
+import { FileText } from "@/components/ui/icons";
 
 /** Where an answer came from: one chip per source, as the server names it ("lecture.pdf · p.4"). */
 export default function SourceChips({ sources }: { sources: string[] | undefined }) {

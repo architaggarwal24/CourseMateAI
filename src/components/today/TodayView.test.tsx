@@ -11,7 +11,7 @@ import { useReview } from "@/hooks/useReview";
 import { useHUDStore } from "@/hooks/useHUD";
 import { useSessionStore } from "@/hooks/useSessions";
 import { useCourses } from "@/hooks/useCourses";
-import { saveMetadata } from "@/lib/sessions";
+import { saveMetadata } from "@/lib/study/sessions";
 
 const doc = (id: string, filename: string, last: string) => ({ id, filename, status: "ready", chunks: 10, kind: "document", last_used_at: last }) as never;
 

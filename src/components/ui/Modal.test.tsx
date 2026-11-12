@@ -3,7 +3,7 @@ import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/re
 import { useRef, useState } from "react";
 
 
-import ThemeScope from "@/components/ThemeScope";
+import ThemeScope from "@/components/ui/ThemeScope";
 import Button from "./Button";
 import Modal, { sheetShouldClose } from "./Modal";
 

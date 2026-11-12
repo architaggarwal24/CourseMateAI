@@ -1,8 +1,8 @@
-import { inviteView } from "@/server/admin";
+import { inviteView } from "@/server/account/admin";
 import { requireAdmin } from "@/server/context";
 import { rateLimit, readJson } from "@/server/http";
-import { createInvite, listInvites } from "@/server/invites";
-import { isTier } from "@/server/plans";
+import { createInvite, listInvites } from "@/server/account/invites";
+import { isTier } from "@/server/account/plans";
 import { HttpError } from "@/server/http";
 import { idempotent } from "@/server/idempotency";
 import { api } from "@/server/route";

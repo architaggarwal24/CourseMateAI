@@ -3,7 +3,7 @@
 import { useEffect, useId, useLayoutEffect, useRef, useState, type PointerEvent as ReactPointerEvent, type ReactNode, type RefObject } from "react";
 import { createPortal } from "react-dom";
 import { animate, motion, useDragControls, useMotionValue, type PanInfo } from "motion/react";
-import ThemeScope, { type Theme } from "@/components/ThemeScope";
+import ThemeScope, { type Theme } from "@/components/ui/ThemeScope";
 import { reducedMotion, SPRING } from "@/components/fx/motion";
 import { useMediaQuery } from "@/hooks/useMediaQuery";
 import { cn } from "@/lib/utils";

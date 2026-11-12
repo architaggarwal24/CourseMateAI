@@ -1,0 +1,465 @@
+"use client";
+
+import { announceAchievements } from "@/lib/fx/celebrate";
+import { useState, useRef, useEffect, useLayoutEffect, useCallback } from "react";
+import { ArrowDown, ArrowUp, Check, Copy, FileText, HelpCircle, History, Lightbulb, ListChecks, MessageSquare, Plus, Sparkles, Trash2 } from "@/components/ui/icons";
+import { motion } from "motion/react";
+import { TextReveal } from "@/components/fx";
+import HistoryPanel from "../history/HistoryPanel";
+import ChatMarkdown from "./ChatMarkdown";
+import NotFoundCard from "./NotFoundCard";
+import SourceChips from "./SourceChips";
+import CitationList from "./CitationList";
+import { citedFirst, type Citation } from "@/lib/study/citations";
+import dynamic from "next/dynamic";
+import { Button, ErrorState, Textarea } from "@/components/ui";
+import { askChat, isAbortError, type TutorMode } from "@/lib/chat/chat-stream";
+import { useDocument } from "@/hooks/useSessions";
+import { useHUDStore } from "@/hooks/useHUD";
+import { useStickToBottom } from "@/hooks/useStickToBottom";
+import { saveSession, loadSession } from "@/lib/study/sessions";
+import { forgetSession, rememberSession, useDraft } from "@/lib/study/memory";
+import { chatWatched, liveChat, setLiveChat, useLiveChat } from "@/lib/study/background";
+import { toast } from "@/components/ui/Toast";
+
+interface Message {
+  role: "user" | "assistant";
+  content: string;
+  /** Where the answer came from ("file.pdf · p.4"). */
+  sources?: string[];
+  /** The passages it can cite as [n] (document + page + text): open the PDF beside the chat. */
+  citations?: Citation[];
+  /** The document doesn't cover the question this answers: shown as the calm "couldn't find that" state. */
+  notFound?: { question: string };
+  /** The tutor answered from outside the course material (it said so): a small label over the answer. */
+  outside?: boolean;
+}
+
+/**
+ * The tutor ends with a rule ("---", also "***" / "___") and 2-3 short next questions as a list ("- ", "* ", "• ",
+ * "1."), sometimes under a small heading. Those become chips under the answer, not part of it. A rule followed by
+ * anything else stays in the answer.
+ */
+export function parseFollowUps(content: string): { main: string; followUps: string[] } {
+  const text = content.replace(/\r\n?/g, "\n");
+  const rules = [...text.matchAll(/^[ \t]*(?:-{3,}|\*{3,}|_{3,})[ \t]*$/gm)];
+  const rule = rules[rules.length - 1];
+  if (!rule || rule.index === undefined) return { main: content, followUps: [] };
+  const tail = text.slice(rule.index + rule[0].length).split("\n").map((l) => l.trim()).filter(Boolean);
+  const bullet = /^(?:[-*•]|\d+[.)])\s+(.+)$/;
+  const heading = /^(?:#{1,4}\s*)?\**[^*]{0,40}(?:question|ask|next|explore|follow)[^*]{0,40}\**:?$/i;
+  const items = tail.filter((l) => !heading.test(l) || bullet.test(l));
+  if (!items.length || items.length > 5 || !items.every((l) => bullet.test(l))) return { main: content, followUps: [] };
+  const followUps = items.map((l) => l.match(bullet)![1].replace(/^\[|\]$/g, "").replace(/^\*\*(.*)\*\*$/, "$1").trim()).filter((q) => q.length > 5);
+  return { main: text.slice(0, rule.index).trim(), followUps };
+}
+
+/** How the tutor teaches (round 7). The student switches any time; the next answer follows it. */
+const MODES: { id: TutorMode; label: string; hint: string; Icon: typeof Lightbulb; placeholder: string; intro: string; prompts: string[] }[] = [
+  { id: "explain", label: "Explain", hint: "Clear explanations with examples", Icon: Lightbulb,
+    placeholder: "Ask your tutor anything about this course…", intro: "Ask anything. Your tutor explains it from your material and shows the page.",
+    prompts: ["Summarize the key ideas", "What's most likely to come up in the exam?", "Explain the hardest concept here", "Make me a study plan for this"] },
+  { id: "socratic", label: "Guide me", hint: "Leads you to the answer with questions and hints", Icon: HelpCircle,
+    placeholder: "What do you want to work out?", intro: "Your tutor won't just hand you answers: it asks questions and gives hints until it clicks.",
+    prompts: ["Help me understand the main idea", "Walk me through a tricky concept", "Check if I really understand this topic", "I'm stuck, help me think it through"] },
+  { id: "quiz", label: "Quiz me", hint: "One question at a time, then feedback", Icon: ListChecks,
+    placeholder: "Type your answer, or say \"quiz me\"…", intro: "Your tutor asks one question at a time from your material and tells you how you did.",
+    prompts: ["Quiz me", "Quiz me on the key definitions", "Ask me exam-style questions", "Give me a hard one"] },
+  { id: "simplify", label: "Simplify", hint: "Plain words and everyday analogies", Icon: Sparkles,
+    placeholder: "What should be explained more simply?", intro: "Plain words, short sentences and an everyday analogy, then the one-line exam version.",
+    prompts: ["Explain the main topic like I'm 12", "What's the big picture here?", "Give me an everyday analogy for this", "Which words do I need to know?"] },
+];
+const MODE_KEY = "cmai_tutor_mode";
+function savedMode(): TutorMode {
+  try { const m = localStorage.getItem(MODE_KEY); return MODES.some((x) => x.id === m) ? (m as TutorMode) : "explain"; } catch { return "explain"; }
+}
+
+const MAX_INPUT_PX = 160;
+
+/** `documentId` is the workspace's active document (what the questions are about); `chatId` is just this saved chat. */
+// pdf.js is heavy: the viewer (and pdf.js with it) loads only when a citation is first opened
+const PdfViewer = dynamic(() => import("../pdf/PdfViewer"), { ssr: false });
+
+type LiveChatState = { messages: Message[]; followUps: string[]; failure: { error: unknown; question: string } | null; loading: boolean };
+
+export default function ChatView({ documentId, restoreSessionId }: { documentId?: string; restoreSessionId?: string }) {
+  const [chatId, setChatId] = useState(() => restoreSessionId || crypto.randomUUID());
+  const sessionId = documentId ?? chatId;
+  const [messages, setMessages] = useState<Message[]>(() => {
+    const live = restoreSessionId ? liveChat<Message>(restoreSessionId) : undefined;   // an answer still being written
+    if (live) return live.messages;
+    if (restoreSessionId) {
+      try {
+        const saved = loadSession(restoreSessionId);
+        const msgs = Array.isArray(saved) ? saved : [];
+        return msgs.filter((m: any) => m.role === "user" || m.role === "assistant") as Message[];
+      } catch { return []; }
+    }
+    return [];
+  });
+  const { document: pdf } = useDocument(documentId);
+  const uploadedFile = pdf?.status === "ready" ? pdf.filename : null;   // what the server says is usable
+  const [input, setInput] = useDraft("chat", documentId);          // typed but not sent: kept (lib/study/memory.ts)
+  const [loading, setLoading] = useState(() => !!(restoreSessionId && liveChat(restoreSessionId)?.loading));
+  const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
+  const [followUps, setFollowUps] = useState<string[]>(() => (restoreSessionId && liveChat(restoreSessionId)?.followUps) || []);
+  const [mode, setModeState] = useState<TutorMode>("explain");
+  useEffect(() => { setModeState(savedMode()); }, []);
+  const setMode = (m: TutorMode) => { setModeState(m); try { localStorage.setItem(MODE_KEY, m); } catch { /* private mode */ } };
+  const modeInfo = MODES.find((m) => m.id === mode)!;
+  const [showHistory, setShowHistory] = useState(false);
+  // the citation open in the PDF viewer beside the chat
+  const [openCitation, setOpenCitationState] = useState<Citation | null>(null);
+  const citeOpener = useRef<HTMLElement | null>(null);
+  const setOpenCitation = useCallback((c: Citation | null) => {
+    if (c) citeOpener.current = document.activeElement as HTMLElement | null;      // focus goes back there on close
+    setOpenCitationState(c);
+  }, []);
+  const closeCitation = useCallback(() => {
+    setOpenCitationState(null);
+    requestAnimationFrame(() => citeOpener.current?.focus?.({ preventScroll: true }));
+  }, []);
+  /** The last question failed: shown under the conversation (not part of it, never saved) with the button its code calls for. */
+  /** What a screen reader hears about the answer: one short line when it starts and when it is complete (not every token). */
+  const [announcement, setAnnouncement] = useState("");
+  const [failure, setFailure] = useState<{ error: unknown; question: string } | null>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
+  const requestRef = useRef<AbortController | null>(null);
+  const refreshIfStale = useHUDStore((s) => s.refreshIfStale);
+  const scroll = useStickToBottom<HTMLDivElement>();
+
+  // An answer keeps being written when you leave the screen (lib/study/background.ts): this view follows the
+  // conversation's live copy while it is open. (New chat / Clear stop it.)
+  useLiveChat<Message>(chatId, (c) => {
+    setMessages(c.messages); setFollowUps(c.followUps); setFailure(c.failure); setLoading(c.loading);
+  });
+
+  // Keep the newest text in view - only while the reader is at the bottom.
+  // an empty chat stays at the top (its heading and starter questions); once there is a conversation, follow it
+  useLayoutEffect(() => { if (messages.length) scroll.follow(); }, [messages, followUps, loading]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Auto-save whenever messages change
+  useEffect(() => {
+    if (messages.length > 0 && !loading) {
+      const withType = messages.map((m) => ({ ...m, type: "chat" }));
+      saveSession(chatId, withType as any);
+      rememberSession("chat", documentId, chatId);         // this conversation reopens here next time
+    }
+  }, [messages, chatId, loading, documentId]);
+
+  // The input grows with what is typed, up to a few lines, then scrolls.
+  useLayoutEffect(() => {
+    const el = inputRef.current;
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = `${Math.min(el.scrollHeight, MAX_INPUT_PX)}px`;
+  }, [input]);
+
+  /** Leave the conversation on screen (New chat, Clear, another from History). An answer still being written for it
+   * carries on in the background and is saved to History when done. */
+  const cancelRequest = useCallback(() => {
+    requestRef.current = null;
+    setLoading(false);
+  }, []);
+
+  const startNewSession = useCallback(() => {
+    cancelRequest();
+    setChatId(crypto.randomUUID());
+    setMessages([]);
+    setFollowUps([]);
+    setFailure(null);
+    setInput("");
+    forgetSession("chat", documentId);
+  }, [cancelRequest, setInput, documentId]);
+
+  const loadHistorySession = useCallback((id: string, _type: string) => {
+    cancelRequest();
+    const loaded = loadSession(id);
+    // loadSession may return an object (saved via saveSessionData) or an array — handle both
+    const raw = Array.isArray(loaded) ? loaded : [];
+    const msgs = raw.filter((m) => m.role === "user" || m.role === "assistant") as Message[];
+    setChatId(id);
+    rememberSession("chat", documentId, id);
+    setMessages(msgs);
+    setFollowUps([]);
+    setFailure(null);
+    setShowHistory(false);
+  }, [cancelRequest, documentId]);
+
+  /** `base` is the conversation the question is added to (a retry passes the one without the failed question). */
+  const sendMessage = useCallback(async (question: string, base: Message[] = messages) => {
+    if (!question.trim() || loading) return;
+    const id = chatId, scope = documentId;
+    setAnnouncement("The assistant is answering.");
+    scroll.jump();                                          // sending is asking to see the answer
+
+    const history = base.map((m) => ({ role: m.role, content: m.content }));
+    // The conversation lives outside this view while the answer is written, so leaving the screen doesn't stop it.
+    // The question is saved at once: coming back reopens this conversation (lib/study/memory.ts).
+    let live: LiveChatState = { messages: [...base, { role: "user", content: question }, { role: "assistant", content: "" }], followUps: [], failure: null, loading: true };
+    const put = (patch: Partial<LiveChatState>) => { live = { ...live, ...patch }; setLiveChat(id, live); };
+    put({});
+    saveSession(id, [...base, { role: "user", content: question }].map((m) => ({ ...m, type: "chat" })) as any);
+    rememberSession("chat", scope, id);
+    const patchAnswer = (patch: (m: Message) => Message) =>
+      put({ messages: live.messages.length ? [...live.messages.slice(0, -1), patch(live.messages[live.messages.length - 1])] : live.messages });
+
+    const controller = new AbortController();
+    requestRef.current = controller;
+    let answered = false;
+    try {
+      const answer = await askChat({
+        question, sessionId, history, signal: controller.signal, mode,
+        onToken: (text) => patchAnswer((m) => ({ ...m, content: m.content + text })),
+        onFallback: () => patchAnswer((m) => ({ ...m, content: "" })),     // the stream failed: the full answer follows
+      });
+      const { main, followUps: parsed } = parseFollowUps(answer.content || "No response received");
+      patchAnswer(() => answer.blocked
+        ? { role: "assistant", content: answer.content, notFound: { question } }
+        : { role: "assistant", content: main, sources: answer.sources, citations: answer.citations, ...(answer.coverage === "none" ? { outside: true } : {}) });
+      if (parsed.length > 0 && !answer.blocked) put({ followUps: parsed });
+      answered = true;
+      setAnnouncement(answer.blocked ? "The document doesn't cover that question." : "Answer complete.");
+      refreshIfStale(5_000);
+      if (answer.rewards?.ok) {
+        toast.success(`+${answer.rewards.xp_gained} XP | +${answer.rewards.coins_gained} Coins`, { icon: "🎉" });
+        announceAchievements(answer.rewards.new_achievements);
+      }
+    } catch (e) {
+      if (isAbortError(e) || controller.signal.aborted) { setLiveChat(id, undefined); return; }   // New chat / Clear: dropped
+      put({ messages: live.messages.slice(0, -1), failure: { error: e, question } });   // the half-written answer goes; the question stays
+      setAnnouncement("");                                        // the error below announces itself (role="alert")
+    } finally {
+      if (requestRef.current === controller) requestRef.current = null;
+      if (!controller.signal.aborted) {
+        if (answered) {
+          saveSession(id, live.messages.map((m) => ({ ...m, type: "chat" })) as any);
+          if (!chatWatched(id)) toast.success("Your tutor answered. Open Chat to read it.");
+        }
+        put({ loading: false });
+        setLiveChat(id, undefined);
+      }
+    }
+  }, [loading, messages, sessionId, refreshIfStale, scroll, mode, chatId, documentId]);
+
+  /** Ask the failed question again (the conversation without it, so it isn't in the history twice). */
+  const retryFailed = () => {
+    if (!failure) return;
+    const base = messages[messages.length - 1]?.role === "user" ? messages.slice(0, -1) : messages;
+    void sendMessage(failure.question, base);
+  };
+
+  const handleSend = () => {
+    const q = input.trim();
+    if (!q || loading) return;
+    setInput("");
+    void sendMessage(q);
+  };
+
+  const onKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    // Enter sends, Shift+Enter makes a new line. (Enter that confirms an IME composition is not a send.)
+    if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
+      e.preventDefault();
+      handleSend();
+    }
+  };
+
+  const copyToClipboard = async (text: string, index: number) => {
+    await navigator.clipboard.writeText(text);
+    setCopiedIndex(index);
+    setTimeout(() => setCopiedIndex(null), 2000);
+  };
+
+  const clearChat = () => {
+    startNewSession();                                    // the cleared chat stays in History; this one starts empty
+    toast.info("Chat cleared");
+  };
+
+  const last = messages[messages.length - 1];
+  const waitingForFirstToken = loading && last?.role === "assistant" && last.content === "";
+
+  return (
+    <div className="flex h-full overflow-hidden">
+      {/* History panel */}
+      {showHistory && (
+        <HistoryPanel
+          activeMode="chat"
+          onSelect={loadHistorySession}
+          onNew={() => { startNewSession(); setShowHistory(false); }}
+          onClose={() => setShowHistory(false)}
+        />
+      )}
+
+      <div className="ws-pane flex flex-col flex-1 min-w-0 overflow-hidden">
+        {/* Toolbar */}
+        <div className="ws-toolbar">
+          <div className="min-w-0">
+            <h2>Chat</h2>
+            <p>
+              {messages.length > 0
+                ? `${Math.floor(messages.length / 2)} exchanges · memory active`
+                : uploadedFile ? `Ask anything about ${uploadedFile}` : "Ask questions about your document"}
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button size="sm" icon pressed={showHistory} onClick={() => setShowHistory((v) => !v)} aria-label="Session history" title="Session history">
+              <History size={16} />
+            </Button>
+            <Button size="sm" icon onClick={startNewSession} aria-label="New chat" title="New chat">
+              <Plus size={16} />
+            </Button>
+            {messages.length > 0 && (
+              <Button size="sm" icon variant="danger" onClick={clearChat} aria-label="Clear chat" title="Clear chat">
+                <Trash2 size={16} />
+              </Button>
+            )}
+          </div>
+        </div>
+
+        {/* Messages */}
+        <div className="relative flex-1 min-h-0">
+          <div ref={scroll.ref} onScroll={scroll.onScroll} data-testid="chat-scroll"
+               className="h-full overflow-y-auto chat-scroll px-6 py-6">
+            <div className="mx-auto w-full max-w-[72ch] space-y-6" role="log" aria-live="polite" aria-busy={loading || undefined} aria-label="Conversation">
+              {messages.length === 0 && (
+                <div className="py-12 text-center">
+                  <span className="study-intro__icon mx-auto mb-6" aria-hidden="true"><MessageSquare size={26} /></span>
+                  <TextReveal as="h3" className="block text-3xl font-bold tracking-tight text-gradient mb-2" text={uploadedFile ? "Your tutor is ready" : "Meet your tutor"} />
+                  <p className="text-fg-muted mb-8">
+                    {uploadedFile ? `${modeInfo.intro} Studying ${uploadedFile}.` : "Add a PDF to this course, then ask anything: answers come from your own material."}
+                  </p>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-left" key={mode}>
+                    {modeInfo.prompts.map((p, i) => {
+                      const PromptIcon = [Lightbulb, ListChecks, FileText, MessageSquare][i % 4];
+                      return (
+                      <motion.div key={p} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
+                                  transition={{ delay: 0.25 + i * 0.06, duration: 0.5, ease: [0.16, 1, 0.3, 1] }}>
+                        <div className="rounded-[var(--radius-lg)]">
+                          <button onClick={() => void sendMessage(p)} className="study-prompt">
+                            <PromptIcon size={16} aria-hidden="true" />{p}
+                          </button>
+                        </div>
+                      </motion.div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {messages.map((msg, idx) => {
+                if (msg.role === "user") {
+                  return (
+                    <motion.article key={idx} aria-label="You" className="flex justify-end"
+                      initial={{ opacity: 0, y: 14, scale: 0.97 }} animate={{ opacity: 1, y: 0, scale: 1 }}
+                      transition={{ type: "spring", stiffness: 380, damping: 30 }} style={{ transformOrigin: "100% 100%" }}>
+                      <p className="chat-user max-w-[85%] whitespace-pre-wrap break-words">
+                        {msg.content}
+                      </p>
+                    </motion.article>
+                  );
+                }
+                const isStreaming = loading && idx === messages.length - 1;
+                if (waitingForFirstToken && idx === messages.length - 1) {
+                  return (
+                    <div key={idx} className="chat-ai" aria-busy="true">
+                      <span className="chat-ai__avatar" aria-hidden="true"><Sparkles size={15} /></span>
+                      <div role="status" aria-label="Waiting for the answer" className="chat-typing w-fit">
+                        <span className="loading-dot" /><span className="loading-dot" /><span className="loading-dot" />
+                      </div>
+                    </div>
+                  );
+                }
+                if (msg.notFound) {
+                  return <NotFoundCard key={idx} question={msg.notFound.question} onAsk={(q) => void sendMessage(q)} />;
+                }
+                const shown = parseFollowUps(msg.content).main;     // the "explore further" block is not part of the answer
+                return (
+                  <motion.article key={idx} aria-label="Assistant" aria-busy={isStreaming || undefined} className="chat-ai"
+                    initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1] }}>
+                    <span className="chat-ai__avatar" aria-hidden="true"><Sparkles size={15} /></span>
+                    <div className="chat-ai__body">
+                      {msg.outside && !isStreaming && <p className="chat-ai__outside">Not in your PDFs: a general explanation</p>}
+                      <ChatMarkdown citations={isStreaming ? 0 : msg.citations?.length ?? 0}
+                                    onCite={msg.citations?.length ? (n) => setOpenCitation(msg.citations!.find((c) => c.n === n) ?? null) : undefined}>
+                        {shown}
+                      </ChatMarkdown>
+                      {!isStreaming && (msg.citations?.length
+                        ? <CitationList citations={citedFirst(shown, msg.citations)} onOpen={setOpenCitation} />
+                        : <SourceChips sources={msg.sources} />)}
+                      {!isStreaming && (
+                        <div className="chat-ai__actions">
+                          <Button variant="ghost" size="sm" onClick={() => void copyToClipboard(msg.content, idx)}>
+                            {copiedIndex === idx ? <><Check size={13} aria-hidden="true" /> Copied</> : <><Copy size={13} aria-hidden="true" /> Copy</>}
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+                  </motion.article>
+                );
+              })}
+
+              {failure && <ErrorState error={failure.error} onRetry={retryFailed} />}
+
+              {!loading && followUps.length > 0 && (
+                <motion.div className="flex flex-col gap-2 pl-11" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>
+                  <p className="study-suggest-label !mb-1">{mode === "quiz" ? "Quick replies" : "Explore further"}</p>
+                  <div className="flex flex-wrap gap-2">
+                    {followUps.map((q, i) => (
+                      <Button key={i} size="sm" className="text-left" onClick={() => { setFollowUps([]); void sendMessage(q); }}>
+                        {q}
+                      </Button>
+                    ))}
+                  </div>
+                </motion.div>
+              )}
+            </div>
+          </div>
+
+          {scroll.away && (
+            <Button size="sm" onClick={scroll.jump} aria-label="Jump to latest"
+                    className="absolute bottom-5 left-1/2 -translate-x-1/2">
+              <ArrowDown size={14} aria-hidden="true" /> Latest
+            </Button>
+          )}
+        </div>
+
+        <p className="sr-only" role="status">{announcement}</p>
+
+        {/* Input: pinned below the scrolling list */}
+        <div className="ws-composer-bar">
+          {/* how the tutor teaches: one choice, applies from the next message */}
+          <div role="group" aria-label="How your tutor teaches" className="tutor-modes mx-auto w-full max-w-[72ch]">
+            {MODES.map((m) => (
+              <Button key={m.id} size="sm" variant="ghost" pressed={mode === m.id} title={m.hint} className="tutor-mode"
+                onClick={() => setMode(m.id)} aria-describedby={`tutor-mode-${m.id}`}>
+                <m.Icon size={14} aria-hidden="true" />{m.label}
+                <span id={`tutor-mode-${m.id}`} className="sr-only">{m.hint}</span>
+              </Button>
+            ))}
+          </div>
+          <form onSubmit={(e) => { e.preventDefault(); handleSend(); }} className="study-composer mx-auto w-full max-w-[72ch]">
+            <Textarea
+              ref={inputRef}
+              rows={1}
+              aria-label="Message"
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={onKeyDown}
+              placeholder={messages.length > 0 && mode !== "quiz" ? "Reply to your tutor…" : modeInfo.placeholder}
+              hint={undefined}
+              wrapperClassName="flex-1"
+              className="resize-none"
+              style={{ maxHeight: MAX_INPUT_PX }}
+            />
+            <Button type="submit" variant="primary" icon disabled={!input.trim() || loading} loading={loading} aria-label="Send">
+              {!loading && <ArrowUp size={18} strokeWidth={2.5} />}
+            </Button>
+          </form>
+          <p className="mx-auto mt-2 w-full max-w-[72ch] text-center text-xs text-fg-muted"><kbd className="kbd">Enter</kbd> to send · <kbd className="kbd">Shift</kbd>+<kbd className="kbd">Enter</kbd> new line</p>
+        </div>
+      </div>
+
+      {openCitation && <PdfViewer citation={openCitation} onClose={closeCitation} />}
+    </div>
+  );
+}

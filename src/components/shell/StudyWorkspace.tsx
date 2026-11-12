@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import { useRouter, useSearchParams } from "next/navigation";
-import { BookMarked, FileX } from "@/components/icons";
+import { BookMarked, FileX } from "@/components/ui/icons";
 import { Button, EmptyState, toast } from "@/components/ui";
 import { DOCUMENT_GONE_EVENT } from "@/lib/api/client";
 import { useDocumentUpload } from "@/hooks/useDocumentUpload";
@@ -21,10 +21,10 @@ import DocumentHeader from "./DocumentHeader";
 import SubNav from "./SubNav";
 import "@/components/study/study.css";
 
-const ChatView = dynamic(() => import("@/components/ChatView"), { ssr: false });
-const QuizView = dynamic(() => import("@/components/QuizView"), { ssr: false });
-const NotesView = dynamic(() => import("@/components/NotesView"), { ssr: false });
-const FlashcardView = dynamic(() => import("@/components/FlashcardView"), { ssr: false });
+const ChatView = dynamic(() => import("@/components/chat/ChatView"), { ssr: false });
+const QuizView = dynamic(() => import("@/components/quiz/QuizView"), { ssr: false });
+const NotesView = dynamic(() => import("@/components/notes/NotesView"), { ssr: false });
+const FlashcardView = dynamic(() => import("@/components/flashcards/FlashcardView"), { ssr: false });
 const ReviewView = dynamic(() => import("@/components/review/ReviewView"), { ssr: false });
 const ExamView = dynamic(() => import("@/components/exam/ExamView"), { ssr: false });
 const ConceptMapView = dynamic(() => import("@/components/map/ConceptMapView"), { ssr: false });

@@ -6,7 +6,7 @@ import { redirect } from "next/navigation";
 import Landing from "@/components/landing/Landing";
 import { hasSessionCookie } from "@/lib/auth/session-cookie";
 import { ROUTES } from "@/lib/routes";
-import { plansCatalog } from "@/server/plans";
+import { plansCatalog } from "@/server/account/plans";
 import { jsonLdScript, pageMetadata, siteJsonLd } from "@/lib/site";
 
 export const metadata: Metadata = pageMetadata("/", { absoluteTitle: true });

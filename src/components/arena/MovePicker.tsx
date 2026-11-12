@@ -2,7 +2,7 @@
 
 import { useEffect, useLayoutEffect, useRef } from "react";
 import { motion } from "motion/react";
-import { Feather, Hammer, Lock, ShieldHalf, Sword } from "@/components/icons";
+import { Feather, Hammer, Lock, ShieldHalf, Sword } from "@/components/ui/icons";
 import { MOVES, MOVE_INFO, type Battle, type Move } from "@/lib/arena/types";
 import { shortcutBlocked } from "@/lib/keys";
 import Intent from "./Intent";

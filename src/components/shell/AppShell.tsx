@@ -6,7 +6,7 @@ import { useReview } from "@/hooks/useReview";
 import { useRevalidate } from "@/hooks/useRevalidate";
 import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
-import ThemeScope from "@/components/ThemeScope";
+import ThemeScope from "@/components/ui/ThemeScope";
 import { areaOf, ROUTES } from "@/lib/routes";
 import NavSidebar from "./NavSidebar";
 import BottomNav from "./BottomNav";

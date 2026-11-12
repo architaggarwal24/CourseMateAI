@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Trash2 } from "@/components/icons";
+import { Trash2 } from "@/components/ui/icons";
 import { Button, Modal, toast } from "@/components/ui";
 import { useSessionStore } from "@/hooks/useSessions";
 import { useCourses } from "@/hooks/useCourses";

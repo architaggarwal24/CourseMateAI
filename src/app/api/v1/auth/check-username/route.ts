@@ -1,4 +1,4 @@
-import { checkUsername } from "@/server/account";
+import { checkUsername } from "@/server/auth/account";
 import { currentUser } from "@/server/context";
 import { rateLimit, clientIp } from "@/server/http";
 import { api } from "@/server/route";

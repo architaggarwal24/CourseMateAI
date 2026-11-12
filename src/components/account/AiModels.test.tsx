@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 
 const api = vi.hoisted(() => ({ aiModels: vi.fn(), setAiSlots: vi.fn(), setMyModel: vi.fn(), setOllamaUrl: vi.fn(), testModel: vi.fn() }));
-vi.mock("@/lib/admin/adminApi", async (orig) => ({ ...(await orig<typeof import("@/lib/admin/adminApi")>()), adminApi: api }));
+vi.mock("@/lib/admin/admin-api", async (orig) => ({ ...(await orig<typeof import("@/lib/admin/admin-api")>()), adminApi: api }));
 vi.mock("@/components/ui/Toast", () => ({ toast: { success: vi.fn(), error: vi.fn(), info: vi.fn(), apiError: vi.fn() } }));
 
 import AiModelsCard from "./AiModels";

@@ -3,7 +3,7 @@
 import { create } from "zustand";
 import { toast } from "@/components/ui/Toast";
 import { parseApiError, rawApi } from "@/lib/api";
-import type { Appearance } from "@/lib/appearance";
+import type { Appearance } from "@/lib/game/appearance";
 
 /**
  * Your hero (game/build.ts): the seventh fighter you build. The server owns everything here - level, look,

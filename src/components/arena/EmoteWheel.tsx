@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Lock } from "@/components/icons";
+import { Lock } from "@/components/ui/icons";
 import ItemArt from "@/components/champion/ItemArt";
 import PixelSprite from "./pixel/PixelSprite";
 import { fetchEmotes } from "@/lib/arena/api";

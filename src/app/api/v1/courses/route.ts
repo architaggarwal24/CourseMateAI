@@ -1,5 +1,5 @@
 import { requireUser } from "@/server/context";
-import { createCourse, listCourses } from "@/server/courses";
+import { createCourse, listCourses } from "@/server/study/courses";
 import { rateLimit, readJson } from "@/server/http";
 import { idempotent } from "@/server/idempotency";
 import { api } from "@/server/route";

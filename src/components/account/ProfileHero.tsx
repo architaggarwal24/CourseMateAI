@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
-import { Coins, Flame, Sparkles, Trophy } from "@/components/icons";
+import { Coins, Flame, Sparkles, Trophy } from "@/components/ui/icons";
 import ChampionAvatar from "@/components/champion/ChampionAvatar";
 import { AnimatedNumber } from "@/components/fx";
 import { useChampion } from "@/hooks/useChampion";

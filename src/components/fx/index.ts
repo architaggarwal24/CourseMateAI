@@ -2,5 +2,5 @@
 export { default as Magnetic } from "./Magnetic";
 export { default as AnimatedNumber } from "./AnimatedNumber";
 export { default as TextReveal } from "./TextReveal";
-export { mergeRefs } from "./mergeRefs";
+export { mergeRefs } from "./merge-refs";
 export { reducedMotion, sparkBurst, ripple, SPRING, EASE_OUT_EXPO } from "./motion";

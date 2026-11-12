@@ -1,7 +1,7 @@
 "use client";
 
 import { forwardRef, type ButtonHTMLAttributes, type PointerEvent } from "react";
-import { Loader2 } from "@/components/icons";
+import { Loader2 } from "@/components/ui/icons";
 import { cn } from "@/lib/utils";
 import { ripple, sparkBurst } from "@/components/fx/motion";
 

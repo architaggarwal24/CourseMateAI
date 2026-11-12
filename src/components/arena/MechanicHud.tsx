@@ -1,4 +1,4 @@
-import { Lock } from "@/components/icons";
+import { Lock } from "@/components/ui/icons";
 import type { MechanicHud as Mech } from "@/lib/arena/types";
 
 /**

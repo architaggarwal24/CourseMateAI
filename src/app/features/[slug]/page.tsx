@@ -1,11 +1,11 @@
-// /features/<slug>: one real capability per page (src/lib/features.ts), public and indexed. Only the slugs in that
+// /features/<slug>: one real capability per page (src/lib/landing/features.ts), public and indexed. Only the slugs in that
 // list exist (dynamicParams = false): anything else is a 404.
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ButtonLink } from "@/components/ui";
 import FeatureArt from "@/components/landing/FeatureArt";
 import { SITE_LINKS, SiteFooter, SiteHeader } from "@/components/landing/SiteChrome";
-import { FEATURE_PAGES, FEATURES_HUB, featureBySlug, featurePath } from "@/lib/features";
+import { FEATURE_PAGES, FEATURES_HUB, featureBySlug, featurePath } from "@/lib/landing/features";
 import { absoluteUrl, jsonLdScript, pageMetadata } from "@/lib/site";
 import { ROUTES } from "@/lib/routes";
 import "@/components/landing/landing.css";

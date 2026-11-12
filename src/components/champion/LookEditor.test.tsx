@@ -2,9 +2,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { useChampion } from "@/hooks/useChampion";
 import { useMyHero } from "@/hooks/useMyHero";
-import { DEFAULT_HERO_LOOK, STARTER_LOOKS, cleanAppearance } from "@/lib/appearance";
+import { DEFAULT_HERO_LOOK, STARTER_LOOKS, cleanAppearance } from "@/lib/game/appearance";
 import LookEditor, { randomLook } from "./LookEditor";
-import { heroView } from "./heroFixture";
+import { heroView } from "./hero-fixture";
 
 beforeEach(() => { vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(null); });
 afterEach(() => { cleanup(); vi.restoreAllMocks(); useChampion.getState().reset(); useMyHero.getState().reset(); });

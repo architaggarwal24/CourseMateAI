@@ -1,4 +1,4 @@
-import { FileText } from "@/components/icons";
+import { FileText } from "@/components/ui/icons";
 import { Button } from "@/components/ui";
 import { citationText, type Citation } from "@/lib/study/citations";
 import "@/components/pdf/pdf.css";             // .cite-list / .cite-chip (also needed before the viewer has loaded)

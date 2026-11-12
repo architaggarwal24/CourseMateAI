@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { BookOpen, Check, Coins, Crown, Sparkles, Trophy } from "@/components/icons";
+import { BookOpen, Check, Coins, Crown, Sparkles, Trophy } from "@/components/ui/icons";
 import ItemArt from "@/components/champion/ItemArt";
 import ChampionCeremony from "@/components/champion/ChampionCeremony";
 import { ceremonyDue, useChampion } from "@/hooks/useChampion";

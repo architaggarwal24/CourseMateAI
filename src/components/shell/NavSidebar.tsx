@@ -3,8 +3,8 @@
 import { Suspense, useEffect, useSyncExternalStore, type ReactNode } from "react";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
-import { BookOpen, Crown, GraduationCap, Home, PanelLeft, Repeat, ScrollText, Search, Skull, Swords, type IconType } from "@/components/icons";
-import UserMenu from "@/components/UserMenu";
+import { BookOpen, Crown, GraduationCap, Home, PanelLeft, Repeat, ScrollText, Search, Skull, Swords, type IconType } from "@/components/ui/icons";
+import UserMenu from "@/components/shell/UserMenu";
 import Logo from "@/components/brand/Logo";
 import { dueBadge, useReview } from "@/hooks/useReview";
 import { useCourses } from "@/hooks/useCourses";

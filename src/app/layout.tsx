@@ -1,7 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { ToastHost } from "@/components/ui/Toast";
-import { Providers } from "@/components/Providers";
-import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { Providers } from "@/components/shell/Providers";
+import { ErrorBoundary } from "@/components/shell/ErrorBoundary";
 import { geistMono } from "@/fonts/geist";
 import { bricolage, onest } from "@/fonts/brand";
 import { THEME_SCRIPT } from "@/lib/theme";

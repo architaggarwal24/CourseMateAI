@@ -2,7 +2,7 @@
 import Link from "next/link";
 import Logo from "@/components/brand/Logo";
 import { ButtonLink } from "@/components/ui";
-import { FEATURE_PAGES, featurePath } from "@/lib/features";
+import { FEATURE_PAGES, featurePath } from "@/lib/landing/features";
 import { ROUTES } from "@/lib/routes";
 
 /** `links`: the header's section links (the landing page jumps within itself; other pages link back to it). */

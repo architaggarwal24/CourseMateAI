@@ -4,7 +4,7 @@ import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { ROUTES, isStudyTab } from "@/lib/routes";
 
-const HistoryView = dynamic(() => import("@/components/HistoryView"), { ssr: false });
+const HistoryView = dynamic(() => import("@/components/history/HistoryView"), { ssr: false });
 
 export default function HistoryPage() {
   const router = useRouter();

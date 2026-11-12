@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { useMyHero } from "@/hooks/useMyHero";
 import HeroBuilder, { canLower, canRaise, costOf } from "./HeroBuilder";
-import { heroView } from "./heroFixture";
+import { heroView } from "./hero-fixture";
 
 beforeEach(() => { vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(null); });
 afterEach(() => { cleanup(); vi.restoreAllMocks(); useMyHero.getState().reset(); });

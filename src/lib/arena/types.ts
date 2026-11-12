@@ -16,7 +16,7 @@ export const DIFFICULTY_BLURB: Record<Difficulty, string> = {
 export type BattleStatus = "active" | "won" | "lost";
 export type BattleMode = "quick" | "nemesis" | "expedition";
 
-// ── Arena v2: moves, Focus, spells, boss intents (docs/archive/arena-v2.md) ──────────────────────────────────────────────
+// ── Arena v2: moves, Focus, spells, boss intents ──────────────────────────────────────────────
 export const MOVES = ["strike", "jab", "heavy", "guard"] as const;
 export type Move = (typeof MOVES)[number];
 export const MOVE_INFO: Record<Move, { label: string; tier: string; blurb: string; key: string }> = {

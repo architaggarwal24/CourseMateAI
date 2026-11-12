@@ -2,12 +2,12 @@
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
-import { BookMarked, FileText, FileUp, Pencil, Trash2, Upload } from "@/components/icons";
+import { BookMarked, FileText, FileUp, Pencil, Trash2, Upload } from "@/components/ui/icons";
 import { Badge, Button, toast, type BadgeTone } from "@/components/ui";
 import type { DocumentUpload } from "@/hooks/useDocumentUpload";
 import type { DocumentInfo, DocumentStatus } from "@/lib/api";
 import type { Course } from "@/lib/study/courses";
-import { describeDocument, isInFlight, STAGES, stageIndex, stageLabel } from "@/lib/documents";
+import { describeDocument, isInFlight, STAGES, stageIndex, stageLabel } from "@/lib/study/documents";
 
 /** What the badge says (three words at most) and how it looks. "expired" is the server no longer having the document. */
 export type DocumentBadge = DocumentStatus | "expired";

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, useLayoutEffect } from "react";
-import { ArrowLeft, ArrowRight, Clock, Flag, Send } from "@/components/icons";
+import { ArrowLeft, ArrowRight, Clock, Flag, Send } from "@/components/ui/icons";
 import { Button, Modal, toast } from "@/components/ui";
 import { useCountdown } from "@/hooks/useCountdown";
 import { ApiError } from "@/lib/api";

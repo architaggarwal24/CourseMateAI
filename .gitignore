@@ -32,4 +32,3 @@ backups/
 .idea/
 *.swp
 *.swo
-perf/results/

@@ -1,5 +1,5 @@
 // Razorpay's events. No login and no same-site check (Razorpay calls it): the X-Razorpay-Signature is the proof.
-import { webhook } from "@/server/billing";
+import { webhook } from "@/server/account/billing";
 import { requestContext } from "@/server/context";
 import { clientIp, handle, rateLimit } from "@/server/http";
 

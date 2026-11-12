@@ -5,7 +5,7 @@ import { bodyOf, json, urlOf } from "@/test/sse";
 const toasts = vi.hoisted(() => ({ success: vi.fn(), error: vi.fn(), info: vi.fn(), apiError: vi.fn(), dismiss: vi.fn() }));
 const game = vi.hoisted(() => ({ reconcile: vi.fn() }));
 vi.mock("@/components/ui/Toast", async (orig) => ({ ...(await orig<typeof import("@/components/ui/Toast")>()), toast: toasts }));
-vi.mock("@/components/FileUploader", () => ({ default: ({ sessionId }: { sessionId: string }) => <div>uploader {sessionId}</div> }));
+vi.mock("@/components/pdf/FileUploader", () => ({ default: ({ sessionId }: { sessionId: string }) => <div>uploader {sessionId}</div> }));
 vi.mock("@/hooks/useHero", () => ({
   useHeroStore: Object.assign((sel: (s: unknown) => unknown) => sel({ shop: null }), { getState: () => ({ reconcile: game.reconcile }) }),
   previewEquipped: () => ({}),

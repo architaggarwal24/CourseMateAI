@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-vi.mock("@/lib/upload", () => ({
+vi.mock("@/lib/study/upload", () => ({
   readPdf: vi.fn(async () => ({ pageCount: 1, pages: [{ page: 1, text: "Cells." }], hash: "a".repeat(64), textChars: 6 })),
   sendUpload: vi.fn(() => new Promise(() => {})),          // the file and pages: followed here by polling instead
 }));

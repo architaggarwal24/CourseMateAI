@@ -7,9 +7,9 @@ const api = vi.hoisted(() => ({ seen: vi.fn(async (_id: number) => {}) }));
 vi.mock("@/lib/api", async (orig) => ({ ...(await orig<typeof import("@/lib/api")>()), markPlanNoticeSeen: api.seen }));
 
 import { useHUDStore } from "@/hooks/useHUD";
-import { PLAN_CHANGED_EVENT, noticeTexts, previewNotice, type PlanNotice } from "@/lib/planNotice";
+import { PLAN_CHANGED_EVENT, noticeTexts, previewNotice, type PlanNotice } from "@/lib/account/plan-notice";
 import UpgradeCeremony from "./UpgradeCeremony";
-import { useCeremonyQueue } from "./ceremonyQueue";
+import { useCeremonyQueue } from "./ceremony-queue";
 
 const SAGE: PlanNotice = {
   id: 7, kind: "upgrade", tier: "sage", tier_name: "Sage", from_tier: "apprentice", from_tier_name: "Apprentice", source: "admin",

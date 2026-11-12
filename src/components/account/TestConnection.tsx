@@ -1,9 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { CheckCircle2, Loader2, XCircle } from "@/components/icons";
+import { CheckCircle2, Loader2, XCircle } from "@/components/ui/icons";
 import { Button } from "@/components/ui";
-import { adminApi, type AiTestResult, type SlotName } from "@/lib/admin/adminApi";
+import { adminApi, type AiTestResult, type SlotName } from "@/lib/admin/admin-api";
 import "./test-conn.css";
 
 /**

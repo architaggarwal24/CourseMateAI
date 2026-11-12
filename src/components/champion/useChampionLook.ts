@@ -8,12 +8,12 @@ import { petById } from "@/lib/pixel/pets";
 import { dressed, forged, type Loadout } from "@/lib/pixel/skins";
 import { tierMap, useForge } from "@/hooks/useForge";
 import { HERO_FIGHTER_ID, heroFighter } from "@/lib/pixel/appearance";
-import type { Appearance } from "@/lib/appearance";
+import type { Appearance } from "@/lib/game/appearance";
 import { useMyHero } from "@/hooks/useMyHero";
 
 /** What draws your hero: its style and look (the look editor passes a draft look). */
 export interface HeroLook { style?: string | null; look?: Appearance | null }
-import { rarityOf } from "@/lib/rarity";
+import { rarityOf } from "@/lib/game/rarity";
 
 export interface ChampionLook {
   /** The champion wearing its skins (pass to PixelSprite). */

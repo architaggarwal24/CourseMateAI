@@ -63,11 +63,11 @@ describe("accessibility rules in the source", () => {
     expect(globals).toMatch(/html\.text-lg-mode\s*\{[^}]*font-size: 17px/);
     expect(globals).toMatch(/html\.reduce-animations \*[\s\S]*animation-duration: 0\.01ms !important/);
     expect(globals).toMatch(/@keyframes loading-bounce/);
-    expect(read("components/Providers.tsx")).toMatch(/reduce-animations/);
+    expect(read("components/shell/Providers.tsx")).toMatch(/reduce-animations/);
   });
 
   it("the Hero header's XP bar animates with the motion tokens, which reduced motion collapses", () => {
-    expect(read("components/hero/hero.css")).toMatch(/transition: width var\(--motion-slow\)/);
+    expect(read("components/play/hero.css")).toMatch(/transition: width var\(--motion-slow\)/);
     expect(read("styles/tokens.css")).toMatch(/prefers-reduced-motion: reduce[\s\S]*--motion-slow: 0\.01ms/);
   });
 });

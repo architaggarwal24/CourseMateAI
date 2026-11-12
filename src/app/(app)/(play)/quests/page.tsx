@@ -1,5 +1,5 @@
 import { Suspense } from "react";
-import PlayArea from "@/components/hero/PlayArea";
+import PlayArea from "@/components/play/PlayArea";
 
 // /quests: today's quests and the daily chest, under the play header.
 export default function QuestsPage() {

@@ -1,4 +1,4 @@
-import { listUsers } from "@/server/admin";
+import { listUsers } from "@/server/account/admin";
 import { requireAdmin } from "@/server/context";
 import { api } from "@/server/route";
 

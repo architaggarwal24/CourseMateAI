@@ -1,6 +1,6 @@
 // The passages a question would be answered from (the chat uses the same search, Stage 4.3).
 import { requireUser } from "@/server/context";
-import { courseMembers, getDocumentOrCourse } from "@/server/documents";
+import { courseMembers, getDocumentOrCourse } from "@/server/study/documents";
 import { HttpError, rateLimit } from "@/server/http";
 import { api } from "@/server/route";
 import { searchDeps, searchPassages } from "@/server/search";

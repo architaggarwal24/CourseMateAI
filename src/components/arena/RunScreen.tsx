@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { motion } from "motion/react";
 import {
   BedDouble, BookOpen, Coins, Crown, Flag, Gem, Heart, Map as MapIcon, Skull, Sparkles, Store, Swords, Target, Trophy,
-} from "@/components/icons";
+} from "@/components/ui/icons";
 import { Badge, Button, Modal } from "@/components/ui";
 import { toast } from "@/components/ui/Toast";
 import { ApiError } from "@/lib/api/errors";

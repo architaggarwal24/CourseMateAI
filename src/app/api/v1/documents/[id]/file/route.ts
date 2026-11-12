@@ -1,5 +1,5 @@
 import { requireUser } from "@/server/context";
-import { pdfFile, putFile } from "@/server/documents";
+import { pdfFile, putFile } from "@/server/study/documents";
 import { rateLimit } from "@/server/http";
 import { api } from "@/server/route";
 

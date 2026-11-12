@@ -2,7 +2,7 @@ import { Suspense, lazy } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { act, cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 
-vi.mock("@/lib/upload", () => ({
+vi.mock("@/lib/study/upload", () => ({
   readPdf: vi.fn(async () => ({ pageCount: 1, pages: [{ page: 1, text: "Cells." }], hash: "a".repeat(64), textChars: 6 })),
   sendUpload: vi.fn(() => new Promise(() => {})),
 }));
@@ -24,7 +24,7 @@ vi.mock("next/dynamic", () => ({
     return (props: any) => <Suspense fallback={null}><Lazy {...props} /></Suspense>;
   },
 }));
-for (const [file, name] of [["ChatView", "chat"], ["QuizView", "quiz"], ["NotesView", "notes"], ["FlashcardView", "flashcards"]]) {
+for (const [file, name] of [["chat/ChatView", "chat"], ["quiz/QuizView", "quiz"], ["notes/NotesView", "notes"], ["flashcards/FlashcardView", "flashcards"]]) {
   vi.doMock(`@/components/${file}`, () => ({
     default: (p: { documentId?: string; restoreSessionId?: string }) =>
       <div data-testid={`tab-${name}`}>{name}|{p.documentId ?? "none"}|{p.restoreSessionId ?? ""}</div>,

@@ -1,8 +1,8 @@
 "use client";
 
-import { AlertCircle } from "@/components/icons";
+import { AlertCircle } from "@/components/ui/icons";
 import { cn } from "@/lib/utils";
-import { describeError, withoutActions, type ErrorActionKind, type ErrorInfo } from "@/lib/errorActions";
+import { describeError, withoutActions, type ErrorActionKind, type ErrorInfo } from "@/lib/api/error-actions";
 import { ROUTES } from "@/lib/routes";
 import { useCountdown } from "@/hooks/useCountdown";
 import Button from "./Button";

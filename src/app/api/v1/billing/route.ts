@@ -1,5 +1,5 @@
 // Payments on? which provider and its public key, and the user's subscription.
-import { status } from "@/server/billing";
+import { status } from "@/server/account/billing";
 import { requireUser } from "@/server/context";
 import { api } from "@/server/route";
 

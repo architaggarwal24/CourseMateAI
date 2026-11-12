@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
-import { Music, Volume2 } from "@/components/icons";
+import { Music, Volume2 } from "@/components/ui/icons";
 import { Checkbox } from "@/components/ui";
 import { useSound } from "@/lib/sound/chip";
 

@@ -10,7 +10,7 @@ import type { CurrentUser, RequestContext } from "../context";
 import { courses, documents, reviewItems, reviewLogs } from "../db/schema";
 import { HttpError } from "../http";
 import { cleanText, questionKey, stamp } from "./text";
-import { courseMembers } from "../documents";
+import { courseMembers } from "./documents";
 import { hasFeature } from "./plan";
 
 

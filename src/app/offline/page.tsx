@@ -1,5 +1,5 @@
 import { NOINDEX } from "@/lib/site";
-import { WifiOff } from "@/components/icons";
+import { WifiOff } from "@/components/ui/icons";
 
 // A utility page for the installed app: never indexed.
 export const metadata = { title: "Offline", robots: NOINDEX };

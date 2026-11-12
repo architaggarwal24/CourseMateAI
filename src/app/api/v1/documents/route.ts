@@ -1,5 +1,5 @@
 import { requireUser } from "@/server/context";
-import { listDocuments } from "@/server/documents";
+import { listDocuments } from "@/server/study/documents";
 import { api } from "@/server/route";
 
 export const dynamic = "force-dynamic";

@@ -1,4 +1,4 @@
-import ThemeScope from "@/components/ThemeScope";
+import ThemeScope from "@/components/ui/ThemeScope";
 
 // The play pages (Quests, Arena, Bestiary and Champion with its tabs) are the Play theme.
 export default function PlayLayout({ children }: { children: React.ReactNode }) {

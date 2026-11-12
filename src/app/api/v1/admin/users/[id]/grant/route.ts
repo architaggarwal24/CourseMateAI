@@ -1,4 +1,4 @@
-import { grantGame } from "@/server/admin";
+import { grantGame } from "@/server/account/admin";
 import { requireAdmin } from "@/server/context";
 import { rateLimit, readJson } from "@/server/http";
 import { api, intParam } from "@/server/route";

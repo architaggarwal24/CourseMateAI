@@ -4,7 +4,7 @@ import { useState } from "react";
 import { lookFor, useMyHeroLook } from "@/components/champion/useChampionLook";
 import { useMyHero } from "@/hooks/useMyHero";
 import { HERO_FIGHTER_ID } from "@/lib/pixel/appearance";
-import { Lock } from "@/components/icons";
+import { Lock } from "@/components/ui/icons";
 import { isUnlocked, useChampion } from "@/hooks/useChampion";
 import { useHeroStore } from "@/hooks/useHero";
 import { HEROES, type Style } from "@/lib/pixel/heroes";

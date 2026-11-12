@@ -3,7 +3,6 @@
 > Paste this file at the start of a new chat. It covers how the owner works, what the app is, the journey so far,
 > where it stands now and the weak spots we know about.
 > Last updated: 8 Nov 2026 (after the performance pass, stages P1 to P5).
-> The long version (every stage in detail, the file map, all gotchas) is in `docs/archive/coursemateai-context-full.md`.
 
 ---
 
@@ -71,7 +70,7 @@ An AI study companion with an RPG game layer, aimed at **launching to real stude
   (`socialProviders` in `src/server/auth/index.ts`). Google is trusted to link by email; GitHub links only verified
   emails.
 - **"You've been upgraded":** a higher plan (or more days, from an admin or an invite) leaves a notice
-  (`plan_notices`, `src/server/planNotices.ts`) that arrives with GET /hud and shows once on any device: a calm card
+  (`plan_notices`, `src/server/account/plan-notices.ts`) that arrives with GET /hud and shows once on any device: a calm card
   in Study/Account, a pixel celebration in Hero (`components/fx/UpgradeCeremony.tsx`). Admins can add a note and
   preview it. Anything that changes a plan calls `planState` before and `notePlanChange` after.
 
@@ -88,6 +87,35 @@ An AI study companion with an RPG game layer, aimed at **launching to real stude
 - **Payments:** Razorpay behind `PAYMENTS_ENABLED`, with a stub provider for tests.
 - **Tests:** vitest (about 1,200 tests, 93 files) and Playwright (252 pass, the rest are skipped on purpose) with axe,
   keyboard, 360px, motion, light and dark, all against a mocked API (`e2e/fixtures/api.ts`).
+
+### Project layout (12 Nov 2026)
+
+Everything has one place. New files follow the same rules (`scripts/restructure.mjs` made the move).
+
+```
+src/app/                  routes only: pages, layouts, API route files (thin; the work is in src/server)
+  (app)/                  signed-in pages: today, study, account, and (play)/ quests, arena, bestiary, champion
+  api/v1/                 one route.ts per endpoint
+src/components/<feature>/ every component in its feature's folder, none loose at the top
+  ui/                     the kit (Button, Modal, Tabs, icons, ThemeScope...)
+  shell/                  the app frame (AppShell, NavSidebar, BottomNav, UserMenu, Providers, ErrorBoundary)
+  play/                   the play pages and the Champion tabs (PlayArea, QuestsTab, ForgeTab, MasteryTab...)
+  chat/ quiz/ notes/ flashcards/ history/ pdf/ study/ review/ exam/ map/ course/ today/   Study
+  arena/ bestiary/ champion/ fx/   the game;   account/ auth/ landing/ brand/ pwa/   the rest
+src/hooks/                React hooks and zustand stores (useX.ts)
+src/lib/<feature>/        browser-side logic by feature (api/, study/, game/, pixel/, arena/, account/, auth/...);
+                          only app-wide modules sit at the top (routes, site, theme, utils, keys, undo, pwa...)
+src/server/<feature>/     the Worker by feature (account/, auth/, study/, game/, ai/, chat/, search/, db/);
+                          only its plumbing sits at the top (context, env, errors, http, route, status, idempotency)
+src/styles/ src/fonts/ src/test/ src/types/ src/contexts/
+e2e/                      Playwright specs, fixtures/api.ts (the mocked API), pages.ts, helpers.ts
+migrations/               D1 migrations (drizzle-kit)
+scripts/                  one-off and tooling scripts (remove-old-files, restructure, brand-assets, pixel previews)
+docs/                     this file, deploy, payments, sprites, SEO
+```
+
+**Names:** components PascalCase (`ChatView.tsx`), hooks `useX.ts`, everything else kebab-case (`chat-stream.ts`).
+Tests sit next to the file they test (`x.test.ts`). Import with `@/` across folders, `./` inside one.
 
 ---
 
@@ -134,7 +162,7 @@ Each step was a set of stages with zips and checklists. Dates are 2026.
       tracks; Profile no longer duplicates the Settings form; tighter phone headers; empty chat opens at the top;
       sentence-case login wording. Then a fix for a flaky QuizView test.
 
-8. **Performance pass (7 to 8 Nov).** Measured first (a Playwright harness, `perf/`, and a D1 round-trip counter),
+8. **Performance pass (7 to 8 Nov).** Measured first (a Playwright harness, since removed, and a D1 round-trip counter),
    then:
    - P1 network: one GET /hud at start-up instead of three (none for a signed-out visitor), shared shop load, no
      duplicate API calls left; the first page paints from the server HTML (the 250 ms rise only on in-app moves); the
@@ -208,13 +236,13 @@ Each step was a set of stages with zips and checklists. Dates are 2026.
   (nightmare) forms; claiming one finds the creature's lost page (`LOST_PAGES` in lib/bestiary/content.ts, shown in
   the book). Story: 3 chapters per champion, for the champion you fight as. Every scroll moves by an `event` string
   (`scrollEvent`): actions from `questsOnAction`, fight events from `arena.end` (`fightEvents`), banes from resolve.
-  UI: `components/hero/QuestsTab.tsx` + `QuestScroll.tsx` (seal splits on claim); links in `lib/quests/board.ts`.
+  UI: `components/play/QuestsTab.tsx` + `QuestScroll.tsx` (seal splits on claim); links in `lib/quests/board.ts`.
 - **Round 5 (8 Nov):** arena tab shows only modes + champions; sidebar has one "Hero" link (the Hero tab bar holds
-  the rest); owner-only XP/coin grants (Admin → Manage → XP and coins; `server/admin.ts grantGame`, kind
+  the rest); owner-only XP/coin grants (Admin → Manage → XP and coins; `server/account/admin.ts grantGame`, kind
   "admin_grant", minus takes away to zero). Bestiary book: IM Fell types (`src/fonts/tome.ts`), worn/torn paper
   (`tornEdge` clip-path per page), curled 3D turns (leaf = 10 hinged strips moved by rAF outside React; strips use a
   lighter paper background because the grain is costly to repaint), contents jump = a stack of up to 5 leaves.
-  Hero pixel UI: `components/hero/pixel-ui.css` + play tokens (indigo panels, 0 radius, hard shadows, steps()
+  Hero pixel UI: `components/play/pixel-ui.css` + play tokens (indigo panels, 0 radius, hard shadows, steps()
   motion, Press Start 2P labels, Pixelify Sans body; fonts given by AppShell's play ThemeScope). The last verdict
   waits 6 s (`AUTO_ADVANCE_MS.over`) so the KO/finisher plays.
 - Nothing is in progress (all 4 hero stages delivered). Ideas waiting in the backlog: chiptune sound, sharing a KO clip, campaign mode, more inputs
@@ -290,7 +318,5 @@ From this work only; nobody has gone looking for more.
   there; lower the number if you remove one. Batch independent reads with `ctx.db.batch([...])` (one round trip; one
   statement per row for writes: D1 allows 100 bound parameters per statement). `tierFor` is cached per request: call
   `forgetTier` after changing a plan in the same request.
-- **Measure speed:** `npm run build`, then `npx playwright test -c playwright.perf.config.ts` (add `PERF_THROTTLE=1`
-  for 3G and a slow CPU; `PERF_LABEL=name` names the file in `perf/results/`). Kill a stale `next-server` first.
 - `Skeleton`: size it with a Tailwind class or the height prop; `perf.test.ts` guards fonts, the login entrance and
   `public/_headers` (static files on Cloudflare never get next.config.ts headers).

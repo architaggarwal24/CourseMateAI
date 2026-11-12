@@ -1,9 +1,9 @@
 "use client";
 
 import { useEffect, useState, useSyncExternalStore, type ReactNode } from "react";
-import { AlertCircle, CheckCircle2, Info, X } from "@/components/icons";
-import ThemeScope, { type Theme } from "@/components/ThemeScope";
-import { describeError, withoutActions, type ErrorActionKind } from "@/lib/errorActions";
+import { AlertCircle, CheckCircle2, Info, X } from "@/components/ui/icons";
+import ThemeScope, { type Theme } from "@/components/ui/ThemeScope";
+import { describeError, withoutActions, type ErrorActionKind } from "@/lib/api/error-actions";
 import Button from "./Button";
 import { ErrorActions } from "./ErrorState";
 
@@ -67,7 +67,7 @@ function dismiss(id?: number) {
 /**
  * The toast for a failed request: the server's message plus the button its error code calls for
  * (Open Settings / usage link / Retry / Re-upload / Log in / Retry after the Retry-After countdown).
- * The inline twin is <ErrorState>; both read lib/errorActions.ts.
+ * The inline twin is <ErrorState>; both read lib/api/error-actions.ts.
  */
 function apiError(err: unknown, options: ApiErrorToastOptions = {}): number {
   const info = withoutActions(describeError(err, options.fallbackMessage), options.without);

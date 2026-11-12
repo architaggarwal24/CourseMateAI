@@ -102,7 +102,7 @@ export const userPlans = sqliteTable("user_plans", {
 });
 
 /**
- * "You've been upgraded" (src/server/planNotices.ts): a plan went up, or got longer, by an admin, an invite code or a
+ * "You've been upgraded" (src/server/account/plan-notices.ts): a plan went up, or got longer, by an admin, an invite code or a
  * payment. The app shows it once (seen_at), on whichever device opens first. `from_*` is the plan before the first
  * change not yet seen, so a grant followed quickly by a correction shows one window that tells the whole story.
  */
@@ -158,7 +158,7 @@ export const idempotencyKeys = sqliteTable("idempotency_keys", {
   createdAt: integer("created_at").notNull(),                       // ms
 }, (t) => [primaryKey({ columns: [t.scope, t.key] }), index("idempotency_keys_created_idx").on(t.createdAt)]);
 
-// ── documents and courses (Stage 4.2: src/server/documents.ts, courses.ts). The PDF is in R2 (FILES), each chunk's
+// ── documents and courses (Stage 4.2: src/server/study/documents.ts, courses.ts). The PDF is in R2 (FILES), each chunk's
 //    text here, its embedding in Vectorize (VECTORS, id "<document id>:<chunk index>"). ───────────────────────────
 export const documents = sqliteTable("documents", {
   id: text("id").primaryKey(),
@@ -438,7 +438,7 @@ export const userAvatar = sqliteTable("user_avatar", {
   ownedJson: text("owned_json").notNull().default("[]"),
   championId: text("champion_id"),
   championSetAt: text("champion_set_at"),
-  /** Built-your-own looks per champion ({ kaien: Appearance, ... }, lib/appearance.ts). Missing: the champion's own. */
+  /** Built-your-own looks per champion ({ kaien: Appearance, ... }, lib/game/appearance.ts). Missing: the champion's own. */
   looksJson: text("looks_json").notNull().default("{}"),
   createdAt: text("created_at").notNull(),
   updatedAt: text("updated_at").notNull(),
@@ -482,7 +482,7 @@ export const championProgress = sqliteTable("champion_progress", {
 
 /**
  * Your hero (game/build.ts): the seventh fighter, built by the player. Level and XP; its look (an appearance,
- * lib/appearance.ts); its build (style, passive, ultimate, perks, extra weaknesses); its skill-tree ranks; and the
+ * lib/game/appearance.ts); its build (style, passive, ultimate, perks, extra weaknesses); its skill-tree ranks; and the
  * original styles and perks it has bought or earned (champion styles and abilities come from mastery, not stored).
  */
 export const heroState = sqliteTable("hero_state", {
@@ -724,7 +724,7 @@ export const arenaRuns = sqliteTable("arena_runs", {
   uniqueIndex("arena_runs_active_idx").on(t.userId, t.sessionId).where(sql`status = 'active'`),
 ]);
 
-// ── billing (Stage 4.6: src/server/billing.ts). Razorpay subscriptions; each webhook event handled once. ────────
+// ── billing (Stage 4.6: src/server/account/billing.ts). Razorpay subscriptions; each webhook event handled once. ────────
 export const subscriptions = sqliteTable("subscriptions", {
   id: text("id").primaryKey(),
   userId: integer("user_id").notNull().references(() => user.id, { onDelete: "cascade" }),

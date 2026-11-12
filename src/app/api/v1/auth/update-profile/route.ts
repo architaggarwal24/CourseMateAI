@@ -1,4 +1,4 @@
-import { me, updateProfile, type ProfileChange } from "@/server/account";
+import { me, updateProfile, type ProfileChange } from "@/server/auth/account";
 import { requireUser } from "@/server/context";
 import { rateLimit, readJson } from "@/server/http";
 import { api } from "@/server/route";

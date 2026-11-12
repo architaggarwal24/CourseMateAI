@@ -3,14 +3,14 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowRight, BookMarked, BookOpen, CheckCircle, Coins, Flame, Plus, Repeat, ScrollText, Swords, Upload } from "@/components/icons";
+import { ArrowRight, BookMarked, BookOpen, CheckCircle, Coins, Flame, Plus, Repeat, ScrollText, Swords, Upload } from "@/components/ui/icons";
 import { useAuth } from "@/contexts/AuthContext";
 import { useReview } from "@/hooks/useReview";
 import { useHUDStore } from "@/hooks/useHUD";
 import { useCourses } from "@/hooks/useCourses";
 import { useDocumentUpload } from "@/hooks/useDocumentUpload";
-import { loadMetadata } from "@/lib/sessions";
-import { greeting, lastSession, reviewProgress, todaySummary, type LastSession } from "@/lib/today";
+import { loadMetadata } from "@/lib/study/sessions";
+import { greeting, lastSession, reviewProgress, todaySummary, type LastSession } from "@/lib/study/today";
 import { ROUTES, type StudyTab } from "@/lib/routes";
 import { cn } from "@/lib/utils";
 import "./today.css";

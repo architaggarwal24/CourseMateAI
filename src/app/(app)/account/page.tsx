@@ -3,7 +3,7 @@
 import { useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ChevronRight, Gauge, History, Loader2, Shield, User, type IconType } from "@/components/icons";
+import { ChevronRight, Gauge, History, Loader2, Shield, User, type IconType } from "@/components/ui/icons";
 import { Card } from "@/components/ui";
 import { useAuth } from "@/contexts/AuthContext";
 import { ROUTES } from "@/lib/routes";

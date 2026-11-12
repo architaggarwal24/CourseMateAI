@@ -1,6 +1,6 @@
 // Every plan (prices in INR, limits, features) and how sign-up works here. No login needed.
-import { provider } from "@/server/billing";
-import { plansCatalog } from "@/server/plans";
+import { provider } from "@/server/account/billing";
+import { plansCatalog } from "@/server/account/plans";
 import { api } from "@/server/route";
 
 export const dynamic = "force-dynamic";

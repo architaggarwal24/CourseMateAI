@@ -1,6 +1,6 @@
 // @vitest-environment node
 import { describe, expect, it } from "vitest";
-import { OUTFITS, HAIR_STYLES, STARTER_LOOKS, type Appearance } from "../appearance";
+import { OUTFITS, HAIR_STYLES, STARTER_LOOKS, type Appearance } from "../game/appearance";
 import { withAppearance } from "./appearance";
 import { HEROES, heroAnims, heroById } from "./heroes";
 import { ARMOR_SKINS, dressed } from "./skins";

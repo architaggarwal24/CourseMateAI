@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Coins, Sparkles } from "@/components/icons";
+import { Coins, Sparkles } from "@/components/ui/icons";
 import PixelConfetti from "@/components/fx/PixelConfetti";
 import PixelSprite from "@/components/arena/pixel/PixelSprite";
 import { lookFor, useMyHeroLook } from "@/components/champion/useChampionLook";
@@ -11,8 +11,8 @@ import { useHUDStore } from "@/hooks/useHUD";
 import { useHeroStore } from "@/hooks/useHero";
 import { ROUTES } from "@/lib/routes";
 import { sfx } from "@/lib/sound/chip";
-import ThemeScope from "@/components/ThemeScope";
-import { useCeremonyQueue } from "./ceremonyQueue";
+import ThemeScope from "@/components/ui/ThemeScope";
+import { useCeremonyQueue } from "./ceremony-queue";
 
 const KEY = (uid: string) => `cmai_level_seen:${uid}`;
 /** The coins a level-up pays (server rewards.json level_up_bonus_coins_per_level). */
