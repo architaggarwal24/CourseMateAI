@@ -30,13 +30,6 @@ button .pixel-canvas, [role="radio"] .pixel-canvas { pointer-events: none; }
   font-size: clamp(1rem, 4vw, 2rem); color: #fff3c4; letter-spacing: 0.04em;
   text-shadow: 3px 3px 0 #000, -2px -2px 0 #000, 2px -2px 0 #000, -2px 2px 0 #000;
 }
-.px-arena__card {
-  position: absolute; left: 0; right: 0; bottom: 14%; z-index: 5; display: grid; justify-items: center; gap: 0.2rem;
-  padding: 0.55rem 1rem; background: rgba(6, 7, 26, 0.88); border-top: 3px solid var(--color-reward); border-bottom: 3px solid var(--color-reward);
-}
-.px-arena__card-tier { font-size: 0.55rem; color: var(--color-text-secondary); letter-spacing: 0.08em; }
-.px-arena__card-name { font-size: clamp(0.95rem, 3.5vw, 1.5rem); color: var(--color-reward); text-shadow: 3px 3px 0 #000; }
-.px-arena__card-title { font-size: 0.8rem; color: var(--color-text); }
 .px-arena__banner {
   position: absolute; inset: 0; display: grid; place-items: center; margin: 0; pointer-events: none;
   font-size: clamp(2rem, 8vw, 4.5rem); letter-spacing: 0.06em; color: var(--color-reward);

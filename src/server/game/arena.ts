@@ -7,9 +7,11 @@
 //                 the creature's mechanic, the champion's kit, mastery) and rolls the next intent. First answer final
 //   end           exactly once (compare-and-set on status): rewards, leaderboard row, personal best, champion XP;
 //                 a run battle hands its end to the expedition instead
-// Questions come in batches from a model, topped up in the background (ctx.waitUntil); a model failure never
-// decides a fight: the battle stays as it is and the request is retryable.
-import { and, asc, count, desc, eq, gte, ne, sql } from "drizzle-orm";
+// Questions: a fight is PREPARED before it starts (prepare: the whole fight's questions, normal and enraged, written
+// side by side), so it never stops to wait for the model. Long fights are topped up in the background
+// (ctx.waitUntil) well before they run low; a model failure never decides a fight: the request is retryable.
+import { and, asc, count, desc, eq, gte, isNull, ne, sql } from "drizzle-orm";
+import { FINISHERS, STYLE_FINISHERS } from "@/lib/arena/finishers";
 import { background } from "../env";
 import type { RequestContext } from "../context";
 import { arenaBattles, arenaPersonalBests, arenaQuestions, arenaScores, championProgress, courseDocuments, courses, documents, user as userTable } from "../db/schema";
@@ -25,9 +27,10 @@ import * as mastery from "./mastery";
 import * as build from "./build";
 import * as forge from "./forge";
 import * as scrolls from "./scrolls";
-import { bossTaunt, makeIntent, mergeFlavor, playerHit, rollIntent, sanitizeBoss, type Boss, type Intent } from "./boss";
+import { bossTaunt, intentBaseDamage, makeIntent, mergeFlavor, playerHit, rollIntent, sanitizeBoss, type Boss, type Intent } from "./boss";
 import { ITEMS } from "./content";
 import * as kits from "./kits";
+import * as effects from "./effects";
 import { DAMAGING_KINDS, forBoss, illusionOption, key as mkey, Turn } from "./mechanics";
 import { award, activeBuffs, checkAchievements, consumeCharge } from "./progression";
 import { consumeInventory, getAvatar, inventory, modifyAvatar, recordRewardEvent, type Player } from "./store";
@@ -41,7 +44,9 @@ const MAX_ANSWERS = 40;
 const ROUND_SIZE = 5;
 const BATCH_SIZE = 6;
 const MAX_BATCHES_PER_PHASE = 6;
-const LOW_WATER = 2;
+const LOW_WATER = 4;
+/** A fight's questions before it starts: enough for the whole fight (phase 2 is the enraged part). */
+export const PREPARED = { phase1: 12, phase2: 8, minToStart: 5 } as const;
 const HEAL_ITEM = "potion_health_small", FIFTY_ITEM = "fifty_fifty";
 const HP_PACING: Record<string, number> = { easy: 2.6, medium: 2.4, hard: 2.6, nightmare: 2.8 };
 const GEAR_SLOTS = ["weapon", "armor", "headgear", "pet"];
@@ -57,6 +62,44 @@ const SPELLS: Record<string, number> = { insight: 1, timewarp: 1 };
 const TIMEWARP_SECONDS = 15;
 const INTERRUPTING = ["strike", "heavy"];
 const OWL_FEATHER_SECONDS = 5, PHOENIX_HEARTS = 3, VAMPIRIC_COMBO = 5, FOCUS_CRYSTAL_START = 2;
+
+// ── Stage 4: the combo, the final move, the score card, CONTINUE ───────────────────────────────────────────
+/** The combo's level: x1 until 3 in a row, then one step each right answer, up to x5 (6 in a row). */
+export const comboLevel = (combo: number) => (combo < 3 ? 1 : Math.min(5, combo - 1));
+/** Each level past x1 hits a little harder, and charges the ultimate a little faster. */
+const COMBO_DAMAGE_STEP = 0.08, COMBO_METER_STEP = 0.15;
+/** At x5 the next right answer is a combo special (x1.5, its own animation), and every third one after. */
+export const isComboSpecial = (combo: number) => combo >= 7 && (combo - 7) % 3 === 0;
+const COMBO_SPECIAL_MULT = 1.5;
+/** Below this share of its HP the boss is on its knees: one quick question for the FINAL MOVE. */
+export const FINALE_PCT = 0.15;
+const FINALE_SECONDS = 12, FINALE_RECOVER_PCT = 0.1;
+/** CONTINUE: up to 3 a fight, with a health potion from the bag or coins (the price doubles each time). */
+export const MAX_CONTINUES = 3, CONTINUE_SECONDS = 10, CONTINUE_COINS = 100;
+const CONTINUE_GRACE_MS = 5000;
+export const continueCoins = (used: number) => CONTINUE_COINS * 2 ** used;
+/** Score: a right answer's points by tier, half again for speed, times the combo; the finisher, hearts left. */
+const POINTS: Record<string, number> = { easy: 100, medium: 150, hard: 250 };
+const FINISHER_POINTS = 1000, HEART_POINTS = 50, CONTINUE_KEEPS = 0.75;
+
+/** Each champion's FINAL MOVE (their signature weapon's finisher when they wield it); your hero's comes from its style. */
+function finisherFor(k: kits.KitState): { name: string; champion: string; style: string | null } {
+  if (k.champion === build.HERO_ID) return { name: STYLE_FINISHERS[k.style ?? "apprentice"] ?? "Final Move", champion: k.champion, style: k.style ?? null };
+  const sig = k.signature ? kits.kitHud(k).signature?.finisher : null;
+  return { name: sig ?? FINISHERS[k.champion] ?? "Final Move", champion: k.champion, style: null };
+}
+/** The score so far: points, the finisher, and (a won fight) hearts left; each continue keeps 75% of it. */
+function scoreTotal(boss: Boss, heartsLeft: number): number {
+  const sc = boss.score ?? {};
+  const raw = Number(sc.points ?? 0) + Number(sc.finisher ?? 0) + Math.max(0, heartsLeft) * HEART_POINTS;
+  return Math.round(raw * CONTINUE_KEEPS ** Number(boss.continues ?? 0));
+}
+/** The score card's rank: points per answer. */
+export function scoreRank(total: number, answered: number) {
+  const per = total / Math.max(1, answered);
+  for (const [floor, r] of [[600, "S"], [420, "A"], [300, "B"], [200, "C"]] as const) if (per >= floor) return r;
+  return "D";
+}
 
 type Row = typeof arenaBattles.$inferSelect;
 type QRow = typeof arenaQuestions.$inferSelect;
@@ -84,11 +127,17 @@ export function gearFor(equipped: Record<string, string>) {
   };
 }
 const relicsOf = (boss: Boss) => new Set<string>(boss.mods?.relics ?? []);
-const timeLimit = (boss: Boss, move?: string | null) =>
+/** The answer clock: the move's time, the tier, gear, relics and the kit; frozen / slowed by effects and a little
+ *  shorter while the boss rages (effects.clockFactor). */
+const timeLimit = (boss: Boss, move?: string | null) => Math.max(MIN_SECONDS, Math.round((
   Math.round((MOVES[move || DEFAULT_MOVE]?.seconds ?? SECONDS_PER_QUESTION) * (tome.TIER_TIME[(boss.tier ?? 1) as 1 | 2 | 3 | 4] ?? 1))
   + Number(boss.gear?.time_sec ?? 0) + (relicsOf(boss).has("owl_feather") ? OWL_FEATHER_SECONDS : 0)
-  + (boss.kit ? kits.timeBonusFor(boss.kit, move || DEFAULT_MOVE) : 0);
-const questionLimit = (boss: Boss, q: QRow) => timeLimit(boss, q.move) + (q.timewarped ? TIMEWARP_SECONDS : 0);
+  + (boss.kit ? kits.timeBonusFor(boss.kit, move || DEFAULT_MOVE) : 0)) * effects.clockFactor(boss)));
+const MIN_SECONDS = 6;
+const FINALE_INTENT: Intent = { kind: "finale", name: "On its knees", value: 0, special: true,
+  description: "It can barely stand: one quick question for your FINAL MOVE. Miss, and it staggers back up." };
+const questionLimit = (boss: Boss, q: QRow) =>
+  boss.finale?.seq === q.seq ? Math.min(FINALE_SECONDS, timeLimit(boss, q.move)) : timeLimit(boss, q.move) + (q.timewarped ? TIMEWARP_SECONDS : 0);
 const heavyCost = (boss: Boss) => kits.heavyCostFor(boss.kit?.champion, relicsOf(boss).has("whetstone") ? 1 : MOVES.heavy.cost, boss.kit);
 const moveCost = (move: string, boss: Boss) => (move === "heavy" ? heavyCost(boss) : MOVES[move].cost);
 const shieldFactor = (boss: Boss) => (relicsOf(boss).has("ink_bomb") ? 0.5 : 1);
@@ -101,11 +150,21 @@ const isWeakness = (boss: Boss, q: { concept?: string }) => {
   const w = String(boss.weakness ?? "").trim().toLowerCase(), c = String(q.concept ?? "").trim().toLowerCase();
   return !!(w && c && (w.includes(c) || c.includes(w)));
 };
+/** The boss's next move: its creature's scheduled one, else (enraged) its signature blow every few turns, else a roll.
+ *  A blow may carry an effect (telegraphed with it; effects.ts). */
 function nextIntentFor(boss: Boss, difficulty: string, turn: number): Intent {
+  if (boss.finale?.armed) return FINALE_INTENT;
   const m = forBoss(boss);
-  return (m ? m.scheduled(boss.mech ?? {}, boss, difficulty, turn) : null) ?? rollIntent(boss, difficulty, shieldFactor(boss));
+  const scheduled = m ? m.scheduled(boss.mech ?? {}, boss, difficulty, turn) : null;
+  if (scheduled) return effects.attach(scheduled, effects.chooseEffect(boss, DAMAGING_KINDS.includes(scheduled.kind)));
+  const fury = effects.furyIntent(boss, intentBaseDamage(boss, difficulty), turn);
+  if (fury) return fury;
+  const rolled = rollIntent(boss, difficulty, shieldFactor(boss));
+  return effects.attach(rolled, effects.chooseEffect(boss, DAMAGING_KINDS.includes(rolled.kind)));
 }
 const mechanicHud = (boss: Boss, difficulty: string) => forBoss(boss)?.hud(boss.mech ?? {}, boss, difficulty) ?? null;
+/** Every move locked now: by the creature (a Kraken's grab) or by an effect (a stun). */
+const lockedMoves = (boss: Boss) => [...new Set([...(forBoss(boss)?.lockedMoves(boss.mech ?? {}) ?? []), ...effects.lockedMoves(boss)])];
 
 // ── reading ──────────────────────────────────────────────────────────────────────────────────────────────────
 const row = (ctx: RequestContext, id: string, userId: number) =>
@@ -121,7 +180,7 @@ const qrow = (ctx: RequestContext, battleId: string, seq: number) =>
 export function state(b: Row) {
   const boss: Boss = J(b.bossJson, {});
   return {
-    battle_id: b.id, status: b.status, session_id: b.sessionId, topic: b.topic, difficulty: b.difficulty, phase: b.phase, rage: !!boss.rage,
+    battle_id: b.id, status: b.status, session_id: b.sessionId, topic: b.topic, difficulty: b.difficulty, phase: b.phase, rage: !!boss.rage, prepared: !!boss.prepared,
     boss: { name: boss.name, hp: b.bossHp, max_hp: b.bossMaxHp, species: boss.species, title: boss.title, origin: boss.origin },
     player: { hp: b.playerHp, max_hp: b.playerMaxHp }, combo: b.combo, max_combo: b.maxCombo, answered: b.answered, correct: b.correct,
     heals_used: b.healsUsed, fifty_used: b.fiftyUsed, gear: boss.gear ?? {}, mode: b.mode, run_id: b.runId, focus: b.focus,
@@ -129,6 +188,10 @@ export function state(b: Row) {
     relics: [...relicsOf(boss)].sort(), heavy_cost: heavyCost(boss), question_issued: b.status === "active" && b.currentSeq !== null,
     free_timewarp: relicsOf(boss).has("hourglass") && !boss.mods?.hourglass_used, mechanic: mechanicHud(boss, b.difficulty),
     kit: boss.kit ? kits.kitHud(boss.kit) : null, tier: boss.tier ?? 1, bane: tome.baneHud(boss), taunted: !!boss.mods?.taunted,
+    effects: effects.hud(boss), locked_moves: lockedMoves(boss), silenced: effects.silenced(boss), cursed: effects.cursed(boss),
+    combo_level: comboLevel(b.combo), score: boss.score?.total ?? 0, finale: !!boss.finale?.armed,
+    down: b.status === "active" && boss.down ? { deadline: boss.down.deadline, continues: Number(boss.continues ?? 0), max: MAX_CONTINUES,
+      coins: continueCoins(Number(boss.continues ?? 0)), can_continue: Number(boss.continues ?? 0) < MAX_CONTINUES } : null,
     ...(b.status !== "active" ? { result: J(b.resultJson, {}), rewards: J(b.rewardsJson, null) } : {}),
   };
 }
@@ -149,6 +212,7 @@ function publicQuestion(q: QRow, b: Row) {
     question: question.question, options: J<string[]>(q.optionsJson, []).filter((o) => !removed.includes(o)), concept: question.concept,
     difficulty: question.difficulty, phase: q.phase, move: q.move || DEFAULT_MOVE, tier: questionTier(question.difficulty, b.difficulty),
     weakness: isWeakness(boss, question), fifty_used: removed.length > 0, timewarped: !!q.timewarped, time_limit: questionLimit(boss, q),
+    effects: q.status === "issued" ? effects.questionFx(boss) : null, finale: boss.finale?.seq === q.seq,
     expires_at: q.deadlineAt, seconds_left: Math.round(Math.max(0, (Date.parse(q.deadlineAt!) - Date.now()) / 1000) * 10) / 10,
   };
 }
@@ -198,18 +262,11 @@ export async function summonable(ctx: RequestContext, userId: number): Promise<S
   return tome.openSpecies(await tome.records(ctx, userId));
 }
 
-export async function createBattle(ctx: RequestContext, userId: number, o: {
-  sessionId: string; docHash: string; topic: string; difficulty: string; boss: Boss; mode?: string; runId?: string | null;
-  hearts?: number | null; maxHearts?: number | null; mods?: Record<string, unknown>; hpScale?: number; targets?: string[] | null; focusCap?: number;
-}): Promise<Row> {
-  const boss = sanitizeBoss({ ...o.boss }, o.difficulty);
-  // Bestiary tier: more HP (and, through boss.tier, less time and harder blows); the bane shows once it is known.
-  boss.tier = tome.tierOf(String(boss.species ?? ""));
-  boss.bane_known = tome.baneKnown((await tome.records(ctx, userId)).get(String(boss.species ?? "")));
-  if (o.boss.wanted && o.boss.wanted !== boss.species) await tome.noteTeaser(ctx, userId, o.boss.wanted, o.topic);
-  boss.max_hp = Math.round(boss.max_hp * (HP_PACING[o.difficulty] ?? 2.6) * (o.hpScale ?? 1) * (tome.TIER_HP[boss.tier as 1 | 2 | 3 | 4] ?? 1));
-  boss.difficulty = o.difficulty;
-  boss.current_hp = boss.max_hp;
+/**
+ * Arm the fighter from the account as it is now: the champion it fights as (its kit), the gear worn and its forge
+ * tiers, and the mount. Written onto the boss record (the fight reads it from there).
+ */
+async function armFighter(ctx: RequestContext, userId: number, boss: Boss) {
   const avatar = await getAvatar(ctx, userId);
   boss.gear = gearFor(avatar.equipped);
   // the forge: each worn item's tier adds a small capped bonus (forge.ts); a saddled pet ridden as a mount adds its own
@@ -227,19 +284,66 @@ export async function createBattle(ctx: RequestContext, userId: number, o: {
     const u = await ctx.db.select({ name: userTable.username }).from(userTable).where(eq(userTable.id, userId)).get();
     boss.kit = await build.heroKit(ctx, userId, u?.name || "Your hero");
   } else boss.kit = kits.initKit(avatar.championId, kits.hasSignature(kits.kitFor(avatar.championId).champion, avatar.equipped));
+}
+
+/** The start of a fight for this kit: hearts, the Focus cap and the Focus it opens with. */
+function openingFor(boss: Boss, mods: Record<string, any>, focusCapBase = FOCUS_CAP) {
+  const hearts = kits.heartsFor(boss.kit.champion, PLAYER_MAX_HP + boss.gear.hp, boss.kit);
+  const focusCap = kits.focusCapFor(boss.kit, focusCapBase);
+  const focus = Math.min(focusCap, ((mods.relics ?? []).includes("focus_crystal") ? FOCUS_CRYSTAL_START : 0) + Number(mods.focus_bonus ?? 0) + kits.startFocusFor(boss.kit));
+  return { hearts, focusCap, focus };
+}
+
+/**
+ * Character select (Stage 5): the champion is picked while the fight's questions are written, after the battle
+ * exists. Before its first question, the fight re-arms for the account's champion now (hearts, Focus, kit, gear).
+ * A run's fight keeps the champion of the run.
+ */
+export async function rearm(ctx: RequestContext, userId: number, battleId: string): Promise<Row> {
+  for (let i = 0; i < 3; i++) {
+    const b = await need(ctx, battleId, userId);
+    if (b.status !== "active" || b.runId || b.answered > 0 || b.currentSeq !== null) {
+      throw err("battle_started", "This fight has already started: your champion is set for it.");
+    }
+    const boss: Boss = J(b.bossJson, {});
+    await armFighter(ctx, userId, boss);
+    const open = openingFor(boss, boss.mods ?? {});
+    const done = await ctx.db.update(arenaBattles)
+      .set({ bossJson: JSON.stringify(boss), playerHp: open.hearts, playerMaxHp: open.hearts, focus: open.focus, focusCap: open.focusCap, updatedAt: iso() })
+      .where(and(eq(arenaBattles.id, battleId), eq(arenaBattles.bossJson, b.bossJson), isNull(arenaBattles.currentSeq), eq(arenaBattles.answered, 0)))
+      .returning({ id: arenaBattles.id }).all();
+    if (done.length) return need(ctx, battleId, userId);
+  }
+  throw err("battle_busy", "The fight changed while your champion was being set. Try again.");
+}
+
+export async function createBattle(ctx: RequestContext, userId: number, o: {
+  sessionId: string; docHash: string; topic: string; difficulty: string; boss: Boss; mode?: string; runId?: string | null;
+  hearts?: number | null; maxHearts?: number | null; mods?: Record<string, unknown>; hpScale?: number; targets?: string[] | null; focusCap?: number;
+}): Promise<Row> {
+  const boss = sanitizeBoss({ ...o.boss }, o.difficulty);
+  // Bestiary tier: more HP (and, through boss.tier, less time and harder blows); the bane shows once it is known.
+  boss.tier = tome.tierOf(String(boss.species ?? ""));
+  boss.bane_known = tome.baneKnown((await tome.records(ctx, userId)).get(String(boss.species ?? "")));
+  if (o.boss.wanted && o.boss.wanted !== boss.species) await tome.noteTeaser(ctx, userId, o.boss.wanted, o.topic);
+  boss.max_hp = Math.round(boss.max_hp * (HP_PACING[o.difficulty] ?? 2.6) * (o.hpScale ?? 1) * (tome.TIER_HP[boss.tier as 1 | 2 | 3 | 4] ?? 1));
+  boss.difficulty = o.difficulty;
+  boss.current_hp = boss.max_hp;
+  await armFighter(ctx, userId, boss);
   const mods: Record<string, any> = { ...(o.mods ?? {}) };
   mods.relics ??= [];
   Object.assign(mods, { aegis_used: false, hourglass_used: false });
   boss.mods = mods;
   if (o.targets?.length) boss.target_concepts = [...o.targets];
+  const open = openingFor(boss, mods, o.focusCap ?? FOCUS_CAP);
   let hearts: number, maxHearts: number;
-  if (o.hearts === null || o.hearts === undefined) hearts = maxHearts = kits.heartsFor(boss.kit.champion, PLAYER_MAX_HP + boss.gear.hp, boss.kit);
+  if (o.hearts === null || o.hearts === undefined) hearts = maxHearts = open.hearts;
   else { hearts = o.hearts; maxHearts = o.maxHearts ?? o.hearts; }
   Object.assign(boss, { phase: 1, rage: false, rounds_fought: 0, total_damage_taken: 0, total_damage_dealt: 0, asked_concepts: [] });
   const mech = forBoss(boss);
   if (mech) boss.mech = mech.init(boss, o.difficulty);
-  const focusCap = kits.focusCapFor(boss.kit, o.focusCap ?? FOCUS_CAP);
-  const focus = Math.min(focusCap, (mods.relics.includes("focus_crystal") ? FOCUS_CRYSTAL_START : 0) + Number(mods.focus_bonus ?? 0) + kits.startFocusFor(boss.kit));
+  effects.initEffects(boss);
+  const { focusCap, focus } = open;
   const intent = nextIntentFor(boss, o.difficulty, 1);
   const now = iso();
   const id = crypto.randomUUID().replace(/-/g, "");
@@ -303,6 +407,56 @@ async function fillOnce(ctx: RequestContext, caller: Caller, battleId: string, u
   } catch (e) {
     console.warn(`[coursemate-arena] battle ${battleId}: phase ${phase} questions failed: ${e instanceof Error ? e.message.slice(0, 160) : e}`);
     return e;
+  }
+}
+
+/**
+ * Write the fight's questions before it starts: two phase-1 batches (reading different passages, so they ask about
+ * different things) and the enraged phase's batch, side by side. Once this returns the fight never waits for the
+ * model again. Safe to call again: a prepared battle returns at once. Throws a retryable error only when not even
+ * the opening questions could be written (the battle stays; asking again resumes it).
+ */
+export async function prepare(ctx: RequestContext, caller: Caller, battleId: string, userId: number): Promise<void> {
+  const b = await need(ctx, battleId, userId);
+  if (b.status !== "active" || J<Boss>(b.bossJson, {}).prepared) return;
+  const docs = await docsFor(ctx, userId, b.sessionId);
+  if (!docs.length) throw new HttpError(400, "session_expired", "Your document session has expired. Please upload your PDF again.", "reupload");
+  const boss: Boss = J(b.bossJson, {});
+  const opts = { topic: b.topic, difficulty: b.difficulty, asked: [], targets: boss.target_concepts ?? [], riddles: boss.species === "sphinx" };
+  // the batches land one at a time (each numbers its questions after the last)
+  let saving: Promise<void> = Promise.resolve();
+  const write = (phase: number, n: number, angle: string) => generateBattleQuiz(ctx, caller, docs, { ...opts, n, phase, angle })
+    .then((qs) => { saving = saving.then(() => storeBatch(ctx, battleId, phase, qs)); return saving; });
+  const half = Math.ceil(PREPARED.phase1 / 2);
+  const results = await Promise.allSettled([
+    write(1, half, ""), write(1, PREPARED.phase1 - half, "examples applications details"), write(2, PREPARED.phase2, "advanced tricky"),
+  ]);
+  await saving.catch(() => {});
+  const failure = results.find((r): r is PromiseRejectedResult => r.status === "rejected")?.reason;
+  if (failure) console.warn(`[coursemate-arena] battle ${battleId}: a prepared batch failed: ${failure instanceof Error ? failure.message.slice(0, 160) : failure}`);
+  // short on openers: one more try, then give up retryably (an expired document says so instead)
+  if (await poolSize(ctx, battleId, 1) < PREPARED.minToStart) {
+    const again = await fillOnce(ctx, caller, battleId, userId, 1, true);
+    if (await poolSize(ctx, battleId, 1) === 0) {
+      if (again instanceof HttpError && again.code !== "generation_failed") throw again;
+      if (failure instanceof HttpError && failure.code !== "generation_failed") throw failure;
+      throw retryable();
+    }
+  }
+  if (await poolSize(ctx, battleId, 2) === 0) await fillOnce(ctx, caller, battleId, userId, 2, true);
+  await markPrepared(ctx, battleId, userId);
+}
+
+/** Note on the boss that its questions are written (re-read and compare-and-set: the boss's lines may land meanwhile). */
+async function markPrepared(ctx: RequestContext, battleId: string, userId: number) {
+  for (let i = 0; i < 3; i++) {
+    const now = await need(ctx, battleId, userId);
+    const boss: Boss = J(now.bossJson, {});
+    if (boss.prepared) return;
+    boss.prepared = true;
+    const done = await ctx.db.update(arenaBattles).set({ bossJson: JSON.stringify(boss) })
+      .where(and(eq(arenaBattles.id, battleId), eq(arenaBattles.bossJson, now.bossJson))).returning({ id: arenaBattles.id }).all();
+    if (done.length) return;
   }
 }
 
@@ -378,11 +532,14 @@ async function issueNext(ctx: RequestContext, battleId: string, userId: number, 
   const boss: Boss = J(b.bossJson, {});
   const mech = forBoss(boss);
   const intent: Intent | null = J(b.intentJson, null);
-  if (mech && mech.lockedMoves(boss.mech ?? {}).includes(move)) throw err("move_locked", `The ${boss.name || "boss"} has your ${titleCase(move)} pinned.`, { move });
-  const cost = moveCost(move, boss);
+  if (boss.down) throw err("knocked_down", "You're down: continue or give up first.");
+  if (lockedMoves(boss).includes(move) && !boss.finale?.armed) throw err("move_locked", `The ${boss.name || "boss"} has your ${titleCase(move)} pinned.`, { move });
+  const cost = boss.finale?.armed ? 0 : moveCost(move, boss);
   if (b.focus < cost) throw err("not_enough_focus", `${titleCase(move)} needs ${cost} Focus.`, { focus: b.focus, cost });
   const tier = (mech?.forcedTier(intent) ?? null) || MOVES[move].tier;
-  const q = await pickQuestion(ctx, battleId, b.phase, tier, b.difficulty, !!(mech && mech.prefersRiddle(intent)));
+  const riddle = !!(mech && mech.prefersRiddle(intent));
+  // the phase's own questions first; when they run out, the other phase's (better than stopping to wait for the model)
+  const q = await pickQuestion(ctx, battleId, b.phase, tier, b.difficulty, riddle) ?? await pickQuestion(ctx, battleId, b.phase === 1 ? 2 : 1, tier, b.difficulty, riddle);
   if (!q) return null;
   const options = shuffle([...J<BattleQuestion>(q.questionJson, {} as BattleQuestion).options]);
   let bossChanged = false;
@@ -391,7 +548,10 @@ async function issueNext(ctx: RequestContext, battleId: string, userId: number, 
     if (fake) { options.splice(Math.floor(Math.random() * (options.length + 1)), 0, fake); (boss.mech ??= {}).illusion = { seq: q.seq, option: fake }; bossChanged = true; }
   }
   const now = new Date();
-  const took = await ctx.db.update(arenaQuestions).set({ status: "issued", optionsJson: JSON.stringify(options), issuedAt: iso(now), deadlineAt: iso(new Date(now.getTime() + (timeLimit(boss, move) + (boss.mount === "bird" && b.answered === 0 ? 3 : 0)) * 1000)), move })
+  const finale = !!boss.finale?.armed;
+  const seconds = finale ? Math.min(FINALE_SECONDS, timeLimit(boss, move)) : timeLimit(boss, move) + (boss.mount === "bird" && b.answered === 0 ? 3 : 0);
+  if (finale) { boss.finale.seq = q.seq; bossChanged = true; }
+  const took = await ctx.db.update(arenaQuestions).set({ status: "issued", optionsJson: JSON.stringify(options), issuedAt: iso(now), deadlineAt: iso(new Date(now.getTime() + seconds * 1000)), move })
     .where(and(eq(arenaQuestions.battleId, battleId), eq(arenaQuestions.seq, q.seq), eq(arenaQuestions.status, "queued"))).returning({ s: arenaQuestions.seq }).all();
   if (!took.length) return null;
   const libraryPending = !!boss.kit?.library_pending;
@@ -442,7 +602,11 @@ async function playerFor(ctx: RequestContext, userId: number): Promise<Player> {
 /** An issued question past its deadline (+ grace) is a wrong answer. Every read of a battle comes through here. */
 async function settleTimeout(ctx: RequestContext, battleId: string, userId: number, player?: Player) {
   const b = await row(ctx, battleId, userId);
-  if (!b || b.status !== "active" || b.currentSeq === null) return null;
+  if (!b || b.status !== "active") return null;
+  // knocked down and the CONTINUE countdown ran out (with a little grace): the fight is lost
+  const down = J<Boss>(b.bossJson, {}).down;
+  if (down && Date.now() > Date.parse(down.deadline) + CONTINUE_GRACE_MS) { await end(ctx, player ?? await playerFor(ctx, userId), battleId, "lost"); return null; }
+  if (b.currentSeq === null) return null;
   const q = await qrow(ctx, battleId, b.currentSeq);
   if (!q || q.status !== "issued" || Date.now() <= Date.parse(q.deadlineAt!) + DEADLINE_GRACE_MS) return null;
   return resolve(ctx, player ?? await playerFor(ctx, userId), b, q, null, true);
@@ -509,6 +673,9 @@ async function resolve(ctx: RequestContext, player: Player, b: Row, q: QRow, pic
   };
   // The creature's bane (tome.ts): these moves, answered right in a row, stagger it: x1.5 and it loses its turn.
   const baneHit = tome.trackBane(boss, move, correct);
+  const finaleTurn = !!boss.finale?.armed && boss.finale.seq === q.seq;
+  let comboSpecial = false, finisher = false, recovered = 0, points = 0;
+  const score = (boss.score ??= { points: 0, speed: 0, specials: 0, finisher: 0, continues: 0, best_level: 1, total: 0 });
   if (correct) {
     combo += 1 + kt.comboBonus;
     const hit = playerHit(boss, combo, kt.comboExtra);
@@ -516,7 +683,10 @@ async function resolve(ctx: RequestContext, player: Player, b: Row, q: QRow, pic
     if (weak) dealt *= relics.has("scholar_lens") ? 3 : 2;
     const moveMult = move === "jab" && kt.jabMult ? kt.jabMult : move === "heavy" && kt.heavyMult ? kt.heavyMult
       : move === "strike" && kt.strikeMult ? kt.strikeMult : MOVES[move].mult;
-    dealt = Math.trunc(dealt * moveMult * turn.mult * kt.mult);
+    dealt = Math.trunc(dealt * moveMult * turn.mult * kt.mult * effects.weakenMult(boss));
+    // the combo: each level past x1 a little harder; at x5, a combo special every third right answer
+    dealt = Math.trunc(dealt * (1 + COMBO_DAMAGE_STEP * (comboLevel(combo) - 1)));
+    if (isComboSpecial(combo)) { comboSpecial = true; dealt = Math.trunc(dealt * COMBO_SPECIAL_MULT); }
     if (baneHit) dealt = Math.trunc(dealt * tome.BANE_MULT);
     if (boss.mount === "dragon" && move === "heavy") dealt = Math.trunc(dealt * 1.05);
     if (dealt > 0) {
@@ -527,7 +697,17 @@ async function resolve(ctx: RequestContext, player: Player, b: Row, q: QRow, pic
       dealt += gearBonus;
     }
     if (shield && dealt && !weak && !kt.ignoreShield) { absorbed = Math.min(shield, dealt); shield -= absorbed; dealt -= absorbed; }
+    // the final move lands: it ends the fight, whatever was left (the shield too)
+    if (finaleTurn) { finisher = true; shield = 0; absorbed = 0; dealt = Math.max(dealt, boss.current_hp); }
     boss.current_hp = Math.max(0, boss.current_hp - dealt);
+    // the score: the tier's points, up to half again for speed, times the combo's level
+    const tierPts = POINTS[questionTier(question.difficulty, b.difficulty)] ?? POINTS.medium;
+    const quick = Math.round(tierPts * 0.5 * (1 - turn.spentRatio));
+    points = Math.round((tierPts + quick) * comboLevel(combo));
+    score.points += points; score.speed += quick;
+    score.best_level = Math.max(score.best_level, comboLevel(combo));
+    if (comboSpecial) score.specials += 1;
+    if (finisher) score.finisher = FINISHER_POINTS;
     boss.total_damage_taken = (boss.total_damage_taken ?? 0) + dealt;
     boss.rounds_fought = (boss.rounds_fought ?? 0) + 1;
     rage();
@@ -535,7 +715,16 @@ async function resolve(ctx: RequestContext, player: Player, b: Row, q: QRow, pic
     focusGained = Math.min(focusCap, focus + gain) - focus;
     focus += focusGained;
     if ((relics.has("vampiric_tome") && combo % VAMPIRIC_COMBO === 0) || kits.vampiric(kstate, combo)) lifesteal = 1;
-  } else combo = 0;
+  } else {
+    combo = 0;
+    if (finaleTurn) {
+      recovered = Math.max(1, Math.ceil(boss.max_hp * FINALE_RECOVER_PCT));
+      boss.current_hp = Math.min(boss.max_hp, boss.current_hp + recovered);
+    }
+  }
+  // the final move is armed once (each time) the boss drops low; spent either way once it is tried
+  if (finaleTurn) boss.finale = { armed: false, tried: Number(boss.finale?.tried ?? 0) + 1 };
+  else if (boss.current_hp > 0 && boss.current_hp <= boss.max_hp * FINALE_PCT && !boss.finale?.armed && !(correct && recovered)) boss.finale = { ...(boss.finale ?? {}), armed: true };
   let attackName: string | null = null;
   let taunt: string;
   if (boss.current_hp > 0) {
@@ -595,8 +784,23 @@ async function resolve(ctx: RequestContext, player: Player, b: Row, q: QRow, pic
   if (!(boss.current_hp > 0 && DAMAGING_KINDS.includes(intent.kind))) { kt.dodge = false; kt.vanished = false; }
   kits.settle(kt);
   focus = Math.max(0, Math.min(focusCap, focus + kt.focusDelta + kt.refund));
-  const meterGained = kits.charge(kstate, correct, combo);
-  let playerHp = Math.max(0, Math.min(b.playerMaxHp, b.playerHp + lifesteal + (mech ? turn.hearts : 0)) - taken - mechDamage - kt.selfDamage);
+  let meterGained = kits.charge(kstate, correct, combo);
+  if (correct && comboLevel(combo) > 1) {
+    const extra = Math.min(kits.METER_MAX - (kstate.meter || 0), Math.round(meterGained * COMBO_METER_STEP * (comboLevel(combo) - 1)));
+    kstate.meter = (kstate.meter || 0) + extra; meterGained += extra;
+  }
+  // the effects on the champion tick (burns, poisons...) and count down; then the blow's own effect lands - only on a
+  // miss that wasn't dodged or absorbed, and only while the boss still stands
+  const ticked = effects.tick(boss);
+  const carried = effects.effectById((intent as Intent & { effect?: { id: string } }).effect?.id);
+  let landed: { id: string; name: string; kind: string; text: string } | null = null, sapped = 0, effectDrained = 0;
+  if (carried && !correct && !dodged && !aegis && !turn.skip && !baneHit && boss.current_hp > 0) {
+    const r = effects.land(boss, carried);
+    landed = { id: carried.id, name: carried.name, kind: carried.kind, text: carried.text };
+    sapped = r.sapped; effectDrained = r.drained;
+    focus = Math.max(0, focus - effectDrained);
+  }
+  let playerHp = Math.max(0, Math.min(b.playerMaxHp, b.playerHp + lifesteal + (mech ? turn.hearts : 0)) - taken - mechDamage - kt.selfDamage - ticked.damage);
   // what this turn did, for mastery challenges (counted at the end of the fight)
   if (riposte > 0) kits.bumpStat(kstate, "riposte");
   if (correct && move === "jab") kits.bumpStat(kstate, "right_jab");
@@ -610,7 +814,11 @@ async function resolve(ctx: RequestContext, player: Player, b: Row, q: QRow, pic
   if (playerHp <= 0 && relics.has("phoenix_ash") && !mods.phoenix_used) { playerHp = Math.min(PHOENIX_HEARTS, b.playerMaxHp); revived = true; mods.phoenix_used = true; }
   playerHp += kits.afterBlow(kstate, playerHp, b.playerMaxHp, kt);               // your hero's Second Wind
   const answered = b.answered + 1;
-  const over = boss.current_hp <= 0 || playerHp <= 0 || answered >= MAX_ANSWERS;
+  const continues = Number(boss.continues ?? 0);
+  const knockedDown = playerHp <= 0 && boss.current_hp > 0 && answered < MAX_ANSWERS && continues < MAX_CONTINUES;
+  if (knockedDown) boss.down = { at: iso(), deadline: iso(new Date(Date.now() + CONTINUE_SECONDS * 1000)) };
+  score.total = scoreTotal(boss, boss.current_hp <= 0 ? playerHp : 0);
+  const over = !knockedDown && (boss.current_hp <= 0 || playerHp <= 0 || answered >= MAX_ANSWERS);
   const nextIntent = over ? null : nextIntentFor(boss, b.difficulty, answered + 1);
   const now = new Date();
   const spent = Math.min((now.getTime() - Date.parse(q.issuedAt!)) / 1000, questionLimit(boss, q));
@@ -618,10 +826,13 @@ async function resolve(ctx: RequestContext, player: Player, b: Row, q: QRow, pic
     question_id: q.seq, correct, timed_out: timedOut, answer: picked, correct_answer: correctOption, explanation: question.explanation || null,
     move, tier: questionTier(question.difficulty, b.difficulty), damage_dealt: dealt, hit_type: hitType, weakness: weak && correct,
     damage_taken: taken, attack_name: attackName, taunt, phase_changed: phaseChanged, combo, gear_bonus: gearBonus, pet_strike: petStrike,
-    intent, next_intent: nextIntent, blocked, interrupted, shield_absorbed: absorbed, boss_healed: healed, focus, focus_gained: focusGained,
+    intent, next_intent: nextIntent, blocked, interrupted, shield_absorbed: absorbed, boss_healed: healed + recovered, focus, focus_gained: focusGained,
+    combo_level: comboLevel(combo), combo_special: comboSpecial, points, score: score.total, finale_armed: !!boss.finale?.armed,
+    finisher: finisher ? finisherFor(kstate) : null, finale_missed: finaleTurn && !correct, knocked_down: knockedDown,
     focus_drained: drained, aegis, revived, lifesteal, dodged, riposte, kit_meter_gained: meterGained,
     bane: baneHit ? { landed: true, found: false } : null,
     kit: { events: kt.events, refund: kt.refund, hud: kits.kitHud(kstate) },
+    effects: { landed, ticked: ticked.ticked, expired: ticked.expired, damage: ticked.damage, sapped, drained: effectDrained, active: effects.hud(boss) },
     mechanic: mech ? { id: mech.id, events: turn.events, boss_healed: mechHeal, damage: mechDamage, hearts: turn.hearts, focus: turn.focusDelta,
                        shield: boss.current_hp > 0 ? turn.shield : 0, illusion_picked: turn.illusionPicked, hud: mechanicHud(boss, b.difficulty) } : null,
   };
@@ -647,7 +858,7 @@ async function resolve(ctx: RequestContext, player: Player, b: Row, q: QRow, pic
     }
   }
   if (boss.current_hp <= 0) await end(ctx, player, battleId, "won");
-  else if (playerHp <= 0 || answered >= MAX_ANSWERS) await end(ctx, player, battleId, "lost");
+  else if (!knockedDown && (playerHp <= 0 || answered >= MAX_ANSWERS)) await end(ctx, player, battleId, "lost");
   return outcome;
 }
 
@@ -716,7 +927,15 @@ export async function end(ctx: RequestContext, player: Player, battleId: string,
   const paid: Record<string, unknown> = { arena_round_complete: null, boss_defeat: null };
   const fighterKit = J<Boss>(b.bossJson, {}).kit as kits.KitState | undefined;
   const asHero = fighterKit?.champion === build.HERO_ID;
-  const result: Record<string, unknown> = { grade, accuracy, time_seconds: seconds, new_personal_best: false, missed: await missed(ctx, battleId),
+  const endBoss = J<Boss>(b.bossJson, {});
+  const total = scoreTotal(endBoss, status === "won" ? b.playerHp : 0);
+  const sc = endBoss.score ?? {};
+  const scoreCard = {
+    points: Number(sc.points ?? 0), speed: Number(sc.speed ?? 0), finisher: Number(sc.finisher ?? 0),
+    hearts: status === "won" ? Math.max(0, b.playerHp) * HEART_POINTS : 0, best_combo: b.maxCombo, best_level: Number(sc.best_level ?? 1),
+    specials: Number(sc.specials ?? 0), continues: Number(endBoss.continues ?? 0), total, rank: scoreRank(total, b.answered),
+  };
+  const result: Record<string, unknown> = { grade, accuracy, time_seconds: seconds, new_personal_best: false, missed: await missed(ctx, battleId), score: scoreCard,
     champion: asHero ? await heroXp(ctx, player.id, b, status === "won") : await championXp(ctx, player.id, b, status === "won") };
   // the Bestiary: the record, first defeat, mastery, a newly opened tier (every mode counts, runs too)
   const fought = String(J<Boss>(b.bossJson, {}).species ?? "");
@@ -780,6 +999,37 @@ export async function end(ctx: RequestContext, player: Player, battleId: string,
   return paid;
 }
 
+/**
+ * CONTINUE after a knock-down: a health potion from the bag (free) or coins (the price doubles each time), up to 3 a
+ * fight. You come back with full hearts and no effects on you; the boss keeps its HP. Too late (the countdown and its
+ * grace are over) and the fight is lost.
+ */
+export async function continueBattle(ctx: RequestContext, player: Player, battleId: string, by: unknown) {
+  if (by !== "potion" && by !== "coins") throw new HttpError(400, "invalid_input", "Continue with a potion or with coins.");
+  await need(ctx, battleId, player.id);
+  await settleTimeout(ctx, battleId, player.id, player);
+  const b = await need(ctx, battleId, player.id);
+  if (b.status !== "active") throw err("battle_finished", "That battle is over.");
+  const boss: Boss = J(b.bossJson, {});
+  if (!boss.down) throw err("not_down", "You're still standing.");
+  const used = Number(boss.continues ?? 0);
+  if (used >= MAX_CONTINUES) throw err("no_continues", `Only ${MAX_CONTINUES} continues a fight.`);
+  if (by === "potion") {
+    if (!await consume(ctx, player.id, "heal")) throw err("no_stock", "You don't have a health potion.");
+  } else {
+    const cost = continueCoins(used);
+    const paid = await recordRewardEvent(ctx, player.id, "arena_continue", 0, -cost, battleId, `u${player.id}:continue:${battleId}:${used}`);
+    if (!paid.applied) throw new HttpError(402, "not_enough_coins", `Continuing costs ${cost} coins.`, null, { cost });
+  }
+  delete boss.down;
+  boss.continues = used + 1;
+  boss.player_effects = [];
+  const done = await ctx.db.update(arenaBattles).set({ bossJson: JSON.stringify(boss), playerHp: b.playerMaxHp, currentSeq: null, updatedAt: iso() })
+    .where(and(eq(arenaBattles.id, battleId), eq(arenaBattles.updatedAt, b.updatedAt))).returning({ id: arenaBattles.id }).all();
+  if (!done.length) throw err("battle_changed", "The battle changed. Please try again.");
+  return { ok: true, continued: { by, continues: used + 1 }, battle: state(await need(ctx, battleId, player.id)), stock: await stock(ctx, player.id) };
+}
+
 export async function forfeit(ctx: RequestContext, player: Player, battleId: string) {
   await need(ctx, battleId, player.id);
   await settleTimeout(ctx, battleId, player.id, player);
@@ -807,6 +1057,7 @@ export async function useItem(ctx: RequestContext, player: Player, battleId: str
   await settleTimeout(ctx, battleId, player.id, player);
   let b = await need(ctx, battleId, player.id);
   if (b.status !== "active") throw err("battle_finished", "That battle is over.");
+  if (effects.cursed(J<Boss>(b.bossJson, {}))) throw err("cursed", "You are cursed: no potions for now.");
   let question = null;
   if (item === "heal") {
     if (b.playerHp >= b.playerMaxHp) throw err("hp_full", "Your hearts are already full.");
@@ -887,6 +1138,7 @@ export async function castSpell(ctx: RequestContext, player: Player, battleId: s
   if (!q || q.status !== "issued") throw err("no_question", "There is no question to cast that on.");
   if (Date.now() > Date.parse(q.deadlineAt!)) throw err("question_expired", "Time is up for that question.");
   const boss: Boss = J(b.bossJson, {});
+  if (effects.silenced(boss)) throw err("silenced", "You are silenced: no spells for now.");
   const mods = (boss.mods ??= {});
   let cost = SPELLS[spell];
   if (spell === "insight" && q.removedJson) throw err("already_used", "Two wrong answers are already gone from this question.");

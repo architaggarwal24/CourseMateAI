@@ -15,10 +15,16 @@ const ICON: Record<Move, typeof Sword> = { strike: Sword, jab: Feather, heavy: H
  * question of a different difficulty and does something different with a right answer. Keys Q W E R pick them.
  * A move the creature has locked (a Kraken's grab) is disabled and says why.
  */
-export default function MovePicker({ battle, onPick, disabled }: { battle: Battle; onPick: (m: Move) => void; disabled?: boolean }) {
+export default function MovePicker({ battle, onPick, disabled, repeat = null }: {
+  battle: Battle; onPick: (m: Move) => void; disabled?: boolean;
+  /** Last turn's move: Enter or Space picks it again (Strike on the first turn). */
+  repeat?: Move | null;
+}) {
   const focus = battle.focus ?? 0;
   const heavyCost = battle.heavy_cost ?? 2;
-  const locked = new Set(battle.mechanic?.locked_moves ?? []);
+  // locked by the creature (a Kraken's grab) or by an effect on you (a stun)
+  const locked = new Set(battle.locked_moves ?? battle.mechanic?.locked_moves ?? []);
+  const byEffect = (m: Move) => battle.effects?.find((e) => e.kind === "lock" && e.moves?.includes(m));
   const can = (m: Move) => !locked.has(m) && (m !== "heavy" || focus >= heavyCost);
 
   // A new turn: focus moves to "Your move" (the panel that held focus before is gone), without scrolling the page.
@@ -26,13 +32,16 @@ export default function MovePicker({ battle, onPick, disabled }: { battle: Battl
   useEffect(() => { heading.current?.focus({ preventScroll: true }); }, []);
 
   // Q W E R pick a move. One listener reading the latest props through a ref (no gap between re-renders).
-  const live = useRef({ disabled, onPick, can });
-  live.current = { disabled, onPick, can };
+  const again: Move = repeat && can(repeat) ? repeat : "strike";
+  const live = useRef({ disabled, onPick, can, again });
+  live.current = { disabled, onPick, can, again };
   // A layout effect: bound as the screen appears, so a key pressed the moment it shows is never missed.
   useLayoutEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const l = live.current;
       if (l.disabled || shortcutBlocked(e)) return;
+      // Enter or Space: last turn's move again (a focused button answers its own key press)
+      if ((e.key === "Enter" || e.key === " ") && !(e.target instanceof HTMLButtonElement) && l.can(l.again)) { e.preventDefault(); l.onPick(l.again); return; }
       const m = MOVES.find((x) => MOVE_INFO[x].key.toLowerCase() === e.key.toLowerCase());
       if (m && l.can(m)) { e.preventDefault(); l.onPick(m); }
     };
@@ -44,6 +53,7 @@ export default function MovePicker({ battle, onPick, disabled }: { battle: Battl
     <section className="arena-moves" aria-labelledby="arena-moves-title">
       <div className="arena-moves__head">
         <h3 id="arena-moves-title" ref={heading} tabIndex={-1} className="arena-moves__title">Your move</h3>
+        {can(again) && <p className="arena-moves__again"><kbd className="kbd">Enter</kbd> {MOVE_INFO[again].label}{repeat ? " again" : ""}</p>}
         <Intent intent={battle.intent} />
         <MechanicHud mechanic={battle.mechanic} />
       </div>
@@ -62,7 +72,8 @@ export default function MovePicker({ battle, onPick, disabled }: { battle: Battl
                 <span className="arena-move__name">{info.label}</span>
                 <span className="arena-move__tier">{info.tier}</span>
                 <span id={`arena-move-${m}`} className="arena-move__blurb">
-                  {locked.has(m) ? `Locked: ${battle.boss.name} has it pinned.` : m === "heavy" ? `180% damage. Costs ${heavyCost} Focus.` : info.blurb}
+                  {locked.has(m) ? (byEffect(m) ? `Locked: ${byEffect(m)!.name} (${byEffect(m)!.turns} more).` : `Locked: ${battle.boss.name} has it pinned.`)
+                    : m === "heavy" ? `180% damage. Costs ${heavyCost} Focus.` : info.blurb}
                   {m === "heavy" && !ok && !locked.has(m) && <> (you have {focus})</>}
                 </span>
                 <kbd className="kbd arena-move__key" aria-hidden="true">{info.key}</kbd>

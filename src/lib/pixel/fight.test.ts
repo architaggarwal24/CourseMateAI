@@ -76,4 +76,22 @@ describe("FightScene plays every new beat", () => {
     expect(onImpact.mock.calls).toEqual([["hero", 1], ["hero", 2], ["hero", 3], ["hero", 4], ["boss", 5]]);
     s.destroy();
   });
+
+  it("knocked down (Stage 4): the champion stays down through a new turn, and a continue brings them back up", () => {
+    const { s, onBanner } = scene(false);
+    run(1000);
+    s.play({ kind: "hero-down", key: 1 });
+    run(1500);
+    expect(onBanner).toHaveBeenCalledWith("DOWN!", "lose");
+    const hero = () => (s as unknown as { h: { anim: string } }).h.anim;
+    expect(hero()).toBe("ko");
+    s.reset();
+    expect(hero()).toBe("ko");                                       // a KO pose survives a new turn
+    s.setDown(false);
+    expect(hero()).toBe("idle");
+    expect(onBanner).toHaveBeenCalledWith("BACK UP!", "fight");
+    s.setDown(false);                                                // already up: nothing again
+    expect(onBanner.mock.calls.filter(([t]) => t === "BACK UP!")).toHaveLength(1);
+    s.destroy();
+  });
 });

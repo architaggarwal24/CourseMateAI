@@ -14,6 +14,7 @@ import { previewEquipped, useHeroStore } from "@/hooks/useHero";
 import { totalGear } from "@/lib/game/gear";
 import { fetchLeaderboard, fetchWeakConcepts } from "@/lib/arena/api";
 import { DIFFICULTIES, DIFFICULTY_BLURB, DIFFICULTY_LABEL, type Difficulty, type LeaderboardEntry, type WeakConceptsResponse } from "@/lib/arena/types";
+import ForgingWait from "./ForgingWait";
 
 const mmss = (seconds: number) => `${Math.floor(seconds / 60)}m ${Math.round(seconds % 60)}s`;
 
@@ -182,6 +183,7 @@ export default function SummonPanel({ sessionId, starting, onSummon, mode = "qui
             {!starting && (difficulty === "nightmare" ? <Skull size={16} aria-hidden="true" /> : <Swords size={16} aria-hidden="true" />)}
             {starting ? "Summoning…" : nemesis ? "Face your Nemesis" : "Summon boss"}
           </Button>
+          {starting && <ForgingWait />}
         </form>
       </div>
     </section>

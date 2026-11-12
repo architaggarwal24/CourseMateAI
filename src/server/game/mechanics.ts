@@ -18,7 +18,7 @@ const NAGA_EVERY = 4, TREASURE_MULT = 1.5, TREASURE_HEARTS = 1, TREASURE_FOCUS =
 const SIMURGH_HEAL_PCT = [2, 3, 4, 5], SIMURGH_SLOW = 0.5, FEATHER_PLUCK_MULT = 1.25;
 const COIL_CAP = [1, 1, 2, 3];
 
-export const DAMAGING_KINDS = ["attack", "heavy", "grab", "riddle", "illusion", "charge", "throw", "hoard"];
+export const DAMAGING_KINDS = ["attack", "heavy", "grab", "riddle", "illusion", "charge", "throw", "hoard", "fury"];
 export const key = (text: unknown) => String(text ?? "").toLowerCase().split(/\s+/).filter(Boolean).join(" ");
 const title = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 const d = (difficulty: string) => DI[difficulty] ?? 2;

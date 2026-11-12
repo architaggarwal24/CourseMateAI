@@ -2,6 +2,7 @@
 // endpoint; they throw ApiError like the rest of the app, so callers use toast.apiError / error.code.
 import { api } from "@/lib/api/client";
 import type {
+  ContinueResponse,
   ActiveBattle, AnswerResponse, BattleGetResponse, ChooseResponse, CreateResponse, Difficulty, ForfeitResponse, ItemId,
   ItemResponse, LeaderboardResponse, Move, QuestionResponse, Run, RunBoardEntry, RunResponse, Spell, SpellResponse,
   TravelResponse, UltimateResponse, WeakConceptsResponse, BestiaryPage, BestiaryResponse, TauntResponse, EmoteEntry,
@@ -12,9 +13,12 @@ import { API_BASE_URL, throwForResponse } from "@/lib/api/client";
 const as = <T,>(data: unknown) => data as T;
 
 /** `species`: a Hunt (the Bestiary's Hunt button) - that creature, whatever the topic would summon. */
-export async function startBattle(sessionId: string, topic: string, difficulty: Difficulty, mode: "quick" | "nemesis" = "quick", species?: string | null): Promise<CreateResponse> {
-  const body = mode === "nemesis" ? { session_id: sessionId, difficulty, mode }
-    : { session_id: sessionId, topic, difficulty, mode, ...(species ? { species } : {}) };
+/** `defer` (Stage 5): the battle comes back at once and its questions are written by prepareBattle (character select
+ *  and the VS screen run meanwhile). */
+export async function startBattle(sessionId: string, topic: string, difficulty: Difficulty, mode: "quick" | "nemesis" = "quick", species?: string | null, defer = false): Promise<CreateResponse> {
+  const extra = defer ? { defer: true } : {};
+  const body = mode === "nemesis" ? { session_id: sessionId, difficulty, mode, ...extra }
+    : { session_id: sessionId, topic, difficulty, mode, ...(species ? { species } : {}), ...extra };
   const { data } = await api.POST("/arena/battles", { body: body as never });
   return as<CreateResponse>(data);
 }
@@ -122,6 +126,13 @@ async function postJson<T>(path: string, body: unknown = {}): Promise<T> {
 
 /** Taunt the boss (once a fight): it rages, the ultimate charges +50, the win pays +25% (409 taunt_used). */
 export const tauntBoss = (battleId: string) => postJson<TauntResponse>(`/arena/battles/${encodeURIComponent(battleId)}/taunt`);
+/** CONTINUE after a knock-down (Stage 4): a health potion or coins (402 not_enough_coins, 409 no_continues / not_down). */
+export const continueBattle = (battleId: string, by: "potion" | "coins") =>
+  postJson<ContinueResponse>(`/arena/battles/${encodeURIComponent(battleId)}/continue`, { with: by });
+/** Write a deferred battle's questions (Stage 5); resolves once they are ready (503 generation_failed: try again). */
+export const prepareBattle = (battleId: string) => postJson<BattleGetResponse>(`/arena/battles/${encodeURIComponent(battleId)}/prepare`);
+/** Before the first question: fight as the champion now chosen on the account (409 battle_started). */
+export const rearmBattle = (battleId: string) => postJson<BattleGetResponse>(`/arena/battles/${encodeURIComponent(battleId)}/rearm`);
 /** Every victory emote and whether the player has it. */
 export const fetchEmotes = () => getJson<{ emotes: EmoteEntry[] }>("/emotes");
 

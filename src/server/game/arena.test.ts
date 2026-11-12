@@ -11,6 +11,9 @@ import * as items from "@/app/api/v1/arena/battles/[id]/items/route";
 import * as spells from "@/app/api/v1/arena/battles/[id]/spells/route";
 import * as ultimate from "@/app/api/v1/arena/battles/[id]/ultimate/route";
 import * as forfeit from "@/app/api/v1/arena/battles/[id]/forfeit/route";
+import * as continueRoute from "@/app/api/v1/arena/battles/[id]/continue/route";
+import * as prepareRoute from "@/app/api/v1/arena/battles/[id]/prepare/route";
+import * as rearmRoute from "@/app/api/v1/arena/battles/[id]/rearm/route";
 import * as board from "@/app/api/v1/arena/leaderboard/route";
 import * as weak from "@/app/api/v1/arena/weak-concepts/route";
 import * as runs from "@/app/api/v1/arena/runs/route";
@@ -47,7 +50,8 @@ const TIERS = ["easy", "medium", "hard"];
 function script(m: ChatMessage[]) {
   const all = m.map((x) => x.content).join("\n");
   if (all.includes("battle game")) {
-    return JSON.stringify({ questions: Array.from({ length: 6 }, (_, i) => {
+    const asked = Number(/Questions to generate: (\d+)/.exec(all)?.[1] ?? 6);
+    return JSON.stringify({ questions: Array.from({ length: asked }, (_, i) => {
       n++;
       return { question: `Battle question ${n}?`, options: ["ATP", "DNA", "RNA", "Fat"], correct_answer: "ATP", explanation: "Energy.", concept: `concept ${n}`, difficulty: TIERS[i % 3] };
     }) });
@@ -122,6 +126,280 @@ describe("the rules", () => {
     const reached = new Set(a.nodes.flatMap((x) => x.edges));
     expect(a.nodes.filter((x) => x.layer > 0).every((x) => reached.has(x.id))).toBe(true);
     expect(buildMap(42, 1, false).nodes.some((x) => x.kind === "nemesis")).toBe(false);
+  });
+});
+
+describe("a fight is prepared before it starts (no waiting for the model mid-fight)", () => {
+  const battleCalls = () => llm.calls.filter((c) => c.messages.some((m) => m.content.includes("battle game"))).length;
+  const pool = async (battle: string, phase: number) =>
+    (await db().prepare("SELECT COUNT(*) AS n FROM arena_questions WHERE battle_id = ? AND phase = ? AND status = 'queued'").bind(battle, phase).first<{ n: number }>())!.n;
+
+  it("the whole fight's questions, normal and enraged, are written before the battle is handed over", async () => {
+    const b = await person(mail, "prep@example.com", "free");
+    const id = await uploadPdf(b, "Bio.pdf", BIO);
+    const s = await start(b, id);
+    expect(s.ok).toBe(true);
+    expect(s.boss.prepared).toBe(true);
+    expect(await pool(s.battle_id, 1)).toBeGreaterThanOrEqual(10);
+    expect(await pool(s.battle_id, 2)).toBeGreaterThanOrEqual(6);
+    // side by side: the phase-1 batches read different passages (the second searches with extra words)
+    const prompts = llm.calls.filter((c) => c.messages.some((m) => m.content.includes("battle game")));
+    expect(prompts).toHaveLength(3);
+    await settleBackground();
+    // several turns in a row: none of them asks the model for questions (a long fight is topped up in the
+    // background only once it runs low; four turns never get there)
+    const before = battleCalls();
+    for (let i = 0; i < 4; i++) {
+      const q = await ask(b, s.battle_id, "strike");
+      if (!q.question) break;
+      await reply(b, s.battle_id, q.question.id, "ATP");
+    }
+    await settleBackground();
+    expect(battleCalls()).toBe(before);
+  });
+
+  it("when the enraged phase's questions run out, the fight uses what is left instead of waiting", async () => {
+    const b = await person(mail, "prep2@example.com", "free");
+    const id = await uploadPdf(b, "Bio.pdf", BIO);
+    const s = await start(b, id);
+    await settleBackground();
+    await db().prepare("DELETE FROM arena_questions WHERE battle_id = ? AND phase = 2").bind(s.battle_id).run();
+    await db().prepare("UPDATE arena_battles SET phase = 2, gen_attempts_2 = 6 WHERE id = ?").bind(s.battle_id).run();
+    const before = battleCalls();
+    const q = await ask(b, s.battle_id, "strike");
+    expect(q.question).toMatchObject({ phase: 1 });
+    expect(battleCalls()).toBe(before);
+  });
+
+  it("if the questions can't be written, starting again resumes the same battle and prepares it", async () => {
+    const b = await person(mail, "prep3@example.com", "free");
+    const id = await uploadPdf(b, "Bio.pdf", BIO);
+    setLlmFactoryForTests(fakeLlms({ "*": (m) => (m.some((x) => x.content.includes("battle game")) ? "not json" : script(m)) }).factory);
+    const failed = await battles.POST(post(b, "/api/v1/arena/battles", { session_id: id, topic: "mitochondria", difficulty: "easy" }));
+    expect(failed.status).toBe(503);
+    expect((await json(failed)).error.code).toBe("battle_generation_failed");
+    setLlmFactoryForTests(llm.factory);
+    const s = await start(b, id);
+    expect(s).toMatchObject({ ok: true, resumed: true });
+    expect(s.boss.prepared).toBe(true);
+    expect(await pool(s.battle_id, 1)).toBeGreaterThan(0);
+  });
+});
+
+describe("boss effects and the enraged form (Stage 3)", () => {
+  const setIntent = (battle: string, intent: object) =>
+    db().prepare("UPDATE arena_battles SET intent_json = ? WHERE id = ?").bind(JSON.stringify(intent), battle).run();
+  const bigBoss = (battle: string) => db().prepare("UPDATE arena_battles SET boss_json = json_set(boss_json, '$.current_hp', 999, '$.max_hp', 999), boss_hp = 999, boss_max_hp = 999 WHERE id = ?").bind(battle).run();
+  const blow = (effect: string, name = "Freeze") => ({ kind: "attack", name: "Bite", value: 1, description: "Attacks for 1.", effect: { id: effect, name, kind: "x", text: "" } });
+
+  it("a telegraphed effect lands on a miss (a right answer shrugs it off) and changes the next questions", async () => {
+    const b = await person(mail, "fx@example.com", "free");
+    const id = await uploadPdf(b, "Bio.pdf", BIO);
+    const s = await start(b, id);
+    expect(s.boss.effects.pool.length).toBeGreaterThanOrEqual(2);
+    await bigBoss(s.battle_id);
+    // a right answer: nothing lands
+    await setIntent(s.battle_id, blow("freeze"));
+    let q = await ask(b, s.battle_id, "strike");
+    const full = q.question.time_limit;
+    let r = await reply(b, s.battle_id, q.question.id, "ATP");
+    expect(r.effects.landed).toBeNull();
+    // a miss: Freeze lands, and the next question has half the time
+    await setIntent(s.battle_id, blow("freeze"));
+    q = await ask(b, s.battle_id, "strike");
+    r = await reply(b, s.battle_id, q.question.id, "DNA");
+    expect(r.effects.landed).toMatchObject({ id: "freeze", name: "Freeze" });
+    expect(r.battle.effects).toEqual([expect.objectContaining({ id: "freeze", turns: 1 })]);
+    q = await ask(b, s.battle_id, "strike");
+    expect(q.question.time_limit).toBe(Math.round(full * 0.5));
+    r = await reply(b, s.battle_id, q.question.id, "ATP");
+    expect(r.effects.expired).toEqual(["Freeze"]);
+    expect(r.battle.effects).toEqual([]);
+  });
+
+  it("silence stops spells, a curse stops potions, a stun locks a move, poison costs hearts each question", async () => {
+    const b = await person(mail, "fx2@example.com", "free");
+    const id = await uploadPdf(b, "Bio.pdf", BIO);
+    const s = await start(b, id);
+    await bigBoss(s.battle_id);
+    // (each lasts its turns from the question after it lands: poison 3, silence 2, curse 2)
+    for (const [effect, name] of [["poison", "Poison"], ["silence", "Silence"], ["curse", "Curse"]]) {
+      await setIntent(s.battle_id, blow(effect, name));
+      const q = await ask(b, s.battle_id, "guard");
+      await reply(b, s.battle_id, q.question.id, "DNA");
+    }
+    await db().prepare("UPDATE arena_battles SET focus = 5 WHERE id = ?").bind(s.battle_id).run();
+    const q = await ask(b, s.battle_id, "strike");
+    expect(q.battle).toMatchObject({ silenced: true, cursed: true });
+    expect(q.question.effects ?? null).toBeNull();
+    const spell = await json(await spells.POST(post(b, `/api/v1/arena/battles/${s.battle_id}/spells`, { spell: "insight" }), params({ id: s.battle_id })));
+    expect(spell.error.code).toBe("silenced");
+    const item = await json(await items.POST(post(b, `/api/v1/arena/battles/${s.battle_id}/items`, { item: "fifty_fifty" }), params({ id: s.battle_id })));
+    expect(item.error.code).toBe("cursed");
+    const before = q.battle.player.hp;
+    const r = await reply(b, s.battle_id, q.question.id, "ATP");
+    expect(r.effects.ticked).toEqual([expect.objectContaining({ id: "poison", damage: 1 })]);
+    expect(r.effects.damage).toBe(1);
+    expect(r.battle.player.hp).toBeLessThanOrEqual(before - 1);                     // (the creature's own rule may add to it)
+    // a stun locks one move (never Guard): asking for it is refused
+    await db().prepare("UPDATE arena_battles SET player_hp = 10, player_max_hp = 10 WHERE id = ?").bind(s.battle_id).run();
+    await setIntent(s.battle_id, blow("stun", "Stun"));
+    const q2 = await ask(b, s.battle_id, "guard");
+    const r2 = await reply(b, s.battle_id, q2.question.id, "DNA");
+    const locked = r2.battle.locked_moves as string[];
+    expect(locked).toHaveLength(1);
+    expect(locked[0]).not.toBe("guard");
+    const refused = await question.GET(b.request(`/api/v1/arena/battles/${s.battle_id}/question?move=${locked[0]}`), params({ id: s.battle_id }));
+    expect((await json(refused)).error.code).toBe("move_locked");
+  });
+
+  it("enraged: the clock runs shorter, and every third turn is the creature's signature blow with one of its own effects", async () => {
+    const b = await person(mail, "fx3@example.com", "free");
+    const id = await uploadPdf(b, "Bio.pdf", BIO);
+    const s = await start(b, id);
+    await bigBoss(s.battle_id);
+    let q = await ask(b, s.battle_id, "strike");
+    const calm = q.question.time_limit;
+    await reply(b, s.battle_id, q.question.id, "ATP");
+    await db().prepare("UPDATE arena_battles SET boss_json = json_set(boss_json, '$.rage', json('true'), '$.phase', 2), phase = 2, answered = 4 WHERE id = ?").bind(s.battle_id).run();
+    q = await ask(b, s.battle_id, "strike");
+    expect(q.question.time_limit).toBe(Math.max(6, Math.round(calm * 0.85)));
+    const r = await reply(b, s.battle_id, q.question.id, "ATP");           // the 5th answer: turn 6 comes next
+    const species = s.boss.species as string;
+    expect(r.next_intent).toMatchObject({ kind: "fury", special: true });
+    expect(s.boss.effects.unique).toContain(r.next_intent.effect.id);
+    expect(species).toBeTruthy();
+  });
+});
+
+describe("character select while the questions are written (Stage 5)", () => {
+  it("a deferred start makes the battle at once; .../prepare writes its questions; .../rearm fights as the champion picked, until the first question", async () => {
+    const b = await person(mail, "select@example.com", "free");
+    const id = await uploadPdf(b, "Bio.pdf", BIO);
+    const s = await start(b, id, { defer: true });
+    expect(s).toMatchObject({ ok: true, resumed: false });
+    expect(s.battle).toMatchObject({ prepared: false, answered: 0, kit: { champion: "kaien" } });
+    const pool = async () => (await db().prepare("SELECT COUNT(*) AS n FROM arena_questions WHERE battle_id = ?").bind(s.battle_id).first<{ n: number }>())!.n;
+    expect(await pool()).toBe(0);
+
+    // the player picks Asha (joined) on the character select screen while the questions are written
+    await db().prepare("INSERT INTO champion_unlocks (user_id, champion_id, source, unlocked_at) VALUES ((SELECT user_id FROM arena_battles WHERE id = ?), 'asha', 'tier1', '2026-11-08')").bind(s.battle_id).run();
+    const [ready, picked] = await Promise.all([
+      prepareRoute.POST(post(b, `/api/v1/arena/battles/${s.battle_id}/prepare`), params({ id: s.battle_id })).then(json),
+      champion.PUT(b.request("/api/v1/avatar/champion", { method: "PUT", body: { champion_id: "asha" } }))
+        .then(() => rearmRoute.POST(post(b, `/api/v1/arena/battles/${s.battle_id}/rearm`), params({ id: s.battle_id }))).then(json),
+    ]);
+    expect(picked.battle.kit).toMatchObject({ champion: "asha" });
+    expect(ready.battle.prepared).toBe(true);
+    expect(await pool()).toBeGreaterThanOrEqual(5);
+    const again = await json(await prepareRoute.POST(post(b, `/api/v1/arena/battles/${s.battle_id}/prepare`), params({ id: s.battle_id })));
+    expect(again.battle).toMatchObject({ prepared: true, kit: { champion: "asha" } });  // prepared once; the pick kept
+
+    // once a question is out, the champion is set
+    const q = await ask(b, s.battle_id, "strike");
+    expect(q.battle.kit).toMatchObject({ champion: "asha" });
+    const late = await rearmRoute.POST(post(b, `/api/v1/arena/battles/${s.battle_id}/rearm`), params({ id: s.battle_id }));
+    expect(late.status).toBe(409);
+    expect((await json(late)).error.code).toBe("battle_started");
+  });
+});
+
+describe("the combo, the final move, the score card and CONTINUE (Stage 4)", () => {
+  const big = (battle: string, hp = 999) => db().prepare("UPDATE arena_battles SET boss_json = json_set(boss_json, '$.current_hp', ?, '$.max_hp', 999), boss_hp = ?, boss_max_hp = 999, shield = 0 WHERE id = ?").bind(hp, hp, battle).run();
+  const calm = (battle: string) => db().prepare("UPDATE arena_battles SET intent_json = ? WHERE id = ?").bind(JSON.stringify({ kind: "attack", name: "Bite", value: 1, description: "1." }), battle).run();
+  const owner = async (battle: string) => (await db().prepare("SELECT user_id AS u FROM arena_battles WHERE id = ?").bind(battle).first<{ u: number }>())!.u;
+  const keepGoing = (b: Browser, battle: string, by: string) =>
+    continueRoute.POST(post(b, `/api/v1/arena/battles/${battle}/continue`, { with: by }), params({ id: battle }));
+
+  it("the combo climbs to x5 and hits harder; at x5 the next right answer is a combo special; points add up", async () => {
+    const b = await person(mail, "combo@example.com", "free");
+    const id = await uploadPdf(b, "Bio.pdf", BIO);
+    const s = await start(b, id);
+    await big(s.battle_id);
+    await calm(s.battle_id);
+    let q = await ask(b, s.battle_id, "strike");
+    let r = await reply(b, s.battle_id, q.question.id, "ATP");
+    expect(r).toMatchObject({ combo: 1, combo_level: 1, combo_special: false });
+    expect(r.points).toBeGreaterThan(0);
+    const first = r.score;
+    await db().prepare("UPDATE arena_battles SET combo = 5 WHERE id = ?").bind(s.battle_id).run();
+    q = await ask(b, s.battle_id, "strike");
+    r = await reply(b, s.battle_id, q.question.id, "ATP");
+    expect(r).toMatchObject({ combo: 6, combo_level: 5, combo_special: false });
+    q = await ask(b, s.battle_id, "strike");
+    r = await reply(b, s.battle_id, q.question.id, "ATP");
+    expect(r).toMatchObject({ combo: 7, combo_level: 5, combo_special: true });
+    expect(r.score).toBeGreaterThan(first);
+    expect(r.battle.combo_level).toBe(5);
+  });
+
+  it("on its knees the boss gives a FINAL MOVE: one quick question; right ends it with your finisher, wrong lets it stagger back up", async () => {
+    const b = await person(mail, "finale@example.com", "free");
+    const id = await uploadPdf(b, "Bio.pdf", BIO);
+    const s = await start(b, id);
+    await big(s.battle_id, 160);                                              // 16%: one more hit puts it under 15%
+    await calm(s.battle_id);
+    let q = await ask(b, s.battle_id, "strike");
+    let r = await reply(b, s.battle_id, q.question.id, "ATP");
+    expect(r.finale_armed).toBe(true);
+    expect(r.next_intent).toMatchObject({ kind: "finale" });
+    // a miss: it staggers back up (+10%) and the final move is spent
+    q = await ask(b, s.battle_id, "strike");
+    expect(q.question).toMatchObject({ finale: true });
+    expect(q.question.time_limit).toBeLessThanOrEqual(12);
+    const before = q.battle.boss.hp;
+    r = await reply(b, s.battle_id, q.question.id, "DNA");
+    expect(r).toMatchObject({ finale_missed: true, damage_taken: 0 });
+    expect(r.battle.boss.hp).toBe(before + 100);
+    expect(r.battle.finale).toBe(false);
+    // down low again: this time the final move lands, whatever HP is left
+    await big(s.battle_id, 140);
+    q = await ask(b, s.battle_id, "strike");
+    r = await reply(b, s.battle_id, q.question.id, "ATP");
+    expect(r.finale_armed).toBe(true);
+    q = await ask(b, s.battle_id, "strike");
+    r = await reply(b, s.battle_id, q.question.id, "ATP");
+    expect(r.finisher).toMatchObject({ name: expect.any(String) });
+    expect(r.battle.status).toBe("won");
+    expect(r.battle.result.score).toMatchObject({ finisher: 1000, rank: expect.stringMatching(/^[SABCD]$/) });
+    expect(r.battle.result.score.total).toBeGreaterThanOrEqual(1000);
+  });
+
+  it("knocked down: CONTINUE with a potion or coins (price doubles, 3 at most) or the countdown loses it", async () => {
+    const b = await person(mail, "cont@example.com", "free");
+    const id = await uploadPdf(b, "Bio.pdf", BIO);
+    const s = await start(b, id);
+    const me = await owner(s.battle_id);
+    await big(s.battle_id);
+    const knock = async () => {
+      await db().prepare("UPDATE arena_battles SET player_hp = 1, intent_json = ? WHERE id = ?")
+        .bind(JSON.stringify({ kind: "attack", name: "Bite", value: 3, description: "3." }), s.battle_id).run();
+      const q = await ask(b, s.battle_id, "strike");
+      return reply(b, s.battle_id, q.question.id, "DNA");
+    };
+    let r = await knock();
+    expect(r.knocked_down).toBe(true);
+    expect(r.battle).toMatchObject({ status: "active", player: { hp: 0 }, down: { continues: 0, max: 3, coins: 100, can_continue: true } });
+    const refused = await question.GET(b.request(`/api/v1/arena/battles/${s.battle_id}/question?move=strike`), params({ id: s.battle_id }));
+    expect((await json(refused)).error.code).toBe("knocked_down");
+    // no coins yet: refused, nothing changes
+    expect((await keepGoing(b, s.battle_id, "coins")).status).toBe(402);
+    await db().prepare("UPDATE user_progress SET coins = 1000 WHERE user_id = ?").bind(me).run();
+    let c = await json(await keepGoing(b, s.battle_id, "coins"));
+    expect(c.battle).toMatchObject({ player: { hp: c.battle.player.max_hp }, down: null });
+    expect(Number((await db().prepare("SELECT coins FROM user_progress WHERE user_id = ?").bind(me).first<{ coins: number }>())!.coins)).toBe(900);
+    // a potion next time
+    await db().prepare("INSERT INTO user_inventory (user_id, item_id, quantity) VALUES (?, 'potion_health_small', 1) ON CONFLICT DO UPDATE SET quantity = 1").bind(me).run();
+    r = await knock();
+    expect(r.battle.down.coins).toBe(200);
+    c = await json(await keepGoing(b, s.battle_id, "potion"));
+    expect(c.continued).toEqual({ by: "potion", continues: 2 });
+    // the third knock-down: too slow, the countdown runs out and the fight is lost
+    r = await knock();
+    await db().prepare("UPDATE arena_battles SET boss_json = json_set(boss_json, '$.down.deadline', '2000-01-01T00:00:00.000Z') WHERE id = ?").bind(s.battle_id).run();
+    const after = await json(await battleOne.GET(b.request(`/api/v1/arena/battles/${s.battle_id}`), params({ id: s.battle_id })));
+    expect(after.battle.status).toBe("lost");
+    expect(after.battle.result.score.continues).toBe(2);
   });
 });
 

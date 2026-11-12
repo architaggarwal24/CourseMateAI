@@ -2,7 +2,7 @@
 
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { motion } from "motion/react";
-import { Brain, ChevronRight, Flag, Flame, FlaskConical, Hourglass, Scissors, ShieldCheck, Zap } from "@/components/ui/icons";
+import { Brain, ChevronRight, Flag, Flame, FlaskConical, Hourglass, MonitorSmartphone, Scissors, ShieldCheck, Swords, Zap } from "@/components/ui/icons";
 import { tauntLine } from "@/lib/arena/emotes";
 import { music } from "@/lib/sound/chip";
 import SoundToggle from "@/components/fx/SoundToggle";
@@ -25,6 +25,9 @@ import { useFighter, useFighterMount, useFighterPet } from "./pixel/useFighter";
 import TimerRing from "./TimerRing";
 import UltimateMeter from "./UltimateMeter";
 import { mechanicLines } from "./verdict";
+import ForgingWait from "./ForgingWait";
+import EffectChips, { EffectIcon, useQuestionFx } from "./EffectChips";
+import ContinueScreen from "./ContinueScreen";
 
 type Arena = ReturnType<typeof useArenaBattle>;
 
@@ -59,11 +62,41 @@ function useFloaters(outcome: Arena["outcome"], show: boolean): Floater[] {
     if (outcome.blocked || outcome.aegis) next.push({ id: `b${id}`, side: "hero", text: "Blocked", kind: "block" });
     if (outcome.damage_taken > 0) next.push({ id: `t${id}`, side: "hero", text: `-${outcome.damage_taken}`, kind: "hurt" });
     if ((outcome.focus_gained ?? 0) > 0) next.push({ id: `f${id}`, side: "hero", text: `+${outcome.focus_gained}`, kind: "focus", sub: "Focus" });
+    if ((outcome.points ?? 0) > 0) next.push({ id: `pt${id}`, side: "boss", text: `+${outcome.points}`, kind: "focus", sub: outcome.combo_special ? "Combo special!" : "Points" });
+    const fx = outcome.effects;
+    if (fx && fx.damage > 0) next.push({ id: `x${id}`, side: "hero", text: `-${fx.damage}`, kind: "hurt", sub: fx.ticked.map((t) => t.name).join(", ") });
+    if (fx?.landed) next.push({ id: `l${id}`, side: "hero", text: fx.landed.name, kind: "block", sub: "Effect" });
     setFloaters(next);
     const timer = setTimeout(() => setFloaters([]), 1600);
     return () => clearTimeout(timer);
   }, [id, show]); // eslint-disable-line react-hooks/exhaustive-deps
   return floaters;
+}
+
+/**
+ * The FINAL MOVE (Stage 4): the boss is on its knees; one quick question finishes it with your champion's own
+ * finisher. Enter or F (or the button) asks it.
+ */
+function FinalMovePrompt({ name, onGo, disabled }: { name: string; onGo: () => void; disabled?: boolean }) {
+  const live = useRef({ onGo, disabled });
+  live.current = { onGo, disabled };
+  const heading = useRef<HTMLHeadingElement>(null);
+  useEffect(() => { heading.current?.focus({ preventScroll: true }); }, []);
+  useLayoutEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (live.current.disabled || shortcutBlocked(e)) return;
+      if ((e.key === "Enter" && !(e.target instanceof HTMLButtonElement)) || e.key.toLowerCase() === "f" || e.key === " ") { e.preventDefault(); live.current.onGo(); }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
+  return (
+    <section className="arena-finale" aria-labelledby="arena-finale-title">
+      <h3 id="arena-finale-title" ref={heading} tabIndex={-1} className="arena-finale__title pixel-font">Final move!</h3>
+      <p className="m-0 text-sm text-fg-2">{name} can barely stand. Answer one quick question to finish it with your finisher. Miss, and it staggers back up.</p>
+      <Button variant="reward" size="lg" onClick={onGo} disabled={disabled} aria-keyshortcuts="F"><Swords size={18} aria-hidden="true" />Final move</Button>
+    </section>
+  );
 }
 
 /** What the announcer shouts after a right answer (nothing for an ordinary hit). */
@@ -75,32 +108,6 @@ export function comboCallout(combo: number, bane?: boolean, weakness?: boolean):
   if (combo === 3) return "COMBO x3!";
   if (weakness) return "WEAK SPOT!";
   return undefined;
-}
-
-/** Waiting for a question. The first batch of a fight is written by the LLM from the PDF and can take a while on a
- *  slow model, so the wait says what is happening and how long it has been (instead of a spinner that looks stuck). */
-const FORGE_STEPS = [
-  { at: 0, text: "The beast circles you…" },
-  { at: 4, text: "Reading your document for questions…" },
-  { at: 15, text: "Forging questions from what you studied…" },
-  { at: 35, text: "Slow model today - still forging…" },
-  { at: 70, text: "Almost there. If this fails, nothing is lost." },
-];
-function ForgingWait({ first }: { first: boolean }) {
-  const [secs, setSecs] = useState(0);
-  useEffect(() => {
-    const start = Date.now();
-    const t = setInterval(() => setSecs(Math.floor((Date.now() - start) / 1000)), 1000);
-    return () => clearInterval(t);
-  }, []);
-  const step = first ? [...FORGE_STEPS].reverse().find((s) => secs >= s.at)! : { text: "The boss is choosing its next question…" };
-  return (
-    <div className="arena-wait" role="status" aria-live="polite">
-      <span className="arena-wait__orb" aria-hidden="true" />
-      <span>{step.text}</span>
-      {first && secs >= 4 && <span className="arena-wait__secs pixel-font" aria-hidden="true">{secs}s</span>}
-    </div>
-  );
 }
 
 /** Kit / mechanic events that land before your blow (they make it bigger). */
@@ -117,7 +124,7 @@ export const DODGE_EVENTS: readonly string[] = ["dodged", "shadowstep", "vanish"
  * what it set off (chains, a broken drum, a stolen treasure...), the rage, the boss's move (a swing, a charge, a
  * thrown boulder, or a dodge), a riposte, the creature's own move (a regrown head, a grab, coils...), then a KO.
  */
-export function beatsFor(o: Outcome, battle: Battle): Beat[] {
+export function beatsFor(o: Outcome, battle: Battle, rageLine?: string): Beat[] {
   const out: Beat[] = [];
   const events = [...(o.mechanic?.events ?? []), ...(o.kit?.events ?? [])].map((e) => e.type);
   const effect = (t: string): Beat => ({ kind: "mechanic", effect: t as MechanicEffect });
@@ -128,19 +135,22 @@ export function beatsFor(o: Outcome, battle: Battle): Beat[] {
   // fighting with the champion's own mastery weapon: their own strike animation, and a finisher for the KO
   const sig = battle.kit?.signature ?? null;
   const struck = o.correct && (o.damage_dealt > 0 || (o.shield_absorbed ?? 0) > 0);
-  if (struck) out.push({ kind: "hero-strike", heavy: o.move === "heavy", crit: !!o.weakness || !!o.bane?.landed, shielded: o.damage_dealt === 0, ...(sig ? { signature: true } : {}) });
+  if (struck && !o.finisher) out.push({ kind: "hero-strike", heavy: o.move === "heavy", crit: !!o.weakness || !!o.bane?.landed, shielded: o.damage_dealt === 0, ...(sig ? { signature: true } : {}), ...(o.combo_special ? { special: true } : {}) });
   // the bane staggers it: the same reel as a stunned creature
   if (o.bane?.landed && "stunned" in MECHANIC_FX) out.push(effect("stunned"));
   const heroSide = events.filter((t) => known(t) && ![...BEFORE_STRIKE, ...AFTER_BLOW, ...BOSS_SIDE].includes(t));
   out.push(...heroSide.map(effect));
-  if (o.phase_changed) out.push({ kind: "rage" });
+  if (o.phase_changed) out.push({ kind: "rage", text: rageLine });
   const won = battle.status === "won";
   if (!won) {
     const kind = o.intent?.kind;
     const style: Partial<Beat> = kind === "charge" ? { charge: true } : kind === "throw" ? { projectile: true } : {};
     const dodged = !!o.dodged || events.some((t) => DODGE_EVENTS.includes(t));
     if (dodged && o.damage_taken === 0) out.push({ kind: "dodge", ...style });
-    else if (o.damage_taken > 0 || o.blocked || o.aegis) out.push({ kind: "boss-strike", blocked: !!(o.blocked || o.aegis) && o.damage_taken === 0, ...style });
+    else if (o.damage_taken > 0 || o.blocked || o.aegis) {
+      out.push({ kind: "boss-strike", blocked: !!(o.blocked || o.aegis) && o.damage_taken === 0, ...style, ...(kind === "fury" ? { hits: o.intent?.hits ?? 2, fury: true } : {}) });
+    }
+    if (o.effects?.landed) out.push({ kind: "hex", effectKind: o.effects.landed.kind, text: o.effects.landed.name.toUpperCase() });
     else if (kind === "shield") out.push({ kind: "boss-shield" });
     else if (kind === "heal" && (o.boss_healed ?? 0) > 0) out.push({ kind: "boss-heal" });
     else if (kind === "drain" && o.focus_drained) out.push({ kind: "boss-drain" });
@@ -148,8 +158,10 @@ export function beatsFor(o: Outcome, battle: Battle): Beat[] {
     if ((o.riposte ?? 0) > 0) out.push({ kind: "riposte" });
     out.push(...pick(BOSS_SIDE));
   }
-  if (won) out.push(sig ? { kind: "finisher", text: sig.finisher.toUpperCase() } : { kind: "boss-ko" });
+  // the FINAL MOVE: the champion's own finisher (a fight won another way ends on the usual fall)
+  if (won) out.push(o.finisher ? { kind: "finisher", text: o.finisher.name.toUpperCase() } : sig ? { kind: "finisher", text: sig.finisher.toUpperCase() } : { kind: "boss-ko" });
   else if (battle.status === "lost") out.push({ kind: "hero-ko" });
+  else if (o.knocked_down) out.push({ kind: "hero-down" });
   return out;
 }
 
@@ -189,8 +201,9 @@ export default function BattleScreen({ arena, context }: { arena: Arena; context
   // reads the current state from a ref, so there is never a moment between questions when a key press is lost.
   const ultReady = !!battle?.kit?.ready && !battle?.kit?.active && (stage === "choosing" || asking);
   const tauntReady = !!battle && battle.status === "active" && !battle.taunted && (stage === "choosing" || asking) && arena.itemBusy === null;
-  const keys = useRef({ asking, confirmRetreat, question, answer, ultReady, ultimate: arena.ultimate, tauntReady, taunt: arena.taunt });
-  keys.current = { asking, confirmRetreat, question, answer, ultReady, ultimate: arena.ultimate, tauntReady, taunt: arena.taunt };
+  const qfx = useQuestionFx(question, asking);
+  const keys = useRef({ asking, confirmRetreat, order: qfx.order, answer, ultReady, ultimate: arena.ultimate, tauntReady, taunt: arena.taunt, showingVerdict, next });
+  keys.current = { asking, confirmRetreat, order: qfx.order, answer, ultReady, ultimate: arena.ultimate, tauntReady, taunt: arena.taunt, showingVerdict, next };
   // A layout effect: bound as the screen appears, so a key pressed the moment it shows is never missed.
   useLayoutEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -198,9 +211,11 @@ export default function BattleScreen({ arena, context }: { arena: Arena; context
       if (k.confirmRetreat || shortcutBlocked(e)) return;
       if (e.key.toLowerCase() === "u" && k.ultReady) { e.preventDefault(); void k.ultimate(); return; }
       if (e.key.toLowerCase() === "t" && k.tauntReady) { e.preventDefault(); void k.taunt(); return; }
+      // Enter or Space: on with the fight from the verdict (a focused button answers its own key press)
+      if ((e.key === "Enter" || e.key === " ") && k.showingVerdict && !(e.target instanceof HTMLButtonElement)) { e.preventDefault(); k.next(); return; }
       if (!k.asking) return;
       const index = ["1", "2", "3", "4"].indexOf(e.key);
-      const option = index >= 0 ? k.question?.options[index] : undefined;
+      const option = index >= 0 ? k.order[index] : undefined;
       if (option !== undefined) { e.preventDefault(); void k.answer(option); }
     };
     window.addEventListener("keydown", onKey);
@@ -239,7 +254,7 @@ export default function BattleScreen({ arena, context }: { arena: Arena; context
   const beats: Beat[] = casting ? [{ kind: "hero-cast" }]
     : tauntKey ? [{ kind: "taunt", enraged: arena.tauntCast!.enraged }]
     : ultKey ? [{ kind: "ultimate", text: arena.ultimateCast!.name.toUpperCase(), ...(battle.kit?.signature ? { signature: true } : {}) }]
-    : beatKey && outcome ? beatsFor(outcome, battle) : [];
+    : beatKey && outcome ? beatsFor(outcome, battle, boss.phase2_taunts?.[0]) : [];
   const intentTint: IntentTint = !over && (stage === "choosing" || stage === "fetching" || stage === "asking") ? (battle.intent?.kind ?? null) : null;
 
   const optionState = (option: string) => {
@@ -248,13 +263,19 @@ export default function BattleScreen({ arena, context }: { arena: Arena; context
     if (option === outcome.answer) return "wrong";
     return undefined;
   };
-  const spellOk = (cost: number) => asking && focus >= cost && itemBusy === null;
+  const spellOk = (cost: number) => asking && focus >= cost && itemBusy === null && !battle.silenced;
 
   return (
-    <div className="arena arena--battle" data-stage={stage} data-rage={battle.rage || undefined}>
-      <div className="arena-col arena-col--scene">
+    <div className="arena arena--battle fight" data-stage={stage} data-rage={battle.rage || undefined}>
+      {/* phones held upright: the fight plays sideways (fight.css shows this and hides the frame) */}
+      <div className="fight-rotate">
+        <MonitorSmartphone size={44} aria-hidden="true" className="fight-rotate__phone" />
+        <p className="fight-rotate__title pixel-font">Turn your phone sideways</p>
+        <p className="fight-rotate__line">The fight plays in landscape: more room for you, the boss and the question.</p>
+      </div>
+      <div className="fight__frame">
       {context}
-      <header className="arena-hud ff-hud" aria-label="Battle status">
+      <header className="arena-hud ff-hud fight-hud" aria-label="Battle status">
         <div className="arena-hud__you ff-hud__side">
           <span className="ff-hud__portrait" style={{ "--hero-accent": fighter.accent } as React.CSSProperties}>
             <PixelSprite hero={fighter} portrait className="ff-hud__face" />
@@ -263,18 +284,31 @@ export default function BattleScreen({ arena, context }: { arena: Arena; context
           <div className="arena-hud__youinfo">
             <span className="ff-hud__name pixel-font">{fighter.name}<span className="sr-only"> (you)</span></span>
             <Hearts hp={battle.player.hp} max={battle.player.max_hp} />
+            <EffectChips effects={battle.effects} />
             <span className="inline-flex items-center gap-2"><span className="arena-stat__label">Focus</span><FocusPips focus={focus} cap={focusCap} /></span>
             <UltimateMeter kit={battle.kit} compact />
+            {battle.kit?.signature && (
+              <span className="arena-ult__sig fight-hud__sig" title={battle.kit.signature.text}>
+                Signature weapon · {battle.kit.signature.name}<span className="sr-only">: {battle.kit.signature.text}</span>
+              </span>
+            )}
             <GearChips stats={battle.gear} className="gear-chips--tiny" />
           </div>
         </div>
 
         <div className="arena-hud__mid">
           <TimerRing deadline={clock} total={question?.time_limit ?? 30} />
-          <span className="arena-combo" data-idle={battle.combo < 2 ? "true" : undefined} data-hot={battle.combo >= 3 ? "true" : undefined}>
+          <span className="arena-combo" data-idle={battle.combo < 2 ? "true" : undefined} data-hot={battle.combo >= 3 ? "true" : undefined} data-level={battle.combo_level ?? 1}>
+            <span className="sr-only">{`Combo ${battle.combo} in a row${(battle.combo_level ?? 1) > 1 ? `, x${battle.combo_level} damage and points` : ""}`}</span>
             <Zap size={14} aria-hidden="true" />
-            <span className="arena-stat__label">Combo</span>
-            <span className="pixel-font">x{battle.combo}</span>
+            <span className="arena-stat__label" aria-hidden="true">Combo</span>
+            <span className="pixel-font" aria-hidden="true">x{battle.combo_level ?? 1}</span>
+            <span className="arena-combo__count" aria-hidden="true">{battle.combo}</span>
+          </span>
+          <span className="arena-score">
+            <span className="sr-only">{`Score ${battle.score ?? 0}`}</span>
+            <span className="arena-stat__label" aria-hidden="true">Score</span>
+            <span className="pixel-font" aria-hidden="true">{String(battle.score ?? 0).padStart(6, "0")}</span>
           </span>
           <SoundToggle kind="music" className="arena-hud__music" />
         </div>
@@ -308,25 +342,64 @@ export default function BattleScreen({ arena, context }: { arena: Arena; context
               <span className="arena-stat__label">Boss HP</span><span className="pixel-font">{battle.boss.hp}/{battle.boss.max_hp}</span>
               {(battle.shield ?? 0) > 0 && <span className="arena-stat__shield"><ShieldCheck size={13} aria-hidden="true" />{battle.shield}</span>}
             </span>
-            {!over && stage !== "choosing" && <Intent intent={battle.intent} compact />}
-            {!over && stage !== "choosing" && <MechanicHud mechanic={battle.mechanic} compact />}
           </div>
         </div>
       </header>
 
+      <div className="fight__stage">
+      <div className="arena-items fight-tray" role="group" aria-label="Items">
+        <Button
+          disabled={stage !== "asking" || stock.heal <= 0 || battle.player.hp >= battle.player.max_hp || itemBusy !== null || !!battle.cursed}
+          title={battle.cursed ? "Cursed: no potions for now" : undefined}
+          loading={itemBusy === "heal"} onClick={() => void arena.applyItem("heal")}
+        >
+          <FlaskConical size={16} aria-hidden="true" /><span className="fight-tray__label">Heal</span> <span className="arena-item-count pixel-font">x{stock.heal}</span>
+        </Button>
+        <Button
+          disabled={stage !== "asking" || stock.fifty_fifty <= 0 || !!question?.fifty_used || (question?.options.length ?? 0) <= 2 || itemBusy !== null || !!battle.cursed}
+          title={battle.cursed ? "Cursed: no potions for now" : undefined}
+          loading={itemBusy === "fifty_fifty"} onClick={() => void arena.applyItem("fifty_fifty")}
+        >
+          <Scissors size={16} aria-hidden="true" /><span className="fight-tray__label">50/50</span> <span className="arena-item-count pixel-font">x{stock.fifty_fifty}</span>
+        </Button>
+        {!over && <UltimateMeter kit={battle.kit} onCast={() => void arena.ultimate()} busy={itemBusy === "ultimate"} signature={false}
+                                 disabled={!(stage === "choosing" || asking) || (itemBusy !== null && itemBusy !== "ultimate")} />}
+        {!over && (
+          <Button variant="danger" className="arena-taunt" disabled={!tauntReady} loading={itemBusy === "taunt"} aria-keyshortcuts="T"
+            onClick={() => void arena.taunt()} title="Once a fight: the boss rages and hits harder; your ultimate gets +50% and the win pays +25%.">
+            <Flame size={16} aria-hidden="true" /><span className="fight-tray__label">{battle.taunted ? "Taunted" : "Taunt"}</span>
+            <span className="arena-item-count pixel-font">{battle.taunted ? "+25%" : "T"}</span>
+          </Button>
+        )}
+        <span className="arena-spells" role="group" aria-label="Spells">
+          <Button size="sm" disabled={!question || !spellOk(1) || !!question.fifty_used || question.options.length <= 2 || !!question.riddle}
+                  title={battle.silenced ? "Silenced: no spells for now" : question?.riddle ? "A riddle can't be narrowed down" : "Spend 1 Focus: two wrong options vanish"}
+                  loading={itemBusy === "insight"} onClick={() => void arena.cast("insight")}>
+            <Brain size={15} aria-hidden="true" /><span className="fight-tray__label">Insight</span> <span className="arena-item-count pixel-font">1◆</span>
+          </Button>
+          <Button size="sm" disabled={!question || !(spellOk(1) || (battle.free_timewarp && asking && itemBusy === null && !battle.silenced)) || !!question.timewarped}
+                  title={battle.silenced ? "Silenced: no spells for now" : "Spend 1 Focus: +15 seconds on this question"}
+                  loading={itemBusy === "timewarp"} onClick={() => void arena.cast("timewarp")}>
+            <Hourglass size={15} aria-hidden="true" /><span className="fight-tray__label">Timewarp</span> <span className="arena-item-count pixel-font">{battle.free_timewarp ? "free" : "1◆"}</span>
+          </Button>
+        </span>
+        <span className="arena-items__spacer" />
+        {!over && <Button variant="ghost" onClick={() => setConfirmRetreat(true)} aria-label="Retreat"><Flag size={16} aria-hidden="true" /><span className="fight-tray__label">Retreat</span></Button>}
+      </div>
+      <div className="fight__screen">
       <PixelArena
-        hero={fighter} pet={pet} petStage={petStage} mount={mount} bossId={creature.id} rage={battle.rage} intent={intentTint} shield={battle.shield ?? 0}
+        hero={fighter} pet={pet} petStage={petStage} mount={mount} bossId={creature.id} rage={battle.rage} down={!!battle.down} intent={intentTint} shield={battle.shield ?? 0}
         beats={beats} beatKey={beatKey} floaters={floaters} speech={speech}
         heroSpeech={arena.tauntCast ? { text: tauntLine(fighter.id, arena.tauntCast.key), key: arena.tauntCast.key } : undefined}
         callout={showingVerdict && outcome && outcome.correct ? comboCallout(outcome.combo, outcome.bane?.landed, outcome.weakness) : undefined}
         calloutKey={outcome?.question_id}
-        intro={battle.answered === 0 ? { name: battle.boss.name, title: battle.boss.title ?? creature.name, tier: battle.tier ?? 1, origin: creature.origin } : undefined}
         label={`${battle.boss.name}, the boss, a ${creature.name} of ${creature.origin} myth, faces ${fighter.name}`}
-        introText={battle.mode === "nemesis" ? "NEMESIS" : battle.answered > 0 ? "RESUME" : "FIGHT!"}
+        introText={battle.answered > 0 ? "RESUME" : undefined}
       />
       </div>
+      </div>
 
-      <div className="arena-col arena-col--play">
+      <div className="fight__panel arena-col--play" data-verdict={showingVerdict || undefined}>
       {stage === "choosing" && !over && (
         <motion.div key="choose" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.25 }}>
           {outcome?.timed_out && (
@@ -335,13 +408,19 @@ export default function BattleScreen({ arena, context }: { arena: Arena; context
             </p>
           )}
           <BaneHud bane={battle.bane} />
-          <MovePicker battle={battle} onPick={arena.chooseMove} disabled={confirmRetreat} />
+          {battle.finale
+            ? <FinalMovePrompt name={battle.boss.name} onGo={() => arena.chooseMove("strike")} disabled={confirmRetreat} />
+            : <MovePicker battle={battle} onPick={arena.chooseMove} disabled={confirmRetreat} repeat={arena.lastMove} />}
         </motion.div>
+      )}
+
+      {stage === "down" && !over && battle.down && (
+        <ContinueScreen battle={battle} potions={stock.heal} onContinue={arena.continueWith} onGiveUp={() => void arena.retreat()} onTimeout={() => void arena.settleDown()} />
       )}
 
       {stage === "fetching" && (
         <motion.div key="fetch" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-          <ForgingWait first={battle.answered === 0} />
+          <ForgingWait preparing={!battle.prepared} />
         </motion.div>
       )}
 
@@ -362,7 +441,7 @@ export default function BattleScreen({ arena, context }: { arena: Arena; context
             </p>
           )}
           <div className="arena-question__meta">
-            <Badge>Question {question.number}</Badge>
+            {question.finale ? <span className="arena-finale-badge"><Badge tone="reward">FINAL MOVE</Badge></span> : <Badge>Question {question.number}</Badge>}
             {question.move && <Badge tone="accent">{MOVE_INFO[question.move].label}</Badge>}
             {question.weakness && <Badge tone="reward">Weakness x2</Badge>}
             {question.fifty_used && <Badge tone="accent">50/50</Badge>}
@@ -370,18 +449,25 @@ export default function BattleScreen({ arena, context }: { arena: Arena; context
             {question.riddle && <Badge tone="reward">Riddle: no Insight</Badge>}
             {question.special === "illusion" && <Badge tone="epic">Illusion: one option is fake</Badge>}
             {question.special === "hoard" && <Badge tone="reward">Treasure</Badge>}
+            {/* what the boss does if this goes wrong (and its creature's counters), beside the question */}
+            {!over && <span className="arena-question__threat"><Intent intent={battle.intent} compact /><MechanicHud mechanic={battle.mechanic} compact /></span>}
           </div>
-          <h3 id="arena-question-text" ref={questionRef} tabIndex={-1} className="arena-question__text">{question.question}</h3>
-          <ol className="arena-options">
-            {question.options.map((option, i) => (
+          <h3 id="arena-question-text" ref={questionRef} tabIndex={-1} className="arena-question__text" data-fogged={qfx.fogged || undefined}>{question.question}</h3>
+          {(qfx.blinded || qfx.fogged) && (
+            <p className="arena-question__hex" role="status">
+              <EffectIcon kind={qfx.blinded ? "blind" : "fog"} />{qfx.blinded ? "Blinded: the options appear in a moment…" : "Fogged: the question clears in a moment…"}
+            </p>
+          )}
+          <ol className="arena-options" data-blinded={qfx.blinded || undefined} data-shuffled={qfx.shuffled || undefined}>
+            {(showingVerdict ? question.options : qfx.order).map((option, i) => (
               <li key={option}>
                 <Button
                   className="arena-option" data-state={optionState(option)}
-                  disabled={!asking} aria-keyshortcuts={String(i + 1)}
+                  disabled={!asking} aria-keyshortcuts={String(i + 1)} aria-label={qfx.blinded ? `Option ${i + 1}, hidden` : undefined}
                   onClick={() => void arena.answer(option)}
                 >
                   <span className="arena-option__key pixel-font" aria-hidden="true">{i + 1}</span>
-                  <span>{option}</span>
+                  <span aria-hidden={qfx.blinded || undefined}>{qfx.blinded ? "? ? ?" : option}</span>
                 </Button>
               </li>
             ))}
@@ -389,19 +475,6 @@ export default function BattleScreen({ arena, context }: { arena: Arena; context
           {asking && <p className="arena__sub">Press 1–{question.options.length} to answer</p>}
           {stage === "asking" && expired && <p className="arena-verdict__line" role="status">Time&apos;s up. Waiting for the boss&apos;s move…</p>}
 
-          {(stage === "asking" || stage === "answering") && (
-            <div className="arena-spells" role="group" aria-label="Spells">
-              <Button size="sm" disabled={!spellOk(1) || !!question.fifty_used || question.options.length <= 2 || !!question.riddle}
-                      title={question.riddle ? "A riddle can't be narrowed down" : undefined}
-                      loading={itemBusy === "insight"} onClick={() => void arena.cast("insight")}>
-                <Brain size={15} aria-hidden="true" />Insight <span className="arena-item-count pixel-font">1◆</span>
-              </Button>
-              <Button size="sm" disabled={!(spellOk(1) || (battle.free_timewarp && asking && itemBusy === null)) || !!question.timewarped}
-                      loading={itemBusy === "timewarp"} onClick={() => void arena.cast("timewarp")}>
-                <Hourglass size={15} aria-hidden="true" />Timewarp <span className="arena-item-count pixel-font">{battle.free_timewarp ? "free" : "1◆"}</span>
-              </Button>
-            </div>
-          )}
         </motion.section>
       )}
 
@@ -443,7 +516,20 @@ export default function BattleScreen({ arena, context }: { arena: Arena; context
           {outcome.revived && <p className="arena-verdict__line">Phoenix Ash! You rise again.</p>}
           {(outcome.lifesteal ?? 0) > 0 && <p className="arena-verdict__line">Vampiric Tome: +{outcome.lifesteal} heart.</p>}
           {mechanicLines(outcome).map((line, i) => <p key={`m${i}`} className="arena-verdict__line arena-verdict__line--mech">{line}</p>)}
-          {outcome.phase_changed && <p className="arena-verdict__line">The boss is enraged!</p>}
+          {outcome.combo_special && <p className="arena-verdict__line arena-verdict__line--special">Combo special! x5 and a flourish: that one hit half again as hard.</p>}
+          {outcome.finisher && <p className="arena-verdict__line arena-verdict__line--special">{outcome.finisher.name}! Your final move ends it.</p>}
+          {outcome.finale_armed && <p className="arena-verdict__line arena-verdict__line--special">{battle.boss.name} is on its knees: your FINAL MOVE is next.</p>}
+          {outcome.finale_missed && <p className="arena-verdict__line">The final move missed: {battle.boss.name} staggers back up (+{outcome.boss_healed}).</p>}
+          {outcome.knocked_down && <p className="arena-verdict__line arena-verdict__line--rage">You&apos;re down! Continue?</p>}
+          {outcome.phase_changed && <p className="arena-verdict__line arena-verdict__line--rage">{boss.phase2_taunts?.[0] ?? "The boss is enraged!"} It is enraged: stronger, faster, and its own blows now.</p>}
+          {outcome.effects?.landed && (
+            <p className="arena-verdict__line arena-verdict__line--hex"><EffectIcon kind={outcome.effects.landed.kind} />{outcome.effects.landed.name}! {outcome.effects.landed.text}.</p>
+          )}
+          {(outcome.effects?.ticked ?? []).filter((t) => t.damage > 0).map((t) => (
+            <p key={`tk${t.id}`} className="arena-verdict__line arena-verdict__line--hex">{t.name}: -{t.damage} {t.damage === 1 ? "heart" : "hearts"}.</p>
+          ))}
+          {(outcome.effects?.sapped ?? 0) > 0 && <p className="arena-verdict__line arena-verdict__line--hex">Your ultimate meter lost {outcome.effects!.sapped}.</p>}
+          {(outcome.effects?.expired ?? []).length > 0 && <p className="arena-verdict__line">{outcome.effects!.expired.join(", ")} wore off.</p>}
           {!outcome.correct && <p className="arena-verdict__line">Correct answer: {outcome.correct_answer}</p>}
           {outcome.explanation && <p className="arena-verdict__line arena-verdict__explain">{outcome.explanation}</p>}
           {over && <p className="arena-verdict__line">{battle.status === "won" ? `${battle.boss.name} is defeated!` : "You have fallen."}</p>}
@@ -455,32 +541,8 @@ export default function BattleScreen({ arena, context }: { arena: Arena; context
         </motion.section>
       )}
 
-      <div className="arena-items" role="group" aria-label="Items">
-        <Button
-          disabled={stage !== "asking" || stock.heal <= 0 || battle.player.hp >= battle.player.max_hp || itemBusy !== null}
-          loading={itemBusy === "heal"} onClick={() => void arena.applyItem("heal")}
-        >
-          <FlaskConical size={16} aria-hidden="true" />Heal <span className="arena-item-count pixel-font">x{stock.heal}</span>
-        </Button>
-        <Button
-          disabled={stage !== "asking" || stock.fifty_fifty <= 0 || !!question?.fifty_used || (question?.options.length ?? 0) <= 2 || itemBusy !== null}
-          loading={itemBusy === "fifty_fifty"} onClick={() => void arena.applyItem("fifty_fifty")}
-        >
-          <Scissors size={16} aria-hidden="true" />50/50 <span className="arena-item-count pixel-font">x{stock.fifty_fifty}</span>
-        </Button>
-        {!over && <UltimateMeter kit={battle.kit} onCast={() => void arena.ultimate()} busy={itemBusy === "ultimate"}
-                                 disabled={!(stage === "choosing" || asking) || (itemBusy !== null && itemBusy !== "ultimate")} />}
-        {!over && (
-          <Button variant="danger" className="arena-taunt" disabled={!tauntReady} loading={itemBusy === "taunt"} aria-keyshortcuts="T"
-            onClick={() => void arena.taunt()} title="Once a fight: the boss rages and hits harder; your ultimate gets +50% and the win pays +25%.">
-            <Flame size={16} aria-hidden="true" />{battle.taunted ? "Taunted" : "Taunt"}
-            <span className="arena-item-count pixel-font">{battle.taunted ? "+25%" : "T"}</span>
-          </Button>
-        )}
-        <span className="arena-items__spacer" />
-        {!over && <Button variant="ghost" onClick={() => setConfirmRetreat(true)}><Flag size={16} aria-hidden="true" />Retreat</Button>}
-      </div>
 
+      </div>
       </div>
 
       <Modal

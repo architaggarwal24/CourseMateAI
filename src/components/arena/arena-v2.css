@@ -114,6 +114,8 @@
 /* ── Move picker ─────────────────────────────────────────────────────────────────────────────────────────────── */
 .arena-moves { display: grid; gap: var(--space-3); padding: var(--space-4); border: 1px solid; border-radius: var(--radius-lg); }
 .arena-moves__head { display: grid; gap: var(--space-2); }
+.arena-moves__again { margin: 0; font-size: 0.75rem; color: var(--color-text-muted); }
+.arena-moves__again .kbd { margin-right: 0.25rem; }
 .arena-moves__title { margin: 0; font-size: 1.05rem; font-weight: 800; letter-spacing: -0.01em; }
 .arena-moves__list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-2); margin: 0; padding: 0; list-style: none; }
 .arena-move {

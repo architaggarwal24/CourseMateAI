@@ -59,11 +59,16 @@ export async function createBattle(ctx: RequestContext, user: CurrentUser, playe
   let targets: string[] | null = null;
   if (mode === "nemesis") { targets = await nemesisTargets(ctx, user.id, study.hash); topic = `Nemesis: ${targets.join(", ")}`.slice(0, 100); }
   const caller = await callerFor(ctx, user);
+  // defer (Stage 5): the battle is made at once and its questions written by POST .../prepare, while the player
+  // picks a champion and faces the boss on the VS screen
+  const defer = body.defer === true;
   const existing = await arena.findActive(ctx, user.id, sessionId);
   if (existing) {
     if (existing.mode === mode && existing.difficulty === difficulty && (mode === "nemesis" || existing.topic === topic)) {
+      if (!defer) await arena.prepare(ctx, caller, existing.id, user.id);          // (one whose questions failed to come: again)
       arena.prefetch(ctx, caller, existing.id, user.id);
-      return { ok: true, battle_id: existing.id, resumed: true, boss: arena.publicBoss(existing), battle: arena.state(existing) };
+      const now = await arena.getBattle(ctx, user.id, existing.id);
+      return { ok: true, battle_id: existing.id, resumed: true, boss: arena.publicBoss(now), battle: arena.state(now) };
     }
     throw new HttpError(409, "battle_in_progress", "You already have a battle running for this document. Finish or forfeit it first.", null, { battle_id: existing.id });
   }
@@ -75,11 +80,31 @@ export async function createBattle(ctx: RequestContext, user: CurrentUser, playe
     throw new HttpError(409, "creature_sealed", "That creature's page is still sealed. Beat creatures of the tier before it first.", null, { species: hunt });
   }
   const boss = await arena.newBoss(topic, difficulty, open, hunt);
-  const b = await arena.createBattle(ctx, user.id, { sessionId, docHash: study.hash, topic, difficulty, boss, mode, targets });
+  const created = await arena.createBattle(ctx, user.id, { sessionId, docHash: study.hash, topic, difficulty, boss, mode, targets });
   await markActive(ctx, player);
-  arena.prefetch(ctx, caller, b.id, user.id);
-  arena.enrich(ctx, caller, b.id, user.id);
+  // the whole fight's questions are written before it starts (now, or by .../prepare), so it never stops to wait
+  if (!defer) {
+    await arena.prepare(ctx, caller, created.id, user.id);
+    arena.enrich(ctx, caller, created.id, user.id);
+  }
+  const b = await arena.getBattle(ctx, user.id, created.id);
   return { ok: true, battle_id: b.id, resumed: false, boss: arena.publicBoss(b), battle: arena.state(b) };
+}
+
+/** Write a deferred battle's questions (character select and the VS screen run meanwhile); a second call waits for nothing. */
+export async function prepareBattle(ctx: RequestContext, user: CurrentUser, id: string) {
+  const caller = await callerFor(ctx, user);
+  const before = await arena.getBattle(ctx, user.id, id);
+  await arena.prepare(ctx, caller, id, user.id);
+  if (!arena.state(before).prepared) arena.enrich(ctx, caller, id, user.id);
+  const b = await arena.getBattle(ctx, user.id, id);
+  return { ok: true, battle_id: b.id, boss: arena.publicBoss(b), battle: arena.state(b) };
+}
+
+/** Character select: fight this (not yet started) battle as the account's champion now. */
+export async function rearmBattle(ctx: RequestContext, user: CurrentUser, id: string) {
+  const b = await arena.rearm(ctx, user.id, id);
+  return { ok: true, battle_id: b.id, boss: arena.publicBoss(b), battle: arena.state(b) };
 }
 
 export async function activeBattle(ctx: RequestContext, user: CurrentUser, sessionId: string | null) {
@@ -147,6 +172,11 @@ export async function travel(ctx: RequestContext, user: CurrentUser, runId: stri
   const boss = plan.fight ? await arena.newBoss(plan.topic!, plan.difficulty, await arena.summonable(ctx, user.id)) : null;
   const result = await exp.travel(ctx, user.id, runId, nodeId, boss);
   const battleId = (result as { battle_id?: unknown }).battle_id;
-  if (typeof battleId === "string") { arena.prefetch(ctx, caller, battleId, user.id); arena.enrich(ctx, caller, battleId, user.id); }
+  if (typeof battleId === "string") {
+    // the run has already moved on to the fight: if its questions can't be written now, the fight writes them as it goes
+    try { await arena.prepare(ctx, caller, battleId, user.id); } catch (e) { console.warn(`[coursemate-arena] run ${runId}: preparing failed: ${e instanceof Error ? e.message.slice(0, 160) : e}`); }
+    arena.prefetch(ctx, caller, battleId, user.id);
+    arena.enrich(ctx, caller, battleId, user.id);
+  }
   return { ok: true, ...result };
 }

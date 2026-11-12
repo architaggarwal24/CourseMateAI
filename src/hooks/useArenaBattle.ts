@@ -4,8 +4,10 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "@/components/ui/Toast";
 import { ApiError } from "@/lib/api/errors";
 import { useHeroStore } from "@/hooks/useHero";
+import { useChampion } from "@/hooks/useChampion";
 import {
   castSpell, castUltimate, tauntBoss, fetchActiveBattle, fetchBattle, fetchQuestion, forfeitBattle, startBattle, submitAnswer, consumeItem as postItem,
+  continueBattle, prepareBattle, rearmBattle,
 } from "@/lib/arena/api";
 import type {
   Battle, BattleRewards, BossProfile, Difficulty, ItemId, Move, Outcome, Question, Spell,
@@ -15,9 +17,13 @@ import type {
  * The arena's battle state machine (Arena v2: tactical turns). The SERVER decides everything (damage, hearts, the
  * clock, Focus, the boss's intent, rewards); this hook sends the player's choices and keeps what came back.
  *
- *   loading -> summon -> starting -> fight -> result
- *                          ^                     |
- *                          +---- playAgain ------+
+ *   loading -> summon -> starting -> select -> versus -> fight -> result
+ *                          ^                                       |
+ *                          +------------- playAgain ---------------+
+ *
+ * select / versus (Stage 5): the battle exists at once and its questions are written meanwhile (`ready` once they
+ * are): the player picks a champion, then faces the boss on the VS screen, and the fight opens when both are done.
+ * An expedition's fight skips the pick (the run keeps its champion) and shows the VS screen.
  *
  * Inside `fight` a turn goes through these stages:
  *   choosing   the boss's intent is shown; the player picks a move (strike / jab / heavy / guard)
@@ -31,15 +37,18 @@ import type {
  * Opening the arena asks the server for the battle in progress, so a refresh, a new tab or a restart resumes it.
  */
 
-export type ArenaPhase = "loading" | "summon" | "starting" | "fight" | "result";
-export type ArenaStage = "choosing" | "fetching" | "asking" | "answering" | "feedback" | "failed";
+export type ArenaPhase = "loading" | "summon" | "starting" | "select" | "versus" | "fight" | "result";
+export type ArenaStage = "choosing" | "fetching" | "asking" | "answering" | "feedback" | "failed"
+  // Stage 4: knocked down: CONTINUE? (a potion, coins, or give up)
+  | "down";
 export type SummonMode = "quick" | "nemesis";
 
 /** The server gives a late answer this long (after the clock reaches zero) before it counts the question as missed. */
 export const DEADLINE_GRACE_MS = 3000;
-/** How long a verdict stays before the next turn: short for a right answer, long enough to read for a wrong one. */
-/** How long a verdict stays before moving on; the last one ("over") leaves time for the KO and a finisher to play. */
-export const AUTO_ADVANCE_MS = { correct: 1800, wrong: 6000, over: 6000 } as const;
+/** How long a verdict stays before moving on: short for a right answer, long enough to read the right one after a
+ *  miss (hovering or focusing it holds it), and the last one ("over") leaves time for the finisher to play.
+ *  Enter or Space moves on at once. */
+export const AUTO_ADVANCE_MS = { correct: 1300, wrong: 4500, over: 6000 } as const;
 const SESSION_KEY = "cmai_arena_session";
 
 export interface ArenaState {
@@ -64,6 +73,12 @@ export interface ArenaState {
   tauntCast: { key: number; enraged: boolean; meter: number } | null;
   rewards: BattleRewards | null;
   retreated: boolean;
+  /** The move picked last turn (Enter or Space picks it again). */
+  lastMove: Move | null;
+  /** select / versus: the fight's questions are written (the fight can open). */
+  ready: boolean;
+  /** select / versus: writing them failed (nothing lost; retryPrepare asks again). */
+  prepFailed: boolean;
 }
 
 function readSessionId(): string {
@@ -92,6 +107,9 @@ export function useArenaBattle({ autoResume = true, documentId }: { autoResume?:
     outcome: null, advanceAt: null, stock: { heal: 0, fifty_fifty: 0 }, itemBusy: null, rewards: null, retreated: false,
     ultimateCast: null,
     tauntCast: null,
+    lastMove: null,
+    ready: false,
+    prepFailed: false,
   }));
   const patch = useCallback((p: Partial<ArenaState> | ((s: ArenaState) => Partial<ArenaState>)) => {
     setState((s) => ({ ...s, ...(typeof p === "function" ? p(s) : p) }));
@@ -131,6 +149,10 @@ export function useArenaBattle({ autoResume = true, documentId }: { autoResume?:
       if (r.previous) refreshGame();
     } catch (e) {
       if (!alive.current || gen !== generation.current) return;
+      if (e instanceof ApiError && e.code === "knocked_down") {                // down: CONTINUE? first
+        try { const r = await fetchBattle(battleId); if (alive.current) patch({ battle: r.battle, stage: "down" }); } catch { patch({ stage: "down" }); }
+        return;
+      }
       if (e instanceof ApiError && (e.code === "not_enough_focus" || e.code === "invalid_move" || e.code === "move_locked")) {
         patch({ stage: "choosing" });                                     // a refused move: pick another
         toast.apiError(e);
@@ -153,24 +175,91 @@ export function useArenaBattle({ autoResume = true, documentId }: { autoResume?:
     }
     patch({
       phase: "fight", sessionId: battle.session_id, battle, boss, question: null, deadline: null, outcome: null,
-      advanceAt: null, rewards: null, retreated: false, stage: "choosing",
+      advanceAt: null, rewards: null, retreated: false, stage: battle.down ? "down" : "choosing",
     });
     // A question already out (refresh mid-question): back to it - its move was chosen and its clock is running.
     if (battle.question_issued) void loadQuestionRef.current(battle.battle_id);
   }, [patch, finish]);
+
+  // ── Stage 5: character select and the VS screen, while the questions are written ─────────────────────────────
+  const arming = useRef<Promise<unknown>>(Promise.resolve());
+  /** The battle being prepared (a ref, not state: the answer can come back before the screen has re-rendered). */
+  const preparing = useRef<string | null>(null);
+  /** Write the battle's questions (the server's prepare); `ready` once they are. */
+  const prep = useCallback(async (battleId: string) => {
+    preparing.current = battleId;
+    patch({ ready: false, prepFailed: false });
+    try {
+      await prepareBattle(battleId);
+      if (!alive.current || preparing.current !== battleId) return;
+      patch((s) => ({ ready: true, battle: s.battle ? { ...s.battle, prepared: true } : s.battle }));
+    } catch (e) {
+      if (!alive.current || preparing.current !== battleId) return;
+      patch({ prepFailed: true });
+      if (!(e instanceof ApiError && e.action === "retry")) toast.apiError(e);
+    }
+  }, [patch]);
+  /** A fresh fight: the champion select (`pick`) or straight to the VS screen, the questions written meanwhile. */
+  const preFight = useCallback((battle: Battle, boss: BossProfile, pick: boolean) => {
+    rememberSessionId(battle.session_id);
+    generation.current++;
+    patch({
+      phase: pick ? "select" : "versus", sessionId: battle.session_id, battle, boss, question: null, deadline: null, outcome: null,
+      advanceAt: null, rewards: null, retreated: false, stage: "choosing", ready: !!battle.prepared, prepFailed: false, lastMove: null,
+    });
+    arming.current = Promise.resolve();
+    if (!battle.prepared) void prep(battle.battle_id);
+  }, [patch, prep]);
+  /** A battle not yet begun: no answer, no question out, not down. */
+  const fresh = (b: Battle) => b.status === "active" && b.answered === 0 && !b.question_issued && !b.down;
+
+  /** Character select: fight as this champion (saved on the account, the battle re-armed for it), then the VS screen. */
+  const pickChampion = useCallback((id: string) => {
+    const { phase, battle } = latest.current;
+    if (phase !== "select" || !battle) return;
+    patch({ phase: "versus" });
+    if (id === (battle.kit?.champion ?? useChampion.getState().championId)) return;
+    arming.current = (async () => {
+      try {
+        if (!(await useChampion.getState().choose(id))) return;
+        const r = await rearmBattle(battle.battle_id);
+        if (alive.current && latest.current.battle?.battle_id === battle.battle_id) patch((s) => ({ battle: { ...r.battle, prepared: s.ready || r.battle.prepared } }));
+      } catch (e) { toast.apiError(e); }
+    })();
+  }, [patch]);
+
+  /** The VS screen is done and the questions are ready: open the fight (read fresh: the pick may have re-armed it). */
+  const beginFight = useCallback(async () => {
+    const { phase, battle, ready } = latest.current;
+    if (phase !== "versus" || !battle || !ready) return;
+    await arming.current;
+    try {
+      const r = await fetchBattle(battle.battle_id);
+      if (alive.current && latest.current.phase === "versus") enter(r.battle, r.boss);
+    } catch (e) {
+      if (alive.current) toast.apiError(e, { onRetry: () => { void beginFight(); } });
+    }
+  }, [enter]);
+
+  const retryPrepare = useCallback(() => {
+    const { battle } = latest.current;
+    if (battle) void prep(battle.battle_id);
+  }, [prep]);
 
   /** Enter a battle by id (an expedition's fight node). */
   const enterById = useCallback(async (battleId: string) => {
     patch({ phase: "starting" });
     try {
       const r = await fetchBattle(battleId);
-      if (alive.current) enter(r.battle, r.boss);
+      if (!alive.current) return;
+      if (fresh(r.battle)) preFight(r.battle, r.boss, false);              // the run keeps its champion: VS, then fight
+      else enter(r.battle, r.boss);
     } catch (e) {
       if (!alive.current) return;
       toast.apiError(e, { onRetry: () => { void enterById(battleId); } });
       patch({ phase: "summon" });
     }
-  }, [patch, enter]);
+  }, [patch, enter, preFight]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Opening the arena: resume the battle in progress, if there is one ─────────────────────────────────────────
   useEffect(() => {
@@ -184,7 +273,13 @@ export function useArenaBattle({ autoResume = true, documentId }: { autoResume?:
       try {
         const active = await fetchActiveBattle();
         if (cancelled) return;
-        if (active) { enter(active, active.boss_profile ?? { name: active.boss.name }); return; }
+        if (active) {
+          const boss = active.boss_profile ?? { name: active.boss.name };
+          // reopened while its questions were still being written (character select): back to the pick
+          if (fresh(active) && !active.prepared && !active.run_id) preFight(active, boss, true);
+          else enter(active, boss);
+          return;
+        }
       } catch (e) {
         if (cancelled) return;
         toast.apiError(e);
@@ -192,7 +287,7 @@ export function useArenaBattle({ autoResume = true, documentId }: { autoResume?:
       patch({ phase: "summon", sessionId: summonOn() });
     })();
     return () => { cancelled = true; };
-  }, [enter, patch, autoResume, documentId]);
+  }, [enter, preFight, patch, autoResume, documentId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── The clock ran out: wait out the server's grace, then read the battle (the server settles the miss on read) and
   //    go to the next move choice. Nothing new is issued, so no Focus is spent on a move the player didn't pick. ─────
@@ -234,10 +329,14 @@ export function useArenaBattle({ autoResume = true, documentId }: { autoResume?:
     const sessionId = s.sessionId;
     patch({ phase: "starting" });
     try {
-      const r = await startBattle(sessionId, topic.trim(), difficulty, mode, species);
+      const r = await startBattle(sessionId, topic.trim(), difficulty, mode, species, true);
       if (!alive.current) return;
-      if (r.resumed) toast.info("You already had this battle running. Picking it back up.");
-      enter(r.battle, r.boss);
+      if (r.resumed && !fresh(r.battle)) {
+        toast.info("You already had this battle running. Picking it back up.");
+        enter(r.battle, r.boss);
+        return;
+      }
+      preFight(r.battle, r.boss, true);
     } catch (e) {
       if (!alive.current) return;
       if (e instanceof ApiError && e.code === "battle_in_progress") {
@@ -251,14 +350,15 @@ export function useArenaBattle({ autoResume = true, documentId }: { autoResume?:
       }
       patch({ phase: "summon" });
     }
-  }, [patch, enter]);
+  }, [patch, enter, preFight]); // eslint-disable-line react-hooks/exhaustive-deps
 
   /** Pick this turn's move: asks the server for a question of the move's tier. */
   const chooseMove = useCallback((move: Move) => {
     const { battle, stage } = latest.current;
     if (!battle || stage !== "choosing") return;
+    patch({ lastMove: move });
     void loadQuestion(battle.battle_id, move);
-  }, [loadQuestion]);
+  }, [loadQuestion, patch]);
 
   const answer = useCallback(async (option: string) => {
     const { battle, question, stage, deadline } = latest.current;
@@ -292,7 +392,7 @@ export function useArenaBattle({ autoResume = true, documentId }: { autoResume?:
     const { battle, stage } = latest.current;
     if (!battle || stage !== "feedback") return;
     if (battle.status !== "active") finish(battle, latest.current.rewards);
-    else patch({ stage: "choosing", question: null, advanceAt: null });
+    else patch({ stage: battle.down ? "down" : "choosing", question: null, advanceAt: null });
   }, [finish, patch]);
 
   /** Hold the verdict on screen (the player is reading it); `false` lets it move on again shortly. */
@@ -420,13 +520,44 @@ export function useArenaBattle({ autoResume = true, documentId }: { autoResume?:
     }
   }, [finish, loadQuestion]);
 
+  /** CONTINUE after a knock-down: back on your feet with full hearts (a potion, or coins). */
+  const continueWith = useCallback(async (by: "potion" | "coins") => {
+    const { battle } = latest.current;
+    if (!battle || latest.current.stage !== "down") return false;
+    try {
+      const r = await continueBattle(battle.battle_id, by);
+      if (!alive.current) return false;
+      patch({ battle: r.battle, stock: r.stock, stage: "choosing", outcome: null, question: null });
+      refreshGame();
+      return true;
+    } catch (e) {
+      if (!alive.current) return false;
+      if (e instanceof ApiError && (e.code === "battle_finished" || e.code === "not_down")) { void settleDown(); return false; }
+      toast.apiError(e);
+      return false;
+    }
+  }, [patch]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  /** The CONTINUE countdown ran out (or the server says so): read the battle; a lost one goes to the result. */
+  const settleDown = useCallback(async () => {
+    const { battle } = latest.current;
+    if (!battle) return;
+    try {
+      const r = await fetchBattle(battle.battle_id);
+      if (!alive.current) return;
+      if (r.battle.status !== "active") finish(r.battle, r.battle.rewards ?? null);
+      else patch({ battle: r.battle, stage: r.battle.down ? "down" : "choosing" });
+    } catch (e) { if (alive.current) toast.apiError(e); }
+  }, [finish, patch]);
+
   /** Back to the summon screen (same document). */
   const playAgain = useCallback(() => {
     generation.current++;
     patch({ phase: "summon", battle: null, boss: null, question: null, deadline: null, outcome: null, advanceAt: null, rewards: null, retreated: false });
   }, [patch]);
 
-  return { ...state, summon, chooseMove, answer, next, holdVerdict, retryQuestion, applyItem, cast, ultimate, taunt, retreat, playAgain, enterById };
+  return { ...state, summon, chooseMove, answer, next, holdVerdict, retryQuestion, applyItem, cast, ultimate, taunt, retreat, playAgain, enterById, continueWith, settleDown,
+    pickChampion, beginFight, retryPrepare };
 }
 
 /** Whole seconds left until `deadline` (ms since epoch); null when there is no clock. Ticks four times a second. */

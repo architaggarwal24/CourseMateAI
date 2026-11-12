@@ -13,6 +13,8 @@ vi.mock("@/hooks/useHero", () => ({
 
 import ArenaArea from "./ArenaArea";
 import { AUTO_ADVANCE_MS } from "@/hooks/useArenaBattle";
+import { useChampion } from "@/hooks/useChampion";
+import { VS_HOLD_MS } from "./VersusScreen";
 
 // The verdict normally moves on by itself; most tests click Continue themselves, so it waits (one test checks the timer).
 const advance = AUTO_ADVANCE_MS as { correct: number; wrong: number };
@@ -30,8 +32,18 @@ function server(opts: {
   stock?: { heal: number; fifty_fifty: number }; active?: boolean; secondsLeft?: number; failQuestionOnce?: boolean; focus?: number;
   /** Stage 2: the champion's kit and the creature's mechanic on the battle, extra outcome fields, the champion's XP. */
   kit?: any; mechanic?: any; outcome?: (correct: boolean) => any; champion?: any;
+  /** The create call takes this long (the server writes the fight's questions first). */
+  createDelayMs?: number;
+  /** Stage 3: the battle's effect fields, and what the effects do to every question's screen. */
+  battleExtra?: any; questionEffects?: { blind: number; fog: number; shuffle: number };
+  /** Stage 4: a miss knocks you down (CONTINUE?), and the end's score card. */
+  knockOnMiss?: boolean; scoreCard?: any;
+  /** Stage 5: writing the questions (.../prepare) takes this long; it fails once first. */
+  prepareDelayMs?: number; failPrepareOnce?: boolean;
 } = {}) {
-  const log = { calls: [] as string[], answers: [] as any[], items: [] as string[], forfeits: 0 };
+  const log = { calls: [] as string[], answers: [] as any[], items: [] as string[], forfeits: 0, created: [] as any[] };
+  let prepFailed = false;
+  let chosen = "kaien";
   const stock = { heal: 1, fifty_fifty: 1, ...opts.stock };
   let battle: any = null;
   let seq = -1;            // index of the question on screen
@@ -43,19 +55,22 @@ function server(opts: {
   const fresh = (): any => ({
     battle_id: "b1", status: "active", session_id: "sess-1", topic: "cells", difficulty: "medium", phase: 1, rage: false,
     boss: { name: "Cell Warden", hp: 30, max_hp: 30 }, player: { hp: 10, max_hp: 10 }, combo: 0, max_combo: 0,
-    answered: 0, correct: 0, heals_used: 0, fifty_used: 0,
+    answered: 0, correct: 0, heals_used: 0, fifty_used: 0, prepared: true,
     mode: "quick", run_id: null, focus: 0, focus_cap: 5, shield: 0, heavy_cost: 2, free_timewarp: false, relics: [],
     intent: { kind: "attack", name: "Concept Crush", value: 4, description: "Hits for 4 on a wrong answer." },
     ...(opts.kit ? { kit: structuredClone(opts.kit) } : {}), ...(opts.mechanic ? { mechanic: structuredClone(opts.mechanic) } : {}),
+    ...(opts.battleExtra ? structuredClone(opts.battleExtra) : {}),
   });
   const profile = { name: "Cell Warden", tagline: "Guardian of cells", intro_taunt: "You will not pass.", weakness: "Nucleus" };
   const publicQuestion = () => ({
     id: seq, number: seq + 1, question: BANK[seq].question, options: BANK[seq].options.filter((o) => !removed.includes(o)),
     phase: 1, weakness: false, fifty_used: removed.length > 0, time_limit: 30, seconds_left: opts.secondsLeft ?? 30,
+    ...(opts.questionEffects ? { effects: opts.questionEffects } : {}),
   });
   const end = (status: "won" | "lost") => {
     battle.status = status;
-    battle.result = { grade: status === "won" ? "A" : "F", accuracy: Math.round((battle.correct / Math.max(1, battle.answered)) * 100), time_seconds: 75, new_personal_best: status === "won" };
+    battle.result = { grade: status === "won" ? "A" : "F", accuracy: Math.round((battle.correct / Math.max(1, battle.answered)) * 100), time_seconds: 75, new_personal_best: status === "won",
+      ...(opts.scoreCard ? { score: opts.scoreCard } : {}) };
     battle.rewards = status === "won"
       ? { arena_round_complete: { ok: true, xp_gained: 20, coins_gained: 5 }, boss_defeat: { ok: true, xp_gained: 50, coins_gained: 25 } }
       : { arena_round_complete: null, boss_defeat: null };
@@ -71,10 +86,27 @@ function server(opts: {
     if (path === "/arena/battles/active") return json(200, { ok: true, battle: battle?.status === "active" ? { ...battle, boss_profile: profile } : null });
     if (path === "/arena/battles" && method === "POST") {
       if (battle?.status === "active") return json(409, { error: { code: "battle_in_progress", message: "Finish it first.", action: null, details: { battle_id: "b1" } } });
+      if (opts.createDelayMs) await new Promise((r) => setTimeout(r, opts.createDelayMs));
       battle = fresh(); seq = -1; removed = [];
       const body = await bodyOf(input, init);
-      battle.topic = body.topic; battle.difficulty = body.difficulty;
+      log.created.push(body);
+      battle.topic = body.topic; battle.difficulty = body.difficulty; battle.prepared = !body.defer;
       return json(200, { ok: true, battle_id: "b1", resumed: false, boss: profile, battle });
+    }
+    if (path === "/arena/battles/b1/prepare") {
+      if (opts.prepareDelayMs) await new Promise((r) => setTimeout(r, opts.prepareDelayMs));
+      if (opts.failPrepareOnce && !prepFailed) { prepFailed = true; return json(503, { error: { code: "battle_generation_failed", message: "The boss is gathering its thoughts.", action: "retry", details: { retryable: true } } }); }
+      battle.prepared = true;
+      return json(200, { ok: true, battle_id: "b1", boss: profile, battle });
+    }
+    if (path === "/arena/battles/b1/rearm") {
+      battle.kit = { champion: chosen, meter: 0, max: 100, ready: false, active: false, effects: {},
+        passive: { name: "Reach", text: "Longer blows." }, ultimate: { name: "Dawnbreaker Lance", text: "A big hit." } };
+      return json(200, { ok: true, battle_id: "b1", boss: profile, battle });
+    }
+    if (path === "/avatar/champion" && method === "PUT") {
+      chosen = (await bodyOf(input, init)).champion_id;
+      return json(200, { champion_id: chosen, chosen: true, progress: {} });
     }
     if (path === "/arena/weak-concepts") return json(200, { concepts: [], missed_total: 0, nemesis_ready: false });
     if (path === "/arena/runs/active") return json(200, { ok: true, run: null });
@@ -98,12 +130,15 @@ function server(opts: {
       let dealt = 0, taken = 0;
       if (correct) { battle.correct += 1; battle.combo += 1; battle.max_combo = Math.max(battle.max_combo, battle.combo); dealt = 15; battle.boss.hp = Math.max(0, battle.boss.hp - dealt); }
       else { battle.combo = 0; taken = 4; battle.player.hp = Math.max(0, battle.player.hp - taken); }
-      if (battle.boss.hp === 0) end("won"); else if (battle.player.hp === 0) end("lost");
+      const knocked = !!opts.knockOnMiss && !correct;
+      if (knocked) { battle.player.hp = 0; battle.down = { deadline: new Date(Date.now() + 10_000).toISOString(), continues: 0, max: 3, coins: 100, can_continue: true }; }
+      if (battle.boss.hp === 0) end("won"); else if (battle.player.hp === 0 && !knocked) end("lost");
       return json(200, {
         ok: true, replayed: false, battle, rewards: battle.rewards ?? null, question_id: body.question_id, correct, timed_out: false,
         answer: body.answer, correct_answer: q.correct, explanation: q.explanation, damage_dealt: dealt, hit_type: "normal", weakness: false,
         damage_taken: taken, attack_name: taken ? "Concept Crush" : undefined, taunt: correct ? "Lucky." : "Too easy.", phase_changed: false, combo: battle.combo,
         move: "strike", intent: battle.intent, next_intent: battle.status === "active" ? battle.intent : null,
+        ...(knocked ? { knocked_down: true } : {}),
         ...(opts.outcome?.(correct) ?? {}),
       });
     }
@@ -131,6 +166,12 @@ function server(opts: {
       battle.kit = { ...battle.kit, meter: 0, ready: false, active: true };
       return json(200, { ok: true, ultimate: { name: battle.kit.ultimate.name, text: battle.kit.ultimate.text, hearts: 0, insight: false, timewarp: false }, battle, question: seq >= 0 && !answered ? publicQuestion() : null });
     }
+    if (path === "/arena/battles/b1/continue") {
+      const { with: by } = await bodyOf(input, init);
+      log.items.push(`continue:${by}`);
+      battle.down = null; battle.player.hp = 10;
+      return json(200, { ok: true, continued: { by, continues: 1 }, battle, stock });
+    }
     if (path === "/arena/battles/b1/forfeit") {
       log.forfeits += 1;
       end("lost");
@@ -151,11 +192,19 @@ const openQuick = async () => {
 const strike = async () => {
   fireEvent.click(await screen.findByRole("button", { name: /^Strike/ }));
 };
+/** Stage 5: character select (Enter keeps the champion), then the VS screen (Enter once the questions are ready). */
+const throughVs = async () => {
+  await screen.findByRole("heading", { name: "Select your champion" });
+  press("Enter");
+  await screen.findByText("Ready. Press Enter to fight.");
+  press("Enter");
+  await screen.findByRole("heading", { name: "Cell Warden" });
+};
 const summonBoss = async (topic = "cells") => {
   await openQuick();
   fireEvent.change(await screen.findByLabelText("Boss topic"), { target: { value: topic } });
   fireEvent.click(screen.getByRole("button", { name: /Summon boss/ }));
-  await screen.findByRole("heading", { name: "Cell Warden" });
+  await throughVs();
   await strike();
 };
 /** Past the verdict (Continue) and into the next turn with a Strike. */
@@ -181,7 +230,7 @@ describe("Arena: summoning", () => {
     fireEvent.click(screen.getByRole("button", { name: /Hard/ }));
     fireEvent.change(await screen.findByLabelText("Boss topic"), { target: { value: "cells" } });
     fireEvent.click(screen.getByRole("button", { name: /Summon boss/ }));
-    await screen.findByRole("heading", { name: "Cell Warden" });
+    await throughVs();
     expect(screen.getByRole("status", { name: /Boss intent: Concept Crush/ })).toBeTruthy();      // the telegraph comes first
     await strike();
     const created = log.calls.indexOf("POST /arena/battles");
@@ -425,6 +474,30 @@ describe("Arena v2: tactics", () => {
     expect(screen.queryByText("Correct!")).toBeNull();
   });
 
+  it("Enter moves the verdict on at once, and on the next turn Enter picks the same move again", async () => {
+    const { log } = server({ active: true, focus: 2 });
+    render(<ArenaArea />);
+    fireEvent.click(await screen.findByRole("button", { name: /^Jab/ }));
+    await screen.findByText("Which organelle makes ATP?");
+    press("2");
+    await screen.findByText("Correct!");
+    press("Enter");
+    await screen.findByRole("heading", { name: "Your move" });
+    expect(screen.getByText(/Jab again/)).toBeTruthy();
+    press("Enter");
+    await waitFor(() => expect(log.calls.filter((c) => c.endsWith("move=jab"))).toHaveLength(2));
+  });
+
+  it("while the fight's questions are written, the summon says what is happening", async () => {
+    server({ createDelayMs: 200 });
+    render(<ArenaArea />);
+    await openQuick();
+    fireEvent.change(await screen.findByLabelText("Boss topic"), { target: { value: "cells" } });
+    fireEvent.click(screen.getByRole("button", { name: /Summon boss/ }));
+    expect(await screen.findByText("The beast circles you…")).toBeTruthy();
+    await throughVs();
+  });
+
   it("the hub offers the modes; Multiplayer is coming soon and Nemesis is locked until 3 concepts are missed", async () => {
     server();
     render(<ArenaArea />);
@@ -527,5 +600,193 @@ describe("Arena: creature mechanics and champion kits", () => {
     expect(within(panel).getByText(/Kaien reached Lv 2!/)).toBeTruthy();
     expect(within(panel).getByRole("list", { name: "Mastery skins unlocked" })).toBeTruthy();
     await waitFor(() => expect(game.reconcile).toHaveBeenCalled());
+  });
+});
+
+describe("Arena: boss effects and the enraged form (Stage 3)", () => {
+  const burn = { id: "burn", name: "Burn", kind: "dot", turns: 2, text: "-1 heart after each of the next 2 questions" };
+  it("the effects on you are in the HUD; silenced: no spells; cursed: no potions", async () => {
+    server({ active: true, focus: 3, battleExtra: { effects: [burn, { id: "silence", name: "Silence", kind: "silence", turns: 1, text: "no spells" }], silenced: true, cursed: true } });
+    render(<ArenaArea />);
+    const list = await screen.findByRole("list", { name: "Effects on you" });
+    expect(list.textContent).toContain("Burn, 2 more questions");
+    await strike();
+    await screen.findByText("Which organelle makes ATP?");
+    expect((screen.getByRole("button", { name: /Insight/ }) as HTMLButtonElement).disabled).toBe(true);
+    expect((screen.getByRole("button", { name: /Heal/ }) as HTMLButtonElement).disabled).toBe(true);
+    expect((screen.getByRole("button", { name: /50\/50/ }) as HTMLButtonElement).disabled).toBe(true);
+  });
+
+  it("an effect lock disables that move and says why; the intent shows the effect its blow carries", async () => {
+    server({ active: true, battleExtra: {
+      locked_moves: ["heavy"], effects: [{ id: "stun", name: "Stun", kind: "lock", turns: 1, text: "a move is locked", moves: ["heavy"] }],
+      intent: { kind: "attack", name: "Concept Crush", value: 4, description: "Hits for 4.", effect: { id: "freeze", name: "Freeze", kind: "clock", text: "half the time" } },
+    } });
+    render(<ArenaArea />);
+    const heavy = await screen.findByRole("button", { name: /^Heavy/ });
+    expect((heavy as HTMLButtonElement).disabled).toBe(true);
+    expect(heavy.textContent).toContain("Locked: Stun");
+    expect(screen.getByRole("status", { name: /Boss intent: Concept Crush/ }).textContent).toContain("Freeze");
+  });
+
+  it("Blind hides the options for its seconds (they can't be read, by eye or screen reader), then shows them", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    server({ active: true, questionEffects: { blind: 2, fog: 0, shuffle: 0 } });
+    render(<ArenaArea />);
+    await strike();
+    await screen.findByText("Which organelle makes ATP?");
+    expect(screen.getByText(/Blinded/)).toBeTruthy();
+    expect(screen.queryByText("Mitochondria")).toBeNull();
+    expect(screen.getByRole("button", { name: "Option 1, hidden" })).toBeTruthy();
+    await act(async () => { await vi.advanceTimersByTimeAsync(2600); });
+    expect(await screen.findByText("Mitochondria")).toBeTruthy();
+  });
+
+  it("Confuse reshuffles the options while you answer, and the keys follow the order shown", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    const { log } = server({ active: true, questionEffects: { blind: 0, fog: 0, shuffle: 1 } });
+    render(<ArenaArea />);
+    await strike();
+    await screen.findByText("Which organelle makes ATP?");
+    const first = screen.getAllByRole("listitem").map((li) => li.textContent);
+    await act(async () => { await vi.advanceTimersByTimeAsync(15_500); });           // half the clock: one reshuffle
+    const after = screen.getAllByRole("listitem").map((li) => li.textContent?.replace(/^\d/, ""));
+    expect(after).not.toEqual(first.map((t) => t?.replace(/^\d/, "")));
+    press("1");
+    await waitFor(() => expect(log.answers).toHaveLength(1));
+    expect(log.answers[0].answer).toBe(after[0]);
+  });
+
+  it("the verdict says what landed, what ticked, what wore off, and the enraged roar", async () => {
+    server({ active: true, outcome: () => ({
+      phase_changed: true,
+      effects: { landed: { id: "hydra_venom", name: "Hundred-Fang Venom", kind: "dot", text: "-1 heart after each of the next 4 questions" },
+        ticked: [{ id: "burn", name: "Burn", damage: 1 }], expired: ["Freeze"], damage: 1, sapped: 0, drained: 0, active: [] },
+    }) });
+    render(<ArenaArea />);
+    await strike();
+    await screen.findByText("Which organelle makes ATP?");
+    press("1");
+    const verdict = await screen.findByRole("status", { name: "Result of your answer" });
+    expect(verdict.textContent).toContain("Hundred-Fang Venom! -1 heart after each of the next 4 questions.");
+    expect(verdict.textContent).toContain("Burn: -1 heart.");
+    expect(verdict.textContent).toContain("Freeze wore off.");
+    expect(verdict.textContent).toContain("It is enraged");
+  });
+});
+
+describe("Arena: combo, final move, score card, CONTINUE (Stage 4)", () => {
+  it("the HUD shows the combo's level and the score", async () => {
+    server({ active: true, battleExtra: { combo: 4, combo_level: 3, score: 1234 } });
+    render(<ArenaArea />);
+    expect(await screen.findByText("Combo 4 in a row, x3 damage and points")).toBeTruthy();
+    expect(screen.getByText("Score 1234")).toBeTruthy();
+  });
+
+  it("the boss on its knees: a FINAL MOVE prompt (Enter asks the quick question)", async () => {
+    const { log } = server({ active: true, battleExtra: { finale: true, intent: { kind: "finale", name: "On its knees", value: 0, special: true, description: "One quick question." } } });
+    render(<ArenaArea />);
+    expect(await screen.findByRole("heading", { name: "Final move!" })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: /^Strike/ })).toBeNull();
+    press("Enter");
+    await screen.findByText("Which organelle makes ATP?");
+    expect(log.calls).toContain("GET /arena/battles/b1/question?move=strike");
+  });
+
+  it("knocked down: CONTINUE? with a countdown; paying coins puts you back on your feet", async () => {
+    const { log } = server({ active: true, knockOnMiss: true });
+    render(<ArenaArea />);
+    await strike();
+    await screen.findByText("Which organelle makes ATP?");
+    press("1");
+    expect(await screen.findByText(/You're down! Continue\?/)).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: /Continue/ }));
+    expect(await screen.findByRole("heading", { name: "Continue?" })).toBeTruthy();
+    expect(screen.getByRole("timer", { name: /seconds to continue/ })).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: /Pay 100 coins/ }));
+    await screen.findByRole("heading", { name: "Your move" });
+    expect(log.items).toEqual(["continue:coins"]);
+  });
+
+  it("the result has a score card with its rank", async () => {
+    server({ active: true, scoreCard: { points: 900, speed: 200, finisher: 1000, hearts: 300, best_combo: 4, best_level: 3, specials: 0, continues: 0, total: 2200, rank: "S" } });
+    render(<ArenaArea />);
+    await strike();
+    await screen.findByText("Which organelle makes ATP?");
+    press("2");
+    fireEvent.click(await screen.findByRole("button", { name: /Continue/ }));
+    await strike();
+    await screen.findByText("Where is DNA stored?");
+    press("2");
+    fireEvent.click(await screen.findByRole("button", { name: /See result/ }));
+    const card = await screen.findByRole("region", { name: "Score card" });
+    expect(within(card).getByRole("img", { name: "Rank S" })).toBeTruthy();
+    expect(card.textContent).toContain("Final move+1000");
+    expect(card.textContent).toContain("Score2200");
+    expect(screen.queryByRole("img", { name: /^Grade / })).toBeNull();   // one rank, not two
+  });
+});
+
+describe("Arena: character select and the VS screen (Stage 5)", () => {
+  beforeEach(() => { useChampion.setState({ championId: "kaien", chosen: true, signedIn: true, loaded: true, progress: {} }); });
+  const summonOnly = async () => {
+    await openQuick();
+    fireEvent.change(await screen.findByLabelText("Boss topic"), { target: { value: "cells" } });
+    fireEvent.click(screen.getByRole("button", { name: /Summon boss/ }));
+    await screen.findByRole("heading", { name: "Select your champion" });
+  };
+
+  it("the battle is made at once; you pick a champion while its questions are written, and the fight is armed for them", async () => {
+    const { log } = server({ prepareDelayMs: 150 });
+    render(<ArenaArea />);
+    await summonOnly();
+    expect(log.created[0]).toMatchObject({ defer: true, topic: "cells" });
+    expect(log.calls).toContain("POST /arena/battles/b1/prepare");
+    const group = screen.getByRole("radiogroup", { name: "Select your champion" });
+    expect(within(group).getByRole("radio", { name: "Kaien" }).getAttribute("aria-checked")).toBe("true");
+    // the arrows move the pick; the big card follows
+    fireEvent.keyDown(within(group).getByRole("radio", { name: "Kaien" }), { key: "ArrowRight" });
+    expect(within(group).getByRole("radio", { name: "Asha" }).getAttribute("aria-checked")).toBe("true");
+    expect(screen.getByText("Dawnbreaker")).toBeTruthy();                       // Asha's FINAL MOVE
+    fireEvent.click(screen.getByRole("button", { name: /Fight as Asha/ }));
+    await screen.findByRole("heading", { name: "Asha versus Cell Warden" });
+    await waitFor(() => expect(log.calls).toContain("POST /arena/battles/b1/rearm"));
+    expect(log.calls.indexOf("PUT /avatar/champion")).toBeLessThan(log.calls.indexOf("POST /arena/battles/b1/rearm"));
+    await screen.findByText("Ready. Press Enter to fight.");
+    press("Enter");
+    await screen.findByRole("heading", { name: "Cell Warden" });
+    await strike();
+    expect(await screen.findByText("Which organelle makes ATP?")).toBeTruthy();
+  });
+
+  it("keeping your champion re-arms nothing; the VS screen waits for the questions, and a failure is a retry", async () => {
+    const { log } = server({ failPrepareOnce: true });
+    render(<ArenaArea />);
+    await summonOnly();
+    press("Enter");
+    await screen.findByRole("heading", { name: "Kaien versus Cell Warden" });
+    expect(await screen.findByText("The questions didn't come. Nothing is lost.")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Fight!" })).toBeNull();      // no fight without its questions
+    fireEvent.click(screen.getByRole("button", { name: "Try again" }));
+    await screen.findByText("Ready. Press Enter to fight.");
+    expect(log.calls.filter((c) => c === "POST /arena/battles/b1/prepare")).toHaveLength(2);
+    expect(log.calls).not.toContain("POST /arena/battles/b1/rearm");
+    fireEvent.click(screen.getByRole("button", { name: "Fight!" }));
+    await screen.findByRole("heading", { name: "Cell Warden" });
+  });
+
+  it("the VS screen opens the fight by itself once it has held, when the questions are ready", async () => {
+    server();
+    render(<ArenaArea />);
+    await summonOnly();
+    press("Enter");
+    await screen.findByText("Ready. Press Enter to fight.");
+    await screen.findByRole("heading", { name: "Cell Warden" }, { timeout: VS_HOLD_MS + 1500 });
+  });
+
+  it("reopened while the questions were still being written: back to the pick", async () => {
+    server({ active: true, battleExtra: { prepared: false } });
+    render(<ArenaArea />);
+    await screen.findByRole("heading", { name: "Select your champion" });
   });
 });

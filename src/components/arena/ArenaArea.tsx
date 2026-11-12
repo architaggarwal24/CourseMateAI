@@ -8,11 +8,14 @@ import { fetchRun } from "@/lib/arena/api";
 import type { Run } from "@/lib/arena/types";
 import ArenaHub, { type ArenaMode } from "./ArenaHub";
 import BattleScreen from "./BattleScreen";
+import CharacterSelect from "./CharacterSelect";
 import ResultPanel from "./ResultPanel";
 import RunScreen, { RunStatusBar } from "./RunScreen";
 import SummonPanel from "./SummonPanel";
+import VersusScreen from "./VersusScreen";
 import "./arena.css";
 import "./arena-v2.css";
+import "./fight.css";
 import "./pixel/pixel.css";
 
 /**
@@ -45,6 +48,24 @@ export default function ArenaArea() {
   }, [runId, arena.phase]);
 
   if (arena.phase === "loading") return <p className="arena__status" role="status">Looking for your battle…</p>;
+
+  // Stage 5: pick a champion, then VS, while the fight's questions are written
+  if (arena.phase === "select" && arena.battle) {
+    return (
+      <div className="arena">
+        <CharacterSelect ready={arena.ready} failed={arena.prepFailed} onPick={arena.pickChampion} onRetry={arena.retryPrepare} />
+      </div>
+    );
+  }
+  if (arena.phase === "versus" && arena.battle) {
+    return (
+      <div className="arena">
+        {runId && run && <RunStatusBar run={run} />}
+        <VersusScreen key={arena.battle.battle_id} battle={arena.battle} ready={arena.ready} failed={arena.prepFailed}
+          onBegin={() => void arena.beginFight()} onRetry={arena.retryPrepare} />
+      </div>
+    );
+  }
 
   if (arena.phase === "result" && arena.battle) {
     const inRun = !!arena.battle.run_id;

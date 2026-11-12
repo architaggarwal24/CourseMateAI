@@ -16,7 +16,7 @@ export function xpPct(p: { xp: number; level_xp: number; next_level_xp: number |
   return Math.max(0, Math.min(100, Math.round(((p.xp - p.level_xp) / Math.max(1, p.next_level_xp - p.level_xp)) * 100)));
 }
 
-const STYLE_LABEL: Record<Style, string> = {
+export const STYLE_LABEL: Record<Style, string> = {
   blade: "Swordsman", heavy: "Knight", lance: "Lancer", fist: "Brawler", mage: "Arcanist", twin: "Duelist",
   sword: "Apprentice", whip: "Whipmaster", fan: "Fan dancer", kamas: "Reaper",
 };

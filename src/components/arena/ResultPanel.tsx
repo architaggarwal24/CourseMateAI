@@ -17,7 +17,7 @@ import { announceAchievements } from "@/lib/fx/celebrate";
 import { sfx } from "@/lib/sound/chip";
 import { useFighter, useFighterPet } from "./pixel/useFighter";
 import { fetchLeaderboard } from "@/lib/arena/api";
-import type { Battle, BattleRewards, LeaderboardEntry } from "@/lib/arena/types";
+import type { Battle, BattleResult, BattleRewards, LeaderboardEntry } from "@/lib/arena/types";
 import { DIFFICULTY_LABEL } from "@/lib/arena/types";
 
 const mmss = (seconds: number) => `${Math.floor(seconds / 60)}m ${Math.round(seconds % 60)}s`;
@@ -73,8 +73,10 @@ export default function ResultPanel({ battle, rewards, retreated, bossName, onAg
       )}
       <h2 id="arena-result-title" ref={heading} tabIndex={-1} className="arena-result__headline pixel-font">{headline}</h2>
       <p className="arena__text">{line} <span className="text-muted">({battle.topic}, {DIFFICULTY_LABEL[battle.difficulty]})</span></p>
-      {won && result.grade && <span className="arena-result__grade pixel-font" role="img" aria-label={`Grade ${result.grade}`}>{result.grade}</span>}
+      {won && result.grade && !result.score && <span className="arena-result__grade pixel-font" role="img" aria-label={`Grade ${result.grade}`}>{result.grade}</span>}
       {result.new_personal_best && <Badge tone="reward"><Trophy size={12} aria-hidden="true" />New best</Badge>}
+
+      {result.score && <ScoreCardView card={result.score} />}
 
       <dl className="arena-result__stats">
         <div><dt>Accuracy</dt><dd className="pixel-font">{accuracy}%</dd></div>
@@ -221,6 +223,31 @@ function BestiaryLine({ battle }: { battle: Battle }) {
           {b.rewards.coins > 0 && <Badge tone="reward"><Coins size={12} aria-hidden="true" />+{b.rewards.coins} coins</Badge>}
         </p>
       )}
+    </section>
+  );
+}
+
+/**
+ * The score card (Stage 4): the points from right answers (speed and the combo already in them), the finisher, the
+ * hearts left, the best combo, then the total and its rank. Each continue keeps 75% of the score.
+ */
+function ScoreCardView({ card }: { card: NonNullable<BattleResult["score"]> }) {
+  const rows: [string, string][] = [
+    ["Answers", String(card.points)],
+    ["Speed bonus (in answers)", String(card.speed)],
+    ...(card.finisher ? [["Final move", `+${card.finisher}`] as [string, string]] : []),
+    ...(card.hearts ? [["Hearts left", `+${card.hearts}`] as [string, string]] : []),
+    ["Best combo", `${card.best_combo} (x${card.best_level})`],
+    ...(card.specials ? [["Combo specials", String(card.specials)] as [string, string]] : []),
+    ...(card.continues ? [["Continues", `${card.continues} (-25% each)`] as [string, string]] : []),
+  ];
+  return (
+    <section className="arena-score-card" aria-label="Score card">
+      <span className="arena-score-card__rank pixel-font" role="img" aria-label={`Rank ${card.rank}`}>{card.rank}</span>
+      <dl className="arena-score-card__rows">
+        {rows.map(([k, v]) => <div key={k}><dt>{k}</dt><dd className="pixel-font">{v}</dd></div>)}
+        <div className="arena-score-card__total"><dt>Score</dt><dd className="pixel-font">{card.total}</dd></div>
+      </dl>
     </section>
   );
 }

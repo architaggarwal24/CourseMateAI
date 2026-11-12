@@ -27,6 +27,8 @@ export interface BossParams {
   glow: number;
   /** KO: rotation (deg) and sink (px). */
   fall: number;
+  /** Stage 3: the enraged form (a creature may change shape: the hydra strikes with every head at once). */
+  rage?: boolean;
   sink: number;
 }
 
@@ -57,7 +59,7 @@ const BOSS_KEYS: Record<Exclude<BossAnim, "idle">, BossParams[]> = {
 
 const mixParams = (a: BossParams, c: BossParams, u: number): BossParams => {
   const o = { ...a };
-  for (const k of Object.keys(P0) as (keyof BossParams)[]) o[k] = a[k] + (c[k] - a[k]) * u;
+  for (const k of Object.keys(P0) as (keyof Omit<BossParams, "rage">)[]) o[k] = a[k] + (c[k] - a[k]) * u;
   return o;
 };
 const between = (keys: BossParams[]): BossParams[] => keys.flatMap((k, i) => (i < keys.length - 1 ? [k, mixParams(k, keys[i + 1], 0.5)] : [k]));
@@ -449,14 +451,15 @@ function hydra(scale: Material, belly: Material, eyeM: Material, crest: Material
     necks.forEach(([dx, len, ph], i) => {
       const far = i % 2 === 0 && i < 4;
       const base: Pt = [bx + dx, by - 14];
-      const reach = Math.max(0, p.reach) * (i === 3 ? 34 : 14) - p.recoil * 14;
+      // normally one head lunges and the rest follow a little; enraged, every head strikes at once
+      const reach = Math.max(0, p.reach) * (i === 3 || p.rage ? 34 : 14) - p.recoil * 14;
       const sway = sin(p.t + ph) * 8;
       const tip: Pt = [base[0] + 30 + reach + sway + i * 4, base[1] - len * 0.85 + Math.max(0, p.reach) * 20 + p.recoil * 10 + (p.fall ? -p.fall * 1.2 : 0)];
       const pts = wave(base, tip, 7, 10, p.t * 6 + i, 10, 6);
       tube(b, pts, far ? farSide(scale) : scale, far ? undefined : belly, true);
       const last = pts[pts.length - 1], prev = pts[pts.length - 2];
       const ang = Math.atan2(last[0] - prev[0], last[1] - prev[1]) * 180 / Math.PI;
-      head(b, last[0], last[1], (ang * 0.25 + 95 * 0.75) + (p.reach > 0 ? 15 : 0), { ...p, mouth: i === 3 ? p.mouth : p.mouth * 0.5 + sin(p.t + ph) * 0.15 });
+      head(b, last[0], last[1], (ang * 0.25 + 95 * 0.75) + (p.reach > 0 ? 15 : 0), { ...p, mouth: i === 3 || p.rage ? Math.max(p.mouth, p.rage ? 0.6 : 0) : p.mouth * 0.5 + sin(p.t + ph) * 0.15 });
     });
   };
 }

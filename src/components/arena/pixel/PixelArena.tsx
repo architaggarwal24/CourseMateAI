@@ -14,8 +14,8 @@ export interface Floater { id: string; text: string; sub?: string; side: "boss" 
  * `beats` (with a changing `beatKey`) are what just happened; the scene plays them in order. Damage numbers for a
  * side appear when the blow on that side actually lands.
  */
-function PixelArena({ hero, pet = null, petStage = "young", mount = null, bossId, stageId, rage, intent, shield, beats, beatKey, floaters, speech, label, introText = "FIGHT!",
-  heroSpeech, callout, calloutKey, intro }: {
+function PixelArena({ hero, pet = null, petStage = "young", mount = null, bossId, stageId, rage, down, intent, shield, beats, beatKey, floaters, speech, label, introText,
+  heroSpeech, callout, calloutKey }: {
   hero: HeroDef;
   /** The pet idling behind the champion, and how grown it is (forge tiers). */
   pet?: string | null;
@@ -25,6 +25,8 @@ function PixelArena({ hero, pet = null, petStage = "young", mount = null, bossId
   bossId: string;
   stageId?: string;
   rage: boolean;
+  /** Knocked down, waiting on CONTINUE? (Stage 4). */
+  down?: boolean;
   intent: IntentTint;
   shield: number;
   beats: Beat[];
@@ -33,7 +35,7 @@ function PixelArena({ hero, pet = null, petStage = "young", mount = null, bossId
   speech?: string;
   /** What the picture shows, for screen readers (e.g. "Kaien faces the Hydra"). */
   label: string;
-  /** The entrance banner ("FIGHT!", or "NEMESIS" for a Nemesis). */
+  /** The entrance banner, if any ("RESUME"): a new fight opens without one (the VS screen announced it). */
   introText?: string;
   /** Stage A2: what the champion just said (a taunt), in a bubble over them. */
   heroSpeech?: { text: string; key: number };
@@ -41,7 +43,6 @@ function PixelArena({ hero, pet = null, petStage = "young", mount = null, bossId
   callout?: string;
   calloutKey?: string | number;
   /** The boss's title card, shown as the fight opens. */
-  intro?: { name: string; title: string; tier: number; origin: string };
 }) {
   const canvas = useRef<HTMLCanvasElement>(null);
   const scene = useRef<FightScene | null>(null);
@@ -71,6 +72,13 @@ function PixelArena({ hero, pet = null, petStage = "young", mount = null, bossId
   useEffect(() => { scene.current?.setHero(hero); }, [hero]);
   useEffect(() => { scene.current?.setPet(pet); }, [pet]);
   useEffect(() => { scene.current?.setRage(rage); }, [rage]);
+  // knocked down: the beat lays the champion down; a resumed fight starts down; a continue brings them back up
+  const wasDown = useRef(false);
+  useEffect(() => {
+    if (down) scene.current?.setDown(true);
+    else if (wasDown.current) scene.current?.setDown(false);
+    wasDown.current = !!down;
+  }, [down]);
   useEffect(() => { scene.current?.setIntent(intent); }, [intent]);
   useEffect(() => { scene.current?.setShield(shield); }, [shield]);
 
@@ -98,9 +106,6 @@ function PixelArena({ hero, pet = null, petStage = "young", mount = null, bossId
   }, [banner]);
 
   const visible = floaters.filter((f) => landed.key === beatKey && landed.sides.has(f.side));
-  // the boss's title card: once, as the fight opens
-  const [card, setCard] = useState(!!intro);
-  useEffect(() => { if (!card) return; const t = setTimeout(() => setCard(false), reduced ? 1200 : 2200); return () => clearTimeout(t); }, [card, reduced]);
   const [said, setSaid] = useState<{ text: string; key: number } | null>(null);
   useEffect(() => {
     if (!heroSpeech) return;
@@ -116,16 +121,6 @@ function PixelArena({ hero, pet = null, petStage = "young", mount = null, bossId
       <canvas ref={canvas} className="px-arena__canvas" role="img" aria-label={label} />
       {speech && <p className="px-arena__speech" key={speech}>&ldquo;{speech}&rdquo;</p>}
       {said && <p className="px-arena__speech px-arena__speech--hero" key={`h${said.key}`}>&ldquo;{said.text}&rdquo;</p>}
-      <AnimatePresence>
-        {card && intro && (
-          <motion.div key="card" className="px-arena__card" aria-hidden="true"
-            initial={{ x: "-110%" }} animate={{ x: 0 }} exit={{ x: "110%" }} transition={{ type: "tween", ease: [0.7, 0, 0.3, 1], duration: reduced ? 0 : 0.35 }}>
-            <span className="px-arena__card-tier pixel-font">Tier {["", "I", "II", "III", "IV"][intro.tier] ?? intro.tier} · {intro.origin}</span>
-            <span className="px-arena__card-name pixel-font">{intro.name}</span>
-            <span className="px-arena__card-title">{intro.title}</span>
-          </motion.div>
-        )}
-      </AnimatePresence>
       <AnimatePresence>
         {shout && (
           <motion.p key={`c${calloutKey}`} className="px-arena__callout pixel-font" aria-hidden="true"

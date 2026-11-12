@@ -29,11 +29,27 @@ export type Spell = "insight" | "timewarp";
 export type IntentKind =
   | "attack" | "heavy" | "shield" | "drain" | "heal"
   // a creature's signature turns (backend core_brains/mechanics.py)
-  | "grab" | "riddle" | "illusion" | "charge" | "aim" | "throw" | "hoard" | "stunned";
+  | "grab" | "riddle" | "illusion" | "charge" | "aim" | "throw" | "hoard" | "stunned"
+  // Stage 3: the enraged creature's signature blow; Stage 4: on its knees, waiting for your FINAL MOVE
+  | "fury" | "finale";
 /** Intents that hit (their value is damage). */
-export const DAMAGING_INTENTS: readonly IntentKind[] = ["attack", "heavy", "grab", "riddle", "illusion", "charge", "throw", "hoard"];
+export const DAMAGING_INTENTS: readonly IntentKind[] = ["attack", "heavy", "grab", "riddle", "illusion", "charge", "throw", "hoard", "fury"];
+
+/** Stage 3: what a boss's blow does to your champion besides hearts (server effects.ts). */
+export type EffectKind = "dot" | "clock" | "lock" | "silence" | "curse" | "weaken" | "blind" | "fog" | "shuffle" | "sap" | "drain";
+/** An effect a blow carries (telegraphed with it; it lands on a miss). */
+export interface IntentEffect { id: string; name: string; kind: EffectKind; text: string }
+/** An effect on your champion now, and how many more questions it lasts (`boss`: the creature's own, enraged). */
+export interface ActiveEffect { id: string; name: string; kind: EffectKind; turns: number; text: string; moves?: Move[]; boss?: boolean }
+
 /** What the boss will do when this turn resolves (telegraphed before the player picks a move). */
-export interface Intent { kind: IntentKind; name: string; value: number; description: string; amount?: number; special?: boolean }
+export interface Intent {
+  kind: IntentKind; name: string; value: number; description: string; amount?: number; special?: boolean;
+  /** The effect it carries (lands on a miss). */
+  effect?: IntentEffect;
+  /** An enraged signature blow strikes this many times (the hydra: every head). */
+  hits?: number;
+}
 
 /** The creature's signature mechanic as the HUD shows it: its rule in one line and its counters. */
 export interface MechanicCounter { label: string; value?: number; max?: number; text?: string; hint?: string }
@@ -80,6 +96,8 @@ export interface BossProfile {
   personality?: string;
   special_ability?: string;
   weakness?: string;
+  /** What it roars when it enrages (its creature's line comes first). */
+  phase2_taunts?: string[];
   intro_taunt?: string;
 }
 
@@ -105,8 +123,17 @@ export interface BattleResult {
   forge?: { item_xp: number; items: string[]; materials: { id: string; name: string; count: number; rare: boolean }[] };
   /** The taunt's extra +25% of the win's reward. */
   taunt_bonus?: { xp: number; coins: number };
+  /** Stage 4: the score card. */
+  score?: ScoreCard;
   new_achievements?: { id: string; name: string; description: string }[];
 }
+
+/** The fight's score card: points (speed included), the finisher, hearts left, combo, continues (each keeps 75%). */
+export interface ScoreCard {
+  points: number; speed: number; finisher: number; hearts: number; best_combo: number; best_level: number; specials: number;
+  continues: number; total: number; rank: string;
+}
+export interface ContinueResponse { ok: boolean; continued: { by: "potion" | "coins"; continues: number }; battle: Battle; stock: { heal: number; fifty_fifty: number } }
 
 export type Mastery = "none" | "bronze" | "silver" | "gold";
 export interface BestiaryFight {
@@ -148,6 +175,8 @@ export interface Battle {
   difficulty: Difficulty;
   phase: number;
   rage: boolean;
+  /** The whole fight's questions are written (a fight is prepared before it starts). */
+  prepared?: boolean;
   boss: { name: string; hp: number; max_hp: number; species?: string | null; title?: string | null; origin?: string | null };
   player: { hp: number; max_hp: number };
   combo: number;
@@ -178,6 +207,16 @@ export interface Battle {
   bane?: BaneHud | null;
   /** The boss was taunted this fight (once a fight: it rages, the win pays +25%). */
   taunted?: boolean;
+  /** Stage 4: the combo's level (x1-x5), the score so far, the FINAL MOVE is up, knocked down (CONTINUE?). */
+  combo_level?: number;
+  score?: number;
+  finale?: boolean;
+  down?: { deadline: string; continues: number; max: number; coins: number; can_continue: boolean } | null;
+  /** Stage 3: the effects on your champion, every move locked now (creature or effect), no spells / no potions. */
+  effects?: ActiveEffect[];
+  locked_moves?: Move[];
+  silenced?: boolean;
+  cursed?: boolean;
   /** Only once the battle is over. */
   result?: Partial<BattleResult>;
   rewards?: BattleRewards | null;
@@ -205,6 +244,10 @@ export interface Question {
   time_limit: number;
   expires_at: string;
   seconds_left: number;
+  /** Stage 4: the FINAL MOVE's question (one quick question to finish the boss). */
+  finale?: boolean;
+  /** Stage 3: what the effects do to this question's screen (seconds of hidden options / blurred text, reshuffles). */
+  effects?: { blind: number; fog: number; shuffle: number } | null;
 }
 
 /** How one question ended: the answer response, and the `previous` of a question that timed out while we were away. */
@@ -250,6 +293,20 @@ export interface Outcome {
   kit?: KitOutcome | null;
   /** The bane landed (x1.5, the boss lost its turn); `found`: worked out alone, rewarded once. */
   bane?: { landed: boolean; found: boolean } | null;
+  /** Stage 4: the combo's level, a combo special, this answer's points and the score; the final move. */
+  combo_level?: number;
+  combo_special?: boolean;
+  points?: number;
+  score?: number;
+  finale_armed?: boolean;
+  finisher?: { name: string; champion: string; style: string | null } | null;
+  finale_missed?: boolean;
+  knocked_down?: boolean;
+  /** Stage 3: the effect that landed, the ones that ticked (and their damage), the ones that wore off. */
+  effects?: {
+    landed: IntentEffect | null; ticked: { id: string; name: string; damage: number }[]; expired: string[];
+    damage: number; sapped: number; drained: number; active: ActiveEffect[];
+  } | null;
   new_achievements?: { id: string; name: string; description: string }[];
 }
 

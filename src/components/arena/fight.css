@@ -1,0 +1,252 @@
+/* The fight as an arcade screen (Stage 2): the HUD and the potions on top, the fighters in the middle (you on the
+   left, the boss on the right), the move or the question at the bottom. Phones play it sideways: held upright they
+   ask to be turned; held sideways the fight takes the whole screen (the app's bars step aside). */
+
+.arena--battle.fight { display: block; max-width: none; padding: 0; height: 100%; }
+/* the fight's own HUD says it all: the play header (level, coins) steps aside while it is on */
+.ws:has(.fight) .hero-header { display: none; }
+.fight__frame {
+  container-type: inline-size;
+  display: flex; flex-direction: column; gap: var(--space-2);
+  height: 100%; min-height: 38rem; max-width: 80rem; margin: 0 auto; padding: var(--space-3) var(--space-4);
+}
+
+/* top: one HUD row - you | the clock and the combo | the boss */
+.fight .fight-hud {
+  flex: none; display: grid; align-items: center; gap: var(--space-3); padding: var(--space-2) var(--space-3);
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); grid-template-areas: "you mid boss";
+}
+.fight .fight-hud .arena-hud__mid { justify-content: center; }
+.fight .fight-hud .ff-hud__side { align-items: center; }
+
+/* middle: the potions and spells along the top of the stage, then the stage as big as fits (16:9) */
+.fight__stage { flex: 1 1 auto; min-height: 12rem; display: flex; flex-direction: column; gap: var(--space-2); }
+.fight-tray { flex: none; display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: var(--space-2); }
+.fight-tray .arena-spells { display: contents; }
+.fight-tray .ui-btn { min-height: 2.25rem; padding-inline: 0.6rem; font-size: 0.75rem; }
+.fight-tray .arena-items__spacer { flex: 1 1 0; min-width: 0; }
+.fight-tray .arena-ult { display: inline-flex; align-items: center; gap: var(--space-2); }
+.fight-tray .arena-ult__bar { display: none; }   /* (the HUD shows the meter) */
+.fight-hud__sig { display: block; font-size: 0.65rem; }
+.fight__screen { flex: 1 1 auto; min-height: 0; container-type: size; display: grid; place-items: center; }
+.fight__screen .px-arena { width: min(100cqw, calc(100cqh * 16 / 9)); height: auto; }
+.fight .px-arena__speech { font-size: clamp(0.6rem, 2.6cqh, 0.85rem); }
+
+/* bottom: the move, the question, and (beside the question) the verdict */
+.fight__panel { flex: none; display: grid; gap: var(--space-3); max-height: 40%; overflow-y: auto; overscroll-behavior: contain; align-content: start; }
+.fight__panel[data-verdict] { grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); align-items: start; }
+.fight__panel .arena-question, .fight__panel .arena-verdict { padding: var(--space-3) var(--space-4); gap: var(--space-2); }
+.fight .arena-moves__list { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.fight .arena-options { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.fight .arena-question__text { font-size: 1rem; }
+.fight .arena-option { min-height: 2.75rem; padding-block: 0.35rem; }
+.fight .fight-hud .ff-hud__side--boss { align-items: center; }
+.arena-question__threat { display: inline-flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); margin-left: auto; }
+@container (max-width: 640px) {
+  .fight .arena-moves__list { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .fight__panel[data-verdict] { grid-template-columns: minmax(0, 1fr); }
+}
+
+/* phones held upright: ask to turn the phone (the frame waits behind it) */
+.fight-rotate { display: none; }
+@media (orientation: portrait) and (max-width: 767px) and (pointer: coarse) {
+  .fight-rotate {
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: var(--space-3);
+    min-height: 70dvh; padding: var(--space-6) var(--space-5); text-align: center;
+  }
+  .fight-rotate__phone { color: var(--color-reward); animation: fight-turn 2.4s var(--motion-ease) infinite; }
+  .fight-rotate__title { margin: 0; font-size: 1rem; color: var(--color-text); }
+  .fight-rotate__line { margin: 0; max-width: 22rem; color: var(--color-text-secondary); font-size: 0.875rem; }
+  .fight__frame { display: none; }
+}
+@keyframes fight-turn { 0%, 35% { transform: rotate(0deg); } 55%, 90% { transform: rotate(-90deg); } 100% { transform: rotate(0deg); } }
+@media (prefers-reduced-motion: reduce) { .fight-rotate__phone { animation: none; } }
+
+/* sideways on a phone (a short screen): the fight takes the whole screen; the app's bars and the play header step
+   aside; the HUD is one slim row, the potions sit as icons over the top of the stage, the question is tight */
+@media (orientation: landscape) and (max-height: 520px) {
+  .app-shell:has(.fight) .side, .app-shell:has(.fight) .bottom, .ws:has(.fight) .hero-header { display: none; }
+  .arena--battle.fight { height: 100dvh; }
+  .fight__frame {
+    height: 100dvh; min-height: 0; max-width: none; gap: 4px;
+    padding: 4px max(var(--space-2), env(safe-area-inset-right)) max(4px, env(safe-area-inset-bottom)) max(var(--space-2), env(safe-area-inset-left));
+  }
+  .fight .fight-hud { padding: 2px var(--space-2); gap: var(--space-2); }
+  .fight .ff-hud__portrait { width: 1.75rem; height: 1.75rem; }
+  .fight .ff-hud__pet, .fight .arena-hud__tagline, .fight .gear-chips, .fight .arena-hud__bossline .ui-badge,
+  .fight .arena-stat, .fight .fight-hud .arena-stat__label, .fight .fight-hud .arena-ult, .fight-hud__sig { display: none; }
+  .fight .arena-hud__name, .fight .ff-hud__name { font-size: 0.7rem; }
+  .fight .arena-timer { transform: scale(0.75); margin: -6px; }
+  .fight .ff-hud .arena-bar { height: 0.65rem; }
+
+  /* the stage is height-bound, so its sides are free: the potions and spells dock there as icons */
+  .fight__stage { flex-direction: row; min-height: 6rem; gap: 4px; }
+  .fight-tray { display: grid; grid-template-columns: repeat(3, 2.4rem); grid-auto-rows: 2.4rem; gap: 3px; align-content: center; }
+  .fight-tray .arena-items__spacer { display: none; }
+  /* the ultimate's charge: a thin bar across the dock */
+  .fight-tray .arena-ult__bar { display: block; grid-column: 1 / -1; order: 99; width: auto; height: 5px; }
+  .fight-tray .arena-ult { display: contents; }
+  .fight-tray .ui-btn { min-height: 0; height: 100%; width: 100%; padding: 0; gap: 0; justify-content: center; font-size: 0.65rem; flex-direction: column; }
+  .fight-tray .arena-item-count { font-size: 0.55rem; }
+  .fight-tray__label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+  .fight__panel { max-height: 52%; gap: 4px; }
+  .fight__panel .arena-question, .fight__panel .arena-verdict { padding: 4px var(--space-2); gap: 3px; }
+  .fight .arena-question__meta > .ui-badge, .fight .arena-move__blurb, .fight .arena-moves__head .arena-mech,
+  .fight .arena__sub, .fight .arena-moves__again { display: none; }
+  .fight .arena-question__text { font-size: 0.8rem; }
+  .fight .arena-options { gap: 3px; }
+  .fight .arena-option { min-height: 2.5rem; padding-block: 0.15rem; font-size: 0.75rem; }
+  .fight .arena-moves__head { display: flex; align-items: center; gap: var(--space-2); }
+  .fight .arena-moves__title { font-size: 0.75rem; }
+  .fight .arena-moves__list { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 4px; }
+  .fight .arena-move { min-height: 2.75rem; padding: 0.3rem 0.45rem; }
+  .fight .arena-verdict__explain, .fight .arena-verdict__next { display: none; }
+  .fight__panel[data-verdict] { grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); }
+}
+
+/* ── Stage 3: effects on you, the effect a blow carries, the enraged form ───────────────────────────────────── */
+.arena-effects { display: flex; flex-wrap: wrap; gap: 3px; margin: 0; padding: 0; list-style: none; }
+.arena-effect {
+  display: inline-flex; align-items: center; gap: 2px; padding: 1px 4px; border-radius: 3px;
+  border: 1px solid var(--effect-color, var(--color-border)); color: var(--effect-color, var(--color-text));
+  background: color-mix(in oklab, var(--effect-color, var(--color-border)) 16%, var(--color-surface-sunken));
+}
+.arena-effect__turns { font-size: 0.6rem; }
+.arena-effect[data-boss] { box-shadow: 0 0 0 1px var(--color-danger); }
+[data-kind="dot"] { --effect-color: #fb923c; }
+[data-kind="clock"] { --effect-color: #7dd3fc; }
+[data-kind="lock"] { --effect-color: #cbd5e1; }
+[data-kind="silence"] { --effect-color: #a78bfa; }
+[data-kind="curse"] { --effect-color: #a3a3a3; }
+[data-kind="weaken"] { --effect-color: #fb7185; }
+[data-kind="blind"], [data-kind="fog"] { --effect-color: #94a3b8; }
+[data-kind="shuffle"] { --effect-color: #f0abfc; }
+[data-kind="sap"], [data-kind="drain"] { --effect-color: #c084fc; }
+.arena-intent__effect {
+  display: inline-flex; align-items: center; gap: 3px; margin-left: var(--space-1); padding: 0 4px; border-radius: 3px; font-size: 0.7rem;
+  color: var(--effect-color); border: 1px solid var(--effect-color);
+}
+.arena-intent__hits { color: var(--color-danger-text); }
+.arena-intent[data-kind="fury"] { border-color: var(--color-danger); box-shadow: 0 0 0 1px var(--color-danger) inset; }
+
+/* the question screen under an effect: blurred (Fog), options hidden (Blind) */
+.arena-question__text[data-fogged] { filter: blur(5px); user-select: none; transition: filter 0.4s; }
+.arena-question__hex { display: inline-flex; align-items: center; gap: var(--space-1); margin: 0; font-size: 0.75rem; color: var(--color-text-secondary); }
+.arena-options[data-blinded] .arena-option { background: var(--color-surface-sunken); color: var(--color-text-muted); border-style: dashed; }
+.arena-verdict__line--hex { display: flex; align-items: center; gap: var(--space-1); color: var(--color-warning-text, var(--color-text)); }
+.arena-verdict__line--rage { color: var(--color-danger-text); font-weight: 700; }
+
+/* the enraged boss's HP bar runs red and pulses */
+.fight[data-rage] .ff-hud .arena-bar { border-color: var(--color-danger); animation: fight-rage-bar 1.2s steps(2, end) infinite; }
+@keyframes fight-rage-bar { 50% { box-shadow: 0 0 0 2px var(--color-danger), 2px 2px 0 rgba(0, 0, 0, 0.55); } }
+@media (prefers-reduced-motion: reduce) { .fight[data-rage] .ff-hud .arena-bar { animation: none; } }
+
+/* ── Stage 4: the score, the combo's level, the FINAL MOVE, CONTINUE, the score card ─────────────────────────── */
+.arena-score { display: inline-flex; align-items: center; gap: var(--space-1); color: var(--color-reward); font-size: 0.8rem; }
+.arena-combo__count { font-size: 0.6rem; color: var(--color-text-muted); }
+.arena-combo[data-level="5"] { border-color: var(--color-reward); color: var(--color-reward); }
+.arena-verdict__line--special { color: var(--color-reward); font-weight: 700; }
+.arena-finale {
+  display: grid; justify-items: center; gap: var(--space-2); text-align: center; padding: var(--space-3) var(--space-4);
+  border: 2px solid var(--color-reward); border-radius: var(--radius-md, 8px); background: var(--color-elevated);
+}
+.arena-finale__title { margin: 0; font-size: 1.25rem; color: var(--color-reward); letter-spacing: 0.06em; animation: fight-blink 0.8s steps(2, end) infinite; }
+.arena-continue {
+  display: grid; justify-items: center; gap: var(--space-2); text-align: center; padding: var(--space-3) var(--space-4);
+  border: 2px solid var(--color-danger); border-radius: var(--radius-md, 8px); background: var(--color-elevated);
+}
+.arena-continue__title { margin: 0; font-size: 1.1rem; color: var(--color-text); letter-spacing: 0.08em; }
+.arena-continue__count { margin: 0; font-size: 2.5rem; line-height: 1; color: var(--color-reward); }
+.arena-continue[data-urgent] .arena-continue__count { color: var(--color-danger-text); animation: fight-blink 0.5s steps(2, end) infinite; }
+.arena-continue__actions { display: flex; flex-wrap: wrap; justify-content: center; gap: var(--space-2); }
+@keyframes fight-blink { 50% { opacity: 0.35; } }
+@media (prefers-reduced-motion: reduce) { .arena-finale__title, .arena-continue[data-urgent] .arena-continue__count { animation: none; } }
+.arena-score-card {
+  display: grid; grid-template-columns: auto minmax(0, 1fr); gap: var(--space-4); align-items: center; width: 100%; max-width: 30rem;
+  padding: var(--space-3) var(--space-4); border: 2px solid var(--color-reward); border-radius: var(--radius-md, 8px); background: var(--color-elevated);
+}
+.arena-score-card__rank { font-size: 3rem; line-height: 1; color: var(--color-reward); }
+.arena-score-card__rows { display: grid; gap: 2px; margin: 0; }
+.arena-score-card__rows > div { display: flex; justify-content: space-between; gap: var(--space-3); font-size: 0.8rem; }
+.arena-score-card__rows dt { color: var(--color-text-secondary); }
+.arena-score-card__rows dd { margin: 0; }
+.arena-score-card__total { border-top: 1px solid var(--color-border); padding-top: 2px; font-size: 0.95rem !important; color: var(--color-reward); }
+@media (orientation: landscape) and (max-height: 520px) {
+  .fight .arena-score .arena-stat__label { display: none; }
+  .arena-continue__count { font-size: 1.75rem; }
+  .arena-continue, .arena-finale { padding: 4px var(--space-2); gap: 4px; }
+}
+
+/* ── Stage 5: character select and the VS screen ─────────────────────────────────────────────────────────── */
+.arena-select {
+  display: grid; gap: var(--space-3); padding: var(--space-4); border: 2px solid var(--color-border-strong, var(--color-border));
+  border-radius: var(--radius-md, 8px); background: var(--color-elevated);
+}
+.arena-select__title { margin: 0; text-align: center; font-size: 1.15rem; color: var(--color-reward); letter-spacing: 0.08em; }
+.arena-select__body { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr); gap: var(--space-4); align-items: center; }
+.arena-select__fighter {
+  margin: 0; display: grid; grid-template-columns: auto minmax(0, 1fr); gap: var(--space-3); align-items: center;
+  padding: var(--space-3); border: 2px solid var(--hero-accent); border-radius: var(--radius-md, 8px); background: var(--color-surface);
+}
+.arena-select__sprite { width: 128px; height: auto; image-rendering: pixelated; }
+.arena-select__info { display: grid; gap: var(--space-1); min-width: 0; }
+.arena-select__name { font-size: 1.1rem; color: var(--hero-accent); }
+.arena-select__style { font-size: 0.8rem; color: var(--color-text-secondary); }
+.arena-select__kit { display: grid; gap: 4px; margin: var(--space-1) 0 0; font-size: 0.78rem; }
+.arena-select__kit dt { font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--color-text-muted); }
+.arena-select__kit dd { margin: 0; }
+.arena-select__finisher { display: inline-flex; align-items: center; gap: 4px; font-size: 0.8rem; color: var(--color-reward); }
+.arena-select__grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--space-2); }
+.arena-select__card {
+  position: relative; display: grid; justify-items: center; gap: 2px; padding: var(--space-2) var(--space-1);
+  border: 2px solid var(--color-border); border-radius: var(--radius-sm, 4px); background: var(--color-surface); color: var(--color-text); cursor: pointer;
+}
+.arena-select__card[aria-checked="true"] { border-color: var(--hero-accent); box-shadow: 0 0 0 2px var(--hero-accent); }
+.arena-select__card[aria-checked="true"] .arena-select__card-name { color: var(--hero-accent); }
+.arena-select__card:focus-visible { outline: 3px solid var(--color-focus, var(--color-accent)); outline-offset: 2px; }
+.arena-select__card[data-locked] { cursor: not-allowed; opacity: 0.7; }
+.arena-select__card[data-locked] .arena-select__portrait { filter: brightness(0); }
+.arena-select__portrait { width: 56px; height: 56px; image-rendering: pixelated; }
+.arena-select__card-name { font-size: 0.6rem; text-align: center; }
+.arena-select__lock { position: absolute; top: 4px; right: 4px; color: var(--color-text-muted); }
+.arena-select__foot { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: var(--space-2); }
+.arena-select__status { margin: 0 auto 0 0; font-size: 0.8rem; color: var(--color-text-secondary); }
+
+.arena-vs {
+  display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); grid-template-rows: 1fr auto; align-items: center;
+  gap: var(--space-3); min-height: 22rem; padding: var(--space-4); border: 2px solid var(--color-border-strong, var(--color-border));
+  border-radius: var(--radius-md, 8px); background: var(--color-elevated); overflow: hidden;
+}
+.arena-vs__side { display: grid; justify-items: center; gap: var(--space-1); text-align: center; }
+.arena-vs__side--hero { animation: arena-vs-in-left 0.45s steps(6, end) both; }
+.arena-vs__side--boss { animation: arena-vs-in-right 0.45s steps(6, end) both; }
+.arena-vs__sprite { height: clamp(120px, 42vh, 300px); width: auto; max-width: 100%; image-rendering: pixelated; }
+.arena-vs__name { font-size: clamp(0.9rem, 2.4vw, 1.35rem); color: var(--color-text); }
+.arena-vs__side--hero .arena-vs__name { color: var(--hero-accent); }
+.arena-vs__side--boss .arena-vs__name { color: var(--color-danger-text); }
+.arena-vs__title { font-size: 0.8rem; color: var(--color-text-secondary); }
+.arena-vs__tag { font-size: 0.6rem; padding: 2px 6px; border: 1px solid var(--color-border); color: var(--color-text-secondary); }
+.arena-vs__vs {
+  font-size: clamp(2rem, 7vw, 4rem); color: var(--color-reward); text-shadow: 4px 4px 0 #000;
+  animation: arena-vs-slam 0.5s steps(5, end) 0.35s both;
+}
+.arena-vs__foot { grid-column: 1 / -1; display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: var(--space-2); }
+.arena-vs__status { margin: 0; font-size: 0.85rem; color: var(--color-text-secondary); }
+@keyframes arena-vs-in-left { from { transform: translateX(-60%); opacity: 0; } }
+@keyframes arena-vs-in-right { from { transform: translateX(60%); opacity: 0; } }
+@keyframes arena-vs-slam { from { transform: scale(2.6); opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .arena-vs__side--hero, .arena-vs__side--boss, .arena-vs__vs { animation: none; } }
+@media (max-width: 720px) {
+  .arena-select__body { grid-template-columns: minmax(0, 1fr); }
+  .arena-select__sprite { width: 88px; }
+}
+@media (orientation: landscape) and (max-height: 520px) {
+  .arena-select { padding: var(--space-2); gap: var(--space-2); }
+  .arena-select__body { grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr); }
+  .arena-select__kit { display: none; }
+  .arena-select__portrait { width: 40px; height: 40px; }
+  .arena-vs { min-height: 0; padding: var(--space-2); gap: var(--space-1); }
+  .arena-vs__sprite { height: 46vh; }
+  .app-shell:has(.arena-vs) .side, .app-shell:has(.arena-vs) .bottom, .ws:has(.arena-vs) .hero-header { display: none; }
+}

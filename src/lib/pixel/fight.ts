@@ -22,6 +22,10 @@ import { sfx, type Sfx } from "../sound/chip";
 export type BeatKind =
   | "intro" | "hero-strike" | "hero-cast" | "boss-strike" | "boss-shield" | "boss-heal" | "boss-drain"
   | "boss-ko" | "hero-ko" | "rage"
+  // Stage 4: knocked down (CONTINUE?) - the champion stays down until a continue brings them back up
+  | "hero-down"
+  // Stage 3: an effect lands on the champion (a burn, a freeze, a lock...)
+  | "hex"
   // Phase 3 Stage 2: creature mechanics and champion kits
   | "mechanic" | "ultimate" | "riposte" | "dodge"
   // Stage C1: a champion with their own mastery weapon ends the fight with a finisher
@@ -116,20 +120,41 @@ export interface Beat {
   signature?: boolean;
   /** taunt: the boss was not raging before (it goes into rage now). */
   enraged?: boolean;
+  /** hero-strike: a combo special at x5 (a flourish of extra blows and a banner). */
+  special?: boolean;
+  /** boss-strike: an enraged signature blow, striking this many times (the hydra: every head). */
+  fury?: boolean;
+  hits?: number;
+  /** hex: the kind of effect that landed (its colour and motion). */
+  effectKind?: string;
   /** The turn this beat belongs to - echoed back by onImpact. */
   key?: string | number;
 }
 
 export type IntentTint =
   | "attack" | "heavy" | "shield" | "drain" | "heal"
-  | "grab" | "riddle" | "illusion" | "charge" | "aim" | "throw" | "hoard" | "stunned" | null;
+  | "grab" | "riddle" | "illusion" | "charge" | "aim" | "throw" | "hoard" | "stunned" | "fury" | "finale" | null;
 
 const HERO_X = 128;
+/** The enraged form's size. */
+const RAGE_SCALE = 1.18;
+/** Each creature's enraged sparks (what rises off it while it rages). */
+const RAGE_SPARKS: Record<string, string> = {
+  hydra: "#4ade80", kraken: "#0ea5e9", sphinx: "#facc15", kitsune: "#93c5fd", fenrir: "#e2e8f0", ammit: "#a3e635",
+  minotaur: "#f97316", cyclops: "#fbbf24", oni: "#ef4444", rakshasa: "#c084fc", naga: "#34d399", simurgh: "#fb923c", jormungandr: "#22d3ee",
+};
+/** An effect's colour and motion as it lands on the champion. */
+const HEX_FX: Record<string, { color: string; motion: EffectMotion }> = {
+  dot: { color: "#f97316", motion: "motes" }, clock: { color: "#7dd3fc", motion: "ring" }, lock: { color: "#cbd5e1", motion: "coils" },
+  silence: { color: "#a78bfa", motion: "ring" }, curse: { color: "#a3a3a3", motion: "motes" }, weaken: { color: "#fb7185", motion: "burst" },
+  blind: { color: "#64748b", motion: "ring" }, fog: { color: "#94a3b8", motion: "motes" }, shuffle: { color: "#f0abfc", motion: "ring" },
+  sap: { color: "#a855f7", motion: "to-boss" }, drain: { color: "#a855f7", motion: "to-boss" },
+};
 const BOSS_X = 352;
 const INTENT_COLOR: Record<Exclude<IntentTint, null>, string> = {
   attack: "#ef4444", heavy: "#f97316", shield: "#38bdf8", drain: "#a855f7", heal: "#4ade80",
   grab: "#0ea5e9", riddle: "#facc15", illusion: "#f0abfc", charge: "#f97316", aim: "#fbbf24", throw: "#f97316",
-  hoard: "#34d399", stunned: "#e2e8f0",
+  hoard: "#34d399", stunned: "#e2e8f0", fury: "#dc2626", finale: "#fde047",
 };
 
 interface Tween { from: number; to: number; start: number; dur: number }
@@ -146,7 +171,7 @@ export interface FightOptions {
   hero: HeroDef;
   /** The pet idling behind the champion (a pet id from pets.ts), if one is worn. */
   pet?: string | null;
-  /** A saddled pet the fighter rides in on (pets.ts mountFrame); it carries them in, then trots off. */
+  /** A saddled pet the fighter rides (pets.ts mountFrame): it carries them in and stays under them the whole fight. */
   mount?: string | null;
   /** How grown the pet is (forge tiers): baby, young or adult. */
   petStage?: "baby" | "young" | "adult";
@@ -173,7 +198,6 @@ export class FightScene {
   private hero: HeroDef;
   private pet: string | null = null;
   private mount: string | null = null;
-  private mountLeave = { start: 0, dur: 0 };
   private boss: BossDef;
   private stageId: string;
   private reduced: boolean;
@@ -249,6 +273,19 @@ export class FightScene {
 
   setPet(pet: string | null | undefined) { this.pet = pet ?? null; }
 
+  /**
+   * Knocked down (Stage 4): `down` on lays the champion on the floor (quietly: a fight resumed while down); off again
+   * after a continue, they spring back up.
+   */
+  setDown(down: boolean) {
+    if (down) { if (!this.h.hold) this.setAnim(this.h, "ko", true); return; }
+    if (this.h.anim !== "ko") return;
+    this.setAnim(this.h, "idle");
+    this.h.flashUntil = this.now + 220;
+    this.dust(HERO_X, 1);
+    this.banner("BACK UP!", "fight");
+  }
+
   /** A new turn: whatever the last one was still playing is cut short, both fighters back on their marks. */
   reset() {
     this.queue = [];
@@ -261,7 +298,26 @@ export class FightScene {
       a.anim = "idle"; a.start = this.now;
     }
   }
-  setRage(on: boolean) { this.rage = on; }
+  /**
+   * The enraged form: bigger, tinted red, its creature's own sparks rising, a faster idle (and the hydra strikes with
+   * every head). Turning on mid-fight waits for the transformation beat to grow (or grows by itself shortly after);
+   * a fight that opens enraged (a resume) starts grown.
+   */
+  setRage(on: boolean) {
+    if (on && !this.rage) {
+      this.rage = true;
+      if (this.now === 0 || this.reduced) this.bossScale = { from: RAGE_SCALE, to: RAGE_SCALE, start: 0, dur: 1 };
+      else this.growAt = this.now + 2600;
+    } else if (!on && this.rage) { this.rage = false; this.bossScale = { from: 1, to: 1, start: 0, dur: 1 }; this.growAt = 0; }
+  }
+  private bossScale: Tween = { from: 1, to: 1, start: 0, dur: 1 };
+  /** Until when the finisher keeps the world dimmed. */
+  private dimUntil = 0;
+  private growAt = 0;
+  private grow() {
+    this.growAt = 0;
+    this.bossScale = { from: tweenAt(this.bossScale, this.now), to: RAGE_SCALE, start: this.now, dur: this.reduced ? 1 : 700 };
+  }
   setIntent(i: IntentTint) { this.intent = i; }
   setShield(v: number) { this.shield = v; }
 
@@ -306,13 +362,13 @@ export class FightScene {
     switch (beat.kind) {
       case "intro": {
         this.h.dx = { from: -150, to: 0, start: this.now, dur: this.reduced ? 1 : 650 };
-        // riding in: the mount carries the fighter to their mark, then trots back off the stage
+        // riding in: the mount carries the fighter to their mark (and stays under them for the whole fight)
         const riding = !!this.mount && !!mountFrame(this.mount, 0) && !this.reduced;
         this.setAnim(this.h, riding ? "ride" : "dash");
-        if (riding) this.mountLeave = { start: this.now + 650, dur: 700 };
         this.b.flashUntil = this.now + 300;
         this.after(650, () => { this.setAnim(this.h, "idle"); });
-        this.banner(beat.text ?? "FIGHT!", beat.text === "NEMESIS" ? "rage" : "fight");
+        // no round call (Stage 5: the VS screen opened the fight); a resumed fight says so
+        if (beat.text) this.banner(beat.text, "fight");
         this.after(250, () => this.shake(3, 250));
         return 900;
       }
@@ -328,9 +384,26 @@ export class FightScene {
         const hit = wind + 200 + this.impactAfterFrames(HERO_IMPACT_FRAME, fps);
         this.after(hit, () => { this.bossHurt(beat); if (beat.signature && !beat.shielded) this.signatureStrike(); });
         if (style === "twin" || style === "fist") this.after(hit + 120, () => this.bossHurt({ ...beat, heavy: false }, true));
-        this.after(hit + 380, () => { this.setAnim(this.h, "dash"); this.move(this.h, 0, 260); });
-        this.after(hit + 640, () => { this.setAnim(this.h, "idle"); this.dust(HERO_X + 6, 1); });
-        return hit + 700;
+        // the combo special: a flourish of quick extra blows in the champion's own style, a flash and a banner
+        let extra = 0;
+        if (beat.special && !this.reduced) {
+          this.banner("COMBO SPECIAL", "ult");
+          this.flashSky = this.now + hit;
+          for (let i = 0; i < 3; i++) {
+            this.after(hit + 130 + i * 120, () => {
+              this.setAnim(this.h, "attack");
+              this.signatureStrike(i === 2);
+              sfx(i === 2 ? "crit" : "hit");
+              this.b.flashUntil = this.now + 70;
+              this.setAnim(this.b, "hit");
+            });
+          }
+          this.after(hit + 130 + 2 * 120, () => { this.shake(5, 300); this.critFlash(); });
+          extra = 480;
+        }
+        this.after(hit + extra + 380, () => { this.setAnim(this.h, "dash"); this.move(this.h, 0, 260); });
+        this.after(hit + extra + 640, () => { this.setAnim(this.h, "idle"); this.dust(HERO_X + 6, 1); });
+        return hit + extra + 700;
       }
       case "hero-cast": {
         this.setAnim(this.h, "cast");
@@ -345,6 +418,20 @@ export class FightScene {
         if (beat.charge) return this.bossCharge(() => this.heroHurt(beat));
         this.setAnim(this.b, "attack"); this.move(this.b, -46, 260);
         const hit = this.impactAfterFrames(BOSS_IMPACT_FRAME, BOSS_FPS.attack) + 40;
+        if (beat.fury && !this.reduced) {
+          // the enraged signature blow: lunge after lunge (each a hit), the screen shaking harder
+          const n = Math.min(3, Math.max(2, beat.hits ?? 2));
+          for (let k = 0; k < n; k++) {
+            const at = hit + k * 330;
+            if (k > 0) this.after(at - 200, () => { this.setAnim(this.b, "attack"); this.move(this.b, -46 - k * 6, 160); });
+            this.after(at, () => { this.heroHurt({ ...beat, blocked: beat.blocked }); this.shake(3 + k, 200); });
+          }
+          this.banner(beat.text ?? "FURY", "rage");
+          const end = hit + (n - 1) * 330;
+          this.after(end + 260, () => this.move(this.b, 0, 320));
+          this.after(end + 340, () => this.setAnim(this.h, "idle"));
+          return end + 600;
+        }
         this.after(hit, () => this.heroHurt(beat));
         this.after(hit + 260, () => this.move(this.b, 0, 320));
         this.after(hit + 340, () => this.setAnim(this.h, "idle"));
@@ -376,10 +463,18 @@ export class FightScene {
         return 650;
       }
       case "rage": {
+        // the transformation: a roar, a flash, it grows and turns, its creature's sparks bursting off it
         this.setAnim(this.b, "cast");
-        this.shake(5, 600);
-        this.fx.push({ kind: "ring", x: this.bossCenter()[0], y: this.bossCenter()[1], start: this.now, dur: 700, color: "#ef4444", size: 140 });
-        this.banner("ENRAGED", "rage");
+        this.b.flashUntil = this.now + 260;
+        this.shake(6, 700);
+        this.slowmo(400);
+        const [bx, by] = this.bossCenter();
+        const spark = RAGE_SPARKS[this.boss.id] ?? "#ef4444";
+        this.fx.push({ kind: "ring", x: bx, y: by, start: this.now, dur: 700, color: "#ef4444", size: 140 });
+        this.after(160, () => this.fx.push({ kind: "ring", x: bx, y: by, start: this.now, dur: 600, color: spark, size: 100 }));
+        this.burst(bx, by - 10, spark, 30, 3);
+        this.grow();
+        this.banner(beat.text ?? "ENRAGED", "rage");
         this.after(900, () => this.setAnim(this.b, "idle"));
         return 1000;
       }
@@ -389,12 +484,17 @@ export class FightScene {
         this.shake(6, 500);
         this.slowmo(650);
         this.critFlash();
-        this.banner("K.O.", "ko");
+        this.banner("VICTORY", "ko");
         this.after(750, () => this.dissolve());
         this.after(1000, () => this.setAnim(this.h, "win", true));
         return 1400;
       }
       case "mechanic": return beat.effect && MECHANIC_FX[beat.effect] ? this.effect(MECHANIC_FX[beat.effect]) : 0;
+      case "hex": {
+        const look = HEX_FX[beat.effectKind ?? ""] ?? { color: "#c084fc", motion: "motes" as EffectMotion };
+        sfx("cast");
+        return this.effect({ on: "hero", anim: "hit", color: look.color, motion: look.motion, banner: beat.text, ms: 650, shake: 2 });
+      }
       case "ultimate": {
         const accent = this.hero.accent;
         const [x, y] = this.heroCenter();
@@ -428,14 +528,17 @@ export class FightScene {
           this.burst(bx, by - 20, "#ef4444", 24, 2);
           this.shake(6, 500);
           this.banner(beat.enraged === false ? "TAUNTED!" : "ENRAGED!", "rage");
+          if (beat.enraged !== false) this.grow();
         });
         this.after(1200, () => { this.setAnim(this.h, "idle"); this.setAnim(this.b, "idle"); });
         void y;
         return 1300;
       }
       case "finisher": {
-        // the champion's own last blow, then the KO as usual
+        // the FINAL MOVE: the world dims, the champion's name for it, a flurry in their own style, a freeze on the last
+        // blow, then the fall
         const reach = Math.max(30, this.bossFront - HERO_X - (style === "lance" ? 62 : 38));
+        this.dimUntil = this.reduced ? 0 : this.now + 240 + 6 * 110 + 200 + 900;
         this.banner(beat.text ?? "FINISHER", "ult");
         this.flashSky = this.now;
         if (style !== "mage") { this.setAnim(this.h, "dash"); this.move(this.h, reach, 220); }
@@ -456,7 +559,7 @@ export class FightScene {
           this.shake(8, 600);
           this.slowmo(650);
           this.critFlash();
-          this.banner("K.O.", "ko");
+          this.banner("VICTORY", "ko");
           if (style !== "mage") { this.move(this.h, 0, 300); this.setAnim(this.h, "dash"); }
         });
         this.after(end + 650, () => this.dissolve());
@@ -488,6 +591,13 @@ export class FightScene {
         this.after(hit, sidestep);
         this.after(hit + 260, () => this.move(this.b, 0, 320));
         return hit + 600;
+      }
+      case "hero-down": {
+        this.setAnim(this.h, "ko", true);
+        this.h.flashUntil = this.now + 120;
+        this.shake(4, 320);
+        this.banner("DOWN!", "lose");
+        return 1000;
       }
       case "hero-ko": {
         this.setAnim(this.h, "ko", true);
@@ -765,14 +875,14 @@ export class FightScene {
   private bossAnimIndex(): { anim: BossAnim; i: number } {
     const anim = this.b.anim as BossAnim;
     const n = this.bossSheet ? sheetFrame(this.bossSheet, anim, 0).frames : BOSS_ANIMS[anim].length;
-    const raw = Math.floor(((this.now - this.b.start) / 1000) * BOSS_FPS[anim]);
+    const raw = Math.floor(((this.now - this.b.start) / 1000) * BOSS_FPS[anim] * (this.rage && anim === "idle" ? 1.6 : 1));
     if (this.reduced && anim === "idle") return { anim, i: 0 };
     return { anim, i: anim === "idle" ? raw % n : Math.min(n - 1, raw) };
   }
 
   private bossFrameNow(): Frame | null {
     const { anim, i } = this.bossAnimIndex();
-    return bossFrame(this.boss, anim, i);
+    return bossFrame(this.boss, anim, i, this.rage);
   }
 
   private measureBoss() {
@@ -872,6 +982,8 @@ export class FightScene {
     // ambient behind fighters (rain / snow drawn after, in front)
     for (const p of this.ambient) if (p.kind === "fireflies" || p.kind === "wisps" || p.kind === "embers") this.dot(p, p.kind === "fireflies" ? 0.5 + Math.sin(now / 200 + p.x) * 0.5 : 1);
 
+    // the finisher dims the world to the two fighters
+    if (now < this.dimUntil) { ctx.fillStyle = "rgba(2,6,23,0.55)"; ctx.fillRect(0, 0, STAGE_W, STAGE_H); }
     // shadows
     const hx = Math.round(HERO_X + tweenAt(this.h.dx, now));
     const bxOff = Math.round(tweenAt(this.b.dx, now));
@@ -885,7 +997,6 @@ export class FightScene {
     if (!this.b.hidden) this.drawBoss(bxOff);
     // the pet stays on its mark behind the champion; then the champion
     if (pf) ctx.drawImage(toCanvas(pf), petX - PET_FRAME.anchor[0], GROUND_Y + PET_OFFSET[1] - PET_FRAME.anchor[1]);
-    if (this.mount && this.h.anim !== "ride") this.drawMountLeaving(hx);
     this.drawHero(hx);
 
     // fx
@@ -932,35 +1043,10 @@ export class FightScene {
     try { this.drawHeroFrame(x); } finally { ctx.globalAlpha = 1; }
   }
 
-  /** The mount trotting back off the stage after it carried the fighter in (fading as it goes). */
-  private drawMountLeaving(hx: number) {
-    const t = (this.now - this.mountLeave.start) / Math.max(1, this.mountLeave.dur);
-    if (!this.mountLeave.dur || t < 0 || t >= 1) return;
-    const m = mountFrame(this.mount!, Math.floor((this.now / 1000) * PET_FPS * 1.5));
-    if (!m) return;
-    const x = hx - 30 - easeOut(t) * 200;
-    const ctx = this.ctx;
-    ctx.globalAlpha = 1 - t;
-    ctx.save(); ctx.translate(Math.round(x + m.buf.w - MOUNT_FRAME.anchor[0]), GROUND_Y - MOUNT_FRAME.anchor[1]); ctx.scale(-1, 1);
-    ctx.drawImage(toCanvas(m.buf), 0, 0); ctx.restore();
-    ctx.globalAlpha = 1;
-  }
-
   private drawHeroFrame(x: number) {
     const ctx = this.ctx;
     const { anim, i } = this.heroAnimIndex();
-    if (anim === "ride" && this.mount) {
-      // the mount under the fighter; the fighter's hips on its saddle
-      const m = mountFrame(this.mount, Math.floor((this.now / 1000) * PET_FPS * 1.5));
-      if (m) {
-        const mx = x - MOUNT_FRAME.anchor[0], my = GROUND_Y - MOUNT_FRAME.anchor[1];
-        ctx.drawImage(toCanvas(m.buf), mx, my);
-        const f = heroFrame(this.hero, "ride", i);
-        const hip = solve(this.hero.look.build, heroAnims(this.hero.style).ride[i % heroAnims(this.hero.style).ride.length], HERO_FRAME.anchor, this.hero.look.scale).hip;
-        ctx.drawImage(toCanvas(f.buf), Math.round(mx + m.seat[0] - hip[0]), Math.round(my + m.seat[1] - hip[1]));
-        return;
-      }
-    }
+    if (this.mount && this.drawMounted(x, anim, i)) return;
     if (this.heroSheet) {
       const fr = sheetFrame(this.heroSheet, anim, i), a = this.heroSheet.entry.anchor;
       ctx.drawImage(this.heroSheet.image, fr.sx, fr.sy, fr.sw, fr.sh, x - a[0], GROUND_Y - a[1], fr.sw, fr.sh);
@@ -972,7 +1058,78 @@ export class FightScene {
     if (this.now < this.h.flashUntil && !this.reduced) ctx.drawImage(this.silhouette(f.buf, hex("#ffffff")), left, top);
   }
 
+  /** A frame's hip (where it sits on a saddle), in the frame's own pixels. */
+  private hipOf(anim: AnimName, i: number): [number, number] {
+    const frames = heroAnims(this.hero.style)[anim];
+    return solve(this.hero.look.build, frames[i % frames.length], HERO_FRAME.anchor, this.hero.look.scale).hip as [number, number];
+  }
+
+  /**
+   * The fighter on their mount, the whole fight: the mount under them (quicker steps while it carries them in a dash),
+   * the seated legs from the ride pose and, above the hips, whatever they are doing (a strike, a guard, a cast, a
+   * win) - so every move is made from the saddle. A knock-out throws them off: the mount stands, they lie beside it.
+   * Returns false when the mount can't be drawn (the fighter is drawn on foot).
+   */
+  private drawMounted(x: number, anim: AnimName, i: number): boolean {
+    const ctx = this.ctx;
+    const fast = anim === "dash" || anim === "ride" ? 2.2 : 1;
+    const m = mountFrame(this.mount!, this.reduced ? 0 : Math.floor((this.now / 1000) * PET_FPS * fast));
+    if (!m) return false;
+    const mx = x - MOUNT_FRAME.anchor[0], my = GROUND_Y - MOUNT_FRAME.anchor[1];
+    if (anim === "ko") {
+      ctx.drawImage(toCanvas(m.buf), mx - 26, my);
+      const f = heroFrame(this.hero, "ko", i);
+      ctx.drawImage(toCanvas(f.buf), x + 18 - f.anchor[0], GROUND_Y - f.anchor[1]);
+      return true;
+    }
+    ctx.drawImage(toCanvas(m.buf), mx, my);
+    const seat = [mx + m.seat[0], my + m.seat[1]];
+    // the legs: the ride pose's, seated (only below the hips)
+    const rideI = Math.floor((this.now / 1000) * this.heroFps("ride"));
+    const legs = heroFrame(this.hero, "ride", rideI), legHip = this.hipOf("ride", rideI);
+    const lx = Math.round(seat[0] - legHip[0]), ly = Math.round(seat[1] - legHip[1]);
+    const cut = Math.round(seat[1]);
+    ctx.save(); ctx.beginPath(); ctx.rect(lx - 4, cut - 1, legs.buf.w + 8, legs.buf.h); ctx.clip();
+    ctx.drawImage(toCanvas(legs.buf), lx, ly); ctx.restore();
+    // the body: this move's frame, its hips on the saddle (only above the hips)
+    const body = heroFrame(this.hero, anim, i), hip = this.hipOf(anim, i);
+    const bx = Math.round(seat[0] - hip[0]), by = Math.round(seat[1] - hip[1]);
+    ctx.save(); ctx.beginPath(); ctx.rect(bx - 8, by - 8, body.buf.w + 16, cut + 1 - (by - 8)); ctx.clip();
+    ctx.drawImage(toCanvas(body.buf), bx, by);
+    if (this.now < this.h.flashUntil && !this.reduced) ctx.drawImage(this.silhouette(body.buf, hex("#ffffff")), bx, by);
+    ctx.restore();
+    return true;
+  }
+
   private drawBoss(dx: number) {
+    const ctx = this.ctx;
+    // the enraged form: bigger (grown about its feet)
+    if (this.growAt && this.now >= this.growAt) this.grow();
+    const scale = tweenAt(this.bossScale, this.now);
+    if (scale !== 1) {
+      const fx = BOSS_X + dx, fy = GROUND_Y;
+      ctx.save(); ctx.translate(fx, fy); ctx.scale(scale, scale); ctx.translate(-fx, -fy);
+      try { this.drawBossBody(dx); } finally { ctx.restore(); }
+    } else this.drawBossBody(dx);
+    // its creature's sparks rising off it while it rages
+    if (this.rage && !this.reduced && Math.random() < 0.4) {
+      const [cx, cy] = this.bossCenter();
+      this.particles.push({ x: cx + dx + (Math.random() - 0.5) * 90, y: cy + 40 + Math.random() * 30, vx: (Math.random() - 0.5) * 0.3, vy: -0.6 - Math.random() * 0.7,
+        life: 50, max: 50, color: RAGE_SPARKS[this.boss.id] ?? "#ef4444", size: Math.random() < 0.3 ? 2 : 1, g: -0.005, kind: "mote" });
+    }
+    // the shield (drawn at the creature's own size: it is a bubble round it, not part of it)
+    if (this.shield > 0) {
+      const [cx, cy] = this.bossCenter();
+      ctx.fillStyle = "rgba(56,189,248,0.55)";
+      for (let a = 0; a < 64; a++) {
+        const ang = (a / 64) * Math.PI * 2 + this.now / 1500;
+        const r = 78 * scale + Math.sin(ang * 6 + this.now / 300) * 2;
+        ctx.fillRect(Math.round(cx + dx + Math.cos(ang) * r * 0.8), Math.round(cy + Math.sin(ang) * r), 2, 2);
+      }
+    }
+  }
+
+  private drawBossBody(dx: number) {
     const ctx = this.ctx;
     const f = this.bossFrameNow();
     if (!f) return;
@@ -991,23 +1148,15 @@ export class FightScene {
         ctx.globalAlpha = 1;
       }
     }
-    if (this.bossSheet) {
+    if (this.bossSheet && !this.rage) {
       const fr = sheetFrame(this.bossSheet, this.b.anim, this.bossAnimIndex().i), a = this.bossSheet.entry.anchor;
       const l = BOSS_X + dx - (fr.sw - a[0]);
       ctx.save(); ctx.translate(l + fr.sw, GROUND_Y - a[1]); ctx.scale(-1, 1);
       ctx.drawImage(this.bossSheet.image, fr.sx, fr.sy, fr.sw, fr.sh, 0, 0, fr.sw, fr.sh); ctx.restore();
     } else mirrored(toCanvas(f.buf));
+    // enraged: its colours run hot (a red wash over the body)
+    if (this.rage) { ctx.globalAlpha = 0.22; mirrored(this.silhouette(f.buf, hex("#dc2626"))); ctx.globalAlpha = 1; }
     if (this.now < this.b.flashUntil && !this.reduced) mirrored(this.silhouette(f.buf, hex("#ffffff")));
-    // shield: a hex-ish bubble of pixels
-    if (this.shield > 0) {
-      const [cx, cy] = this.bossCenter();
-      ctx.fillStyle = "rgba(56,189,248,0.55)";
-      for (let a = 0; a < 64; a++) {
-        const ang = (a / 64) * Math.PI * 2 + this.now / 1500;
-        const r = 78 + Math.sin(ang * 6 + this.now / 300) * 2;
-        ctx.fillRect(Math.round(cx + dx + Math.cos(ang) * r * 0.8), Math.round(cy + Math.sin(ang) * r), 2, 2);
-      }
-    }
   }
 
   private drawFx(f: Fx) {

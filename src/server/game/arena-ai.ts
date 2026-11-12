@@ -49,10 +49,13 @@ export function battleQuiz(data: unknown, difficulty: string): BattleQuestion[] 
 
 export async function generateBattleQuiz(ctx: RequestContext, caller: Caller, docs: Docs, o: {
   topic: string; difficulty: string; n: number; asked: string[]; phase: number; targets?: string[]; riddles?: boolean;
+  /** Extra search words, so batches written side by side read different passages (and ask about different things). */
+  angle?: string;
 }): Promise<BattleQuestion[]> {
   const targets = (o.targets ?? []).map((t) => String(t).trim()).filter(Boolean);
   const asked = targets.length ? [] : o.asked;
-  const context = (await topicContext(ctx, docs, targets.length ? targets.join(" ") : o.topic, o.difficulty === "hard" ? 10 : 8)).slice(0, 5000);
+  const query = [targets.length ? targets.join(" ") : o.topic, o.angle ?? ""].join(" ").trim();
+  const context = (await topicContext(ctx, docs, query, o.difficulty === "hard" ? 10 : 8)).slice(0, 5000);
   const prompt = battleQuizPrompt({
     context, topic: o.topic, difficulty: o.difficulty, phase: o.phase, asked: asked.length ? asked.join(", ") : "None yet", n: o.n,
     targetBlock: (targets.length ? nemesisBlock(targets.map((t) => `- ${t}`).join("\n")) : "") + (o.riddles ? RIDDLE : ""),

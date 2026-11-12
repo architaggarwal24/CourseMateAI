@@ -129,6 +129,8 @@ import {
   ShieldHalf as LShieldHalf,
   ShieldPlus as LShieldPlus,
   Skull as LSkull,
+  Snowflake as LSnowflake,
+  CloudFog as LCloudFog,
   SunMoon as LSunMoon,
   Sword as LSword,
   Swords as LSwords,
@@ -290,6 +292,8 @@ export const Shield = lucide(LShield, "Shield");
 export const ShieldHalf = lucide(LShieldHalf, "ShieldHalf");
 export const ShieldPlus = lucide(LShieldPlus, "ShieldPlus");
 export const Skull = lucide(LSkull, "Skull");
+export const Snowflake = lucide(LSnowflake, "Snowflake");
+export const CloudFog = lucide(LCloudFog, "CloudFog");
 export const SunMoon = lucide(LSunMoon, "SunMoon");
 export const Sword = lucide(LSword, "Sword");
 export const Swords = lucide(LSwords, "Swords");

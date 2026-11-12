@@ -104,13 +104,14 @@ export function clearSpriteCache() { cache.clear(); }
 
 // ── bosses ──
 
-export function bossFrame(boss: BossDef, anim: BossAnim, index: number): Frame {
+/** A boss frame; `rage`: its enraged form (some creatures change shape: the hydra strikes with every head). */
+export function bossFrame(boss: BossDef, anim: BossAnim, index: number, rage = false): Frame {
   const list = BOSS_ANIMS[anim];
   const i = ((index % list.length) + list.length) % list.length;
-  const key = `boss:${boss.id}:${anim}:${i}`;
+  const key = `boss:${boss.id}:${anim}:${i}${rage ? ":rage" : ""}`;
   const hit = cache.get(key);
   if (hit) return hit;
-  const p = list[i];
+  const p = rage ? { ...list[i], rage: true } : list[i];
   let buf = new PixelBuffer(BOSS_FRAME.w, BOSS_FRAME.h);
   boss.paint(buf, BOSS_FRAME.anchor, p);
   buf.outline(OUTLINE);
