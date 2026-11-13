@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
-import { CHEER_MS, SLEEP_AFTER_MS, useHeroMood } from "./useHeroMood";
+import { AWAKE_THROTTLE_MS, CHEER_MS, SLEEP_AFTER_MS, useHeroMood } from "./useHeroMood";
 import { sfx, useSound } from "@/lib/sound/chip";
 import Typewriter from "@/components/fx/Typewriter";
 import LoreTip, { LORE_TIPS } from "@/components/fx/LoreTip";
@@ -26,6 +26,16 @@ describe("the living panel (two worlds, Stage 3)", () => {
     act(() => { vi.advanceTimersByTime(SLEEP_AFTER_MS + 10); });
     expect(screen.getByTestId("mood").textContent).toBe("sleep");
     act(() => { fireEvent.keyDown(window, { key: "a" }); });
+    expect(screen.getByTestId("mood").textContent).toBe("idle");
+  });
+
+  it("a moving mouse is cheap: the panel checks for activity at most once a second, and stays awake", () => {
+    render(<Mood />);
+    act(() => { vi.advanceTimersByTime(AWAKE_THROTTLE_MS + 10); });
+    const timers = vi.spyOn(globalThis, "setTimeout");
+    act(() => { for (let i = 0; i < 100; i++) fireEvent.pointerMove(window, { clientX: i }); });
+    expect(timers.mock.calls.length).toBeLessThanOrEqual(1);           // 100 moves, one doze reset
+    for (let i = 0; i < 3; i++) act(() => { vi.advanceTimersByTime(SLEEP_AFTER_MS / 2); fireEvent.pointerMove(window, { clientX: i }); });
     expect(screen.getByTestId("mood").textContent).toBe("idle");
   });
 });

@@ -1,6 +1,6 @@
 /* The fight as an arcade screen (Stage 2): the HUD and the potions on top, the fighters in the middle (you on the
-   left, the boss on the right), the move or the question at the bottom. Phones play it sideways: held upright they
-   ask to be turned; held sideways the fight takes the whole screen (the app's bars step aside). */
+   left, the boss on the right), the move or the question at the bottom. On a phone, upright or sideways, the fight
+   takes the whole screen (the app's bars step aside). */
 
 .arena--battle.fight { display: block; max-width: none; padding: 0; height: 100%; }
 /* the fight's own HUD says it all: the play header (level, coins) steps aside while it is on */
@@ -47,20 +47,44 @@
   .fight__panel[data-verdict] { grid-template-columns: minmax(0, 1fr); }
 }
 
-/* phones held upright: ask to turn the phone (the frame waits behind it) */
-.fight-rotate { display: none; }
-@media (orientation: portrait) and (max-width: 767px) and (pointer: coarse) {
-  .fight-rotate {
-    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: var(--space-3);
-    min-height: 70dvh; padding: var(--space-6) var(--space-5); text-align: center;
+/* phones held upright: the fight plays upright too (it used to ask you to turn the phone). Full screen: the app's
+   bars step aside; a slim HUD on top, the stage across the full width (16:9), the potions in one row under it, then
+   the move or the question filling the rest (it scrolls on its own if it has to). */
+@media (orientation: portrait) and (max-width: 767px) {
+  .app-shell:has(.fight) .side, .app-shell:has(.fight) .bottom, .ws:has(.fight) .hero-header { display: none; }
+  .arena--battle.fight { height: 100dvh; }
+  .fight__frame {
+    height: 100dvh; min-height: 0; max-width: none; gap: 6px;
+    padding: max(6px, env(safe-area-inset-top)) var(--space-2) max(6px, env(safe-area-inset-bottom));
   }
-  .fight-rotate__phone { color: var(--color-reward); animation: fight-turn 2.4s var(--motion-ease) infinite; }
-  .fight-rotate__title { margin: 0; font-size: 1rem; color: var(--color-text); }
-  .fight-rotate__line { margin: 0; max-width: 22rem; color: var(--color-text-secondary); font-size: 0.875rem; }
-  .fight__frame { display: none; }
+  /* the HUD in two rows: you and the boss side by side, the clock / combo / score / pause under them */
+  .fight .fight-hud { padding: 4px var(--space-2); gap: 4px var(--space-2); grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); grid-template-areas: "you boss" "mid mid"; }
+  .fight .fight-hud .arena-hud__mid { gap: var(--space-3); }
+  .fight .ff-hud__portrait { width: 2rem; height: 2rem; }
+  .fight .ff-hud__pet, .fight .arena-hud__tagline, .fight .gear-chips, .fight .arena-hud__bossline .ui-badge,
+  .fight .fight-hud .arena-stat__label, .fight-hud__sig { display: none; }
+  .fight .arena-hud__name, .fight .ff-hud__name { font-size: 0.72rem; }
+  .fight .arena-timer { transform: scale(0.85); margin: -4px; }
+
+  .fight__stage { flex: none; min-height: 0; gap: 6px; }
+  .fight__screen { flex: none; container-type: inline-size; }
+  .fight__screen .px-arena { width: 100%; }
+  .fight .px-arena__speech { font-size: 0.68rem; }
+  /* the potions and spells: one row that scrolls sideways if there are many */
+  .fight-tray { flex-wrap: nowrap; justify-content: flex-start; overflow-x: auto; scrollbar-width: none; padding-bottom: 2px; }
+  .fight-tray::-webkit-scrollbar { display: none; }
+  .fight-tray .ui-btn { flex: none; min-height: 2.75rem; }
+  .fight-tray .arena-items__spacer { display: none; }
+
+  .fight__panel { flex: 1 1 auto; max-height: none; min-height: 0; gap: 6px; }
+  .fight__panel[data-verdict] { grid-template-columns: minmax(0, 1fr); }
+  .fight__panel .arena-question, .fight__panel .arena-verdict { padding: var(--space-2) var(--space-3); }
+  .fight .arena-moves__list { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
+  .fight .arena-move__blurb, .fight .arena-moves__head .arena-mech, .fight .arena__sub, .fight .arena-moves__again { display: none; }
+  .fight .arena-options { grid-template-columns: minmax(0, 1fr); gap: 6px; }
+  .fight .arena-option { min-height: 3rem; }
+  .fight .arena-question__text { font-size: 0.95rem; }
 }
-@keyframes fight-turn { 0%, 35% { transform: rotate(0deg); } 55%, 90% { transform: rotate(-90deg); } 100% { transform: rotate(0deg); } }
-@media (prefers-reduced-motion: reduce) { .fight-rotate__phone { animation: none; } }
 
 /* sideways on a phone (a short screen): the fight takes the whole screen; the app's bars and the play header step
    aside; the HUD is one slim row, the potions sit as icons over the top of the stage, the question is tight */
@@ -139,7 +163,7 @@
 
 /* the enraged boss's HP bar runs red and pulses */
 .fight[data-rage] .ff-hud .arena-bar { border-color: var(--color-danger); animation: fight-rage-bar 1.2s steps(2, end) infinite; }
-@keyframes fight-rage-bar { 50% { box-shadow: 0 0 0 2px var(--color-danger), 2px 2px 0 rgba(0, 0, 0, 0.55); } }
+@keyframes fight-rage-bar { 50% { opacity: 0.7; } }
 @media (prefers-reduced-motion: reduce) { .fight[data-rage] .ff-hud .arena-bar { animation: none; } }
 
 /* ── Stage 4: the score, the combo's level, the FINAL MOVE, CONTINUE, the score card ─────────────────────────── */
@@ -161,6 +185,7 @@
 .arena-continue[data-urgent] .arena-continue__count { color: var(--color-danger-text); animation: fight-blink 0.5s steps(2, end) infinite; }
 .arena-continue__actions { display: flex; flex-wrap: wrap; justify-content: center; gap: var(--space-2); }
 /* the blink swaps colours (both legible), it never fades the text */
+/* a colour blink, not a fade: a faded title would fall below readable contrast half the time (it is short-lived) */
 @keyframes fight-blink { 50% { color: var(--color-text); } }
 @media (prefers-reduced-motion: reduce) { .arena-finale__title, .arena-continue[data-urgent] .arena-continue__count { animation: none; } }
 .arena-score-card {

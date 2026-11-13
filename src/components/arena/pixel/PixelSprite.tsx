@@ -9,6 +9,23 @@ import { ANIM_FPS, ANIM_LOOP, FIDGETS, heroAnims, type AnimName, type HeroDef } 
 import { PET_FPS, PET_FRAME, PET_FRAMES, PET_OFFSET, petById, petFrame } from "@/lib/pixel/pets";
 import { bossFrame, heroFrame, HERO_FRAME } from "@/lib/pixel/sprites";
 import { solve } from "@/lib/pixel/rig";
+import { nextFrameAt, tick } from "@/lib/pixel/ticker";
+
+/** Frames come from the sprite cache and never change, so their tight boxes are measured once each. */
+const boundsCache = new WeakMap<PixelBuffer, [number, number, number, number]>();
+function boundsOf(buf: PixelBuffer): [number, number, number, number] {
+  let b = boundsCache.get(buf);
+  if (!b) { b = buf.bounds(); boundsCache.set(buf, b); }
+  return b;
+}
+
+/** Calls back with whether the element is on screen (scrolled into view, not display:none); always on without IntersectionObserver. */
+function watchVisible(el: Element, on: (visible: boolean) => void): () => void {
+  if (typeof IntersectionObserver === "undefined") { on(true); return () => {}; }
+  const io = new IntersectionObserver((entries) => on(entries[entries.length - 1].isIntersecting), { rootMargin: "64px" });
+  io.observe(el);
+  return () => io.disconnect();
+}
 
 /** One animated thing on the canvas: frames by index, at an offset in the hero frame's coordinates. */
 interface Layer { at: (i: number) => PixelBuffer; count: number; fps: number; loop: boolean; dx: number; dy: number }
@@ -98,7 +115,7 @@ export default function PixelSprite({ hero, boss, pet, petStage = "young", anim 
     if (crop) {
       let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
       for (const l of [...layers, ...measure]) for (let i = 0; i < l.count; i++) {
-        const [x, y, w, h] = l.at(i).bounds();
+        const [x, y, w, h] = boundsOf(l.at(i));
         if (!w) continue;
         x0 = Math.min(x0, x + l.dx); y0 = Math.min(y0, y + l.dy); x1 = Math.max(x1, x + l.dx + w); y1 = Math.max(y1, y + l.dy + h);
       }
@@ -114,14 +131,15 @@ export default function PixelSprite({ hero, boss, pet, petStage = "young", anim 
         const k = solve(hero.look.build, heroAnims(hero.style).idle[0], HERO_FRAME.anchor, hero.look.scale);
         box = [Math.round(k.headC[0] - 15), Math.round(k.headC[1] - 15), 30, 30];
       } else {
-        const [x, y, w, h] = main.at(0).bounds();
+        const [x, y, w, h] = boundsOf(main.at(0));
         const side = Math.round(Math.min(w, h) * 0.6);
         box = [Math.round(x + w - side), y, side, side];
       }
     }
     canvas.width = box[2]; canvas.height = box[3];
 
-    let raf = 0, last = "";
+    // drawn on the shared sprite clock (lib/pixel/ticker): only when a frame changes, only while on screen
+    let last = "";
     const start = performance.now();
     const indexOf = (l: Layer, t: number) => {
       const raw = Math.floor(((t - start) / 1000) * l.fps);
@@ -130,19 +148,37 @@ export default function PixelSprite({ hero, boss, pet, petStage = "young", anim 
     const draw = (t: number) => {
       const idx = layers.map((l) => indexOf(l, t));
       const key = idx.join(",");
-      if (key !== last) {
-        last = key;
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        ctx.save();
-        if (flip) { ctx.translate(canvas.width, 0); ctx.scale(-1, 1); }
-        layers.forEach((l, n) => ctx.drawImage(toCanvas(l.at(idx[n])), l.dx - box[0], l.dy - box[1]));
-        ctx.restore();
-      }
-      const more = layers.some((l) => l.loop || Math.floor(((t - start) / 1000) * l.fps) < l.count);
-      if (!reduced && more) raf = requestAnimationFrame(draw);
+      if (key === last) return;
+      last = key;
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.save();
+      if (flip) { ctx.translate(canvas.width, 0); ctx.scale(-1, 1); }
+      layers.forEach((l, n) => ctx.drawImage(toCanvas(l.at(idx[n])), l.dx - box[0], l.dy - box[1]));
+      ctx.restore();
     };
-    raf = requestAnimationFrame(draw);
-    return () => cancelAnimationFrame(raf);
+    const due = (t: number) => {
+      let next: number | null = null;
+      for (const l of layers) {
+        const at = nextFrameAt(start, l.fps, t, l.count, l.loop);
+        if (at !== null && (next === null || at < next)) next = at;
+      }
+      return next;
+    };
+    draw(start);
+    if (reduced) return;
+    let stop: (() => void) | null = null;
+    const pause = () => { stop?.(); stop = null; };
+    const resume = () => {
+      if (stop || document.visibilityState === "hidden") return;
+      const now = performance.now();
+      draw(now);
+      const first = due(now);
+      if (first !== null) stop = tick(first, (t) => { draw(t); return due(t); });
+    };
+    const unwatch = watchVisible(canvas, (visible) => (visible ? resume() : pause()));
+    const onVisibility = () => (document.visibilityState === "hidden" ? pause() : resume());
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => { pause(); unwatch(); document.removeEventListener("visibilitychange", onVisibility); };
   }, [hero, boss, petId, petStage, shown, flip, reduced, crop, portrait, !!fidgets]); // eslint-disable-line react-hooks/exhaustive-deps
   return (
     <canvas

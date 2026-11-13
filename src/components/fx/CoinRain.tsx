@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useReducedMotionConfig } from "motion/react";
 import { useCelebrate } from "@/lib/fx/celebrate";
 
@@ -15,15 +15,18 @@ function drawCoin(ctx: CanvasRenderingContext2D, x: number, y: number, s: number
 
 /**
  * A shower of pixel coins over the whole screen when something pays out (a quest claimed, a chest opened). Mounted
- * once in the app shell; decorative; nothing under reduced motion.
+ * once in the app shell; decorative; nothing under reduced motion. The full-screen canvas exists only while coins
+ * fall: left in the page it was one more screen-sized layer for the browser to composite on every frame.
  */
 export default function CoinRain() {
   const rain = useCelebrate((s) => s.rain);
   const ref = useRef<HTMLCanvasElement>(null);
   const reduced = !!useReducedMotionConfig();
+  const [falling, setFalling] = useState<number | null>(null);
+  useEffect(() => { if (rain && !reduced) setFalling(rain.id); }, [rain, reduced]);
   useEffect(() => {
     const c = ref.current, ctx = c?.getContext?.("2d");
-    if (!rain || !c || !ctx || reduced) return;
+    if (!rain || falling !== rain.id || !c || !ctx || reduced) return;
     const W = (c.width = window.innerWidth), H = (c.height = window.innerHeight);
     const coins = Array.from({ length: rain.coins }, (_, i) => ({
       x: Math.random() * W, y: -20 - Math.random() * H * 0.6, vy: 3 + Math.random() * 4, vx: (Math.random() - 0.5) * 1.2,
@@ -38,10 +41,10 @@ export default function CoinRain() {
         k.vy += 0.15; k.y += k.vy; k.x += k.vx; k.spin += 0.25;
         if (k.y < H + 30) { alive++; drawCoin(ctx, k.x, k.y, k.s, Math.floor(k.spin) % 4 === 2); }
       }
-      if (alive && t - start < 4000) raf = requestAnimationFrame(tick); else ctx.clearRect(0, 0, W, H);
+      if (alive && t - start < 4000) raf = requestAnimationFrame(tick); else { ctx.clearRect(0, 0, W, H); setFalling(null); }
     };
     raf = requestAnimationFrame(tick);
     return () => { cancelAnimationFrame(raf); ctx.clearRect(0, 0, W, H); };
-  }, [rain, reduced]);
-  return <canvas ref={ref} className="fx-coin-rain" aria-hidden="true" />;
+  }, [rain, falling, reduced]);
+  return falling !== null ? <canvas ref={ref} className="fx-coin-rain" aria-hidden="true" /> : null;
 }

@@ -29,6 +29,9 @@
   border-bottom: 1px solid var(--glass-border);
   background: var(--glass-tint);
 }
+/* the champion is also the menu button (the pause menu: a phone has no Esc key) */
+.hero-header__menu.ui-btn { position: relative; flex: none; min-width: 2.75rem; min-height: 2.75rem; height: auto; padding: 0; border: 0; background: none; box-shadow: none; }
+.hero-header__menu-glyph { position: absolute; left: -3px; bottom: -3px; display: grid; place-items: center; width: 1rem; height: 1rem; border: 2px solid var(--px-ink); background: var(--color-reward); color: var(--px-ink); }
 .hero-header__avatar {
   display: grid;
   place-items: center;
@@ -159,8 +162,11 @@ button.hero-item__sprite:hover { border-color: var(--color-accent-alt-text); }
 .quest-list { display: grid; gap: var(--space-3); margin: 0; padding: 0; list-style: none; }
 .quest-empty { padding: var(--space-6); text-align: center; color: var(--color-muted); font-size: 0.875rem; }
 .quest { display: grid; gap: var(--space-3); padding: var(--space-4); border: 1px solid var(--glass-border); border-radius: var(--radius-lg); background: var(--glass-bg); box-shadow: none; transition: border-color var(--motion-fast) var(--motion-ease), background-color var(--motion-fast) var(--motion-ease); }
-.quest[data-state="ready"] { border-color: var(--color-highlight-text); background: color-mix(in srgb, var(--color-highlight) 9%, var(--glass-bg)); box-shadow: none; animation: quest-ready 2.4s ease-in-out infinite; }
-@keyframes quest-ready { 50% { border-color: var(--color-reward); } }
+/* a ready quest pulses: an outline that fades in and out (opacity only, so the compositor runs it, not the page) */
+.quest[data-state="ready"] { position: relative; border-color: var(--color-highlight-text); background: color-mix(in srgb, var(--color-highlight) 9%, var(--glass-bg)); box-shadow: none; }
+.quest[data-state="ready"]::after { content: ""; position: absolute; inset: -1px; border: 1px solid var(--color-reward); border-radius: inherit; opacity: 0; pointer-events: none; animation: quest-ready 2.4s ease-in-out infinite; }
+@keyframes quest-ready { 50% { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .quest[data-state="ready"]::after { animation: none; } }
 .quest[data-state="claimed"] { border-color: color-mix(in srgb, var(--color-success-text) 40%, var(--color-border)); }
 .quest__head { display: flex; align-items: flex-start; gap: var(--space-3); }
 .quest__mark { flex: none; margin-top: 0.125rem; color: var(--color-muted); }
@@ -198,15 +204,29 @@ button.hero-item__sprite:hover { border-color: var(--color-accent-alt-text); }
 /* Phones (after the base rules above, so these win) */
 @media (max-width: 767.98px) {
   .hero-tabs-pin { padding: var(--space-2) var(--space-3); border-bottom: 1px solid var(--glass-border); }
-  /* the header, tighter: the champion, level and XP on one line; coins, streak and sound under them */
-  .hero-header { display: grid; grid-template-columns: auto auto minmax(0, 1fr) auto; align-items: center; gap: var(--space-2) var(--space-3); padding: var(--space-3); }
-  .hero-header__avatar { grid-row: span 2; padding-right: 1rem; }
-  .hero-header__xp { grid-column: 3 / -1; min-width: 0; max-width: none; }
-  .hero-header__coins { grid-column: 2 / 3; justify-self: start; }
-  .hero-header__streak { grid-column: 3 / 4; justify-self: start; }
-  .hero-header__sound { grid-column: 4 / 5; margin-left: 0; }
-  .hero-header__preview { grid-column: 1 / -1; }
+  /* the header, slim (the mobile pass): the champion (the menu button), level over the XP bar, coins, streak, sound -
+     about 60px high, not 115 */
+  .hero-header {
+    display: grid; grid-template-columns: auto minmax(0, 1fr) auto auto auto;
+    grid-template-areas: "menu lv coins streak sound" "menu xp coins streak sound";
+    align-items: center; gap: 2px var(--space-2); padding: 6px var(--space-3);
+  }
+  .hero-header__menu { grid-area: menu; margin-right: var(--space-1); }
+  .hero-header__avatar { padding-right: 0.5rem; }
+  .hero-header__avatar .champ-avatar { --champ-size: 40px !important; }
+  .hero-header__lv { grid-area: lv; display: flex; align-items: baseline; gap: var(--space-2); min-width: 0; }
+  .hero-header__level { font-size: 0.8rem; }
+  .hero-header__xp { grid-area: xp; min-width: 0; max-width: none; display: flex; align-items: center; gap: var(--space-2); }
+  .hero-header__xp-label { order: 2; margin: 0; font-size: 0.6rem; white-space: nowrap; }
+  .hero-header__xp-label > span:first-child { display: none; }   /* "XP": the bar's own label reads it out */
+  .hero-header__bar { flex: 1; min-width: 2rem; height: 0.55rem; }
+  .hero-header__coins { grid-area: coins; }
+  .hero-header__streak { grid-area: streak; }
+  .hero-header__stat { padding: 2px 6px; gap: 4px; }
+  .hero-header__sound { grid-area: sound; margin-left: 0; }
+  .hero-header__preview { grid-column: 1 / -1; grid-row: 3; }
   .hero-header__streak-label { display: none; }        /* the flame and the number say it (the chip's label reads it out) */
+  .champ-stage__figure { max-height: 11rem; }           /* the champion preview leaves room for the rest of the tab */
 }
 /* ── the Forge tab ───────────────────────────────────────────────────────── */
 .forge { display: grid; gap: var(--space-2); padding: var(--space-4); max-width: 60rem; }

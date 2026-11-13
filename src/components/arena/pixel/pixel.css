@@ -14,7 +14,8 @@ button .pixel-canvas, [role="radio"] .pixel-canvas { pointer-events: none; }
   box-shadow: 0 20px 60px -20px rgba(0, 0, 0, 0.7), inset 0 0 0 1px rgba(255, 255, 255, 0.04);
 }
 .px-arena[data-rage] { box-shadow: 0 0 0 1px var(--color-danger), 0 0 50px -10px var(--color-danger); }
-.px-arena__canvas { position: absolute; inset: 0; width: 100%; height: 100%; image-rendering: pixelated; image-rendering: crisp-edges; }
+/* its own compositor layer: the stage redraws 60 times a second, and nothing else on screen should repaint with it */
+.px-arena__canvas { position: absolute; inset: 0; width: 100%; height: 100%; image-rendering: pixelated; image-rendering: crisp-edges; will-change: transform; }
 .px-arena__speech {
   position: absolute; right: 6%; top: 6%; max-width: 46%; margin: 0;
   padding: 0.45rem 0.7rem; font-size: 0.78rem; line-height: 1.35; color: var(--color-text);
@@ -154,3 +155,6 @@ button .pixel-canvas, [role="radio"] .pixel-canvas { pointer-events: none; }
 .px-hero-card[data-locked] .px-hero-card__style { color: var(--color-muted); }
 .px-hero-card__lock { display: flex; flex-direction: column; align-items: center; gap: 0.25rem; }
 .px-hero-card__lockline { display: inline-flex; align-items: center; gap: 0.3rem; font-size: 0.7rem; color: var(--color-text-secondary); line-height: 1.3; text-align: center; }
+
+/* an animated sprite is its own compositor layer: its frames change without repainting the page around it */
+.pixel-canvas[data-playing="true"] { will-change: transform; }

@@ -1,6 +1,6 @@
 "use client";
 
-import { Coins, Flame, ShieldPlus, X } from "@/components/ui/icons";
+import { Coins, Flame, Pause, ShieldPlus, X } from "@/components/ui/icons";
 import { motion } from "motion/react";
 import ChampionAvatar from "@/components/champion/ChampionAvatar";
 import { useChampionLook } from "@/components/champion/useChampionLook";
@@ -8,6 +8,7 @@ import { Button } from "@/components/ui";
 import { useHUDStore } from "@/hooks/useHUD";
 import { useHeroStore } from "@/hooks/useHero";
 import SoundToggle from "@/components/fx/SoundToggle";
+import { usePause } from "@/hooks/usePause";
 
 /**
  * Always on top of the Hero area, whatever tab is open: the champion (with its pet and whatever is being tried on), level, XP bar,
@@ -35,11 +36,15 @@ export default function HeroHeader() {
 
   return (
     <section aria-label="Hero status" className="hero-header" data-testid="hero-header">
-      <div className="hero-header__avatar" data-previewing={!!previewItem} role="img" aria-label={who} data-testid="hero-header-champion">
-        <ChampionAvatar size={60} withPet preview />
-      </div>
+      {/* a phone has no Esc key: tapping your champion opens the pause menu (options, controls, back to Study) */}
+      <Button variant="ghost" className="hero-header__menu" onClick={() => usePause.getState().show()} aria-label="Menu" title="Menu: options, controls and the way back to Study">
+        <span className="hero-header__avatar" data-previewing={!!previewItem} role="img" aria-label={who} data-testid="hero-header-champion">
+          <ChampionAvatar size={60} withPet preview />
+        </span>
+        <span className="hero-header__menu-glyph" aria-hidden="true"><Pause size={10} /></span>
+      </Button>
 
-      <div>
+      <div className="hero-header__lv">
         <motion.div key={level} className="hero-header__level pixel-font" data-testid="hero-level"
           initial={{ scale: 1.4 }} animate={{ scale: 1 }} transition={{ type: "spring", stiffness: 400, damping: 12 }}>LV {level}</motion.div>
         {guestMode && <div className="text-xs text-fg-muted">Guest</div>}

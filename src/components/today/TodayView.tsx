@@ -90,8 +90,6 @@ export default function TodayView() {
         <button type="button" className="today__focus" onClick={() => useFocusMode.getState().start()}>Start a focus session</button>
       </header>
 
-      <InvasionTeaser />
-      <SeasonTeaser sessionId={latest?.id ?? null} />
       <div className="today__grid">
         <Tile id="today-review" title="Review" icon={<Repeat size={18} />} emphasis={!review.locked && review.due > 0} className="today-tile--wide">
           {review.locked ? (
@@ -191,6 +189,11 @@ export default function TodayView() {
               else if (docs.length > 1 && latest) router.push(ROUTES.studyTab("overview", undefined, latest.id));
             }} />
         </Tile>
+      </div>
+      {/* news from the Hero world, after the day's own work (on a phone it used to push Review off the first screen) */}
+      <div className="today__news">
+        <InvasionTeaser />
+        <SeasonTeaser sessionId={latest?.id ?? null} />
       </div>
     </div>
   );

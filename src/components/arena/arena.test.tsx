@@ -896,6 +896,16 @@ describe("Arena: the pause menu pauses the fight (two worlds, Stage 3)", () => {
     await screen.findByText("Correct!");
   });
 
+  it("a phone has no Esc: the HUD's Pause button opens the pause menu and pauses the question", async () => {
+    const { log } = server();
+    render(<ArenaArea />);
+    await summonBoss();
+    await screen.findByText("Which organelle makes ATP?");
+    fireEvent.click(screen.getByRole("button", { name: "Pause" }));
+    expect(usePause.getState().open).toBe(true);
+    await waitFor(() => expect(log.calls).toContain("POST /arena/battles/b1/pause"));
+  });
+
   it("opened between questions it pauses nothing on the server (the turn waits for you anyway)", async () => {
     const { log } = server();
     render(<ArenaArea />);

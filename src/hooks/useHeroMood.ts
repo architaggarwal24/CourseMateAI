@@ -12,6 +12,8 @@ export const FLINCH: Sfx[] = ["lose", "hurt"];
 export const CHEER_MS = 1800, FLINCH_MS = 900;
 /** No mouse, key or touch in the Hero world for this long: it dozes off (zzz) until you're back. */
 export const SLEEP_AFTER_MS = 60_000;
+/** Activity is checked at most this often (pointermove fires on every mouse twitch). */
+export const AWAKE_THROTTLE_MS = 1000;
 
 export function useHeroMood(): HeroMood {
   const [mood, setMood] = useState<HeroMood>("idle");
@@ -24,7 +26,12 @@ export function useHeroMood(): HeroMood {
       back = setTimeout(() => setMood("idle"), ms);
     };
     const off = onSfx((name) => { if (CHEER.includes(name)) set("cheer", CHEER_MS); else if (FLINCH.includes(name)) set("flinch", FLINCH_MS); });
+    // a mouse fires pointermove dozens of times a second: the doze timer is reset at most once a second
+    let lastAwake = -Infinity;
     const awake = () => {
+      const now = Date.now();
+      if (now - lastAwake < AWAKE_THROTTLE_MS) return;
+      lastAwake = now;
       setMood((m) => (m === "sleep" ? "idle" : m));
       if (doze) clearTimeout(doze);
       doze = setTimeout(() => setMood((m) => (m === "idle" ? "sleep" : m)), SLEEP_AFTER_MS);

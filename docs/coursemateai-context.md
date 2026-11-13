@@ -364,3 +364,13 @@ From this work only; nobody has gone looking for more.
   `forgetTier` after changing a plan in the same request.
 - `Skeleton`: size it with a Tailwind class or the height prop; `perf.test.ts` guards fonts, the login entrance and
   `public/_headers` (static files on Cloudflare never get next.config.ts headers).
+- **Pixel sprites share one clock** (`lib/pixel/ticker.ts`): a `PixelSprite` draws only when its frame changes, only
+  while on screen (IntersectionObserver) and the tab is visible. Never give a sprite its own requestAnimationFrame
+  loop again (a dozen loops kept the Hero world busy every display frame). The fight stage (`lib/pixel/fight.ts`) is
+  the one 60 fps loop, on its own compositor layer. Keep looping CSS animations to transform/opacity: a box-shadow,
+  colour or background-position animation repaints its whole layer every frame (the fight HUD's old throb repainted
+  the full screen 60 times a second).
+- **Phones (the mobile pass, 13 Nov 2026):** fights play upright too (no "turn your phone" wall); the Hero header is
+  one slim band, and tapping the champion opens the pause menu (no Esc key on a phone; a fight has its own Pause
+  button). `e2e/mobile.spec.ts` guards the room left for content (Today's Review on the first screen, the Study tabs
+  band, the Hero header height, readable tab labels).

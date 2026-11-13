@@ -203,9 +203,10 @@ export default function DocumentHeader({ doc, gone, loaded, upload, tabs, course
             </>
           ) : doc ? (
             <>
-              <Button size="sm" onClick={pick} disabled={busy} loading={uploading} aria-label="Replace PDF" title="Replace PDF">
+              {/* on a phone just the icon (unless something went wrong: then the words matter), so the name keeps its room */}
+              <Button size="sm" onClick={pick} disabled={busy} loading={uploading} aria-label="Replace PDF" title="Replace PDF" className={problem ? undefined : "max-sm:min-w-11"}>
                 {!uploading && <Upload size={14} aria-hidden="true" />}
-                {problem ? (doc.status === "failed" ? "Try again" : "Re-upload") : "Replace"}
+                {problem ? (doc.status === "failed" ? "Try again" : "Re-upload") : <span className="max-sm:hidden">Replace</span>}
               </Button>
               {onDelete && (
                 <Button size="sm" variant="ghost" icon onClick={onDelete} disabled={busy} aria-label="Delete PDF" title="Delete PDF">

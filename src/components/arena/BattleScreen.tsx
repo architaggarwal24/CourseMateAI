@@ -2,7 +2,7 @@
 
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { motion } from "motion/react";
-import { Brain, ChevronRight, Flag, Flame, FlaskConical, Hourglass, MonitorSmartphone, Scissors, ShieldCheck, Swords, Zap } from "@/components/ui/icons";
+import { Brain, ChevronRight, Flag, Flame, FlaskConical, Hourglass, Pause, Scissors, ShieldCheck, Swords, Zap } from "@/components/ui/icons";
 import { tauntLine } from "@/lib/arena/emotes";
 import { music } from "@/lib/sound/chip";
 import SoundToggle from "@/components/fx/SoundToggle";
@@ -275,12 +275,6 @@ export default function BattleScreen({ arena, context }: { arena: Arena; context
 
   return (
     <div className="arena arena--battle fight" data-stage={stage} data-rage={battle.rage || undefined}>
-      {/* phones held upright: the fight plays sideways (fight.css shows this and hides the frame) */}
-      <div className="fight-rotate">
-        <MonitorSmartphone size={44} aria-hidden="true" className="fight-rotate__phone" />
-        <p className="fight-rotate__title pixel-font">Turn your phone sideways</p>
-        <p className="fight-rotate__line">The fight plays in landscape: more room for you, the boss and the question.</p>
-      </div>
       <div className="fight__frame">
       {context}
       <header className="arena-hud ff-hud fight-hud" aria-label="Battle status">
@@ -325,6 +319,10 @@ export default function BattleScreen({ arena, context }: { arena: Arena; context
             </span>
           )}
           <SoundToggle kind="music" className="arena-hud__music" />
+          {/* the pause menu by touch (Esc on a keyboard): a phone call, a bus stop - the clock stops */}
+          <Button size="sm" variant="ghost" icon className="arena-hud__pause" onClick={() => usePause.getState().show()} aria-label="Pause" title="Pause (Esc)">
+            <Pause size={14} aria-hidden="true" />
+          </Button>
         </div>
 
         <div className="arena-hud__boss ff-hud__side ff-hud__side--boss">

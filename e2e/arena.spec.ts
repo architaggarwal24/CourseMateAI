@@ -180,7 +180,7 @@ test.beforeEach(async ({ page }, info) => {
   if (info.project.name.startsWith("mobile")) await page.setViewportSize({ width: 740, height: 360 });
 });
 
-test("phones: held upright the fight asks to be turned sideways; sideways it takes the whole screen", async ({ page }, info) => {
+test("phones: upright the fight fills the screen (HUD, stage, moves, question all in view); sideways too", async ({ page }, info) => {
   test.skip(!info.project.name.startsWith("mobile"), "phones only");
   await battleServer(page);
   await page.setViewportSize({ width: 360, height: 740 });
@@ -188,24 +188,36 @@ test("phones: held upright the fight asks to be turned sideways; sideways it tak
   await page.getByRole("button", { name: /Quick Battle/ }).click();
   await page.getByLabel("Boss topic").fill("cells");
   await page.getByRole("button", { name: /Summon boss/ }).click();
-  await throughVs(page);                                                    // the menus work upright; the fight turns
-  await expect(page.getByText("Turn your phone sideways")).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Cell Warden" })).toBeHidden();
-  await page.setViewportSize({ width: 740, height: 360 });
-  await expect(page.getByText("Turn your phone sideways")).toBeHidden();
+  await throughVs(page);
+  // upright: no "turn your phone" wall; the app's bars step aside and the whole fight is on one screen
   await expect(page.getByRole("heading", { name: "Cell Warden" })).toBeVisible();
-  // the app's bars step aside; HUD on top, the fighters in the middle, the moves at the bottom, all on one screen
   await expect(page.getByRole("navigation", { name: "Main" })).toBeHidden();
-  const hud = (await page.locator("[aria-label=\"Battle status\"]").boundingBox())!;
-  const stage = (await page.getByRole("img", { name: /Cell Warden, the boss/ }).boundingBox())!;
-  const moves = (await page.getByRole("button", { name: /^Strike/ }).boundingBox())!;
-  expect(hud.y).toBeLessThan(stage.y);
-  expect(stage.y + stage.height).toBeLessThanOrEqual(moves.y + 1);
-  expect(moves.y + moves.height).toBeLessThanOrEqual(360);
+  const upright = async (h: number) => {
+    const hud = (await page.locator("[aria-label=\"Battle status\"]").boundingBox())!;
+    const stage = (await page.getByRole("img", { name: /Cell Warden, the boss/ }).boundingBox())!;
+    const moves = (await page.getByRole("button", { name: /^Strike/ }).boundingBox())!;
+    expect(hud.y).toBeGreaterThanOrEqual(0);
+    expect(hud.y).toBeLessThan(stage.y);
+    expect(stage.y + stage.height).toBeLessThanOrEqual(moves.y + 1);
+    expect(moves.y + moves.height).toBeLessThanOrEqual(h);
+    return stage;
+  };
+  const stage = await upright(740);
+  expect(stage.width).toBeGreaterThan(330);                                  // the stage spans the phone
+  const scroll = await page.evaluate(() => document.documentElement.scrollWidth);
+  expect(scroll).toBeLessThanOrEqual(360);
   await strike(page);
   const q = (await page.getByText("Which organelle makes ATP?").boundingBox())!;
   expect(q.y).toBeGreaterThan(stage.y + stage.height - 1);
   await expect(page.getByRole("button", { name: /Mitochondria/ })).toBeInViewport();
+  for (const b of await page.locator(".arena-option").all()) {
+    const box = (await b.boundingBox())!;
+    expect(box.height).toBeGreaterThanOrEqual(44);                            // a finger can hit every answer
+  }
+  // sideways: it still takes the whole screen
+  await page.setViewportSize({ width: 740, height: 360 });
+  await expect(page.getByRole("heading", { name: "Cell Warden" })).toBeVisible();
+  await expect(page.getByRole("navigation", { name: "Main" })).toBeHidden();
 });
 
 test("the boss enrages: its roar is the banner, it grows, its HP bar runs red, and its next blow is its own", async ({ page }) => {

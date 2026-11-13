@@ -242,17 +242,21 @@ function schedule(e: Engine, p: Playing, step: number, t: number, sixteenth: num
   if (d === "h" || (intense && d === "." && step % 2 === 1)) voice(e, e.music, { t: 0, f: 9000, d: 0.025, w: "noise", v: d === "h" ? 0.08 : 0.05 }, t);
 }
 
+/** The music is scheduled ahead on the audio clock: checked 10 times a second with notes queued 0.35s ahead, not 40 (light on the page). */
+export const MUSIC_TICK_MS = 100, MUSIC_LOOKAHEAD_S = 0.35;
 function startPlaying(name: TrackName) {
   const e = audio();
   if (!e) return;
   const track: Track = TRACKS[name];
   const p: Playing = { name, lead: tokens(track.lead), bass: tokens(track.bass), drums: track.drums, step: 0, next: e.ctx.currentTime + 0.08, timer: 0 as unknown as ReturnType<typeof setInterval> };
-  p.timer = setInterval(() => {
+  const pump = () => {
     if (e.ctx.state !== "running") { p.next = e.ctx.currentTime + 0.05; return; }
     const sixteenth = 60 / (track.bpm * (intense ? 1.12 : 1)) / 4;
     if (p.next < e.ctx.currentTime - 0.2) p.next = e.ctx.currentTime + 0.05;   // the timer stalled: skip ahead, no burst
-    while (p.next < e.ctx.currentTime + 0.12) { schedule(e, p, p.step, p.next, sixteenth); p.next += sixteenth; p.step = (p.step + 1) % p.drums.length; }
-  }, 25);
+    while (p.next < e.ctx.currentTime + MUSIC_LOOKAHEAD_S) { schedule(e, p, p.step, p.next, sixteenth); p.next += sixteenth; p.step = (p.step + 1) % p.drums.length; }
+  };
+  pump();                                                           // the first notes now, not a tick later
+  p.timer = setInterval(pump, MUSIC_TICK_MS);
   playing = p;
 }
 

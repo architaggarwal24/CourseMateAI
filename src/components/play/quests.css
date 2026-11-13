@@ -53,3 +53,21 @@
 
 @media (prefers-reduced-motion: reduce) { .qscroll__half { transition: none; } }
 html.reduce-animations .qscroll__half { transition: none; }
+
+/* ── Phones (the mobile pass): tighter scrolls; the reward and the button share a row ─────────────────────────── */
+@media (max-width: 639.98px) {
+  .qboard { gap: var(--space-5); }
+  .qboard__main { gap: var(--space-5); }
+  .qscroll { gap: var(--space-2) var(--space-3); padding: var(--space-3); }
+  .qscroll__seal { width: 2rem; height: 2rem; }
+  .qscroll__body { grid-template-columns: minmax(0, 1fr) auto; column-gap: var(--space-2); row-gap: 6px; }
+  .qscroll__body > * { grid-column: 1 / -1; }
+  .qscroll__body > .qscroll__reward { grid-column: 1; align-self: center; }
+  .qscroll__body > .qscroll__actions { grid-column: 2; justify-self: end; align-self: center; }
+  .qscroll__text { font-size: 0.85rem; }
+  .qscroll__reward { align-content: center; }
+  .qscroll__actions .ui-btn { padding-inline: var(--space-2); letter-spacing: 0; }
+  /* a third reward (a lost Bestiary page) needs the whole row: the button goes under it, on the right */
+  .qscroll__body:has(> .qscroll__reward > :nth-child(3)) > .qscroll__reward { grid-column: 1 / -1; }
+  .qscroll__body:has(> .qscroll__reward > :nth-child(3)) > .qscroll__actions { grid-column: 1 / -1; }
+}

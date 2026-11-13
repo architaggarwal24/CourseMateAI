@@ -421,3 +421,14 @@ pointer-events: none;
 .study-writing__page { display: grid; gap: var(--space-3); padding: var(--space-4); border-radius: var(--radius-lg); background: var(--color-surface-sunken); }
 .study-writing__note { margin: 0; font-size: 0.8rem; color: var(--color-muted); }
 @media (prefers-reduced-motion: reduce) { .study-writing__pen::after { animation: none; width: 56%; } }
+
+/* ── Phones (the mobile pass): the document bar and the tool tabs take less of the screen ─────────────────────── */
+@media (max-width: 639.98px) {
+  .ws-top { padding: var(--space-2) var(--space-3); gap: var(--space-2); }
+  /* the group names (Learn, Practice) stay for screen readers; on a phone the tabs alone say enough */
+  .ws-top .ui-tabs__cap { position: absolute; width: 1px; height: 1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  .ws-top .ui-tabs__groups { gap: var(--space-2); }
+  .ws-top .ui-tabs__groups > .ui-tabs__grp + .ui-tabs__grp { padding-left: var(--space-2); }
+  /* the tool's one-line description: the tab already says which tool this is */
+  .ws-toolbar p { display: none; }
+}

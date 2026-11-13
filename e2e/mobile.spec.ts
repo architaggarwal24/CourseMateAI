@@ -39,3 +39,36 @@ test.describe("360px", () => {
     });
   }
 });
+
+// The mobile pass: on a phone the screen goes to the content, not to chrome.
+test.describe("360px: room for the content", () => {
+  test.beforeEach(({}, info) => { test.skip(info.project.name !== "mobile-360", "phone-width checks"); });
+
+  test("Today opens on the day's work: Review is on the first screen, above the Hero world's news", async ({ page }) => {
+    await openPage(page, PAGES.find((p) => p.name === "today")!);
+    const review = (await page.getByRole("region", { name: "Review" }).boundingBox())!;
+    expect(review.y).toBeLessThan(260);
+    const news = page.getByText(/Something stirs in the Hero world/);
+    if (await news.count()) expect((await news.boundingBox())!.y).toBeGreaterThan(review.y);
+  });
+
+  test("Study: the document bar and the tool tabs take a slim band; the tabs still name their groups for screen readers", async ({ page }) => {
+    await openPage(page, PAGES.find((p) => p.name === "study: chat")!);
+    const tabs = (await page.getByRole("navigation", { name: "Study tools" }).boundingBox())!;
+    expect(tabs.y + tabs.height).toBeLessThanOrEqual(140);
+    await expect(page.getByRole("group", { name: "Practice" })).toBeAttached();
+  });
+
+  test("Hero: a slim header with a menu (no Esc on a phone), readable tab labels, compact arena modes", async ({ page }) => {
+    await openPage(page, PAGES.find((p) => p.name === "play: arena")!);
+    const header = (await page.getByTestId("hero-header").boundingBox())!;
+    expect(header.height).toBeLessThanOrEqual(72);
+    await page.getByTestId("hero-header").getByRole("button", { name: "Menu" }).click();
+    await expect(page.getByRole("dialog", { name: "Paused" })).toBeVisible();
+    await page.getByRole("button", { name: "Resume" }).click();
+    const label = await page.locator(".bottom__link").first().evaluate((el) => parseFloat(getComputedStyle(el).fontSize));
+    expect(label).toBeGreaterThanOrEqual(11);
+    const quick = (await page.getByRole("button", { name: /Quick Battle/ }).boundingBox())!;
+    expect(quick.height).toBeLessThanOrEqual(130);                                     // a row, not a poster
+  });
+});

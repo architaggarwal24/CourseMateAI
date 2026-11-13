@@ -107,7 +107,8 @@ html[data-sidebar="collapsed"] .hside [data-tip]:focus-visible::after { border-r
 
 /* ── the Hero tab bar (phones) ───────────────────────────────────────────────────────────────────────────────── */
 .bottom[data-world="hero"] { --portal-color: #a78bfa; background: #0b0e26; border-top: 3px solid #03040d; box-shadow: inset 0 2px 0 0 var(--color-border-strong); }
-.bottom[data-world="hero"] .bottom__link { font-family: var(--font-label); font-size: 0.5rem; letter-spacing: 0.03em; }
+/* the labels in the pixel body font at a size you can read (the 8px pixel caps were too small on a phone) */
+.bottom[data-world="hero"] .bottom__link { font-family: var(--font-sans); font-size: 0.72rem; letter-spacing: 0; }
 .bottom[data-world="hero"] .bottom__link[aria-current="page"] { color: var(--color-reward); }
 .bottom[data-world="hero"] .bottom__link[aria-current="page"] svg { color: var(--color-reward); }
 .bottom[data-world="hero"] .bottom__link[aria-current="page"]::before { border-radius: 0; height: 3px; background: var(--color-reward); }
@@ -212,7 +213,7 @@ html[data-sidebar="collapsed"] .hside [data-tip]:focus-visible::after { border-r
 /* the world behind the panel: sky by your clock, weather by your streak, the arena and its torches */
 .hside { position: relative; isolation: isolate; }
 .hside > :not(.hscene) { position: relative; z-index: 1; }
-.hscene { position: absolute; inset: 0; z-index: 0; overflow: hidden; pointer-events: none; }
+.hscene { position: absolute; inset: 0; z-index: 0; overflow: hidden; pointer-events: none; contain: strict; }
 .hscene > span { position: absolute; display: block; }
 .hscene__sky { inset: 0; background: #0b0e26; }
 .hscene[data-time="dawn"] .hscene__sky { background: #1c1534; }
@@ -227,9 +228,9 @@ html[data-sidebar="collapsed"] .hside [data-tip]:focus-visible::after { border-r
 .hscene__clouds { left: -40%; right: -40%; bottom: 7.5rem; height: 1.5rem; opacity: 0.85;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='96' height='16' shape-rendering='crispEdges'%3E%3Crect x='6' y='6' width='22' height='6' fill='%23394068'/%3E%3Crect x='11' y='2' width='11' height='4' fill='%23394068'/%3E%3Crect x='56' y='8' width='26' height='6' fill='%232e3458'/%3E%3Crect x='62' y='4' width='12' height='4' fill='%232e3458'/%3E%3C/svg%3E");
   background-repeat: repeat-x; animation: hscene-drift 40s steps(80, end) infinite; }
-.hscene__rain { inset: 0;
+.hscene__rain { inset: -24px -4px 0 0;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' shape-rendering='crispEdges'%3E%3Crect x='3' y='2' width='1' height='4' fill='%236b7bb8'/%3E%3Crect x='15' y='11' width='1' height='4' fill='%236b7bb8'/%3E%3Crect x='9' y='18' width='1' height='4' fill='%236b7bb8'/%3E%3C/svg%3E");
-  opacity: 0.6; animation: hscene-rain 0.6s steps(6, end) infinite; }
+  opacity: 0.6; animation: hscene-rain 0.6s steps(6, end) infinite; will-change: transform; }
 .hscene__arena { left: 0; right: 0; bottom: 3.6rem; height: 3rem; opacity: 0.55;
   background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='128' height='24' shape-rendering='crispEdges'%3E%3Cpath d='M8 24V9h112v15z' fill='%23060818'/%3E%3Cpath d='M16 9V5h96v4z' fill='%23060818'/%3E%3Cg fill='%23171c42'%3E%3Crect x='14' y='13' width='6' height='11'/%3E%3Crect x='28' y='13' width='6' height='11'/%3E%3Crect x='42' y='13' width='6' height='11'/%3E%3Crect x='56' y='13' width='6' height='11'/%3E%3Crect x='70' y='13' width='6' height='11'/%3E%3Crect x='84' y='13' width='6' height='11'/%3E%3Crect x='98' y='13' width='6' height='11'/%3E%3Crect x='112' y='13' width='4' height='11'/%3E%3C/g%3E%3C/svg%3E") center bottom / 100% 100% no-repeat; }
 .hscene__torch { bottom: 3.6rem; width: 4px; height: 10px; background: #78350f; }
@@ -238,8 +239,8 @@ html[data-sidebar="collapsed"] .hside [data-tip]:focus-visible::after { border-r
 .hscene__torch--r { right: 0.6rem; }
 @keyframes hscene-twinkle { 50% { opacity: 0.35; } }
 @keyframes hscene-drift { to { transform: translateX(25%); } }
-@keyframes hscene-rain { to { background-position: -4px 24px; } }
-@keyframes hscene-flicker { 50% { transform: scaleY(0.75) translateY(1px); background: #fbbf24; } }
+@keyframes hscene-rain { to { transform: translate(-4px, 24px); } }
+@keyframes hscene-flicker { 50% { transform: scaleY(0.75) translateY(1px); opacity: 0.8; } }
 @media (prefers-reduced-motion: reduce) { .hscene * , .hscene *::before { animation: none !important; } }
 [data-motion="reduce"] .hscene *, [data-motion="reduce"] .hscene *::before { animation: none !important; }
 html[data-sidebar="collapsed"] :is(.hscene__arena, .hscene__torch, .hscene__orb) { display: none; }
