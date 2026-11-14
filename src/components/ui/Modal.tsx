@@ -20,6 +20,8 @@ export interface ModalProps {
   role?: "dialog" | "alertdialog";
   /** Clicking the dim backdrop closes the modal. Default true. */
   closeOnBackdrop?: boolean;
+  /** false: a question that must be answered (no backdrop click, no sheet handle or drag; onClose is never called). */
+  dismissible?: boolean;
   /** What gets focus when it opens. Default: the first focusable control inside. */
   initialFocusRef?: RefObject<HTMLElement | null>;
   className?: string;
@@ -62,8 +64,11 @@ const stack: symbol[] = [];
  * (a drag interrupts the entrance), and reduced motion makes both instant.
  */
 export default function Modal({
-  open, onClose, title, children, actions, size = "md", role = "dialog", closeOnBackdrop = true, initialFocusRef, className,
+  open, onClose: close, title, children, actions, size = "md", role = "dialog", closeOnBackdrop: backdrop = true, initialFocusRef, className, dismissible = true,
 }: ModalProps) {
+  // a question that must be answered: nothing closes it but its own buttons
+  const onClose = dismissible ? close : () => {};
+  const closeOnBackdrop = dismissible && backdrop;
   const titleId = useId();
   const marker = useRef<HTMLSpanElement>(null);
   const dialog = useRef<HTMLDivElement>(null);
@@ -141,7 +146,7 @@ export default function Modal({
   const onDragEnd = (_: unknown, info: PanInfo) => {
     if (sheetShouldClose(info.offset.y, info.velocity.y, dialog.current?.offsetHeight ?? 0)) dismissSheet();
   };
-  const startDrag = (e: ReactPointerEvent) => { if (sheet) drag.start(e); };
+  const startDrag = (e: ReactPointerEvent) => { if (sheet && dismissible) drag.start(e); };
 
   return (
     <>
@@ -176,7 +181,7 @@ export default function Modal({
                 onDragEnd,
               })}
             >
-              {sheet && (
+              {sheet && dismissible && (
                 <button type="button" className="ui-modal__handle" aria-label="Close" data-sheet-handle="true"
                   onPointerDown={startDrag} onClick={dismissSheet}>
                   <span className="ui-modal__grip" aria-hidden="true" />

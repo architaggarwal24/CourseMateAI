@@ -4,6 +4,7 @@
 //   3. POST /documents/{id}/pages {pages: [{page, text}], done}        chunked, embedded, stored; `done` = ready
 // Statuses as before: queued -> reading -> indexing -> ready | failed. An upload the browser never finished turns
 // into "failed" after STALE_MINUTES, with a message to upload it again.
+import * as log from "../log";
 import { and, count, desc, eq, inArray } from "drizzle-orm";
 import type { CurrentUser, RequestContext } from "../context";
 import { courseDocuments, courses, documentChunks, documents } from "../db/schema";
@@ -11,6 +12,10 @@ import { HttpError } from "../http";
 import { limits, nowIso, planLimit, requireFeature, tierFor, type Tier } from "../account/plans";
 import { chunkText } from "../search/chunker";
 import { EMBEDDING_MODEL, vectorId, type SearchDeps } from "../search";
+import { purgeExpired, purgeTrashFiles, trashDocument } from "./trash";
+import { MAX_COURSE_DOCUMENTS, r2Key } from "./limits";
+
+export { MAX_COURSE_DOCUMENTS, r2Key };
 
 export const MAX_FILE_BYTES = 50 * 1024 * 1024;
 export const MAX_PAGES = 3000;
@@ -23,7 +28,6 @@ const STALE_MESSAGE = "The upload stopped before it finished. Upload the PDF aga
 
 export type DocumentRow = typeof documents.$inferSelect;
 
-export const r2Key = (userId: number, documentId: string) => `pdfs/${userId}/${documentId}.pdf`;
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export function notFound(): HttpError {
@@ -142,7 +146,6 @@ async function purge(ctx: RequestContext, deps: SearchDeps | null, row: Document
 }
 
 /** PDFs one course holds. */
-export const MAX_COURSE_DOCUMENTS = 20;
 
 export interface StartUpload { filename?: unknown; size?: unknown; pages?: unknown; file_hash?: unknown; session_id?: unknown; course_id?: unknown }
 
@@ -258,6 +261,13 @@ async function storeAndHash(bucket: R2Bucket, key: string, body: ReadableStream<
   return hex(await crypto.subtle.digest("SHA-256", buf));
 }
 
+/** A real PDF names itself in its first kilobyte ("%PDF-"); anything else (a page, a script, a renamed file) isn't one. */
+export async function looksLikePdf(bucket: R2Bucket, key: string): Promise<boolean> {
+  const head = await bucket.get(key, { range: { offset: 0, length: 1024 } });
+  if (!head) return false;
+  return new TextDecoder("latin1").decode(await head.arrayBuffer()).includes("%PDF-");
+}
+
 export async function putFile(ctx: RequestContext, user: CurrentUser, id: string, req: Request) {
   const row = await ownedDocument(ctx, user, id);
   if (row.status !== "queued") throw new HttpError(409, "upload_state", "This document isn't waiting for its file. Upload it again.", "reupload");
@@ -276,6 +286,10 @@ export async function putFile(ctx: RequestContext, user: CurrentUser, id: string
   if (got !== row.fileHash) {
     await ctx.env.FILES.delete(key);
     throw new HttpError(400, "invalid_file", "The file changed during the upload. Please try again.", "retry");
+  }
+  if (!(await looksLikePdf(ctx.env.FILES, key))) {
+    await ctx.env.FILES.delete(key);
+    throw new HttpError(400, "not_a_pdf", "That file isn't a PDF. Choose a .pdf file and try again.", "reupload");
   }
   const next = { status: "reading" as const, pdfStored: true, updatedAt: nowIso() };
   await ctx.db.update(documents).set(next).where(eq(documents.id, id));
@@ -314,7 +328,7 @@ export async function addPages(ctx: RequestContext, deps: SearchDeps, user: Curr
     } catch (e) {
       // Under `npm run dev` this is usually "Binding VECTORS needs to be run remotely": Vectorize has no local
       // version, so wrangler.jsonc marks it `"remote": true` and dev needs `npx wrangler login` (docs/deploy-cloudflare.md).
-      console.error("[coursemate] search index write failed", e);
+      log.error("[coursemate] search index write failed", e);
       throw new HttpError(503, "search_unavailable", "Couldn't save this PDF to the search index just now. Please try again in a moment.", "retry");
     }
     const rows = pieces.map((c, i) => ({ documentId: id, idx: start + i, page: c.page, text: c.text }));
@@ -334,15 +348,18 @@ export async function addPages(ctx: RequestContext, deps: SearchDeps, user: Curr
   return publicView({ ...row, ...next });
 }
 
+/** Into the Trash (study/trash.ts): restorable for 30 days; its file and search index wait there too. */
 export async function deleteDocument(ctx: RequestContext, deps: SearchDeps | null, user: CurrentUser, id: string) {
   const row = await ownedDocument(ctx, user, id);
-  await purge(ctx, deps, row, true);
+  await trashDocument(ctx, user, row);
+  await purgeExpired(ctx, deps, user.id);
 }
 
 /** Every document of the user, gone (account deletion). */
 export async function purgeUserFiles(ctx: RequestContext, deps: SearchDeps | null, userId: number) {
   const rows = await ctx.db.select().from(documents).where(eq(documents.userId, userId)).all();
   for (const r of rows) await purge(ctx, deps, r, true);
+  await purgeTrashFiles(ctx, deps, userId);                       // and what waits in the Trash
 }
 
 /** The kept PDF for the page viewer (the PDF viewer is a Sage feature), with byte ranges for pdf.js. */

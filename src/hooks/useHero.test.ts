@@ -13,7 +13,7 @@ vi.mock("@/components/ui/Toast", () => ({ toast: toasts }));
 
 import { useHUDStore } from "./useHUD";
 import {
-  INVENTORY_TABS, afterEquipToggle, afterPurchase, afterUnequip, afterUse, ownedItems, previewEquipped, useHeroStore,
+  INVENTORY_TABS, afterEquipToggle, afterPurchase, afterUnequip, afterUse, isWearable, ownedItems, previewEquipped, useHeroStore,
   type ShopState,
 } from "./useHero";
 
@@ -148,7 +148,7 @@ describe("buying (the Done-when: coins, inventory and avatar preview update with
     expect(shop!.coins).toBe(50);                                                    // shop sidebar coins
     expect(ownedItems(shop).map((i) => i.id)).toContain("hat_new");                   // inventory
     expect(previewEquipped(shop, previewId)).toEqual({ headgear: "hat_new" });        // avatar preview keeps the item on
-    expect(toasts.success).toHaveBeenCalledWith("New Hat purchased! 🎉");
+    expect(toasts.success).toHaveBeenCalledWith("New Hat bought");
 
     await flush();
     expect(api.GET).toHaveBeenCalledWith("/shop");                                    // then the quiet confirmation ...
@@ -182,7 +182,7 @@ describe("buying (the Done-when: coins, inventory and avatar preview update with
     const sword = useHeroStore.getState().shop!.items.find((i) => i.id === "sword")!;
     useHUDStore.setState({ coins: 100 });
     expect(await useHeroStore.getState().purchase(sword)).toBe(false);
-    expect(toasts.error).toHaveBeenCalledWith("Not enough coins! Need 400 more 🪙");
+    expect(toasts.error).toHaveBeenCalledWith("Not enough coins: 400 more needed");
     useHUDStore.setState({ guestMode: true });
     expect(await useHeroStore.getState().purchase(sword)).toBe(false);
     expect(toasts.error).toHaveBeenCalledWith("Please login to purchase items");
@@ -223,17 +223,17 @@ describe("equipping", () => {
     useHeroStore.getState().setPreview("hat_new");
     const done = useHeroStore.getState().toggleEquip(owned);
     expect(useHeroStore.getState().shop!.equipped.headgear).toBe("hat_new");          // before the server has answered
-    expect(useHeroStore.getState().previewId).toBeNull();                              // the try-on is now the real thing
+    expect(useHeroStore.getState().previewId).toBe("hat_new");                         // the preview panel stays open on it, now worn
     await done;
     await flush();
     expect(server.state.equipped.headgear).toBe("hat_new");
-    expect(toasts.success).toHaveBeenCalledWith("New Hat equipped! ⚡");
+    expect(toasts.success).toHaveBeenCalledWith("New Hat on");
 
     const worn = useHeroStore.getState().shop!.items.find((i) => i.id === "hat_new")!;
     await useHeroStore.getState().toggleEquip(worn);                                   // and take it off again
     await flush();
     expect(useHeroStore.getState().shop!.equipped).toEqual({});
-    expect(toasts.success).toHaveBeenCalledWith("New Hat unequipped!");
+    expect(toasts.success).toHaveBeenCalledWith("New Hat off");
   });
 
   it("puts the old look back when the server refuses", async () => {
@@ -246,6 +246,19 @@ describe("equipping", () => {
     expect(toasts.error).toHaveBeenCalledWith("You don't own this item");
   });
 
+  it("emotes and potions are never worn: nothing is sent, nothing changes (emotes live on the victory wheel)", async () => {
+    fakeServer(makeShop(250));
+    await useHeroStore.getState().loadShop();
+    const before = useHeroStore.getState().shop!.equipped;
+    for (const it of [item({ id: "emote_gg", category: "emote", owned: true }), item({ id: "potion", category: "potion", consumable: true, owned: true })]) {
+      expect(await useHeroStore.getState().toggleEquip(it as never)).toBe(false);
+    }
+    expect(api.POST).not.toHaveBeenCalled();
+    expect(useHeroStore.getState().shop!.equipped).toEqual(before);
+    expect(isWearable({ category: "pet" })).toBe(true);
+    expect(isWearable({ category: "emote" })).toBe(false);
+  });
+
   it("unequip names the slot's item", async () => {
     const server = fakeServer(makeShop(250));
     await useHeroStore.getState().loadShop();
@@ -253,7 +266,7 @@ describe("equipping", () => {
     await flush();
     expect(api.POST).toHaveBeenCalledWith("/shop/unequip", { body: { slot: "headgear" } });
     expect(server.state.equipped).toEqual({});
-    expect(toasts.success).toHaveBeenCalledWith("Old Hat unequipped!");
+    expect(toasts.success).toHaveBeenCalledWith("Old Hat off");
   });
 });
 
@@ -287,7 +300,7 @@ describe("using an item and claiming a quest", () => {
     expect(useHeroStore.getState().shop!.coins).toBe(270);                              // same balance in the shop
     expect(useHUDStore.getState().quests[0].claimed).toBe(1);
     expect(useHeroStore.getState().pending).toEqual({});
-    expect(toasts.success).toHaveBeenCalledWith("🎉 Claimed! +30 XP | +20 🪙", expect.anything());
+    expect(toasts.success).toHaveBeenCalledWith("Quest claimed", { description: "+30 XP · +20 coins", duration: 3000 });
   });
 
   it("'Already claimed' is a success with the same end state", async () => {

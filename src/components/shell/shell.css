@@ -53,7 +53,7 @@
 
 .side__nav { flex: 1; min-height: 0; overflow-y: auto; display: grid; align-content: start; gap: var(--space-4); padding: var(--space-2) var(--space-3); scrollbar-width: thin; }
 .side__group { display: grid; gap: 1px; }
-.side__heading { margin: 0 0 var(--space-1); padding: 0 var(--space-2); font-size: 0.7rem; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--color-muted); }
+.side__heading { margin: 0 0 var(--space-1); padding: 0 var(--space-2); font-size: 0.78rem; font-weight: 600; color: var(--color-muted); }
 .side__link {
   position: relative; display: flex; align-items: center; gap: var(--space-3);
   min-height: 2.25rem; padding: 0 var(--space-2); border-radius: var(--radius-md);
@@ -159,7 +159,7 @@ color: var(--color-text);
 .cmdk-input-row:focus-within { box-shadow: inset 0 -2px 0 var(--focus-ring-color); color: var(--color-accent-text); }
 .cmdk-list { max-height: min(55vh, 26rem); overflow-y: auto; padding: var(--space-2); scroll-padding: var(--space-2); }
 .cmdk-empty { padding: var(--space-6); text-align: center; color: var(--color-muted); font-size: 0.9rem; }
-.cmdk-group [cmdk-group-heading] { padding: var(--space-2) var(--space-3) var(--space-1); color: var(--color-muted); font-size: 0.7rem; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; }
+.cmdk-group [cmdk-group-heading] { padding: var(--space-2) var(--space-3) var(--space-1); color: var(--color-muted); font-size: 0.78rem; font-weight: 600; }
 .cmdk-item {
   display: flex; align-items: center; gap: var(--space-3);
   min-height: 2.75rem; padding: 0 var(--space-3); border-radius: var(--radius-md);
@@ -246,3 +246,14 @@ color: var(--color-text); font-family: var(--font-sans);
   .ws.ws--page > .ws-page__body { flex: none; min-height: auto; overflow: visible; }
   .ws.ws--page > .ws-page__pin { position: sticky; top: 0; z-index: 6; background: var(--color-surface); }
 }
+
+/* Study while you're recognised (the speed pass): the page's shape, not a spinner. It shows after 300 ms, so a
+   fast answer never flashes it (the same rule as .ui-skeleton). */
+.app-skeleton { display: grid; align-content: start; gap: var(--space-3); width: 100%; max-width: 72rem; padding: var(--space-6); opacity: 0; animation: ui-skeleton-show 1ms linear 300ms forwards; }
+.app-skeleton > span, .app-skeleton__grid > span { display: block; border-radius: var(--radius-lg); background: var(--color-surface-sunken); }
+.app-skeleton__title { width: min(22rem, 70%); height: 2.2rem; }
+.app-skeleton__line { width: min(30rem, 85%); height: 1rem; margin-bottom: var(--space-3); }
+.app-skeleton .app-skeleton__grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 16rem), 1fr)); gap: var(--space-3); background: none; }
+.app-skeleton__grid > span { height: 9rem; }
+@media (max-width: 767px) { .app-skeleton { padding: var(--space-5) var(--space-4); } }
+@media (prefers-reduced-motion: reduce) { .app-skeleton { animation: none; opacity: 1; } }

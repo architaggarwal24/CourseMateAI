@@ -79,15 +79,6 @@
 
 /* ── Intro + setup forms ─────────────────────────────────────────────────────────────────────────────────────── */
 .study-intro { display: flex; align-items: center; gap: var(--space-4); margin-bottom: var(--space-6); }
-.study-intro__icon {
-  position: relative;
-  display: grid; place-items: center; flex: none; width: 3.5rem; height: 3.5rem; border-radius: var(--radius-lg);
-  color: var(--color-accent-text);
-  background: color-mix(in srgb, var(--color-accent) 16%, var(--glass-bg));
-  border: 1px solid color-mix(in srgb, var(--color-accent-text) 30%, transparent);
-  box-shadow: none;
-  animation: float 6s ease-in-out infinite;
-}
 .study-intro h3 { margin: 0 0 0.25rem; font-size: 1.6rem; font-weight: 700; letter-spacing: -0.03em; color: var(--color-text); }
 .study-intro p { margin: 0; color: var(--color-muted); }
 
@@ -99,7 +90,7 @@
   background: color-mix(in srgb, var(--color-surface-sunken) 40%, transparent);
   box-shadow: var(--shadow-md);
 }
-.study-suggest-label { margin: 0 0 var(--space-3); color: var(--color-muted); font-size: 0.78rem; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; }
+.study-suggest-label { margin: 0 0 var(--space-3); color: var(--color-text-secondary); font-size: 0.85rem; font-weight: 600; }
 
 /* a number picker: [-] [ big number ] [+] over a slider */
 .study-count { display: flex; align-items: center; gap: var(--space-3); }
@@ -264,7 +255,7 @@
 .fc-face--back { transform: rotateY(180deg); border-color: color-mix(in srgb, var(--color-accent-text) 45%, transparent); box-shadow: var(--shadow-lg); }
 .fc-face[data-result="correct"] { border-color: var(--color-success-text); box-shadow: var(--shadow-lg); }
 .fc-face[data-result="wrong"] { border-color: var(--color-danger-text); box-shadow: var(--shadow-lg); }
-.fc-meta { font-size: 0.6875rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--color-muted); }
+.fc-meta { font-size: 0.8rem; font-weight: 600; color: var(--color-muted); }
 .fc-stamp {
   position: absolute; top: var(--space-5); padding: 0.25rem 0.7rem; border-radius: 8px; border: 2px solid currentColor;
   font-weight: 800; font-size: 0.8rem; letter-spacing: 0.08em; text-transform: uppercase; pointer-events: none;
@@ -311,7 +302,7 @@ pointer-events: none;
 .history-item:hover { background: var(--glass-tint); }
 
 @media (prefers-reduced-motion: reduce) {
-  .study-intro__icon, .drop-overlay__icon { animation: none; }
+  .drop-overlay__icon { animation: none; }
 }
 
 /* phones: tighter gutters, no keyboard hints */
@@ -432,3 +423,24 @@ pointer-events: none;
   /* the tool's one-line description: the tab already says which tool this is */
   .ws-toolbar p { display: none; }
 }
+
+/* "AI-written answer": one quiet line under what the AI wrote (legal and trust pass) */
+.ai-label { display: inline-flex; align-items: center; gap: 4px; margin: var(--space-2) 0 0; color: var(--color-muted); font-size: 0.72rem; }
+.chat-ai__actions { align-items: center; flex-wrap: wrap; }
+.chat-ai__actions > .ai-label { margin: 0 0 0 auto; }
+
+/* The thing on your desk for each tool (components/study/DeskObject.tsx): flat paper, ink and one highlighter mark */
+.desk-object { flex: none; display: block; }
+.desk-object .dk-paper { fill: var(--color-elevated); stroke: var(--color-border-strong); stroke-width: 1.5; }
+.desk-object .dk-join { stroke-linejoin: round; }
+.desk-object .dk-ring { fill: var(--color-elevated); stroke: var(--color-text-secondary); stroke-width: 1.6; }
+.desk-object .dk-ink { fill: var(--color-text-secondary); }
+.desk-object .dk-ink--soft { opacity: 0.6; }
+.desk-object .dk-faint { fill: var(--color-border); }
+.desk-object .dk-mark { fill: var(--highlighter); }
+.desk-object .dk-line { stroke: var(--color-border); stroke-width: 1; }
+.desk-object .dk-rule { stroke: var(--color-danger-text); stroke-width: 1.2; }
+.desk-object .dk-rule--soft { stroke-width: 1; opacity: 0.7; }
+.desk-object .dk-dot { fill: none; stroke: var(--color-text-secondary); stroke-width: 1.4; }
+.desk-object .dk-dot--on { fill: var(--color-text-secondary); }
+.desk-object .dk-hand { fill: none; stroke: var(--color-text-secondary); stroke-width: 1.8; stroke-linecap: round; }

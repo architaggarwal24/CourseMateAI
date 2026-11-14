@@ -1,9 +1,11 @@
 "use client";
 
+import DeskObject from "@/components/study/DeskObject";
+import AiLabel from "@/components/study/AiLabel";
 import { announceAchievements } from "@/lib/fx/celebrate";
 import { useState, useCallback, useEffect, useRef } from "react";
 import { motion, useMotionValue, useTransform } from "motion/react";
-import { ChevronLeft, ChevronRight, RotateCcw, Shuffle, CheckCircle2, XCircle, Sparkles, Minus, Plus, Layers, Repeat } from "@/components/ui/icons";
+import { ChevronLeft, ChevronRight, RotateCcw, Shuffle, CheckCircle2, XCircle, Sparkles, Minus, Plus, Repeat } from "@/components/ui/icons";
 import HistoryPanel from "../history/HistoryPanel";
 import StudyToolbar from "../study/StudyToolbar";
 import Writing from "../study/Writing";
@@ -271,10 +273,10 @@ export default function FlashcardView({ documentId, restoreSessionId, initialTop
           <div className="flex-1 min-h-0 overflow-y-auto px-6 py-10">
             <div className="mx-auto w-full max-w-[72ch]">
               <div className="study-intro">
-                <span className="study-intro__icon" aria-hidden="true"><Layers size={26} /></span>
+                <DeskObject kind="flashcards" />
                 <div>
-                  <h3>Generate flashcards</h3>
-                  <p>Pick a topic from your document and flip through the cards.</p>
+                  <h3>Make flashcards</h3>
+                  <p>Name a topic from your PDF, then flip through the cards: the ones you miss come back in Review.</p>
                 </div>
               </div>
               {loading && job && (
@@ -426,6 +428,7 @@ export default function FlashcardView({ documentId, restoreSessionId, initialTop
               <span className="text-xs text-fg-muted">Space flips · ← → change card</span>
               <Button size="sm" icon onClick={next} disabled={currentIndex === cards.length - 1} aria-label="Next card"><ChevronRight size={20} /></Button>
             </div>
+            <AiLabel what="cards" />
           </div>
         </div>
       </div>

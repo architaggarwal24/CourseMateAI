@@ -81,9 +81,9 @@ describe("Play screens", () => {
     expect(text).not.toContain("<ThemeScope");
   });
 
-  it("the play pages sit under one Play layout: Quests, Arena, Bestiary and Champion, whose tabs are components", () => {
-    expect(readdirSync(src("app/(app)/(play)")).sort()).toEqual(["arena", "bestiary", "champion", "layout.tsx", "quests"]);
-    for (const p of ["arena", "bestiary", "champion", "quests"]) expect(readdirSync(src(`app/(app)/(play)/${p}`)), p).toEqual(["page.tsx"]);
+  it("the play pages sit under one Play layout: Quests, Arena, Bestiary, Champion (whose tabs are components) and the hero profile", () => {
+    expect(readdirSync(src("app/(app)/(play)")).sort()).toEqual(["adventurer", "arena", "bestiary", "champion", "layout.tsx", "quests"]);
+    for (const p of ["adventurer", "arena", "bestiary", "champion", "quests"]) expect(readdirSync(src(`app/(app)/(play)/${p}`)), p).toEqual(["page.tsx"]);
     expect(readdirSync(src("app/hero"))).toEqual(["route.ts"]);          // the old /hero?tab= links: a redirect only
     expect(readdirSync(src("app")).sort()).not.toContain("(immersive)");
   });

@@ -66,3 +66,14 @@
   .today__hello { margin-bottom: var(--space-4); }
   .today__hello p { min-height: 0; font-size: 0.95rem; }
 }
+
+/* ── The unslop pass: one thing leads, the rest are quiet facts ─────────────────────────────────────────────────
+   Streak and daily quests are numbers to glance at, not cards to read: smaller, and side by side on a phone. */
+.today-tile--stat .today-big { font-size: 1.35rem; }
+.today-tile--stat .today-tile__meta, .today-tile--stat .today-tile__text { font-size: 0.82rem; }
+@media (max-width: 639px) {
+  .today__grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .today-tile, .today-tile--wide { grid-column: 1 / -1; }
+  .today-tile.today-tile--stat { grid-column: span 1; padding: var(--space-3); }
+  .today-tile--stat .today-big { font-size: 1.15rem; }
+}

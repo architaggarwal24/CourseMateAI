@@ -49,7 +49,7 @@ describe("ChatMarkdown", () => {
     render(<ChatMarkdown>{"[the source](https://example.com/a)"}</ChatMarkdown>);
     const link = screen.getByRole("link", { name: "the source" });
     expect(link.getAttribute("target")).toBe("_blank");
-    expect(link.getAttribute("rel")).toBe("noopener noreferrer");
+    expect(link.getAttribute("rel")).toBe("noopener noreferrer nofollow");
   });
 
   it("keeps a reading width of at most 72 characters", () => {

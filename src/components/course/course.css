@@ -7,7 +7,7 @@
 .lib-trigger:hover, .lib-trigger[data-state="open"] { background: var(--glass-tint); }
 .lib-trigger__chev { flex: none; color: var(--color-muted); }
 .lib-menu { width: 19rem; max-height: min(70vh, 32rem); overflow-y: auto; }
-.lib-menu__label { padding: var(--space-2) var(--space-3) var(--space-1); font-size: 0.68rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--color-muted); }
+.lib-menu__label { padding: var(--space-2) var(--space-3) var(--space-1); font-size: 0.78rem; font-weight: 600; color: var(--color-text-secondary); }
 .lib-menu__meta { flex: none; font-size: 0.72rem; color: var(--color-muted); }
 .lib-menu__empty { margin: 0; padding: var(--space-1) var(--space-3) var(--space-2); font-size: 0.8rem; color: var(--color-muted); }
 
@@ -65,3 +65,25 @@
 .lib-menu__row > .umenu__item:first-child { flex: 1; min-width: 0; }
 .lib-menu__bin { flex: none; justify-content: center; width: 2.25rem; padding: 0; color: var(--color-muted); }
 .lib-menu__bin:hover, .lib-menu__bin[data-highlighted] { color: var(--color-danger-text, var(--color-danger)); }
+
+/* ── The unslop pass: one number leads ──────────────────────────────────────────────────────────────────────────
+   Mastery is the course's headline, with its bar; the other three are quieter facts beside it (not four equal tiles). */
+.course-stats { grid-template-columns: minmax(0, 1.5fr) repeat(3, minmax(0, 1fr)); align-items: stretch; }
+.course-stat { display: flex; flex-direction: column-reverse; justify-content: flex-end; gap: 2px; padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--color-border); border-radius: var(--radius-lg); background: var(--color-elevated); }
+.course-stat--lead { flex-direction: column; justify-content: center; }
+.course-stat--lead dt { order: 2; }
+.course-stat--lead dd { order: 1; font-size: 2.2rem; line-height: 1.05; }
+.course-stat--lead .course-stat__bar { order: 3; display: block; height: 0.4rem; margin-top: var(--space-2); border-radius: var(--radius-full); background: var(--color-border); overflow: hidden; }
+.course-stat__bar > span { display: block; height: 100%; border-radius: inherit; background: var(--color-accent); }
+.course-stat:not(.course-stat--lead) dd { font-size: 1.3rem; }
+@media (max-width: 767px) {
+  .course-stats { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .course-stat--lead { grid-column: 1 / -1; }
+  .course-stat:not(.course-stat--lead) { padding: var(--space-2) var(--space-3); }
+  .course-stat:not(.course-stat--lead) dd { font-size: 1.1rem; }
+  .course-stat:not(.course-stat--lead) dt span { display: block; }
+}
+
+/* the highlighter (Study's signature): a word worth another look */
+mark.hl { padding: 0 0.25em; border-radius: 2px 3px 2px 4px; background: var(--highlighter); color: var(--color-text); font-weight: 600; }

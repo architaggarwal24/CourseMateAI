@@ -1,5 +1,6 @@
 "use client";
 
+import { rewardText } from "@/lib/game/reward-text";
 import { usePlanChanged } from "@/hooks/usePlanChanged";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { motion, useMotionValue, useTransform } from "motion/react";
@@ -87,7 +88,7 @@ export default function ReviewView({ documentId }: { documentId?: string }) {
       setStats(r.stats as ReviewStats);
       setDone((n) => n + 1);
       if (r.rewards?.ok) {
-        toast.success(`Review cleared: +${r.rewards.xp_gained} XP | +${r.rewards.coins_gained} Coins`, { icon: "✅" });
+        toast.success("Today's reviews are done", { description: rewardText(Number(r.rewards.xp_gained), Number(r.rewards.coins_gained)) });
       }
       void refreshIfStale(5_000);                     // streak + quest counters
       advance();

@@ -211,8 +211,8 @@ test("phones: upright the fight fills the screen (HUD, stage, moves, question al
   expect(q.y).toBeGreaterThan(stage.y + stage.height - 1);
   await expect(page.getByRole("button", { name: /Mitochondria/ })).toBeInViewport();
   for (const b of await page.locator(".arena-option").all()) {
-    const box = (await b.boundingBox())!;
-    expect(box.height).toBeGreaterThanOrEqual(44);                            // a finger can hit every answer
+    // its laid-out height (an entrance animation may still be scaling it on screen)
+    expect(await b.evaluate((el) => (el as HTMLElement).offsetHeight)).toBeGreaterThanOrEqual(44);   // a finger can hit every answer
   }
   // sideways: it still takes the whole screen
   await page.setViewportSize({ width: 740, height: 360 });

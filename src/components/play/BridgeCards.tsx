@@ -44,7 +44,7 @@ export function ReviewScroll() {
         <h3 id="bridge-review-title" className="bridge-card__title pixel-font">{due} {due === 1 ? "review awaits" : "reviews await"}</h3>
         <p className="bridge-card__line">Cards from Study are due. Clear them for XP, and they fill your Insight.</p>
       </div>
-      <Link href={href} className="bridge-card__go" onClick={portalClick("study", href)}>Answer the call</Link>
+      <Link href={href} className="bridge-card__go" onClick={portalClick("study", href)}>Review {due} {due === 1 ? "card" : "cards"}</Link>
     </section>
   );
 }

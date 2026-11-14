@@ -1,12 +1,14 @@
 "use client";
 
+import DeskObject from "@/components/study/DeskObject";
+import { rewardText } from "@/lib/game/reward-text";
 import { announceAchievements } from "@/lib/fx/celebrate";
 import { useState, useRef, useEffect, useLayoutEffect, useCallback } from "react";
 import { ArrowDown, ArrowUp, Check, Copy, FileText, HelpCircle, History, Lightbulb, ListChecks, MessageSquare, Plus, Sparkles, Trash2 } from "@/components/ui/icons";
 import { motion } from "motion/react";
-import { TextReveal } from "@/components/fx";
 import HistoryPanel from "../history/HistoryPanel";
 import ChatMarkdown from "./ChatMarkdown";
+import AiLabel from "@/components/study/AiLabel";
 import NotFoundCard from "./NotFoundCard";
 import SourceChips from "./SourceChips";
 import CitationList from "./CitationList";
@@ -222,7 +224,7 @@ export default function ChatView({ documentId, restoreSessionId }: { documentId?
       setAnnouncement(answer.blocked ? "The document doesn't cover that question." : "Answer complete.");
       refreshIfStale(5_000);
       if (answer.rewards?.ok) {
-        toast.success(`+${answer.rewards.xp_gained} XP | +${answer.rewards.coins_gained} Coins`, { icon: "🎉" });
+        toast.success(rewardText(answer.rewards.xp_gained, answer.rewards.coins_gained));
         announceAchievements(answer.rewards.new_achievements);
       }
     } catch (e) {
@@ -322,9 +324,9 @@ export default function ChatView({ documentId, restoreSessionId }: { documentId?
                className="h-full overflow-y-auto chat-scroll px-6 py-6">
             <div className="mx-auto w-full max-w-[72ch] space-y-6" role="log" aria-live="polite" aria-busy={loading || undefined} aria-label="Conversation">
               {messages.length === 0 && (
-                <div className="py-12 text-center">
-                  <span className="study-intro__icon mx-auto mb-6" aria-hidden="true"><MessageSquare size={26} /></span>
-                  <TextReveal as="h3" className="block text-3xl font-bold tracking-tight text-gradient mb-2" text={uploadedFile ? "Your tutor is ready" : "Meet your tutor"} />
+                <div className="py-10 text-center">
+                  <DeskObject kind="chat" className="mx-auto mb-5" />
+                  <h3 className="block text-2xl font-bold tracking-tight text-fg mb-2">{uploadedFile ? `Ask about ${uploadedFile}` : "Your tutor reads your PDFs"}</h3>
                   <p className="text-fg-muted mb-8">
                     {uploadedFile ? `${modeInfo.intro} Studying ${uploadedFile}.` : "Add a PDF to this course, then ask anything: answers come from your own material."}
                   </p>
@@ -391,6 +393,7 @@ export default function ChatView({ documentId, restoreSessionId }: { documentId?
                           <Button variant="ghost" size="sm" onClick={() => void copyToClipboard(msg.content, idx)}>
                             {copiedIndex === idx ? <><Check size={13} aria-hidden="true" /> Copied</> : <><Copy size={13} aria-hidden="true" /> Copy</>}
                           </Button>
+                          <AiLabel />
                         </div>
                       )}
                     </div>

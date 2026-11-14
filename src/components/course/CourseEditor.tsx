@@ -65,7 +65,7 @@ export default function CourseEditor({ open, onClose, course, documents, onSaved
     setSaving(true);
     try {
       await remove(course.id);
-      toast.success("Course deleted. Its documents are still in your library.");
+      toast.success(`${course.name} moved to the Trash`, { description: "Its PDFs are still in your library. Restore it from Account → Trash for 30 days." });
       onDeleted?.();
       onClose();
     } catch (e) {
@@ -92,7 +92,7 @@ export default function CourseEditor({ open, onClose, course, documents, onSaved
              </>
            )}>
       {confirmDelete ? (
-        <p className="m-0 text-fg-2">Delete <b>{course?.name}</b>? Its documents stay in your library; only the grouping goes.</p>
+        <p className="m-0 text-fg-2">Move <b>{course?.name}</b> to the Trash? Its PDFs stay in your library, and you can restore the course for 30 days.</p>
       ) : (
         <div className="course-editor">
           <Input label="Name" value={name} maxLength={80} onChange={(e) => { setName(e.target.value); setError(null); }}

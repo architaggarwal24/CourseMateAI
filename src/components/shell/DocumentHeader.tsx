@@ -63,7 +63,7 @@ export default function DocumentHeader({ doc, gone, loaded, upload, tabs, course
     const previous = previousStatus.current;
     previousStatus.current = doc?.status;
     if (!doc || !previous || !isInFlight(previous)) return;
-    if (doc.status === "ready") toast.success(`✅ ${doc.filename} ready!`);
+    if (doc.status === "ready") toast.success(`${doc.filename} is ready to study`);
     else if (doc.status === "failed") toast.error(doc.error || `${doc.filename} could not be processed`);
   }, [doc?.status]); // eslint-disable-line react-hooks/exhaustive-deps
 

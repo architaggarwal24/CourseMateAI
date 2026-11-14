@@ -3,14 +3,15 @@
 import { Suspense, useRef, type KeyboardEvent as ReactKeyboardEvent } from "react";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
-import { Coins, Crown, Flame, PanelLeft, ScrollText, Skull, Sparkles, Swords, X, type IconType } from "@/components/ui/icons";
+import { Coins, Crown, Flame, PanelLeft, ScrollText, Skull, Sparkles, Swords, UserCircle, X, type IconType } from "@/components/ui/icons";
 import PixelSprite from "@/components/arena/pixel/PixelSprite";
 import { useChampionLook } from "@/components/champion/useChampionLook";
 import SoundToggle from "@/components/fx/SoundToggle";
 import { useHUDStore } from "@/hooks/useHUD";
-import { useHeroStore } from "@/hooks/useHero";
+import { isWearable, useHeroStore } from "@/hooks/useHero";
 import { useHeroMood } from "@/hooks/useHeroMood";
 import { useShortcutLabel } from "@/hooks/useShortcutLabel";
+import { ROUTES } from "@/lib/routes";
 import { toggleSidebar } from "@/lib/sidebar";
 import { HERO_MENU, type WorldItem } from "@/lib/worlds";
 import { useSidebarCollapsed, useSidebarShortcut } from "./NavSidebar";
@@ -115,6 +116,10 @@ function Panel({ tab }: { tab: string | null }) {
 
       <div className="hside__foot">
         <SoundToggle className="hside__sound" />
+        <Link href={ROUTES.heroProfile} className="hside__profile" aria-label="Hero profile" title="Hero profile: card, bonuses, settings"
+          aria-current={pathname === ROUTES.heroProfile ? "page" : undefined} data-tip="Profile">
+          <UserCircle size={18} aria-hidden="true" />
+        </Link>
         <PortalLink to="study" className="hside__portal" rail />
       </div>
     </aside>
@@ -136,7 +141,7 @@ function HeroStatus({ collapsed }: { collapsed: boolean }) {
   const mood = useHeroMood();
   const anim = mood === "cheer" ? "win" : mood === "flinch" ? "hit" : "idle";
   const pct = Math.min(100, Math.round((xpInto / Math.max(xpToNext, 1)) * 100));
-  const previewItem = previewId ? shop?.items.find((i) => i.id === previewId) : undefined;
+  const previewItem = previewId ? shop?.items.find((i) => i.id === previewId && isWearable(i)) : undefined;
   const petName = petId ? shop?.items.find((i) => i.id === petId)?.name : undefined;
   const who = `Your champion, ${hero.name}${petName ? `, with ${petName}` : ""}${previewItem ? `, trying on ${previewItem.name}` : ""}`;
 

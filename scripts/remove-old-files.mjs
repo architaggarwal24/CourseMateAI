@@ -84,6 +84,8 @@ const OLD = [
   "src/components/hero/HeroArea.tsx",
   "src/components/hero/HeroArea.test.tsx",
   "DELETE.txt",                            // a note from a zip, unzipped into the root by mistake
+  // Hero UI pass: the Mastery tab draws its own champion pages now
+  "src/components/champion/MasteryPanel.tsx",
   // Next's generated route checks: rebuilt by `next dev` / `next build`, but a stale one still points at the routes
   // above and fails the type check (npm run check) until then
   ".next/types/validator.ts",

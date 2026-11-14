@@ -1,5 +1,6 @@
 // The Worker's bindings (D1, R2, ...) for route handlers. null outside Cloudflare (`next start`,
 // Docker); under `next dev` wrangler's local platform supplies them (initOpenNextCloudflareForDev in next.config).
+import * as log from "./log";
 import { getCloudflareContext } from "@opennextjs/cloudflare";
 
 let testEnv: CloudflareEnv | null = null;
@@ -47,7 +48,7 @@ export async function settleBackground(): Promise<void> {
 
 /** Run `work` without making the response wait for it. Never rejects. */
 export function background(work: () => Promise<unknown>): void {
-  const p = Promise.resolve().then(work).catch((e) => console.warn("[coursemate] background work failed", e instanceof Error ? e.message : e));
+  const p = Promise.resolve().then(work).catch((e) => log.warn("[coursemate] background work failed", e instanceof Error ? e.message : e));
   if (trackForTests) { pendingInTests.push(p); return; }
   try {
     getCloudflareContext().ctx.waitUntil(p);

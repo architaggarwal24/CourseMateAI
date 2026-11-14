@@ -62,9 +62,12 @@ export const ROUTES = {
   heroChampion: playHref("champion"),
   heroAchievements: playHref("achievements"),
   heroMastery: playHref("mastery"),
+  /** Your hero's profile: the Adventurer card, arena and study bonuses, and the Hero world's settings. */
+  heroProfile: "/adventurer",
   account: "/account",
   accountSettings: "/account/settings",
   accountHistory: "/account/history",
+  accountTrash: "/account/trash",
   /** Account -> Plan & usage: the plan, its limits, what has been used, invite codes, the plans to compare. */
   accountUsage: "/account/usage",
   /** Account -> Security: verify the email, two-step sign-in. */
@@ -82,7 +85,7 @@ export function isChampionTab(value: string | undefined | null): value is Champi
 }
 
 /** The play paths (all in the Play theme, all under the play header). /hero is the old one: it only redirects. */
-export const PLAY_PATHS = ["/quests", "/arena", "/bestiary", "/champion"] as const;
+export const PLAY_PATHS = ["/quests", "/arena", "/bestiary", "/champion", "/adventurer"] as const;
 
 /**
  * An old /hero?tab=<tab>&... link and where it lives now: the tab picks the page (an unknown or missing tab was the

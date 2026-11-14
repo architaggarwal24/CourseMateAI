@@ -100,7 +100,7 @@ export default function LoginPage() {
           <p className="login__eyebrow fx-rise">
             <Zap size={13} aria-hidden="true" /> Your AI study companion
           </p>
-          <TextReveal as="h2" className="login__headline text-gradient" text="Study smarter. Level up while you do." />
+          <TextReveal as="h2" className="login__headline" text="Study smarter. Level up while you do." />
           <p className="login__lede fx-rise" style={{ "--fx-delay": "500ms", "--fx-dur": "800ms", "--fx-y": "0px" } as CSSProperties}>
             Upload a PDF. Chat with it, turn it into quizzes, flashcards and notes — then take what you learned into the arena.
           </p>
@@ -205,9 +205,10 @@ export default function LoginPage() {
           </div>}
         </div>
 
+        {/* the agreement itself is a box you tick (at sign-up, or once inside for Google and GitHub sign-ups) */}
         <p className="text-center text-xs text-fg-muted mt-6">
-          By continuing, you agree to our <a className="underline" href="/legal/terms">Terms of Service</a> and{" "}
-          <a className="underline" href="/legal/privacy">Privacy Policy</a>. <a className="underline" href="/legal/refunds">Refunds</a>
+          <a className="underline" href="/legal/terms">Terms of Service</a> · <a className="underline" href="/legal/privacy">Privacy Policy</a> ·{" "}
+          <a className="underline" href="/legal/refunds">Refunds</a>
         </p>
       </section>
     </main>

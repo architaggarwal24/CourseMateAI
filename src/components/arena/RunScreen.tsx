@@ -106,7 +106,7 @@ export default function RunScreen({ sessionId, onBattle, onBack }: { sessionId: 
     if (r.battle_id) entered.current.add(r.battle_id);
     setRun(r.run);
     if (r.battle_id) onBattle(r.battle_id);
-    else if (r.gained) { toast.success("Treasure found!", { icon: "✨" }); refreshGame(); }
+    else if (r.gained) { toast.success("Treasure found"); refreshGame(); }
   };
   const choose = async (action: string, target?: string) => {
     const r = await act(`${action}:${target ?? ""}`, () => chooseRun(run.run_id, action, target));

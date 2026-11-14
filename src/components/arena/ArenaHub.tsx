@@ -53,7 +53,7 @@ export default function ArenaHub({ sessionId, onPick, onSeason, starting }: { se
   return (
     <div className="arena arena-hub">
       <div className="arena-hub__head">
-        <h2 className="arena__title text-gradient-accent">Battle Arena</h2>
+        <h2 className="arena__title">Battle Arena</h2>
         <p className="arena__sub">Turn what you studied into fights. Choose how you want to play.</p>
         {power && (
           <p className="arena-hub__power" title={`${power.power.from_score} from your best scores, ${power.power.from_hunts} from ${power.power.hunted.length} creatures hunted`}>

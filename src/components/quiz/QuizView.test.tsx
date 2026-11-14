@@ -165,7 +165,7 @@ describe("QuizView: review screen", () => {
     expect(rows[2].textContent).toMatch(/Your answer:\s*True/);
 
     await waitFor(() => expect(log.finish).toEqual([{ quiz_id: "qz1" }]));                   // paid out once, by the server
-    expect(toasts.success).toHaveBeenCalledWith("+30 XP | +5 Coins", expect.anything());
+    expect(toasts.success).toHaveBeenCalledWith("+30 XP · +5 coins");
 
     fireEvent.click(screen.getByRole("button", { name: "New quiz" }));                        // back to setup
     expect(screen.getByRole("button", { name: "Generate quiz" })).toBeTruthy();

@@ -6,7 +6,7 @@ import ChampionAvatar from "@/components/champion/ChampionAvatar";
 import { useChampionLook } from "@/components/champion/useChampionLook";
 import { Button } from "@/components/ui";
 import { useHUDStore } from "@/hooks/useHUD";
-import { useHeroStore } from "@/hooks/useHero";
+import { isWearable, useHeroStore } from "@/hooks/useHero";
 import SoundToggle from "@/components/fx/SoundToggle";
 import { usePause } from "@/hooks/usePause";
 
@@ -30,7 +30,7 @@ export default function HeroHeader() {
 
   const { hero, petId, petStage } = useChampionLook({ preview: true });
   const pct = Math.min(100, Math.round((xpInto / Math.max(xpToNext, 1)) * 100));
-  const previewItem = previewId ? shop?.items.find((i) => i.id === previewId) : undefined;
+  const previewItem = previewId ? shop?.items.find((i) => i.id === previewId && isWearable(i)) : undefined;
   const petName = petId ? shop?.items.find((i) => i.id === petId)?.name : undefined;
   const who = `Your champion, ${hero.name}${petName ? `, with ${petName}` : ""}${previewItem ? `, trying on ${previewItem.name}` : ""}`;
 

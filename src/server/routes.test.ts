@@ -130,8 +130,8 @@ describe("update-profile and delete-account", () => {
 
   it("deletes the account with the password, but never the owner's", async () => {
     const b = await person("bye@example.com", "bye");
-    expect((await deleteAccount.DELETE(b.request("/api/v1/auth/delete-account", { method: "DELETE", body: { password: "wrong-wrong-1" } }))).status).toBe(400);
-    const ok = b.keep(await deleteAccount.DELETE(b.request("/api/v1/auth/delete-account", { method: "DELETE", body: { password: "correct-horse-1" } })));
+    expect((await deleteAccount.DELETE(b.request("/api/v1/auth/delete-account", { method: "DELETE", body: { password: "wrong-wrong-1", confirm: "DELETE" } }))).status).toBe(400);
+    const ok = b.keep(await deleteAccount.DELETE(b.request("/api/v1/auth/delete-account", { method: "DELETE", body: { password: "correct-horse-1", confirm: "DELETE" } })));
     expect(ok.status).toBe(200);
     expect((await me.GET(b.request("/api/v1/auth/me"))).status).toBe(401);
     expect(await p.env.DB.prepare("SELECT COUNT(*) AS n FROM user WHERE email = 'bye@example.com'").first("n")).toBe(0);

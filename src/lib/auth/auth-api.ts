@@ -100,13 +100,18 @@ export async function signIn(email: string, password: string): Promise<SignInRes
   return { status: "failed", failure: r.failure };
 }
 
-export interface SignUpForm { email: string; password: string; username: string; fullName: string }
+export interface SignUpForm {
+  email: string; password: string; username: string; fullName: string;
+  /** The Terms / Privacy Policy version the box at sign-up accepted (lib/legal.ts). */
+  termsVersion?: string;
+}
 
 /** Creates the account. `signedIn` is false when the email must be verified first. */
 export async function signUp(form: SignUpForm): Promise<{ ok: true; signedIn: boolean } | { ok: false; failure: AuthFailure }> {
   const r = await post<{ token?: string | null }>("/sign-up/email", {
     email: form.email.trim(), password: form.password, name: form.fullName.trim(), username: form.username.trim(),
     displayUsername: form.username.trim(), timezone: browserTimeZone(),
+    ...(form.termsVersion ? { termsVersion: form.termsVersion } : {}),
   });
   if (!r.ok) return r;
   return { ok: true, signedIn: !!r.data?.token };

@@ -4,12 +4,14 @@
 // Study works inside a course); someone with PDFs from before gets them gathered into a first course.
 import { and, count, desc, eq, inArray, isNull, sql } from "drizzle-orm";
 import type { CurrentUser, RequestContext } from "../context";
-import { conceptMastery, courseDocuments, courses, documents, exams, reviewItems } from "../db/schema";
-import { courseMembers, MAX_COURSE_DOCUMENTS } from "./documents";
+import { trashCourse } from "./trash";
+import { conceptMastery, courseDocuments, courses, documents, exams, reviewItems, trash } from "../db/schema";
+import { courseMembers } from "./documents";
+import { MAX_COURSE_DOCUMENTS, MAX_COURSES } from "./limits";
 import { HttpError } from "../http";
 import { limits, nowIso, planLimit, requireFeature, tierFor } from "../account/plans";
 
-export const MAX_COURSES = 30;
+export { MAX_COURSES };
 export const MAX_DOCUMENTS = MAX_COURSE_DOCUMENTS;
 /** The course someone's PDFs from before courses were for everyone are gathered into. */
 export const FIRST_COURSE_NAME = "My PDFs";
@@ -71,7 +73,9 @@ async function setMembers(ctx: RequestContext, courseId: string, ids: string[], 
 export async function listCourses(ctx: RequestContext, user: CurrentUser) {
   await gate(ctx, user);
   let rows = await ctx.db.select().from(courses).where(eq(courses.userId, user.id)).orderBy(desc(courses.updatedAt)).all();
-  if (!rows.length) {
+  // (not while a course waits in the Trash: that one can come back, and a new first course would take its place)
+  const binned = rows.length ? null : await ctx.db.select({ id: trash.id }).from(trash).where(and(eq(trash.userId, user.id), eq(trash.kind, "course"))).limit(1).get();
+  if (!rows.length && !binned) {
     // PDFs uploaded before Study needed a course: gather them into a first course, so nobody is locked out of them.
     const docs = await ctx.db.select({ id: documents.id }).from(documents).where(eq(documents.userId, user.id))
       .orderBy(desc(documents.lastUsedAt)).limit(MAX_DOCUMENTS).all();
@@ -128,10 +132,11 @@ export async function updateCourse(ctx: RequestContext, user: CurrentUser, id: s
   return getCourse(ctx, user, id);
 }
 
+/** Into the Trash (study/trash.ts) for 30 days; its PDFs stay in your library. */
 export async function deleteCourse(ctx: RequestContext, user: CurrentUser, id: string) {
   await gate(ctx, user);
   const r = await row(ctx, user, id);
-  await ctx.db.delete(courses).where(eq(courses.id, r.id));
+  await trashCourse(ctx, user, r);
 }
 
 /** How the course is going, from stored data only: concept mastery over its documents (and what was studied on the

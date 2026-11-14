@@ -44,6 +44,7 @@ const GROUPS: { heading: string; items: Entry[] }[] = [
       { id: "forge", label: "Forge", hint: "Upgrade your gear", href: ROUTES.heroTab("forge"), icon: <Hammer size={16} />, keywords: ["upgrade", "tier", "materials", "mount", "saddle"] },
       { id: "achievements", label: "Achievements", href: ROUTES.heroAchievements, icon: <Trophy size={16} /> },
       { id: "mastery", label: "Mastery", hint: "Every champion's progress", href: ROUTES.heroMastery, icon: <Crown size={16} />, keywords: ["challenges", "mastery", "progress", "unlock"] },
+      { id: "adventurer", label: "Hero profile", hint: "Your card, bonuses and settings", href: ROUTES.heroProfile, icon: <UserCircle size={16} />, keywords: ["profile", "card", "bonus", "settings", "sound", "music", "share"] },
     ],
   },
   {

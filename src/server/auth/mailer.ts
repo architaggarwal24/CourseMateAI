@@ -5,6 +5,7 @@
 //   2. Resend: RESEND_API_KEY and EMAIL_FROM.
 //   3. Neither: nothing is sent. The code is written to the Worker's log (`npx wrangler tail`), which only the
 //      account owner can read, and sign-up does not wait for a verified email (canSend is false).
+import * as logs from "../log";
 
 export type CodePurpose = "email-verification" | "forget-password" | "change-email" | "two-factor" | "sign-in";
 
@@ -30,7 +31,7 @@ export interface MailerEnv {
 /** How long one email may take to hand over to Resend. */
 export const SEND_TIMEOUT_MS = 10_000;
 
-export function createMailer(env: MailerEnv, fetchImpl: typeof fetch = fetch, log: (line: string) => void = console.log): Mailer {
+export function createMailer(env: MailerEnv, fetchImpl: typeof fetch = fetch, log: (line: string) => void = logs.info): Mailer {
   const from = (env.EMAIL_FROM || "").trim();
   if (env.EMAIL && from) {
     return { canSend: true, via: "cloudflare", send: async (m) => { await env.EMAIL!.send({ from, ...m }); } };

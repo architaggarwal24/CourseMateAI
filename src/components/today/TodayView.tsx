@@ -127,12 +127,12 @@ export default function TodayView() {
           )}
         </Tile>
 
-        <Tile id="today-streak" title="Streak" icon={<Flame size={18} />}>
+        <Tile id="today-streak" title="Streak" icon={<Flame size={18} />} className="today-tile--stat">
           <p className="today-big"><span className="num">{streakDays}</span>-day streak</p>
           <p className="today-tile__meta">{streakFreezes > 0 ? `${streakFreezes} streak ${streakFreezes === 1 ? "freeze" : "freezes"} saved` : "Study once a day to keep it."}</p>
         </Tile>
 
-        <Tile id="today-quests" title="Daily quests" icon={<ScrollText size={18} />}>
+        <Tile id="today-quests" title="Daily quests" icon={<ScrollText size={18} />} className="today-tile--stat">
           <p className="today-big"><span className="num">{questsDone}</span> of {questList.length} done</p>
           <Bar pct={questList.length ? Math.round((questsDone / questList.length) * 100) : 0} label="Daily quests" />
           <Link href={ROUTES.heroQuests} className="today-tile__link">See quests<ArrowRight size={16} /></Link>

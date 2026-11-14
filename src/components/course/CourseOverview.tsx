@@ -59,15 +59,19 @@ export default function CourseOverview({ course, onEdit, onUpload, uploading, ha
                     {[0, 1, 2, 3].map((i) => <Skeleton key={i} height="var(--course-tile-h)" className="rounded-[var(--radius-lg)]" />)}
                   </div>
                 ) : (
-                  <dl className="course-tiles">
-                    <Card pad="sm" className="course-tile"><dt>Concepts mastered <span>({p.concepts.strong ?? 0} of {p.concepts.seen ?? 0})</span></dt><dd>{pct(p.mastery)}</dd></Card>
-                    <Card pad="sm" className="course-tile"><dt>Right answers <span>({p.answers.correct ?? 0} of {p.answers.total ?? 0})</span></dt><dd>{pct(p.answers.accuracy)}</dd></Card>
-                    <Card pad="sm" className="course-tile"><dt>Cards due <span>({p.review.cards} in review)</span></dt><dd>{p.review.due}</dd></Card>
-                    <Card pad="sm" className="course-tile"><dt>Last exam <span>({p.exams.length} taken)</span></dt><dd>{p.exams[0] ? pct(p.exams[0].accuracy) : "–"}</dd></Card>
+                  // one number leads (how much of the course you've got), the other three are facts beside it
+                  <dl className="course-tiles course-stats">
+                    <div className="course-stat course-stat--lead">
+                      <dt>Concepts mastered <span>({p.concepts.strong ?? 0} of {p.concepts.seen ?? 0})</span></dt><dd>{pct(p.mastery)}</dd>
+                      <span className="course-stat__bar" aria-hidden="true"><span style={{ width: `${Math.round((p.mastery ?? 0) * 100)}%` }} /></span>
+                    </div>
+                    <div className="course-stat"><dt>Right answers <span>({p.answers.correct ?? 0} of {p.answers.total ?? 0})</span></dt><dd>{pct(p.answers.accuracy)}</dd></div>
+                    <div className="course-stat"><dt>Cards due <span>({p.review.cards} in review)</span></dt><dd>{p.review.due}</dd></div>
+                    <div className="course-stat"><dt>Last exam <span>({p.exams.length} taken)</span></dt><dd>{p.exams[0] ? pct(p.exams[0].accuracy) : "–"}</dd></div>
                   </dl>
                 )}
                 {p && p.concepts.weakest?.length ? (
-                  <p className="course-weak">Weakest so far: {p.concepts.weakest.map((c) => <Badge key={c} tone="warning">{c}</Badge>)}</p>
+                  <p className="course-weak">Weakest so far: {p.concepts.weakest.map((c) => <mark key={c} className="hl">{c}</mark>)}</p>
                 ) : null}
               </section>
 

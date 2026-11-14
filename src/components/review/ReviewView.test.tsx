@@ -94,7 +94,7 @@ describe("ReviewView: the daily review, keyboard first", () => {
     press(" "); press("1");
     expect(await screen.findByRole("heading", { name: "All caught up" })).toBeTruthy();
     expect(screen.getByText(/You reviewed 2 cards this session/)).toBeTruthy();
-    expect(toasts.success).toHaveBeenCalledWith("Review cleared: +80 XP | +20 Coins", expect.anything());
+    expect(toasts.success).toHaveBeenCalledWith("Today's reviews are done", { description: "+80 XP · +20 coins" });
   });
 
   it("a card graded elsewhere (409) is skipped quietly", async () => {

@@ -206,6 +206,12 @@ function PlanCard({ plan, current, yearly, payments, busy, onUpgrade }: {
           {payments ? `Upgrade to ${plan.name}` : `${plan.name}: coming soon`}
         </Button>
       )}
+      {/* said before you pay, not only in the Terms (legal and trust pass: auto-renewal disclosure) */}
+      {higher && price && (
+        <p className="pu-card__renew">
+          Renews every {yearly ? "year" : "month"} at {formatInr(price)} until you cancel. Cancel any time in Plan &amp; usage: you keep the plan until the paid period ends.
+        </p>
+      )}
     </li>
   );
 }

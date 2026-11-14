@@ -35,7 +35,7 @@ export default function FileUploader({ sessionId }: FileUploaderProps) {
     const previous = previousStatus.current;
     previousStatus.current = doc?.status;
     if (!doc || !previous || !isInFlight(previous)) return;
-    if (doc.status === "ready") toast.success(`✅ ${doc.filename} ready!`);
+    if (doc.status === "ready") toast.success(`${doc.filename} is ready to study`);
     else if (doc.status === "failed") toast.error(doc.error || `${doc.filename} could not be processed`);
   }, [doc?.status]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -50,7 +50,7 @@ export default function FileUploader({ sessionId }: FileUploaderProps) {
       // The server answers as soon as the file is registered; indexing continues there and the store
       // polls its status, which this component renders.
       const document = await uploadDocument(sessionId, file);
-      if (document.status === "ready") toast.success(`✅ ${document.filename} ready!`);   // same file as before: reused
+      if (document.status === "ready") toast.success(`${document.filename} is ready to study`);   // same file as before: reused
     } catch (error) {
       toast.apiError(error, { onRetry: () => handleUpload(file) });
     } finally {

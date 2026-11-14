@@ -12,6 +12,7 @@ const ITEMS = [
   { href: ROUTES.accountSettings, label: "Settings" },
   { href: ROUTES.accountSecurity, label: "Security" },
   { href: ROUTES.accountHistory, label: "History" },
+  { href: ROUTES.accountTrash, label: "Trash" },
 ];
 const ADMIN_ITEM = { href: ROUTES.accountAdmin, label: "Admin" };
 
@@ -24,7 +25,7 @@ export default function AccountNav() {
         <span className="ws-doc__icon" aria-hidden="true"><UserCircle size={17} /></span>
         <div className="min-w-0">
           <span className="ws-doc__name">Account</span>
-          <span className="ws-doc__meta"><span className="truncate min-w-0">Profile, plan, settings and history</span></span>
+          <span className="ws-doc__meta"><span className="truncate min-w-0">Profile, plan, settings, history and Trash</span></span>
         </div>
       </div>
       <div className="ws-top__tabs"><SubNav label="Account" items={user?.is_admin ? [...ITEMS, ADMIN_ITEM] : ITEMS} className="!px-[3px]" /></div>

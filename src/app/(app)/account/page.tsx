@@ -3,7 +3,7 @@
 import { useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ChevronRight, Gauge, History, Loader2, Shield, User, type IconType } from "@/components/ui/icons";
+import { ChevronRight, Gauge, History, Loader2, Shield, User, type IconType, Trash2 } from "@/components/ui/icons";
 import { Card } from "@/components/ui";
 import { useAuth } from "@/contexts/AuthContext";
 import { ROUTES } from "@/lib/routes";
@@ -35,6 +35,7 @@ export default function ProfilePage() {
     { href: ROUTES.accountSecurity, Icon: Shield, title: "Password and two-step sign-in", detail: "Keep your account safe" },
     { href: ROUTES.accountUsage, Icon: Gauge, title: "Plan & usage", detail: "What your plan includes and what you have used" },
     { href: ROUTES.accountHistory, Icon: History, title: "Session history", detail: "Chats, quizzes, flashcards and notes you saved" },
+    { href: ROUTES.accountTrash, Icon: Trash2, title: "Trash", detail: "Deleted PDFs and courses, restorable for 30 days" },
   ];
 
   return (

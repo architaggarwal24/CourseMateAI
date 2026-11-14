@@ -52,14 +52,14 @@ describe("the project layout", () => {
   });
 
   it("only app-wide modules sit at the top of src/lib; the rest are in a feature folder", () => {
-    const appWide = ["keys", "monitoring", "pwa", "routes", "sidebar", "site", "site-url", "theme", "undo", "utils", "worlds"];
+    const appWide = ["keys", "legal", "monitoring", "pwa", "routes", "sidebar", "site", "site-url", "theme", "undo", "utils", "worlds"];
     const extra = topLevel("src/lib").map((n) => n.replace(/(\.test)?\.tsx?$/, "")).filter((n) => !appWide.includes(n));
     expect(extra, "a new module belongs in a feature folder (or, if it is truly app-wide, in this list)").toEqual([]);
   });
 
   it("only the Worker's plumbing sits at the top of src/server; features are in their folders", () => {
-    const plumbing = ["cf-bindings.d", "context", "env", "errors", "http", "idempotency", "route", "status",
-      "api-not-found", "migrations", "queries", "routes", "wrangler-config"];   // (the last five: whole-server tests)
+    const plumbing = ["cf-bindings.d", "context", "env", "errors", "http", "idempotency", "log", "route", "status",
+      "api-not-found", "import-cycles", "migrations", "queries", "routes", "wrangler-config"];   // (the last six: whole-server tests)
     const extra = topLevel("src/server").map((n) => n.replace(/(\.test)?\.tsx?$/, "")).filter((n) => !plumbing.includes(n));
     expect(extra).toEqual([]);
   });

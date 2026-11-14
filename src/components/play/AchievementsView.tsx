@@ -1,10 +1,12 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Trophy, Lock, Star, Zap, Flame, Swords, TrendingUp, Shield } from "@/components/ui/icons";
+import { Coins, Trophy, Lock, Star, Zap, Flame, Swords, TrendingUp, Shield } from "@/components/ui/icons";
 import { fetchAchievements } from "@/lib/api";
 import { useHUDStore } from "@/hooks/useHUD";
 import { Badge } from "@/components/ui";
+import FilterBar from "./FilterBar";
+import PixelLoader from "./PixelLoader";
 import { RARITIES, RARITY_LABEL, isRarity, rarityClass, type Rarity } from "@/lib/game/rarity";
 
 // An achievement's tier is its rarity: colours come from the rarity tokens (lib/game/rarity.ts), never from here.
@@ -47,7 +49,7 @@ export default function AchievementsView() {
   const [progress, setProgress] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<"all" | "unlocked" | "locked">("all");
-  const [tierFilter, setTierFilter] = useState<string>("all");
+  const [tierFilter, setTierFilter] = useState<"all" | Rarity>("all");
 
   useEffect(() => {
     fetchAchievements()
@@ -71,94 +73,49 @@ export default function AchievementsView() {
     return true;
   });
 
-  // ── Loading ──────────────────────────────────────────────────────────────
-  if (loading) {
-    return (
-      <div className="flex h-full items-center justify-center">
-        <div className="w-10 h-10 border-4 border-ink-gold border-t-transparent rounded-full animate-spin" />
-      </div>
-    );
-  }
+  if (loading) return <PixelLoader label="Opening the trophy case" />;
+
+  const count = (pred: (a: any) => boolean) => achievements.filter(pred).length;
+  const pctDone = achievements.length ? Math.round((unlockedCount / achievements.length) * 100) : 0;
 
   return (
-    <div className="flex flex-col h-full bg-canvas overflow-hidden">
-      {/* ── Header ── */}
-      <div className="px-6 py-5 border-b border-line-subtle bg-sunken/50 flex-shrink-0">
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-3">
-            <div className="p-2 rounded-lg bg-accent-gold/10 border border-ink-gold/20">
-              <Trophy size={20} className="text-ink-gold" />
-            </div>
-            <div>
-              <h2 className="text-lg font-bold text-fg">Achievements</h2>
-              <p className="text-xs text-fg-muted">
-                {guestMode ? "Log in to track your achievements" : `${unlockedCount} of ${achievements.length} unlocked`}
-              </p>
-            </div>
+    <div className="ach">
+      <header className="ach__head">
+        <div className="ach__title">
+          <Trophy size={22} aria-hidden="true" className="ach__trophy" />
+          <div>
+            <h2 className="collection-title__name">Achievements</h2>
+            <p className="collection-title__desc">{guestMode ? "Log in to track your achievements" : `${unlockedCount} of ${achievements.length} unlocked`}</p>
           </div>
-          {!guestMode && achievements.length > 0 && (
-            <div className="text-right">
-              <div className="text-2xl font-black text-ink-gold">{Math.round((unlockedCount / achievements.length) * 100)}%</div>
-              <div className="text-xs text-fg-muted">complete</div>
-            </div>
-          )}
+          {!guestMode && achievements.length > 0 && <p className="ach__pct pixel-font">{pctDone}%<span>complete</span></p>}
         </div>
-
-        {/* Overall progress bar */}
         {!guestMode && achievements.length > 0 && (
-          <div className="h-2 bg-panel rounded-full overflow-hidden border border-line-subtle mb-4">
-            <div
-              className="h-full bg-accent-gold transition-all duration-700 rounded-full"
-              style={{ width: `${(unlockedCount / achievements.length) * 100}%` }}
-            />
+          <div className="px-meter" role="progressbar" aria-label="Achievements unlocked" aria-valuemin={0} aria-valuemax={100} aria-valuenow={pctDone}>
+            <span style={{ width: `${pctDone}%` }} />
           </div>
         )}
-
-        {/* Filters */}
-        <div className="flex flex-wrap gap-2">
-          {/* Status filter */}
-          {(["all", "unlocked", "locked"] as const).map((f) => (
-            <button
-              key={f}
-              aria-pressed={filter === f}
-              onClick={() => setFilter(f)}
-              className={`px-3 py-1 rounded-lg text-xs font-semibold border transition-all capitalize ${
-                filter === f
-                  ? "bg-accent-gold/20 text-ink-gold border-ink-gold/40"
-                  : "bg-panel text-fg-muted border-line hover:border-ink-gold/30 hover:text-fg"
-              }`}
-            >
-              {f}
-            </button>
-          ))}
-          <div className="w-px bg-line mx-1" />
-          {/* Tier filter */}
-          {tiers.map((t) => (
-            <button
-              key={t}
-              aria-pressed={tierFilter === t}
-              onClick={() => setTierFilter(t)}
-              className={`${t === "all" ? "" : rarityClass(t)} min-h-11 md:min-h-0 px-3 py-1 rounded-lg text-xs font-semibold border transition-all capitalize ${
-                tierFilter === t
-                  ? t === "all" ? "bg-accent-gold/20 text-ink-gold border-ink-gold/40" : "bg-panel border-[color:var(--rarity)] text-[color:var(--rarity)]"
-                  : "bg-panel text-fg-muted border-line hover:border-line-subtle hover:text-fg"
-              }`}
-            >
-              {t === "all" ? "All Tiers" : RARITY_LABEL[t]}
-            </button>
-          ))}
+        <div className="ach__filters">
+          <FilterBar label="Show" value={filter} onChange={setFilter} options={[
+            { id: "all", label: "All", count: achievements.length },
+            { id: "unlocked", label: "Unlocked", count: unlockedCount },
+            { id: "locked", label: "Locked", count: achievements.length - unlockedCount },
+          ]} />
+          <FilterBar label="Tier" value={tierFilter} onChange={setTierFilter} options={tiers.map((t) => ({
+            id: t, label: t === "all" ? "Every tier" : RARITY_LABEL[t],
+            icon: t === "all" ? undefined : <span className={`ach__dot ${rarityClass(t)}`} aria-hidden="true" />,
+            count: t === "all" ? undefined : count((a) => tierOf(a.tier) === t),
+          }))} />
         </div>
-      </div>
+      </header>
 
-      {/* ── Achievement Grid ── */}
-      <div className="flex-1 overflow-y-auto px-5 py-5" role="region" aria-label="Achievements" tabIndex={0}>
+      <div className="ach__body" role="region" aria-label="Achievements" tabIndex={0}>
         {filtered.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-64 text-fg-muted">
             <Trophy size={40} className="mb-3 opacity-20" />
             <p className="text-sm">No achievements match this filter</p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <ul className="ach__grid">
             {filtered.map((a) => {
               const isUnlocked = !!unlocked[a.achievement_id];
               const tier = tierOf(a.tier);
@@ -166,83 +123,35 @@ export default function AchievementsView() {
               const threshold = parseInt(a.unlock_threshold) || 1;
               const pct = Math.min(100, Math.round((statValue / threshold) * 100));
               const statLabel = STAT_LABEL[a.unlock_type] ?? a.unlock_type;
-
               return (
-                <div
-                  key={a.achievement_id}
-                  className={`${rarityClass(tier)} relative rounded-xl border p-4 transition-all duration-200 bg-panel ${
-                    isUnlocked ? "border-[color:var(--rarity)]" : "border-line-subtle"
-                  }`}
-                >
-                  {/* Tier ribbon */}
-                  <Badge tone={tier} className="absolute top-3 right-3">{RARITY_LABEL[tier]}</Badge>
-
-                  <div className="flex items-start gap-3">
-                    {/* Icon circle */}
-                    <div
-                      className={`flex-shrink-0 w-12 h-12 rounded-xl flex items-center justify-center ${isUnlocked ? "" : "bg-sunken"}`}
-                      style={isUnlocked ? { background: "var(--rarity)", color: "var(--color-surface)" } : undefined}
-                    >
-                      {isUnlocked
-                        ? <AchievementIcon type={a.unlock_type} unlocked={true} />
-                        : <Lock size={20} className="text-fg-muted" role="img" aria-label="Locked" />
-                      }
+                <li key={a.achievement_id} className={`ach-card ${rarityClass(tier)}`} data-unlocked={isUnlocked || undefined}>
+                  <div className="ach-card__top">
+                    <span className="ach-card__icon">
+                      {isUnlocked ? <AchievementIcon type={a.unlock_type} unlocked={true} /> : <Lock size={20} role="img" aria-label="Locked" />}
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <h3 className="ach-card__name">{a.name}</h3>
+                      <p className="ach-card__desc">{a.description}</p>
                     </div>
-
-                    {/* Text */}
-                    <div className="flex-1 min-w-0 pr-16">
-                      <h3 className={`text-sm font-bold leading-tight mb-0.5 ${isUnlocked ? "text-fg" : "text-fg-muted"}`}>
-                        {a.name}
-                      </h3>
-                      <p className="text-xs text-fg-muted leading-snug">{a.description}</p>
-                    </div>
+                    <Badge tone={tier}>{RARITY_LABEL[tier]}</Badge>
                   </div>
-
-                  {/* Progress (locked only, when stats available) */}
                   {!isUnlocked && !guestMode && (
-                    <div className="mt-3">
-                      <div className="flex justify-between text-xs text-fg-muted mb-1">
-                        <span>{statValue} / {threshold} {statLabel}</span>
-                        <span>{pct}%</span>
-                      </div>
-                      <div className="h-1.5 bg-canvas rounded-full overflow-hidden">
-                        <div
-                          className="h-full rounded-full transition-all duration-500"
-                          style={{ width: `${pct}%`, background: "var(--rarity)" }}
-                        />
-                      </div>
+                    <div className="ach-card__progress">
+                      <span className="ach-card__line"><span>{statValue} / {threshold} {statLabel}</span><span>{pct}%</span></span>
+                      <span className="px-meter px-meter--thin" aria-hidden="true"><span style={{ width: `${pct}%` }} /></span>
                     </div>
                   )}
-
-                  {/* Unlocked footer */}
-                  {isUnlocked && (
-                    <div className="mt-3 pt-3 border-t border-line-subtle/50 flex items-center justify-between">
-                      <span className="text-xs text-fg-muted">
-                        Unlocked {relativeDate(unlocked[a.achievement_id])}
-                      </span>
-                      <div className="flex items-center gap-2 text-xs">
-                        {parseInt(a.reward_xp) > 0 && (
-                          <span className="text-ink-purple font-semibold">+{a.reward_xp} XP</span>
-                        )}
-                        {parseInt(a.reward_coins) > 0 && (
-                          <span className="text-ink-gold font-semibold">+{a.reward_coins} 🪙</span>
-                        )}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Locked reward preview */}
-                  {!isUnlocked && (
-                    <div className="mt-2 flex items-center gap-2 text-xs text-fg-muted">
-                      <span>Reward:</span>
-                      {parseInt(a.reward_xp) > 0 && <span>+{a.reward_xp} XP</span>}
-                      {parseInt(a.reward_coins) > 0 && <span>+{a.reward_coins} 🪙</span>}
-                    </div>
-                  )}
-                </div>
+                  <div className="ach-card__foot">
+                    <span>{isUnlocked ? `Unlocked ${relativeDate(unlocked[a.achievement_id])}` : "Reward"}</span>
+                    <span className="ach-card__reward">
+                      {parseInt(a.reward_xp) > 0 && <span className="text-ink-purple">+{a.reward_xp} XP</span>}
+                      {parseInt(a.reward_coins) > 0 && <span className="text-ink-gold inline-flex items-center gap-1">+{a.reward_coins}<Coins size={12} aria-label="coins" /></span>}
+                    </span>
+                  </div>
+                </li>
               );
             })}
-          </div>
+          </ul>
         )}
       </div>
     </div>

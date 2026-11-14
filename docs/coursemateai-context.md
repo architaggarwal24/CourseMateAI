@@ -374,3 +374,27 @@ From this work only; nobody has gone looking for more.
   one slim band, and tapping the champion opens the pause menu (no Esc key on a phone; a fight has its own Pause
   button). `e2e/mobile.spec.ts` guards the room left for content (Today's Review on the first screen, the Study tabs
   band, the Hero header height, readable tab labels).
+- **The BreakingBreach pass (14 Nov 2026, 6 stages):**
+  1. AI security: `server/ai/guard.ts` fences document text (`fenceMaterial`, ⟦MATERIAL⟧) in every prompt, adds one
+     security rule to every call (`withGuard`, in `ai/run.ts`) and a canary: an answer containing `CANARY` is withheld
+     (502 `answer_withheld`, metered) and a streamed one is held back so not even part of it goes out. Answers never load
+     images and only keep http(s)/mailto links (`ChatMarkdown`). Uploads must start with `%PDF-` (`looksLikePdf`).
+  2. Data-loss safety: the Trash (`server/study/trash.ts`, tables `trash`, `trash_chunks`, `deletion_log`, migration
+     0020). Deleting a PDF or course moves its row out of the live tables for 30 days (R2 file and vectors stay); restore
+     or delete for good from Account -> Trash; expired items go on the next Trash visit or delete. `deletion_log` keeps
+     who deleted what for a year. Account deletion needs `confirm: "DELETE"` on the server. Admin shows LIVE production /
+     Local test copy. Runbook: `docs/data-recovery.md`.
+  3. Legal and trust: `lib/legal.ts` (TERMS_VERSION = the policies' date, MIN_AGE 12, the box's words). The sign-up box
+     records `user.terms_version` / `terms_accepted_at` (migration 0021); `TermsGate` asks anyone not on the current
+     version (social sign-ups, old accounts, after a change): POST /account/terms. Change TERMS_VERSION together with
+     `app/legal/legal.ts UPDATED` and `lib/site.ts LEGAL_UPDATED_ISO` (a test ties them). AI-written labels (`AiLabel`),
+     the renewal line on paid plans, GET /account/export (a copy of your data). The owner chose 12+ with no parental
+     consent: a known legal risk under India's DPDP Act (under-18s are children there).
+  4. Speed: the app layout preloads /auth/me and /hud from the HTML; Study shows a page skeleton while you're recognised.
+     Server logs go through `server/log.ts` (emails, keys, tokens redacted); a test forbids console.* in server code.
+  5. Study unslop ("a desk at exam time"): the highlighter (`--highlighter`) is the one signature detail (the active
+     study tab, citation marks, weak concepts `mark.hl`); each tool's intro is a desk object (`DeskObject`), not a
+     floating icon; sentence-case labels and badges (Hero keeps all-caps pixel badges); rewards read "+50 XP · +25 coins"
+     (`lib/game/reward-text.ts`), no emoji; Today's streak and quests are compact stats; the course page leads with mastery.
+  6. Hero unslop: quest buttons say what you'll do (`callLabel`); emoji replaced by the app's icons; Quick Battle leads
+     the arena hub.

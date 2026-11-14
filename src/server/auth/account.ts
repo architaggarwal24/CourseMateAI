@@ -8,6 +8,8 @@ import { verifyPassword } from "./password";
 import { account as accountTable, user as userTable } from "../db/schema";
 import type { CurrentUser, RequestContext } from "../context";
 import { purgeUserFiles } from "../study/documents";
+import { logDeletion, logLine } from "../study/trash";
+import { TERMS_VERSION } from "@/lib/legal";
 import { HttpError } from "../http";
 import { searchDeps } from "../search";
 import { TIER_NAMES, tierFor } from "../account/plans";
@@ -46,7 +48,19 @@ export async function me(ctx: RequestContext, u: CurrentUser) {
     /** The other ways in: "github", "google" (Account -> Security names them). */
     sign_in_providers: methods.providers, timezone: r.timezone,
     tier, tier_name: TIER_NAMES[tier],
+    /** The Terms / Privacy Policy version accepted (null: never); the app asks while it isn't TERMS_VERSION. */
+    terms_version: r.termsVersion ?? null, terms_current: TERMS_VERSION,
   };
+}
+
+/** The box in the app ("I'm 12 or older, and I agree..."): only the current version can be accepted. */
+export async function acceptTerms(ctx: RequestContext, u: CurrentUser, version: unknown) {
+  if (version !== TERMS_VERSION) {
+    throw new HttpError(400, "terms_outdated", "Those terms have changed. Reload the page to see the current ones.");
+  }
+  const at = new Date();
+  await ctx.db.update(userTable).set({ termsVersion: TERMS_VERSION, termsAcceptedAt: at }).where(eq(userTable.id, u.id));
+  return { ok: true, terms_version: TERMS_VERSION, accepted_at: at.toISOString() };
 }
 
 /** How sign-in works here, for the login screen. */
@@ -134,8 +148,12 @@ export async function updateProfile(req: Request, ctx: RequestContext, u: Curren
 }
 
 /** Delete the account and everything on it. The owner's account can't be deleted while OWNER_EMAIL names it. */
-export async function deleteAccount(req: Request, ctx: RequestContext, u: CurrentUser, password: string | undefined): Promise<Headers> {
+/** What has to be typed to delete an account (checked here too, not only in the browser: data-loss control 10). */
+export const DELETE_CONFIRM = "DELETE";
+
+export async function deleteAccount(req: Request, ctx: RequestContext, u: CurrentUser, password: string | undefined, confirm?: string): Promise<Headers> {
   if (u.owner) throw new HttpError(400, "owner_account", "This is the owner account (OWNER_EMAIL). Change OWNER_EMAIL first to delete it.");
+  if (confirm !== DELETE_CONFIRM) throw new HttpError(400, "confirm_required", `Type ${DELETE_CONFIRM} to confirm.`, null, { field: "confirm" });
   if ((await signInMethods(ctx, u.id)).password) {
     if (!password || !(await passwordMatches(ctx, u.id, password))) {
       throw new HttpError(400, "wrong_password", "Your password isn't right", null, { field: "password" });
@@ -144,6 +162,7 @@ export async function deleteAccount(req: Request, ctx: RequestContext, u: Curren
   const out = await ctx.auth.api.signOut({ headers: req.headers, asResponse: true });
   await purgeUserFiles(ctx, searchDeps(ctx.env), u.id);                 // PDFs (R2) and search vectors too
   await ctx.db.delete(userTable).where(eq(userTable.id, u.id));
+  await logDeletion(ctx, logLine(u.id, u.id, "account_deleted", "account", null, null));   // no name or email kept
   return out.headers;
 }
 

@@ -1,9 +1,8 @@
 "use client";
 
-import AdventurerCard from "./AdventurerCard";
 import { useEffect, useState } from "react";
 import { useReducedMotionConfig } from "motion/react";
-import { ChevronDown, Crown, Lock, PawPrint, Shield, Shirt, ShoppingBag, Sparkles, Swords, AlertTriangle, X, Zap } from "@/components/ui/icons";
+import { ChevronDown, Crown, Lock, PawPrint, Shield, Shirt, ShoppingBag, Sparkles, Swords, AlertTriangle, UserCircle, X, Zap } from "@/components/ui/icons";
 import LookEditor from "@/components/champion/LookEditor";
 import HeroBuilder from "@/components/champion/HeroBuilder";
 import { HERO_FIGHTER_ID } from "@/lib/pixel/appearance";
@@ -11,20 +10,19 @@ import { xpPct } from "@/components/arena/pixel/Roster";
 import { useChampion, type ChampionProgress } from "@/hooks/useChampion";
 import PixelSprite from "@/components/arena/pixel/PixelSprite";
 import { Roster } from "@/components/arena/pixel/Roster";
-import GearChips from "@/components/champion/GearChips";
 import ItemArt from "@/components/champion/ItemArt";
 import { useChampionLook } from "@/components/champion/useChampionLook";
 import { Badge, Button, ButtonLink } from "@/components/ui";
 import { useAuth } from "@/contexts/AuthContext";
 import { useHUDStore } from "@/hooks/useHUD";
 import { ownedItems, useHeroStore, type ShopItem } from "@/hooks/useHero";
-import { totalGear } from "@/lib/game/gear";
 import type { AnimName } from "@/lib/pixel/heroes";
 import { RARITY_LABEL, rarityClass, rarityOf } from "@/lib/game/rarity";
 import { ROUTES } from "@/lib/routes";
 import { cn } from "@/lib/utils";
 import "@/components/arena/pixel/pixel.css";
 import "@/components/champion/champion.css";
+import PixelLoader from "./PixelLoader";
 
 /** The skin slots, in the order they are listed. */
 export const SKIN_SLOTS = [
@@ -37,20 +35,6 @@ export const SKIN_SLOTS = [
 const ANIMS: ReadonlyArray<{ id: AnimName; label: string }> = [
   { id: "idle", label: "Idle" }, { id: "attack", label: "Attack" }, { id: "win", label: "Win" },
 ];
-
-/** The study bonuses of everything that is worn. */
-export function activeBonuses(shop: { equipped: Record<string, string>; items: ShopItem[] }) {
-  const out: { label: string; value: string }[] = [];
-  for (const id of Object.values(shop.equipped ?? {})) {
-    const b = shop.items.find((i) => i.id === id)?.bonus;
-    if (!b) continue;
-    if (b.xp_pct) out.push({ label: "XP", value: `+${Math.round(b.xp_pct * 100)}%` });
-    if (b.coin_pct) out.push({ label: "Coins", value: `+${Math.round(b.coin_pct * 100)}%` });
-    if (b.combo_xp_pct) out.push({ label: "Combo", value: `+${Math.round(b.combo_xp_pct * 100)}%` });
-    if (b.arena_hints) out.push({ label: "Hints", value: `+${b.arena_hints}` });
-  }
-  return out;
-}
 
 /** The live preview: the champion in its skins (and the item being tried on), with its pet, in a chosen animation. */
 function ChampionStage() {
@@ -189,15 +173,11 @@ export default function ChampionTab() {
   const [editing, setEditing] = useState(false);
   const isHero = hero.id === HERO_FIGHTER_ID;
 
-  if (loading || !shop) return <p role="status" className="p-6 text-fg-muted">Summoning your champion…</p>;
+  if (loading || !shop) return <PixelLoader label="Summoning your champion" />;
 
   const equipped = shop.equipped ?? {};
   const owned = ownedItems(shop).filter((i) => !i.consumable);
   const skinCount = SKIN_SLOTS.filter((s) => equipped[s.key]).length;
-  const bonuses = activeBonuses(shop);
-  const worn = SKIN_SLOTS.map((s) => shop.items.find((i) => i.id === equipped[s.key]));
-  const totals = totalGear(worn as never);
-  const gearTotals = Object.values(totals).some(Boolean) ? totals : null;
 
   return (
     <div className="hero-split">
@@ -219,30 +199,17 @@ export default function ChampionTab() {
         <LookEditor open={editing} onClose={() => setEditing(false)} />
       </aside>
 
-      <section className="hero-split__main max-w-4xl" aria-label="Champion and skins">
-        <div className="mb-6"><Roster /></div>
-        {isHero ? <HeroBuilder onEditLook={() => setEditing(true)} /> : <KitAndMastery championId={hero.id} name={hero.name} shop={shop} />}
-
+      <section className="hero-split__main champ-main" aria-label="Champion and skins">
+        <div className="champ-main__roster"><Roster /></div>
+        <div className="champ-main__col">
+          {isHero ? <HeroBuilder onEditLook={() => setEditing(true)} /> : <KitAndMastery championId={hero.id} name={hero.name} shop={shop} />}
+        </div>
+        <div className="champ-main__col">
         <div className="flex flex-wrap gap-2 mb-5">
           <ButtonLink href={ROUTES.heroShop} variant="primary"><ShoppingBag size={16} aria-hidden="true" />Get skins</ButtonLink>
           <ButtonLink href={ROUTES.heroInventory}>Inventory</ButtonLink>
+          <ButtonLink href={ROUTES.heroProfile} variant="ghost"><UserCircle size={16} aria-hidden="true" />Card and bonuses</ButtonLink>
         </div>
-
-        <div className="mb-5" data-testid="arena-gear">
-          <p className="hero-label">In the arena</p>
-          {gearTotals ? <GearChips stats={gearTotals} /> : <p className="m-0 text-sm text-fg-muted">Wear an outfit, head piece, weapon finish or pet to get an edge in battle.</p>}
-        </div>
-
-        {bonuses.length > 0 && (
-          <div className="mb-5">
-            <p className="hero-label"><Zap size={12} className="inline mr-1" aria-hidden="true" />Study bonuses</p>
-            <div className="flex flex-wrap gap-2">
-              {bonuses.map((b, i) => (
-                <span key={i} className="hero-bonus"><span>{b.label}</span><strong className="pixel-font">{b.value}</strong></span>
-              ))}
-            </div>
-          </div>
-        )}
 
         <p className="hero-label">Skin loadout ({skinCount}/4) · shared by every champion</p>
         <ul className="m-0 p-0 list-none grid gap-3 sm:grid-cols-2">
@@ -318,8 +285,7 @@ export default function ChampionTab() {
             );
           })}
         </ul>
-        {/* the two worlds, Stage 7: your card, to keep or share (in the main column, not a third one) */}
-        <AdventurerCard />
+        </div>
       </section>
     </div>
   );

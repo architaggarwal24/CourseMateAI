@@ -1,3 +1,4 @@
+import { rewardText } from "@/lib/game/reward-text";
 import { create } from "zustand";
 import { announceAchievements, coinRain } from "@/lib/fx/celebrate";
 import { toast } from "@/components/ui/Toast";
@@ -69,21 +70,25 @@ function setCoins(coins: number) {
 
 // ── Pure helpers (exported for the screens and the tests) ──────────────────────────────────────────────────────
 
+/** The slots an item can be worn in: gear, pets and titles. Emotes play on the victory wheel; potions are used. */
+export const WEAR_SLOTS = ["headgear", "armor", "weapon", "pet", "title"] as const;
+export const isWearable = (item: { category: string }) => (WEAR_SLOTS as readonly string[]).includes(item.category);
+
 /** What the champion wears while `previewId` is tried on: the equipped set with that item in its slot. */
 export function previewEquipped(shop: ShopState | null, previewId: string | null): Record<string, string> {
   const base = shop?.equipped ?? {};
   if (!previewId || !shop) return base;
   const item = shop.items.find((i) => i.id === previewId);
-  return item ? { ...base, [item.category]: item.id } : base;
+  return item && isWearable(item) ? { ...base, [item.category]: item.id } : base;
 }
 
 /** Inventory tab -> which owned items it lists. */
 export const INVENTORY_TABS = [
-  { id: "equipment", name: "Equipment", icon: "⚔️", match: (i: ShopItem) => ["headgear", "armor", "weapon"].includes(i.category) },
-  { id: "pets", name: "Pets", icon: "🐱", match: (i: ShopItem) => i.category === "pet" },
-  { id: "consumables", name: "Consumables", icon: "🧪", match: (i: ShopItem) => ["potion", "special"].includes(i.category) && !!i.consumable && (i.quantity ?? 0) > 0 },
-  { id: "titles", name: "Titles", icon: "🏆", match: (i: ShopItem) => i.category === "title" },
-  { id: "emotes", name: "Emotes", icon: "💬", match: (i: ShopItem) => i.category === "emote" },
+  { id: "equipment", name: "Equipment", match: (i: ShopItem) => ["headgear", "armor", "weapon"].includes(i.category) },
+  { id: "pets", name: "Pets", match: (i: ShopItem) => i.category === "pet" },
+  { id: "consumables", name: "Consumables", match: (i: ShopItem) => ["potion", "special"].includes(i.category) && !!i.consumable && (i.quantity ?? 0) > 0 },
+  { id: "titles", name: "Titles", match: (i: ShopItem) => i.category === "title" },
+  { id: "emotes", name: "Emotes", match: (i: ShopItem) => i.category === "emote" },
 ] as const;
 
 export function ownedItems(shop: ShopState | null): ShopItem[] {
@@ -209,14 +214,14 @@ export const useHeroStore = create<HeroState>((set, get) => {
     purchase: async (item, opts) => {
       const { guestMode, coins } = hud();
       if (guestMode) { toast.error("Please login to purchase items"); return false; }
-      if (coins < Number(item.price)) { toast.error(`Not enough coins! Need ${Number(item.price) - coins} more 🪙`); return false; }
+      if (coins < Number(item.price)) { toast.error(`Not enough coins: ${Number(item.price) - coins} more needed`); return false; }
       return withPending(item.id, async () => {
         try {
           const once = idempotencyKey("shop-purchase", { item_id: item.id });
           const { data, error, response } = await rawApi.POST("/shop/purchase", { body: { item_id: item.id }, headers: once.headers });
           if (response.ok) once.done();
           return settle(response, data, error, (result) => {
-            if (!opts?.quiet) toast.success(`${item.name} purchased! 🎉`);
+            if (!opts?.quiet) toast.success(`${item.name} bought`);
             const shop = get().shop;
             if (shop) {
               changed();
@@ -240,15 +245,15 @@ export const useHeroStore = create<HeroState>((set, get) => {
     // (internal) wear / remove `item`, optimistically; put the old state back if the server refuses.
     toggleEquipTo: async (item: ShopItem, wearing: boolean) => {
       if (hud().guestMode) { toast.error("Please login to equip items"); return false; }
+      if (!isWearable(item)) return false;
       const before = get().shop;
       if (before) { changed(); set({ shop: afterEquipToggle(before, item, wearing) }); }
-      if (wearing && get().previewId === item.id) set({ previewId: null });
       try {
         const { data, error, response } = wearing
           ? await rawApi.POST("/shop/equip", { body: { item_id: item.id } })
           : await rawApi.POST("/shop/unequip", { body: { slot: item.category } });
         const ok = settle(response, data, error, () => {
-          toast.success(wearing ? `${item.name} equipped! ⚡` : `${item.name} unequipped!`);
+          toast.success(wearing ? `${item.name} on` : `${item.name} off`);
         });
         if (!ok && before) { changed(); set({ shop: before }); }
         void get().reconcile();
@@ -295,7 +300,7 @@ export const useHeroStore = create<HeroState>((set, get) => {
         };
 
         if (result?.ok) {
-          toast.success(`🎉 Claimed! +${result.xp_gained} XP | +${result.coins_gained} 🪙`, { icon: "✅", duration: 3000 });
+          toast.success("Quest claimed", { description: rewardText(result.xp_gained, result.coins_gained), duration: 3000 });
           coinRain(Number(result.coins_gained) || 0);
           announceAchievements(result.new_achievements);
           markClaimed({ xp: Number(result.xp_gained) || 0, coins: Number(result.coins_gained) || 0 });

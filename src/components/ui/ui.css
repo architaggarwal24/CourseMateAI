@@ -368,7 +368,7 @@ textarea.ui-control { min-height: 5rem; resize: vertical; line-height: var(--lin
 .ui-tabs__grp { display: flex; flex-direction: column; gap: 3px; flex: none; min-width: 0; }
 .ui-tabs__cap {
   display: flex; align-items: center; gap: 0.4rem; padding: 0 0.35rem;
-  font-size: 0.625rem; font-weight: 600; letter-spacing: 0.09em; text-transform: uppercase; line-height: 1;
+  font-size: 0.72rem; font-weight: 600; line-height: 1;
   color: var(--color-muted); white-space: nowrap; cursor: default; user-select: none;
 }
 /* a hairline after the caption ties it to its track (a section rule, not a control) */
@@ -405,6 +405,13 @@ textarea.ui-control { min-height: 5rem; resize: vertical; line-height: var(--lin
   border: 1px solid var(--glass-border-strong);
   box-shadow: var(--shadow-sm);
 }
+/* In Study the tool you're in is marked like a word on a page: a highlighter stroke across the lower half of its
+   label (the signature detail), not a raised pill. The Hero world keeps its pixel bar (pixel-ui.css). */
+[data-theme="study"] .ui-tab__bar {
+  inset: auto 0.55rem 0.5rem; height: 0.62em; border: 0; box-shadow: none; border-radius: 2px 3px 2px 4px;
+  background: var(--highlighter); transform: skewX(-8deg);
+}
+[data-theme="study"] .ui-tab[aria-current="page"] { font-weight: 600; }
 /* A tab that is a link (route-based sub-navigation, see components/shell/SubNav.tsx). */
 a.ui-tab { display: inline-flex; align-items: center; text-decoration: none; }
 /* A count on a tab (cards due on Review). */
@@ -563,9 +570,7 @@ a.ui-tab { display: inline-flex; align-items: center; text-decoration: none; }
   font-family: var(--font-label);
   font-size: 0.6875rem;
   font-weight: 600;
-  letter-spacing: var(--label-tracking);
   line-height: 1.4;
-  text-transform: uppercase;
   white-space: nowrap;
 }
 .ui-badge--accent { --badge-tone: var(--color-accent-text); }

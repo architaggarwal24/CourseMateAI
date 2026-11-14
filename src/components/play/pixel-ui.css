@@ -116,7 +116,7 @@
 @keyframes px-blink { 50% { opacity: 0; } }
 
 /* ── badges, chips, fields ───────────────────────────────────────────────────────────────────────────────────── */
-[data-theme="play"] .ui-badge { border-radius: 0; border-width: 2px; font-family: var(--font-label); font-size: 0.55rem; letter-spacing: 0.04em; }
+[data-theme="play"] .ui-badge { border-radius: 0; border-width: 2px; font-family: var(--font-label); font-size: 0.55rem; letter-spacing: 0.04em; text-transform: uppercase; }
 [data-theme="play"] :is(.hero-header__stat, .hero-bonus) { border: 2px solid var(--px-rim); border-radius: 0; box-shadow: 2px 2px 0 0 var(--px-ink); font-family: var(--font-label); font-size: 0.62rem; }
 [data-theme="play"] :is(.ui-control, .ui-select select, input, select, textarea) { border-radius: 0; }
 [data-theme="play"] .ui-control { border-width: 2px; }

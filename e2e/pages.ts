@@ -37,6 +37,7 @@ export const PAGES: PageCase[] = [
   { name: "account: plan & usage", path: "/account/usage", auth: true, ready: "role=heading[name='Plan & usage']" },
   { name: "account: settings", path: "/account/settings", auth: true, ready: "role=heading[name='Settings']" },
   { name: "account: history", path: "/account/history", auth: true, ready: "main" },
+  { name: "account: trash", path: "/account/trash", auth: true, ready: "role=list[name='Deleted items']" },
   { name: "account: security", path: "/account/security", auth: true, ready: "role=heading[name='Security']" },
   { name: "account: admin", path: "/account/admin", auth: true, ready: "role=list[name='Accounts']" },
 ];

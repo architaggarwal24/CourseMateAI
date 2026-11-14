@@ -3,9 +3,10 @@
 import { useEffect, useMemo, useState } from "react";
 import { AlertTriangle, Coins, Lock, Minus, Plus, RotateCcw, Shirt, Sparkles, Swords, Zap } from "@/components/ui/icons";
 import PixelSprite from "@/components/arena/pixel/PixelSprite";
-import { Badge, Button, Tabs } from "@/components/ui";
+import { Badge, Button, ButtonLink, Tabs } from "@/components/ui";
 import { useMyHero, type HeroBuild, type HeroView } from "@/hooks/useMyHero";
 import { heroFighter } from "@/lib/pixel/appearance";
+import { ROUTES } from "@/lib/routes";
 import { cn } from "@/lib/utils";
 
 const BRANCH: Record<"o" | "d" | "m", string> = { o: "Offense", d: "Defense", m: "Mind" };
@@ -57,7 +58,18 @@ function Styles({ v }: { v: HeroView }) {
               <p className="m-0 font-semibold text-fg">{st.name}{on && <Badge tone="success" className="ml-2">Equipped</Badge>}</p>
               <p className="m-0 text-sm text-fg-2"><Zap size={12} className="inline" aria-hidden="true" /> {st.bonus}</p>
               <p className="m-0 text-sm text-fg-muted"><AlertTriangle size={12} className="inline" aria-hidden="true" /> {st.weakness.name}: {st.weakness.text}</p>
-              {!st.owned && <p className="m-0 text-xs text-fg-muted"><Lock size={10} className="inline" aria-hidden="true" /> {st.how}{st.progress !== null ? ` (${st.progress}%)` : ""}</p>}
+              {!st.owned && (
+                <div className="hb-style__lock">
+                  <p className="m-0 text-xs text-fg-muted"><Lock size={10} className="inline" aria-hidden="true" /> Unlocks: {st.how}</p>
+                  {st.progress !== null && (
+                    <span className="hb-style__progress">
+                      <span className="hb-points__bar" role="progressbar" aria-label={`${st.name}: ${st.how}`} aria-valuemin={0} aria-valuemax={100} aria-valuenow={st.progress}><span style={{ width: `${st.progress}%` }} /></span>
+                      <span className="pixel-font">{st.progress}%</span>
+                      <ButtonLink size="sm" variant="ghost" href={ROUTES.heroMastery}>Challenges</ButtonLink>
+                    </span>
+                  )}
+                </div>
+              )}
               <div className="flex flex-wrap gap-2 mt-1">
                 {st.owned && !on && <Button size="sm" onClick={() => void saveBuild({ ...v.build, style: st.id })}><Swords size={14} aria-hidden="true" />Fight with {st.name}</Button>}
                 {st.for_sale && (

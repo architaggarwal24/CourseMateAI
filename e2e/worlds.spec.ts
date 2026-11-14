@@ -36,7 +36,7 @@ test("Stage 5: the bridges - reviews due and the weekly invasion in Hero; Insigh
   const invasion = page.getByRole("region", { name: "Invasion! The Kraken comes" });
   await expect(invasion).toContainText("ATP, Mitochondria, Nucleus");
   await expect(invasion.getByRole("link", { name: /Face the invasion/ })).toHaveAttribute("href", /\/arena\?invasion=1&doc=/);
-  await page.getByRole("region", { name: /reviews? awaits?/ }).getByRole("link", { name: "Answer the call" }).click();
+  await page.getByRole("region", { name: /reviews? awaits?/ }).getByRole("link", { name: /^Review \d+ cards?$/ }).click();
   await expect(page).toHaveURL(/\/study\?tab=review/);
   await page.goto("/today");
   await expect(page.getByText(/Something stirs in the Hero world/)).toBeVisible();
@@ -70,7 +70,13 @@ test("Stage 7: a season's banner on the hub and Today; the Adventurer card downl
   const banner = page.getByRole("region", { name: "Finals Week" });
   await expect(banner).toBeVisible();
   await expect(banner.getByRole("button", { name: /Face The Exam Warden/ })).toBeVisible();
-  await page.goto("/champion");
+  await page.goto("/arena");
+  // the hero profile: the button beside the sound switch; on a phone (no side panel), in the pause menu
+  if (page.viewportSize()!.width < 768) {
+    await page.getByRole("button", { name: "Menu" }).click();
+    await page.getByRole("dialog", { name: "Paused" }).getByRole("link", { name: "Hero profile" }).click();
+  } else await page.getByRole("link", { name: "Hero profile" }).click();
+  await expect(page).toHaveURL(/\/adventurer$/);
   const card = page.getByTestId("adventurer-card");
   await expect(card).toContainText("alice");
   await expect(card).toContainText("5/13 hunted");

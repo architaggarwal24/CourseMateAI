@@ -6,6 +6,7 @@
 //     page uses src/server/account/admin.ts, which protects the owner)
 //   * OWNER_EMAIL: that account, once its email is verified, is always an admin and on the top plan
 // One instance per request: the D1 binding and the site's address come with the request.
+import { TERMS_VERSION } from "@/lib/legal";
 import { betterAuth, type BetterAuthOptions } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { admin, emailOTP, twoFactor, username } from "better-auth/plugins";
@@ -168,7 +169,12 @@ export function authOptions(d1: D1Database, settings: AuthSettings, { origin, ma
     // Google is trusted; GitHub links only verified addresses (see socialProviders above)
     account: { accountLinking: { enabled: true, trustedProviders: ["google"] } },
     user: {
-      additionalFields: { timezone: { type: "string", required: false, input: true } },
+      additionalFields: {
+        timezone: { type: "string", required: false, input: true },
+        // the Terms and Privacy Policy accepted at sign-up (only the current version counts; see the create hook)
+        termsVersion: { type: "string", required: false, input: true },
+        termsAcceptedAt: { type: "date", required: false, input: false },
+      },
       deleteUser: { enabled: true },
     },
     rateLimit: {
@@ -198,6 +204,10 @@ export function authOptions(d1: D1Database, settings: AuthSettings, { origin, ma
           before: async (user: Record<string, unknown>) => {
             const email = String(user.email).trim().toLowerCase();
             const data: Record<string, unknown> = { ...user, email, role: "user" };
+            // the box at sign-up: recorded with the date, and only for the version on the page now (anything else
+            // means "not accepted": the app asks once you're in)
+            if (data.termsVersion === TERMS_VERSION) data.termsAcceptedAt = new Date();
+            else { data.termsVersion = null; data.termsAcceptedAt = null; }
             if (!data.username) {
               const name = await freeUsername(email);
               data.username = name.toLowerCase();

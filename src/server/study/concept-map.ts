@@ -6,6 +6,7 @@
 //           can be started again.
 //   view    the map of a document, or of a course (its documents' maps merged by concept name), every concept
 //           coloured by mastery heat: new / weak / learning / strong.
+import * as log from "../log";
 import { and, eq, inArray, sql } from "drizzle-orm";
 import type { CurrentUser, RequestContext } from "../context";
 import { conceptMaps, conceptMastery, documents, type documentChunks } from "../db/schema";
@@ -65,7 +66,7 @@ export async function extract(ctx: RequestContext, caller: Caller, chunks: Chunk
       ], conceptMapDraft, { temperature: 0.3, timeoutMs: CALL_TIMEOUT_MS, maxOutputTokens: 6000, attempts: 1 });
     } catch (e) {
       last = e;
-      console.warn(`[coursemate] concept map attempt ${attempt + 1} failed: ${e instanceof Error ? e.message.slice(0, 120) : e}`);
+      log.warn(`[coursemate] concept map attempt ${attempt + 1} failed: ${e instanceof Error ? e.message.slice(0, 120) : e}`);
       if (fatal(e)) break;
     }
   }
@@ -127,7 +128,7 @@ export async function build(ctx: RequestContext, user: CurrentUser, id: string) 
         const data = await extract(ctx, caller, chunks, stage);
         await setRow(ctx, d.fileHash, { status: "ready", stage: null, error: null, dataJson: JSON.stringify(data), leaseUntil: null });
       } catch (e) {
-        console.warn(`[coursemate] concept map failed for ${d.fileHash.slice(0, 12)}: ${e instanceof Error ? e.message.slice(0, 120) : e}`);
+        log.warn(`[coursemate] concept map failed for ${d.fileHash.slice(0, 12)}: ${e instanceof Error ? e.message.slice(0, 120) : e}`);
         await setRow(ctx, d.fileHash, { status: "failed", stage: null, error: FAILED_TEXT, leaseUntil: null });
       }
     }));

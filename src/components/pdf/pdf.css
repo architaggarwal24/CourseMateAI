@@ -22,17 +22,18 @@
 .pdf-panel__notice { display: flex; gap: var(--space-2); align-items: flex-start; padding: var(--space-3); border-radius: var(--radius-md); background: var(--glass-tint); border: 1px solid var(--glass-border); color: var(--color-text-secondary); font-size: 0.875rem; }
 .pdf-panel__notice p { margin: 0; }
 .pdf-panel__quote { margin: 0; }
-.pdf-panel__quote figcaption { font-size: 0.72rem; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; color: var(--color-muted); margin-bottom: var(--space-2); }
+.pdf-panel__quote figcaption { font-size: 0.8rem; font-weight: 600; color: var(--color-text-secondary); margin-bottom: var(--space-2); }
 .pdf-panel__quote blockquote { margin: 0; padding: var(--space-3) var(--space-4); border-left: 3px solid var(--color-reward); border-radius: var(--radius-sm); background: var(--glass-tint); color: var(--color-text-secondary); font-size: 0.875rem; line-height: 1.6; }
 
 /* chat: citation markers in the answer, and the list of sources under it */
+/* a cited page: highlighted like a reference in the margin (the Study signature) */
 .cite-mark {
   display: inline-grid; place-items: center; min-width: 1.35em; height: 1.35em; margin: 0 1px; padding: 0 0.3em;
-  vertical-align: 0.15em; border-radius: 6px; border: 1px solid color-mix(in srgb, var(--color-accent-text) 40%, transparent);
-  background: color-mix(in srgb, var(--color-accent) 14%, transparent); color: var(--color-accent-text);
+  vertical-align: 0.15em; border-radius: 2px 3px 2px 4px; border: 0;
+  background: var(--highlighter, color-mix(in srgb, var(--color-accent) 14%, transparent)); color: var(--color-text);
   font-size: 0.72em; font-weight: 700; line-height: 1; cursor: pointer; font-variant-numeric: tabular-nums;
 }
-.cite-mark:hover { background: color-mix(in srgb, var(--color-accent) 26%, transparent); }
+.cite-mark:hover { box-shadow: inset 0 -2px 0 var(--color-text-secondary); }
 .cite-list { margin: var(--space-3) 0 0; padding: 0; list-style: none; display: flex; flex-wrap: wrap; gap: var(--space-1); }
 .cite-chip.ui-btn { gap: var(--space-1); font-weight: 500; }
 .cite-chip__n { font-weight: 700; color: var(--color-accent-text); font-variant-numeric: tabular-nums; }

@@ -22,7 +22,7 @@ describe("the profile", () => {
     render(<ProfilePage />);
     const list = screen.getByRole("list", { name: "Your account" });
     const hrefs = within(list).getAllByRole("link").map((a) => a.getAttribute("href"));
-    expect(hrefs).toEqual(["/account/settings#account", "/account/security", "/account/usage", "/account/history"]);
+    expect(hrefs).toEqual(["/account/settings#account", "/account/security", "/account/usage", "/account/history", "/account/trash"]);
     expect(within(list).getByRole("link", { name: /Name, username and email/ })).toBeTruthy();
     expect(within(list).getByRole("link", { name: /a@example.com/ })).toBeTruthy();   // shown, so you can recognise it
   });

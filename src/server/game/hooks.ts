@@ -1,5 +1,6 @@
 // What the study tools pay out (Stage 4.5; the bookkeeping that used to sit in backend/routers/study.py, review.py
 // and services/exam_service.py). A failure here never fails the study action itself: the answer was already given.
+import * as log from "../log";
 import type { RequestContext } from "../context";
 import { award, bumpQuest, markActive, questsOnAction, updateStreak } from "./progression";
 import { incrementProgress, localDate, type Player } from "./store";
@@ -11,7 +12,7 @@ const studied = (ctx: RequestContext, p: Player, event: StudyEvent | null) => sa
 type Reward = Awaited<ReturnType<typeof award>> | null;
 
 async function safely<T>(what: string, fn: () => Promise<T>): Promise<T | null> {
-  try { return await fn(); } catch (e) { console.warn(`[coursemate-game] ${what} failed`, e instanceof Error ? e.message : e); return null; }
+  try { return await fn(); } catch (e) { log.warn(`[coursemate-game] ${what} failed`, e instanceof Error ? e.message : e); return null; }
 }
 
 /** A real chat question: counts for the "ask questions" quest; every 5th answered one pays a bundle. */

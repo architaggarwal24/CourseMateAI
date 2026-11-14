@@ -10,5 +10,6 @@
   "has_password": true,
   "tier": "archmage",
   "tier_name": "Archmage",
-  "role": "admin"
+  "role": "admin",
+  "terms_version": "2026-11-14"
 }

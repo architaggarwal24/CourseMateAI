@@ -12,12 +12,19 @@ for (const tab of ["quests", "arena", "bestiary", "shop", "inventory", "champion
     const panel = page.locator(`[data-hero-tab="${tab}"]`);
     await expect(panel).toBeVisible();
     const phone = info.project.name.startsWith("mobile");
-    const scroller = phone ? page.locator(".ws--page") : panel;
+    // Shop, Inventory and Forge on a desktop: the side panel stays put and only the grid beside it scrolls
+    const split = !phone && ["shop", "inventory", "forge"].includes(tab);
+    const scroller = phone ? page.locator(".ws--page") : split ? panel.locator(".hero-split__main") : panel;
     const box = await scroller.evaluate((el) => ({ h: el.clientHeight, vh: window.innerHeight, ov: getComputedStyle(el).overflowY }));
     expect(box.ov).toBe("auto");
     expect(box.h).toBeLessThanOrEqual(box.vh);                                     // bounded by the screen
     // and it really scrolls (polled: the tab's content may still be arriving, and it grows with it)
     await expect.poll(() => scroller.evaluate((el) => { if (el.scrollHeight <= el.clientHeight + 4) return 1; el.scrollTop = 200; return el.scrollTop; })).toBeGreaterThan(0);
+    if (split) {
+      const side = panel.locator(".hero-split__side");
+      expect(await side.evaluate((el) => getComputedStyle(el).overflowY)).toBe("auto");
+      expect(await panel.evaluate((el) => el.scrollTop)).toBe(0);                // the page itself didn't move: the side panel is where it was
+    }
     if (phone && !["quests", "arena", "bestiary"].includes(tab)) {
       // Champion's tabs stay in view once the header has scrolled away, and nothing is wider than the screen
       // (a tab shorter than the header can't scroll the header away: then there is nothing to pin)

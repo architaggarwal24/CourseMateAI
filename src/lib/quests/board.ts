@@ -33,7 +33,25 @@ export const DAILY_CALL: Record<string, Call> = {
   maintain_streak: { place: "today" },
 };
 
-/** The link behind "Answer the call". */
+/**
+ * What a quest's button says: the thing you'll do there (the unslop pass: every scroll used to say "Answer the
+ * call", which says nothing about where it goes).
+ */
+export function callLabel(call: Call | undefined): string {
+  switch (call?.place) {
+    case "arena": return call.topic ? "Hunt it" : "Fight";
+    case "chat": return "Ask in Chat";
+    case "quiz": return "Take a quiz";
+    case "review": return "Review cards";
+    case "notes": return "Write notes";
+    case "flashcards": return "Flip flashcards";
+    case "exam": return "Sit an exam";
+    case "bestiary": return "Open the Bestiary";
+    default: return "Study today";
+  }
+}
+
+/** The link behind a quest's button. */
 export function callHref(call: Call | undefined): string {
   switch (call?.place) {
     case "arena": return call.topic ? `${ROUTES.heroArena}?topic=${encodeURIComponent(call.topic)}` : ROUTES.heroArena;

@@ -10,7 +10,8 @@ test("the plan, its meters and the plans to compare", async ({ page }, info) => 
   await page.goto("/account/usage");
   await expect(page.getByRole("heading", { name: "Scholar", level: 2 })).toBeVisible();
   await expect(page.getByRole("progressbar", { name: "AI calls today" })).toHaveAttribute("aria-valuetext", "126 of 150");
-  await expect(page.getByText("₹299")).toBeVisible();
+  await expect(page.locator(".pu-card__price").getByText("₹299")).toBeVisible();
+  await expect(page.getByText(/Renews every month at ₹299 until you cancel/)).toBeVisible();      // said before paying
   await page.screenshot({ path: `previews/stage-4a-usage-${info.project.name}.png`, fullPage: true });
   await settle(page);
   const axe = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21aa"]).analyze();

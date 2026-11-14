@@ -1,7 +1,9 @@
 "use client";
+import DeskObject from "@/components/study/DeskObject";
+import { rewardText } from "@/lib/game/reward-text";
 import { announceAchievements } from "@/lib/fx/celebrate";
 import { useState, useEffect, useCallback } from "react";
-import { HelpCircle, Brain, Zap, Target, TrendingUp, History, Plus, Minus, ListChecks } from "@/components/ui/icons";
+import { HelpCircle, Brain, Zap, Target, TrendingUp, History, Plus, Minus } from "@/components/ui/icons";
 import HistoryPanel from "../history/HistoryPanel";
 import QuizQuestionView from "./QuizQuestionView";
 import QuizReview from "./QuizReview";
@@ -123,7 +125,7 @@ export default function QuizView({ documentId, restoreSessionId, initialTopic }:
         if (done && Array.isArray(done.missed)) setSummary({ missed: done.missed, added_to_review: done.added_to_review ?? 0, weak_concepts: done.weak_concepts ?? [] });
         const res = done?.rewards;
         if (res?.ok) {
-          toast.success(`+${res.xp_gained} XP | +${res.coins_gained} Coins`, { icon: "🎉" });
+          toast.success(rewardText(res.xp_gained, res.coins_gained));
           announceAchievements(res.new_achievements);
           refreshIfStale(5_000);
         }
@@ -270,10 +272,10 @@ export default function QuizView({ documentId, restoreSessionId, initialTopic }:
         <div className="flex-1 min-h-0 overflow-y-auto px-6 py-10">
           <div className="mx-auto w-full max-w-[72ch]">
             <div className="study-intro">
-              <span className="study-intro__icon" aria-hidden="true"><ListChecks size={26} /></span>
+              <DeskObject kind="quiz" />
               <div>
-                <h3>Create a quiz</h3>
-                <p>Pick a topic from your document and answer one question at a time.</p>
+                <h3>Quiz yourself</h3>
+                <p>Name a topic from your PDF. Questions come one at a time, each with the page that answers it.</p>
               </div>
             </div>
 

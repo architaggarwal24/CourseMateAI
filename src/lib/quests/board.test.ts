@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { DAILY_CALL, callHref, dailyScroll } from "./board";
+import { DAILY_CALL, callHref, callLabel, dailyScroll } from "./board";
 
 // Stage Q1: "Answer the call" opens the exact place a quest is done.
 describe("the quest board's links", () => {
@@ -9,6 +9,16 @@ describe("the quest board's links", () => {
     expect(callHref({ place: "review" })).toBe("/study?tab=review");
     expect(callHref({ place: "bestiary" })).toBe("/bestiary");
     expect(callHref(undefined)).toBe("/today");
+  });
+
+  it("each button says what you'll do there (the unslop pass: no more \"Answer the call\" on everything)", () => {
+    expect(callLabel({ place: "quiz" })).toBe("Take a quiz");
+    expect(callLabel({ place: "review" })).toBe("Review cards");
+    expect(callLabel({ place: "arena", topic: "mechanics" })).toBe("Hunt it");
+    expect(callLabel({ place: "arena" })).toBe("Fight");
+    expect(callLabel(undefined)).toBe("Study today");
+    const labels = new Set(Object.values(DAILY_CALL).map(callLabel));
+    expect(labels.size).toBeGreaterThan(5);
   });
 
   it("every daily quest has a place, and becomes a scroll", () => {

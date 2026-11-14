@@ -49,6 +49,9 @@
   --color-highlight: var(--color-accent);
   --color-highlight-text: var(--color-accent-text);
   --color-on-highlight: var(--color-on-accent);
+  /* Study's one signature detail (the unslop pass, "a desk at exam time"): a highlighter stroke. It marks the tool
+     you're in, a cited page, a weak spot. Never a fill for big areas; text on it keeps its own colour. */
+  --highlighter: rgba(250, 204, 21, 0.3);
 
   /* status */
   --color-success: #17784a;
@@ -154,6 +157,7 @@
 :root[data-mode="light"],
 :root[data-mode="light"] [data-theme="study"] {
   color-scheme: light;
+  --highlighter: #fdeb8a;
 
   --color-surface: #ffffff;
   --color-surface-sunken: #f5f5f5;

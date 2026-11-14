@@ -33,6 +33,13 @@ describe("the Hero panel (the two worlds, Stage 1)", () => {
     ]);
     expect(screen.getByRole("link", { name: "Return to Study" }).getAttribute("href")).toBe("/today");
     expect(screen.getByRole("button", { name: "Sound" })).toBeTruthy();
+    expect(screen.getByRole("link", { name: "Hero profile" }).getAttribute("href")).toBe("/adventurer");   // beside the sound switch
+  });
+
+  it("the profile button is marked current on the profile page", () => {
+    nav.path = "/adventurer";
+    render(<HeroSidebar />);
+    expect(screen.getByRole("link", { name: "Hero profile" }).getAttribute("aria-current")).toBe("page");
   });
 
   it("marks where you are, Champion's screens by their tab", () => {

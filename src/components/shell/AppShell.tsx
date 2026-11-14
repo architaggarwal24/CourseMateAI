@@ -15,6 +15,7 @@ import PauseMenu from "./PauseMenu";
 import HeroWorldFx from "./HeroWorldFx";
 import HealthyNudge from "./HealthyNudge";
 import FocusBar from "./FocusBar";
+import TermsGate from "@/components/legal/TermsGate";
 import { useFocusMode } from "@/hooks/useFocusMode";
 import { rememberPage } from "@/lib/worlds";
 import BottomNav from "./BottomNav";
@@ -77,11 +78,19 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       {focusOn && <FocusBar />}
       {play ? <HeroSidebar /> : <NavSidebar />}
       <main id="main-content" tabIndex={-1} className="app-main" data-theme={play ? "play" : undefined}>
-        {authLoading || signedOut ? (
+        {authLoading && !signedOut && !play ? (
+          // Study: the page's shape while you're recognised (a heading and three cards), not a spinner in the middle
+          <div className="app-skeleton" role="status" aria-busy="true">
+            <span className="sr-only">Loading CourseMateAI…</span>
+            <span className="app-skeleton__title" aria-hidden="true" />
+            <span className="app-skeleton__line" aria-hidden="true" />
+            <span className="app-skeleton__grid" aria-hidden="true"><span /><span /><span /></span>
+          </div>
+        ) : authLoading || signedOut ? (
           <div className="flex flex-1 items-center justify-center">
             <div className="text-center app-loading" data-world={play ? "hero" : "study"}>
               <span className="app-loading__orb" aria-hidden="true" />
-              <p className="text-fg-muted text-sm mt-5">{signedOut ? "Taking you to the login page…" : play ? "Opening the Hero world…" : "Loading CourseMateAI…"}</p>
+              <p className="text-fg-muted text-sm mt-5">{signedOut ? "Taking you to the login page…" : "Opening the Hero world…"}</p>
               {play && !signedOut && <LoreTip />}
             </div>
           </div>
@@ -98,6 +107,8 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       <AchievementBanner />
       {user && <LevelUpCeremony />}
       {user && <UpgradeCeremony />}
+      {/* the Terms / Privacy Policy, accepted once (legal and trust pass) */}
+      <TermsGate />
     </div>
     </ThemeScope>
   );

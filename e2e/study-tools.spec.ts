@@ -19,19 +19,41 @@ test("Learn and Practice are captions over their own tracks, not tabs", async ({
   expect(capBox.y + capBox.height).toBeLessThanOrEqual(chatBox.y + 1);          // above the tabs, not beside them
 });
 
-test("delete a PDF: confirm, it's gone, back to its course", async ({ page }) => {
+test("delete a PDF: confirm, it moves to the Trash (Undo in the toast), back to its course", async ({ page }) => {
   await mockApi(page, { documents: [{ ...DOCUMENT }, { ...DOCUMENT_2 }] });
   await page.goto("/study?tab=chat&doc=doc-1");
   await expect(page.locator("header[aria-label='Active document']")).toContainText("Cell Biology.pdf");
   await page.getByRole("button", { name: "Delete PDF" }).click();
   const dialog = page.getByRole("alertdialog", { name: "Delete this PDF?" });
-  await expect(dialog).toContainText("can't be undone");
+  await expect(dialog).toContainText("restore it from Account → Trash for 30 days");
   const sent = page.waitForRequest((r) => r.method() === "DELETE" && r.url().endsWith("/documents/doc-1"));
-  await dialog.getByRole("button", { name: "Delete PDF" }).click();
+  await dialog.getByRole("button", { name: "Move to Trash" }).click();
   await sent;
   await expect(dialog).toBeHidden();
+  await expect(page.getByRole("button", { name: "Undo" })).toBeVisible();
   await expect(page).toHaveURL(/tab=overview&doc=course-1/);
   await expect(page.locator("header[aria-label='Active document']")).toContainText("Life sciences");
+});
+
+test("the Trash: a deleted PDF waits there with its days left; Restore brings it back, Delete forever asks first", async ({ page }) => {
+  await mockApi(page, { documents: [{ ...DOCUMENT }, { ...DOCUMENT_2 }] });
+  await page.goto("/study?tab=chat&doc=doc-1");
+  await page.getByRole("button", { name: "Delete PDF" }).click();
+  await page.getByRole("alertdialog", { name: "Delete this PDF?" }).getByRole("button", { name: "Move to Trash" }).click();
+  await page.goto("/account/trash");
+  const list = page.getByRole("list", { name: "Deleted items" });
+  await expect(list.getByRole("listitem")).toHaveCount(2);
+  await expect(list).toContainText("Cell Biology.pdf");
+  await expect(list.getByRole("listitem").filter({ hasText: "Old chemistry" })).toContainText("3 days left");
+  const restored = page.waitForRequest((r) => r.method() === "POST" && r.url().endsWith("/trash/doc-1/restore"));
+  await list.getByRole("listitem").filter({ hasText: "Cell Biology.pdf" }).getByRole("button", { name: "Restore" }).click();
+  await restored;
+  await expect(page.getByText("Cell Biology.pdf is back")).toBeVisible();
+  await page.getByRole("button", { name: "Delete Old chemistry forever" }).click();
+  const ask = page.getByRole("dialog", { name: "Delete forever?" });
+  await expect(ask).toContainText("can't be undone");
+  await ask.getByRole("button", { name: "Delete forever" }).click();
+  await expect(page.getByText("Nothing in the Trash")).toBeVisible();
 });
 
 test("admin: Test connection shows the reply, or the error with a hint", async ({ page }) => {

@@ -31,6 +31,9 @@ export const user = sqliteTable("user", {
   banReason: text("ban_reason"),
   banExpires: integer("ban_expires", { mode: "timestamp_ms" }),
   timezone: text("timezone"),
+  // the Terms of Service and Privacy Policy accepted (lib/legal.ts TERMS_VERSION), and when
+  termsVersion: text("terms_version"),
+  termsAcceptedAt: integer("terms_accepted_at", { mode: "timestamp_ms" }),
 });
 
 export const session = sqliteTable("session", {
@@ -200,6 +203,40 @@ export const courseDocuments = sqliteTable("course_documents", {
   position: integer("position").notNull(),
   addedAt: text("added_at").notNull(),
 }, (t) => [primaryKey({ columns: [t.courseId, t.documentId] }), index("course_documents_doc_idx").on(t.documentId)]);
+
+// ── the Trash (data-loss safety, after the BreakingBreach checklist): a deleted PDF or course waits here for 30 days
+//    (src/server/study/trash.ts). The live tables never see it, so no query has to remember to skip it. A PDF keeps
+//    its R2 file and search vectors until it is deleted for good; its chunks wait in trash_chunks. ─────────────────
+export const trash = sqliteTable("trash", {
+  id: text("id").primaryKey(),                                    // the document's or course's own id
+  userId: integer("user_id").notNull().references(() => user.id, { onDelete: "cascade" }),
+  kind: text("kind", { enum: ["document", "course"] }).notNull(),
+  name: text("name").notNull(),
+  row: text("row").notNull(),                                     // the live row, as JSON
+  links: text("links").notNull().default("[]"),                   // course memberships, as JSON
+  deletedAt: text("deleted_at").notNull(),
+  expiresAt: text("expires_at").notNull(),
+}, (t) => [index("trash_user_idx").on(t.userId, t.expiresAt)]);
+
+export const trashChunks = sqliteTable("trash_chunks", {
+  userId: integer("user_id").notNull().references(() => user.id, { onDelete: "cascade" }),
+  documentId: text("document_id").notNull(),
+  idx: integer("idx").notNull(),
+  page: integer("page").notNull(),
+  text: text("text").notNull(),
+}, (t) => [primaryKey({ columns: [t.documentId, t.idx] })]);
+
+/** Who deleted what, and when (no foreign key: an account's own deletion is recorded after it is gone). Kept a year. */
+export const deletionLog = sqliteTable("deletion_log", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  userId: integer("user_id").notNull(),
+  actorId: integer("actor_id").notNull(),
+  action: text("action", { enum: ["trashed", "restored", "purged", "expired", "account_deleted"] }).notNull(),
+  kind: text("kind", { enum: ["document", "course", "account"] }).notNull(),
+  itemId: text("item_id"),
+  itemName: text("item_name"),
+  at: text("at").notNull(),
+}, (t) => [index("deletion_log_user_idx").on(t.userId, t.at)]);
 
 // ── AI use (Stage 4.3: src/server/ai). Per user per UTC day (the plan's quotas, Plan & usage), and per model per
 //    day (costs, the global daily spend cap). Cost in millionths of a US dollar. ────────────────────────────────

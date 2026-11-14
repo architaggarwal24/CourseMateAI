@@ -85,7 +85,7 @@ describe("course editor", () => {
     expect(log.puts[0]).toEqual({ name: "Biology", description: "", document_ids: ["d1"] });
 
     fireEvent.click(within(dialog).getByRole("button", { name: "Delete" }));
-    expect(dialog.textContent).toContain("Its documents stay in your library");
+    expect(dialog.textContent).toContain("Its PDFs stay in your library, and you can restore the course for 30 days");
     expect(log.deletes).toBe(0);
     fireEvent.click(within(dialog).getByRole("button", { name: "Delete course" }));
     await waitFor(() => expect(deleted).toHaveBeenCalled());
@@ -172,7 +172,7 @@ describe("course overview", () => {
 });
 
 describe("DeleteDocument from a course", () => {
-  it("a PDF that is also in another course only leaves this one; otherwise it is deleted for good", async () => {
+  it("a PDF that is also in another course only leaves this one; otherwise it moves to the Trash", async () => {
     const calls: string[] = [];
     vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
       const path = new URL(urlOf(input)).pathname.replace("/api/v1", "");
@@ -194,8 +194,8 @@ describe("DeleteDocument from a course", () => {
 
     useCourses.setState({ courses: [course()], loaded: true });
     render(<DeleteDocument doc={{ id: "d2", filename: "chemistry.pdf" }} course={course()} onClose={vi.fn()} onDeleted={done} />);
-    expect(screen.getByRole("alertdialog", { name: "Delete this PDF?" }).textContent).toMatch(/leaves Life sciences and, since it's in no other course, is deleted for good/);
-    fireEvent.click(screen.getByRole("button", { name: "Delete PDF" }));
+    expect(screen.getByRole("alertdialog", { name: "Delete this PDF?" }).textContent).toMatch(/leaves Life sciences and, since it's in no other course, moves to the Trash[\s\S]*restore it from Account → Trash for 30 days/);
+    fireEvent.click(screen.getByRole("button", { name: "Move to Trash" }));
     await waitFor(() => expect(done).toHaveBeenCalledWith("d2", true));
     expect(calls.at(-1)).toBe("DELETE /documents/d2");
   });

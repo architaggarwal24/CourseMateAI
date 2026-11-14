@@ -26,7 +26,7 @@ export function useDocumentUpload(documentId: string | undefined, courseId?: str
     if (file.size > MAX_PDF_BYTES) { toast.error(`${file.name} is too large. Maximum size is 50MB`); return undefined; }
     try {
       const document = await uploadDocument(documentId, file, courseId);
-      if (document.status === "ready") toast.success(`✅ ${document.filename} ready!`);   // same file as before: reused
+      if (document.status === "ready") toast.success(`${document.filename} is ready to study`);   // same file as before: reused
       return document;
     } catch (error) {
       toast.apiError(error, { onRetry: retry });

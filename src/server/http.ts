@@ -1,5 +1,6 @@
 // Small pieces every Worker route shares: an error that becomes the API's error shape, JSON bodies, the
 // same-site check for changes, and fixed-window rate limits kept in D1 (so every Worker instance shares them).
+import * as log from "./log";
 import { eq, sql } from "drizzle-orm";
 import type { ApiErrorAction } from "@/lib/api/errors";
 import type { Db } from "./db";
@@ -21,7 +22,7 @@ export class HttpError extends Error {
 
 export function toResponse(e: unknown): Response {
   if (e instanceof HttpError) return apiError(e.status, e.code, e.message, e.action, e.details, e.headers);
-  console.error("[coursemate] unhandled error", e);
+  log.error("[coursemate] unhandled error", e);
   return apiError(500, "internal_error", "Something went wrong on our side. Please try again.", "retry");
 }
 

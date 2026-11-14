@@ -1,5 +1,7 @@
 "use client";
 
+import DeskObject from "@/components/study/DeskObject";
+import { rewardText } from "@/lib/game/reward-text";
 import { usePlanChanged } from "@/hooks/usePlanChanged";
 import { useCallback, useEffect, useState } from "react";
 import { CheckCircle2, Download, GraduationCap, Plus, Repeat, X, XCircle } from "@/components/ui/icons";
@@ -93,7 +95,7 @@ export default function ExamView({ documentId }: { documentId?: string }) {
       const graded = await submitExam(exam.id);
       setExam(graded);
       setPhase("results");
-      if (graded.rewards?.ok) toast.success(`Exam complete: +${graded.rewards.xp_gained} XP | +${graded.rewards.coins_gained} Coins`, { icon: "🎓" });
+      if (graded.rewards?.ok) toast.success("Exam handed in", { description: rewardText(Number(graded.rewards.xp_gained), Number(graded.rewards.coins_gained)) });
       void refreshIfStale(5_000);
       void useReview.getState().load();               // the misses joined the review queue
     } catch (e) {
@@ -157,7 +159,7 @@ export default function ExamView({ documentId }: { documentId?: string }) {
   return frame(
     <>
       <div className="study-intro">
-        <span className="study-intro__icon" aria-hidden="true"><GraduationCap size={26} /></span>
+        <DeskObject kind="exam" />
         <div>
           <h3>Mock exam</h3>
           <p>A timed test with no hints. You get a score report, and every miss joins your review queue.</p>

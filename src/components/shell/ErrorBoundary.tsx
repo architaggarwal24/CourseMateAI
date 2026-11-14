@@ -1,5 +1,6 @@
 "use client";
 
+import { AlertTriangle } from "@/components/ui/icons";
 import React from "react";
 import { Button } from "@/components/ui";
 import { reportError } from "@/lib/monitoring";
@@ -34,7 +35,7 @@ export class ErrorBoundary extends React.Component<Props, State> {
       if (this.props.fallback) return <>{this.props.fallback}</>;
       return (
         <div className="flex flex-col items-center justify-center p-6 text-center gap-3">
-          <div className="text-2xl">⚠️</div>
+          <AlertTriangle size={24} aria-hidden="true" className="text-ink-red" />
           <p className="text-sm text-fg-muted">Something went wrong in this panel.</p>
           <Button size="sm" onClick={() => this.setState({ hasError: false, error: null })}>
             Try again

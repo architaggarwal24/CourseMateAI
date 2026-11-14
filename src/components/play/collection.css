@@ -1,0 +1,234 @@
+/*
+ * The Hero world's collection screens (Shop, Inventory, Forge) and their shared pieces: a fixed side panel that
+ * shows your champion or the item you clicked, a grid that scrolls beside it, compact item tiles, the filter strip,
+ * the pixel loader and the pixel scrollbars. Colours from tokens only; flat (no gradients, no glows: flat.test.ts).
+ */
+
+/* ── the split: on a desktop the side panel stays put and only the grid scrolls ─────────────────────────────── */
+@media (min-width: 768px) {
+  .ws-page__body:has(> .hero-split--fixed) { overflow: hidden; }
+  .hero-split--fixed { height: 100%; min-height: 0; }
+  .hero-split--fixed > .hero-split__side { width: clamp(20rem, 24vw, 27rem); overflow-y: auto; overscroll-behavior: contain; }
+  .hero-split--fixed > .hero-split__main { overflow-y: auto; }
+}
+
+/* the panel's resting content: the champion, a hint, what is worn */
+.side-panel { display: grid; gap: var(--space-3); }
+.side-panel .hero-label { margin: 0; }
+.side-panel .hero-stage { min-height: 12rem; align-items: flex-end; }
+.side-panel__hint { display: flex; gap: var(--space-2); align-items: flex-start; margin: 0; color: var(--color-text-secondary); font-size: 0.8125rem; line-height: 1.5; }
+.side-panel__hint svg { flex: none; margin-top: 2px; color: var(--color-reward); }
+.side-panel__coins { display: inline-flex; align-items: center; gap: var(--space-2); margin: 0; color: var(--color-reward); font-size: 0.8125rem; }
+.side-panel__worn { display: grid; gap: var(--space-2); margin: 0; padding: 0; list-style: none; }
+.side-panel__totals { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-2); margin: 0; }
+.side-panel__totals > div { padding: var(--space-2) var(--space-3); border: 2px solid var(--color-border); background: var(--color-surface-sunken); }
+.side-panel__totals dt { color: var(--color-muted); font-size: 0.75rem; }
+.side-panel__totals dd { margin: 0; font-size: 1rem; }
+
+.worn-row {
+  display: flex; align-items: center; gap: var(--space-3); width: 100%; min-height: 2.75rem; padding: var(--space-2);
+  border: 2px solid var(--color-border); background: var(--color-surface-sunken); color: var(--color-text); text-align: left; cursor: pointer;
+}
+.worn-row:hover { border-color: var(--color-border-strong); background: var(--color-elevated); }
+.worn-row__text { display: grid; min-width: 0; }
+.worn-row__slot { color: var(--color-muted); font-size: 0.6875rem; }
+.worn-row__name { overflow: hidden; font-size: 0.8125rem; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
+
+/* ── the item preview in the side panel ─────────────────────────────────────────────────────────────────────── */
+.ipv { display: grid; gap: var(--space-3); animation: px-in 180ms steps(3, end) both; }
+.ipv__head { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); }
+.ipv__stage {
+  position: relative; display: grid; place-items: end center; height: 14rem; padding: var(--space-3);
+  border: 2px solid var(--rarity, var(--color-border-strong)); background: var(--color-surface-sunken);
+  box-shadow: inset 0 -5px 0 0 color-mix(in srgb, var(--rarity) 35%, transparent);
+}
+.ipv__sprite { width: auto; height: 100%; max-width: 100%; object-fit: contain; object-position: 50% 100%; image-rendering: pixelated; }
+.ipv__stage[data-kind="item"] { place-items: center; }
+.ipv__stage.emote { justify-items: stretch; }
+.ipv__stage .emote__stage { width: 11rem; height: 11rem; margin: -4.5rem 0 0 -5.5rem; }
+.ipv__titlebar {
+  position: absolute; top: var(--space-3); left: 50%; transform: translateX(-50%); margin: 0; padding: 0.3rem 0.6rem; white-space: nowrap;
+  border: 2px solid var(--px-ink); background: var(--color-reward); color: var(--px-ink); font-size: 0.6rem; box-shadow: 3px 3px 0 0 var(--px-ink);
+}
+.ipv .champ-anims { justify-self: center; }
+.ipv .champ-anims__btn[aria-pressed="true"] { color: var(--color-text); background: var(--color-elevated); box-shadow: inset 0 0 0 2px var(--color-reward); }
+.ipv__info { display: grid; gap: var(--space-1); }
+.ipv__tags { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); margin: 0; }
+.ipv__name { margin: 0; color: var(--color-text); font-family: var(--font-label); font-size: 0.95rem; line-height: 1.4; letter-spacing: 0.03em; }
+.ipv__desc { margin: 0; color: var(--color-text-secondary); font-size: 0.875rem; line-height: 1.55; }
+.ipv__block .hero-label { margin-bottom: var(--space-2); }
+.ipv__bonus { display: grid; gap: var(--space-2); margin: 0; padding: 0; list-style: none; }
+.ipv__bonus li { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); }
+.ipv__note { color: var(--color-muted); font-size: 0.75rem; }
+.ipv__bonus li[data-counts] .ipv__note { color: var(--color-success-text, var(--color-success)); }
+.ipv__actions { display: grid; gap: var(--space-2); }
+.ipv__actions > .ui-btn { width: 100%; }
+
+/* ── the grid's header: the filter strip, then the category's title ──────────────────────────────────────────── */
+.collection-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-3); margin-bottom: var(--space-4); }
+.collection-title { margin-bottom: var(--space-4); }
+.collection-title__name { display: inline-flex; align-items: center; gap: var(--space-2); margin: 0; color: var(--color-text); font-family: var(--font-label); font-size: 1rem; letter-spacing: 0.03em; }
+.collection-title__desc { margin: var(--space-1) 0 0; color: var(--color-muted); font-size: 0.8125rem; }
+
+/* ── compact item tiles ─────────────────────────────────────────────────────────────────────────────────────── */
+.hero-grid { grid-template-columns: repeat(auto-fill, minmax(min(100%, 11.5rem), 1fr)); gap: var(--space-3); }
+.hero-item { gap: var(--space-2); padding: var(--space-3); }
+.hero-item__top { min-height: 1.25rem; }
+.hero-item__open {
+  display: grid; gap: var(--space-1); justify-items: start; width: 100%; padding: 0; border: 0; background: none;
+  color: inherit; font: inherit; text-align: left;
+}
+button.hero-item__open { cursor: pointer; }
+.hero-item__open .hero-item__sprite { justify-self: center; min-width: 0; min-height: 0; width: 100%; height: 6rem; margin-bottom: var(--space-1); padding: var(--space-2); }
+button.hero-item__open:hover .hero-item__sprite { border-color: var(--color-reward); }
+.hero-item__name { font-size: 0.875rem; }
+.hero-item__desc { margin: 0; display: -webkit-box; overflow: hidden; -webkit-line-clamp: 2; -webkit-box-orient: vertical; font-size: 0.75rem; line-height: 1.45; }
+.hero-item__gear { margin: 0; }
+.hero-item--preview { outline: 3px solid var(--color-reward); outline-offset: 2px; }
+.hero-item__actions { flex-direction: column; }
+.hero-item__actions > .ui-btn { width: 100%; }
+.hero-item__note { font-size: 0.75rem; }
+
+/* ── the filter strip: one framed row of options, the chosen one lit ─────────────────────────────────────────── */
+.px-filter {
+  display: inline-flex; flex-wrap: wrap; gap: 3px; max-width: 100%; padding: 3px;
+  border: 2px solid var(--px-rim, var(--color-border-strong)); background: var(--color-surface-sunken);
+  box-shadow: 3px 3px 0 0 var(--px-ink, var(--color-border));
+}
+.px-filter__opt {
+  position: relative; flex: none; display: inline-flex; align-items: center; gap: 0.45rem; min-height: 2.25rem; padding: 0 0.75rem;
+  border: 2px solid transparent; background: transparent; color: var(--color-muted); cursor: pointer;
+  font-family: var(--font-label); font-size: 0.56rem; letter-spacing: 0.04em; text-transform: uppercase; white-space: nowrap;
+}
+.px-filter--lg .px-filter__opt { min-height: 2.6rem; font-size: 0.6rem; }
+.px-filter__opt:hover { color: var(--color-text); background: var(--color-elevated); }
+.px-filter__opt[aria-pressed="true"] { color: var(--color-on-accent); background: var(--color-accent); border-color: var(--px-ink, transparent); box-shadow: var(--px-bevel, none); }
+.px-filter__opt[data-locked] { opacity: 0.7; }
+.px-filter__count { padding: 1px 0.35rem; border: 1px solid currentColor; font-size: 0.5rem; opacity: 0.85; }
+.px-filter__opt:focus-visible { outline: 2px solid var(--color-reward); outline-offset: 1px; }
+@media (max-width: 767.98px) {
+  .px-filter { display: flex; width: 100%; flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; }
+  .px-filter::-webkit-scrollbar { display: none; }
+  .px-filter__opt { min-height: 2.75rem; }
+}
+
+/* ── the loader: four blocks hopping in turn ───────────────────────────────────────────────────────────────── */
+.px-loader { display: grid; justify-items: center; gap: var(--space-3); padding: var(--space-8) var(--space-4); }
+.px-loader__blocks { display: flex; gap: 6px; height: 1.6rem; align-items: flex-end; }
+.px-loader__blocks i { width: 10px; height: 10px; border: 2px solid var(--px-ink, var(--color-border)); background: var(--color-accent); animation: px-hop 720ms steps(3, end) infinite; }
+.px-loader__blocks i:nth-child(2) { animation-delay: 120ms; background: var(--color-reward); }
+.px-loader__blocks i:nth-child(3) { animation-delay: 240ms; }
+.px-loader__blocks i:nth-child(4) { animation-delay: 360ms; background: var(--color-reward); }
+.px-loader__text { color: var(--color-text-secondary); font-family: var(--font-label); font-size: 0.6rem; letter-spacing: 0.05em; text-transform: uppercase; }
+.px-loader__text::after { content: "..."; display: inline-block; width: 1.2em; overflow: hidden; vertical-align: bottom; animation: px-dots 1.2s steps(4, end) infinite; }
+@keyframes px-hop { 0%, 60%, 100% { transform: translateY(0); } 30% { transform: translateY(-12px); } }
+@keyframes px-dots { from { width: 0; } to { width: 1.2em; } }
+
+@media (prefers-reduced-motion: reduce) {
+  .ipv, .px-loader__blocks i, .px-loader__text::after { animation: none; }
+}
+html.reduce-animations .ipv, html.reduce-animations .px-loader__blocks i { animation: none; }
+
+/* ── the Forge: a grid of tiles, the picked one in the side panel ───────────────────────────────────────────── */
+.forge-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 9.5rem), 1fr)); gap: var(--space-3); margin: 0; padding: 0; list-style: none; }
+.forge-tile {
+  display: grid; gap: var(--space-2); width: 100%; height: 100%; padding: var(--space-3); text-align: left; cursor: pointer;
+  border: 2px solid var(--px-rim, var(--color-border-strong)); background: var(--color-elevated); color: var(--color-text);
+  box-shadow: 0 0 0 2px var(--px-ink, transparent), 4px 4px 0 0 var(--px-ink, transparent);
+  transition: transform 90ms steps(2, end), box-shadow 90ms steps(2, end);
+}
+.forge-tile:hover { transform: translate(-2px, -2px); box-shadow: 0 0 0 2px var(--px-ink, transparent), 6px 6px 0 0 var(--px-ink, transparent); }
+.forge-tile--ready { border-color: var(--color-reward); }
+.forge-tile[aria-pressed="true"] { outline: 3px solid var(--color-reward); outline-offset: 2px; }
+.forge-tile__art { display: grid; place-items: center; height: 4.5rem; background: var(--color-surface-sunken); border: 2px solid var(--color-border); }
+.forge-art__sprite { max-width: 100%; max-height: 100%; object-fit: contain; image-rendering: pixelated; }
+.forge-tile__name { overflow: hidden; font-size: 0.8125rem; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
+.forge-tile__row { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); }
+.forge-tile__tier { color: var(--color-reward); font-size: 0.6rem; }
+.forge-tile__tags { display: flex; flex-wrap: wrap; gap: 4px; min-height: 1.25rem; }
+.forge-pips { display: inline-flex; gap: 3px; }
+.forge-pips i { width: 8px; height: 8px; border: 2px solid var(--px-ink, var(--color-border)); background: var(--color-surface-sunken); }
+.forge-pips i[data-on] { background: var(--color-reward); }
+.forge-bar { display: block; height: 0.6rem; border: 2px solid var(--px-ink, var(--color-border)); background: var(--color-border); overflow: hidden; }
+.forge-bar > span { display: block; height: 100%; background-color: var(--color-reward); background-image: var(--px-ticks, none); }
+.forge-bar--max > span { background-color: var(--color-accent-alt-text, var(--color-reward)); }
+
+.forge-detail { display: grid; gap: var(--space-3); margin-top: var(--space-4); padding-top: var(--space-4); border-top: 2px solid var(--color-border); animation: px-in 180ms steps(3, end) both; }
+.forge-detail__stage { display: grid; place-items: center; height: 10rem; border: 2px solid var(--color-border-strong); background: var(--color-surface-sunken); }
+.forge-detail__stage .forge-art__sprite { height: 100%; width: auto; }
+.forge-detail__bonus { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-2); margin: 0; }
+.forge-detail__bonus > div { padding: var(--space-2) var(--space-3); border: 2px solid var(--color-border); background: var(--color-surface-sunken); }
+.forge-detail__bonus dt { color: var(--color-muted); font-size: 0.6875rem; }
+.forge-detail__bonus dd { margin: 0; color: var(--color-text-secondary); font-size: 0.75rem; }
+.forge-detail__bonus strong { color: var(--color-reward); font-size: 0.8rem; }
+.forge-costs { display: grid; gap: 4px; margin: 0; padding: 0; list-style: none; }
+.forge-costs li { display: flex; align-items: center; gap: var(--space-2); padding: 0.4rem var(--space-2); border: 2px solid var(--color-border); color: var(--color-text-secondary); font-size: 0.8125rem; }
+.forge-costs li[data-met] { border-color: color-mix(in srgb, var(--color-success) 60%, var(--color-border)); color: var(--color-text); }
+.forge-costs li[data-met] svg:last-child { color: var(--color-success); }
+.forge-costs .pixel-font { font-size: 0.6rem; }
+.forge-detail > .ui-btn { width: 100%; }
+
+/* ── the Champion tab: the roster and kit beside the skins, on a wide screen ─────────────────────────────────── */
+.champ-main { display: grid; gap: var(--space-5); align-content: start; }
+@media (min-width: 1500px) { .champ-main { grid-template-columns: minmax(0, 3fr) minmax(20rem, 2fr); align-items: start; } }
+.champ-main__col { min-width: 0; }
+.champ-main__roster { grid-column: 1 / -1; min-width: 0; }
+
+/* ── the hero profile ──────────────────────────────────────────────────────────────────────────────────────── */
+.profile { display: grid; gap: var(--space-5); padding: var(--space-5) var(--space-4) var(--space-8); }
+.profile__head { display: grid; gap: var(--space-1); }
+.profile__grid { display: grid; gap: var(--space-5); align-items: start; }
+@media (min-width: 1100px) { .profile__grid { grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); } .profile-box--settings { grid-column: 1 / -1; } }
+@media (min-width: 1500px) { .profile__grid { grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr) minmax(0, 1fr); } .profile-box--settings { grid-column: auto; } }
+.profile__card { min-width: 0; }
+.profile__side { display: grid; gap: var(--space-5); min-width: 0; }
+.profile-box {
+  display: grid; gap: var(--space-3); padding: var(--space-4); border: 2px solid var(--px-rim, var(--color-border-strong)); background: var(--color-elevated);
+  box-shadow: 0 0 0 2px var(--px-ink, transparent), 5px 5px 0 0 var(--px-ink, transparent);
+}
+.profile-box .hero-label { display: inline-flex; align-items: center; gap: 6px; margin: 0; }
+.profile-box__empty, .profile-box__note { margin: 0; color: var(--color-muted); font-size: 0.8125rem; line-height: 1.5; }
+.profile-box__note { font-size: 0.75rem; }
+.pf-bonuses { display: grid; gap: var(--space-2); margin: 0; padding: 0; list-style: none; }
+.pf-bonuses li { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 2px var(--space-3); align-items: center; padding: var(--space-2); border: 2px solid var(--color-border); background: var(--color-surface-sunken); }
+.pf-bonuses .hero-bonus { grid-row: span 2; justify-self: start; }
+.pf-bonuses__from { color: var(--color-text); font-size: 0.8125rem; }
+.pf-bonuses__others { color: var(--color-muted); font-size: 0.75rem; }
+.pf-settings .pause__row:last-child { border-bottom: 0; }
+.hero-bonus strong { color: var(--color-reward); }
+
+/* ── Achievements: a header with the totals and the filters, then a grid that fills the width ─────────────────── */
+.ach { display: flex; flex-direction: column; height: 100%; overflow: hidden; }
+.ach__head { flex: none; display: grid; gap: var(--space-3); padding: var(--space-5) var(--space-5) var(--space-4); border-bottom: 2px solid var(--color-border); background: var(--color-surface-sunken); }
+.ach__title { display: flex; align-items: center; gap: var(--space-3); }
+.ach__trophy { color: var(--color-reward); }
+.ach__pct { display: grid; justify-items: end; margin: 0 0 0 auto; color: var(--color-reward); font-size: 1.3rem; line-height: 1.1; }
+.ach__pct span { color: var(--color-muted); font-family: var(--font-sans); font-size: 0.6875rem; }
+.ach__filters { display: flex; flex-wrap: wrap; gap: var(--space-3); }
+.ach__dot { width: 8px; height: 8px; border: 2px solid var(--px-ink, var(--color-border)); background: var(--rarity); }
+.ach__body { flex: 1; overflow-y: auto; padding: var(--space-5); }
+.ach__grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 19rem), 1fr)); gap: var(--space-3); margin: 0; padding: 0; list-style: none; }
+.ach-card {
+  display: grid; gap: var(--space-3); align-content: start; padding: var(--space-4);
+  border: 2px dashed var(--color-border-strong); background: var(--color-elevated);
+}
+.ach-card[data-unlocked] { border-style: solid; border-color: var(--rarity); box-shadow: 0 0 0 2px var(--px-ink, transparent), 4px 4px 0 0 var(--px-ink, transparent); }
+.ach-card__top { display: flex; align-items: flex-start; gap: var(--space-3); }
+.ach-card__icon { display: grid; place-items: center; flex: none; width: 2.75rem; height: 2.75rem; border: 2px solid var(--color-border); background: var(--color-surface-sunken); color: var(--color-muted); }
+.ach-card[data-unlocked] .ach-card__icon { background: var(--rarity); border-color: var(--px-ink, var(--rarity)); color: var(--px-ink, var(--color-surface)); }
+.ach-card__icon svg { width: 1.4rem; height: 1.4rem; }
+.ach-card__name { margin: 0; color: var(--color-text); font-size: 0.875rem; font-weight: 700; line-height: 1.3; }
+.ach-card:not([data-unlocked]) .ach-card__name { color: var(--color-text-secondary); }
+.ach-card__desc { margin: 2px 0 0; color: var(--color-muted); font-size: 0.75rem; line-height: 1.45; }
+.ach-card__progress { display: grid; gap: 4px; }
+.ach-card__line { display: flex; justify-content: space-between; gap: var(--space-2); color: var(--color-muted); font-size: 0.75rem; }
+.ach-card__progress .px-meter > span { background-color: var(--rarity); }
+.ach-card__foot { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); padding-top: var(--space-2); border-top: 1px solid var(--color-border); color: var(--color-muted); font-size: 0.75rem; }
+.ach-card__reward { display: inline-flex; gap: var(--space-2); font-weight: 600; }
+
+/* a segmented bar, like an HP bar */
+.px-meter { display: block; height: 0.9rem; border: 2px solid var(--px-ink, var(--color-border)); background: var(--color-border); }
+.px-meter > span { display: block; height: 100%; background-color: var(--color-reward); background-image: var(--px-ticks, none); }
+.px-meter--thin { height: 8px; }
+/* all seven (six champions and your hero) in one row when the page is wide enough */
+.champ-main__roster .px-roster__grid { grid-template-columns: repeat(auto-fill, minmax(min(100%, 9.5rem), 1fr)); }

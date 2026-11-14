@@ -4,6 +4,7 @@
 //               on the server: /quiz/answer grades one question (first answer final), /quiz/finish scores it once.
 //   flashcards  and notes are cached for the same request (GENERATION_CACHE_DAYS).
 // XP, coins and quests (`rewards`) come back with the game in 4.5.
+import { fenceMaterial } from "../ai/guard";
 import { and, count, eq, isNull, sql } from "drizzle-orm";
 import type { CurrentUser, RequestContext } from "../context";
 import { quizAnswers, quizBank, quizzes } from "../db/schema";
@@ -284,7 +285,7 @@ export async function makeFlashcards(ctx: RequestContext, user: CurrentUser, bod
     const found = await findTopic(ctx, study.docs, topic, 12);
     const cards = await generateData(ctx, await callerFor(ctx, user), "strong", [
       { role: "system", content: flashcardSystem(n + 3) },
-      { role: "user", content: `Topic: ${topic}\n\nContent:\n${found.context.slice(0, 5000)}` },
+      { role: "user", content: `Topic: ${topic}\n\nContent:\n${fenceMaterial(found.context.slice(0, 5000))}` },
     ], flashcardSet, { temperature: 0.7 }).catch((e) => { throw e instanceof HttpError ? e : generationFailed("Flashcard generation failed. Please try again."); });
     const deck = cards.slice(0, n).map((c, i) => ({ id: i + 1, ...c }));
     result = { cards: deck, total: deck.length, topic };

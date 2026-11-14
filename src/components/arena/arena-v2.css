@@ -313,3 +313,18 @@
     display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
   .arena-mode__btn > .ui-badge { grid-area: chip; justify-self: start; }
 }
+
+/* ── The unslop pass: one mode leads ────────────────────────────────────────────────────────────────────────────
+   Five equal posters said nothing about where to start. Quick Battle (the everyday fight) takes two columns, its
+   icon beside its words; the other four sit after it. */
+@media (min-width: 900px) {
+  .arena-hub__modes { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .arena-hub__modes > li:first-child { grid-column: span 2; }
+  .arena-hub__modes > li:first-child .arena-mode__btn {
+    grid-template-columns: auto minmax(0, 1fr); grid-template-areas: "icon title" "icon blurb" "icon chip"; column-gap: var(--space-5); align-content: center;
+  }
+  .arena-hub__modes > li:first-child .arena-mode__icon { grid-area: icon; align-self: center; width: 4.5rem; height: 4.5rem; margin: 0; }
+  .arena-hub__modes > li:first-child .arena-mode__title { grid-area: title; font-size: 1.45rem; }
+  .arena-hub__modes > li:first-child .arena-mode__blurb { grid-area: blurb; font-size: 0.95rem; max-width: 46ch; }
+  .arena-hub__modes > li:first-child .arena-mode__btn > .ui-badge { grid-area: chip; justify-self: start; }
+}

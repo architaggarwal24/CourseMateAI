@@ -5,6 +5,7 @@
 //   submit   graded once (compare-and-set): score, time, per-concept and per-difficulty breakdown; every question
 //            counts for mastery, every miss joins the review queue. Past the deadline (+ grace) it grades on read.
 // The score report is a printable page in the app (Save as PDF), no longer a server-made PDF.
+import * as log from "../log";
 import { and, count, desc, eq, isNotNull, sql } from "drizzle-orm";
 import type { CurrentUser, RequestContext } from "../context";
 import { conceptMastery, examAnswers, examQuestions, exams, user as userTable } from "../db/schema";
@@ -64,7 +65,7 @@ export async function writeExam(ctx: RequestContext, caller: Caller, docs: { id:
   const seen = new Set<string>();
   const out: ExamQuestion[] = [];
   for (const r of results) {
-    if (r.status !== "fulfilled") { console.warn("[coursemate] exam batch failed", r.reason instanceof Error ? r.reason.message : r.reason); continue; }
+    if (r.status !== "fulfilled") { log.warn("[coursemate] exam batch failed", r.reason instanceof Error ? r.reason.message : r.reason); continue; }
     for (const q of r.value) {
       const k = questionKey(q.question);
       if (!k || seen.has(k) || !q.options.includes(q.correct_answer)) continue;

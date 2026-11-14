@@ -4,7 +4,7 @@ import { useState } from "react";
 import { BookOpen, CalendarClock, Coins, ScrollText, Sparkles, Sun, Sword } from "@/components/ui/icons";
 import { Badge, Button, ButtonLink } from "@/components/ui";
 import { useReducedMotionConfig } from "motion/react";
-import { callHref, type Scroll, type ScrollKind } from "@/lib/quests/board";
+import { callHref, callLabel, type Scroll, type ScrollKind } from "@/lib/quests/board";
 
 const SEAL_ICON: Record<ScrollKind, typeof Sun> = { daily: Sun, weekly: CalendarClock, hunt: Sword, story: BookOpen };
 const KIND_LABEL: Record<ScrollKind, string> = { daily: "Daily quest", weekly: "Weekly trial", hunt: "Hunt", story: "Story" };
@@ -12,7 +12,7 @@ const KIND_LABEL: Record<ScrollKind, string> = { daily: "Daily quest", weekly: "
 export const BREAK_MS = 450;
 
 /**
- * One quest as a sealed scroll (Stage Q1). Open: "Answer the call" goes where it is done. Done: the seal is cracked
+ * One quest as a sealed scroll (Stage Q1). Open: its button (what you'll do: "Take a quiz", "Fight") goes where it is done. Done: the seal is cracked
  * and "Break the seal" claims the reward (the wax splits first). Claimed: the scroll lies open.
  */
 export default function QuestScroll({ scroll, onClaim, busy, creature }: {
@@ -60,7 +60,7 @@ export default function QuestScroll({ scroll, onClaim, busy, creature }: {
         </p>
         <div className="qscroll__actions">
           {state === "sealed" && (
-            <ButtonLink href={callHref(scroll.call)} size="sm" variant="primary">Answer the call</ButtonLink>
+            <ButtonLink href={callHref(scroll.call)} size="sm" variant="primary">{callLabel(scroll.call)}</ButtonLink>
           )}
           {state === "ready" && (
             <Button size="sm" variant="reward" onClick={breakSeal} loading={busy || breaking} aria-label={`Break the seal: claim ${scroll.title}`}>

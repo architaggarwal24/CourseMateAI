@@ -10,6 +10,7 @@
 // Questions: a fight is PREPARED before it starts (prepare: the whole fight's questions, normal and enraged, written
 // side by side), so it never stops to wait for the model. Long fights are topped up in the background
 // (ctx.waitUntil) well before they run low; a model failure never decides a fight: the request is retryable.
+import * as log from "../log";
 import { and, asc, count, desc, eq, gte, isNull, ne, sql } from "drizzle-orm";
 import { FINISHERS, STYLE_FINISHERS } from "@/lib/arena/finishers";
 import * as insight from "./insight";
@@ -421,7 +422,7 @@ async function fillOnce(ctx: RequestContext, caller: Caller, battleId: string, u
     await storeBatch(ctx, battleId, phase, quiz);
     return null;
   } catch (e) {
-    console.warn(`[coursemate-arena] battle ${battleId}: phase ${phase} questions failed: ${e instanceof Error ? e.message.slice(0, 160) : e}`);
+    log.warn(`[coursemate-arena] battle ${battleId}: phase ${phase} questions failed: ${e instanceof Error ? e.message.slice(0, 160) : e}`);
     return e;
   }
 }
@@ -449,7 +450,7 @@ export async function prepare(ctx: RequestContext, caller: Caller, battleId: str
   ]);
   await saving.catch(() => {});
   const failure = results.find((r): r is PromiseRejectedResult => r.status === "rejected")?.reason;
-  if (failure) console.warn(`[coursemate-arena] battle ${battleId}: a prepared batch failed: ${failure instanceof Error ? failure.message.slice(0, 160) : failure}`);
+  if (failure) log.warn(`[coursemate-arena] battle ${battleId}: a prepared batch failed: ${failure instanceof Error ? failure.message.slice(0, 160) : failure}`);
   // short on openers: one more try, then give up retryably (an expired document says so instead)
   if (await poolSize(ctx, battleId, 1) < PREPARED.minToStart) {
     const again = await fillOnce(ctx, caller, battleId, userId, 1, true);

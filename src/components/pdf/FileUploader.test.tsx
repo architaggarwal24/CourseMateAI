@@ -66,7 +66,7 @@ describe("FileUploader", () => {
     expect(screen.queryByRole("status")).toBeNull();                 // the stage tracker is gone...
     expect(screen.getByText("notes.pdf")).toBeTruthy();              // ...replaced by the finished file
     expect(screen.getByLabelText("Replace PDF")).toBeTruthy();
-    expect(toast.success).toHaveBeenCalledWith("✅ notes.pdf ready!");
+    expect(toast.success).toHaveBeenCalledWith("notes.pdf is ready to study");
   });
 
   it("shows a document that is already ready on the server after a reload (no client-side memory involved)", async () => {
@@ -85,7 +85,7 @@ describe("FileUploader", () => {
     expect(within(screen.getByRole("status")).getByText("Indexing…")).toBeTruthy();
     await tick();
     expect(screen.queryByRole("status")).toBeNull();
-    expect(toast.success).toHaveBeenCalledWith("✅ notes.pdf ready!");
+    expect(toast.success).toHaveBeenCalledWith("notes.pdf is ready to study");
   });
 
   it("shows why processing failed and lets the user try again", async () => {

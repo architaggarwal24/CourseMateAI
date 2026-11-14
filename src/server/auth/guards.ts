@@ -6,6 +6,7 @@
 //   * breached passwords: a new password (sign-up, reset, change) that appears in Have I Been Pwned is refused. Only
 //     the first five characters of its SHA-1 hash leave the Worker (k-anonymity). If the service can't be reached the
 //     password is allowed (a sign-up never fails because a third party is down).
+import * as logs from "../log";
 import { APIError, createAuthMiddleware } from "better-auth/api";
 import { isPasswordCompromised } from "better-auth/plugins";
 import { eq } from "drizzle-orm";
@@ -49,7 +50,7 @@ async function accountKey(db: Db, path: string, body: Record<string, unknown>): 
   return u ? `signin-fail:${u.email.toLowerCase()}` : `signin-fail:u:${name}`;
 }
 
-export function authGuards({ db, breachCheck, log = console.warn }: GuardOptions) {
+export function authGuards({ db, breachCheck, log = logs.warn }: GuardOptions) {
   const before = createAuthMiddleware(async (ctx) => {
     const body = (ctx.body ?? {}) as Record<string, unknown>;
     if (SIGN_IN_PATHS.has(ctx.path)) {
@@ -116,7 +117,7 @@ export function emailDailyCap(raw: string | undefined): number {
 
 /** The mailer, with the per-address and daily limits in front of it. */
 export function limitedMailer<M extends { canSend: boolean; send: (m: { to: string; subject: string; text: string; html: string }) => Promise<void> }>(
-  db: Db, mailer: M, dailyCap: number, log: (line: string) => void = console.warn,
+  db: Db, mailer: M, dailyCap: number, log: (line: string) => void = logs.warn,
 ): M {
   return {
     ...mailer,

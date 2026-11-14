@@ -126,7 +126,7 @@ describe("ExamView: taking it", () => {
     expect(document.querySelector(".exam-results")!.getAttribute("data-print")).toBe("report");
     expect(screen.getByRole("link", { name: "Review them" }).getAttribute("href")).toBe("/study?tab=review&doc=d1");
     expect(screen.getByText("Because 0.")).toBeTruthy();
-    expect(toasts.success).toHaveBeenCalledWith("Exam complete: +150 XP | +40 Coins", expect.anything());
+    expect(toasts.success).toHaveBeenCalledWith("Exam handed in", { description: "+150 XP · +40 coins" });
   });
 
   it("when the clock runs out the exam is handed in", async () => {

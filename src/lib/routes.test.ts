@@ -60,7 +60,7 @@ describe("routes", () => {
   it("the three areas map to their paths", () => {
     expect(AREAS.map(a => a.href)).toEqual(["/study", "/champion", "/account"]);
     expect(areaOf("/study/quiz")).toBe("study");
-    for (const p of ["/quests", "/arena", "/bestiary", "/champion"]) expect(areaOf(p), p).toBe("hero");   // the play area
+    for (const p of ["/quests", "/arena", "/bestiary", "/champion", "/adventurer"]) expect(areaOf(p), p).toBe("hero");   // the play area
     expect(areaOf("/hero")).toBe("hero");
     expect(areaOf("/hero/shop")).toBe("hero");          // (an old URL: it redirects, but it is still the play area)
     expect(areaOf("/arenas")).toBeNull();
@@ -80,7 +80,8 @@ describe("routes", () => {
   });
 
   it("play: Quests, Arena and Bestiary are pages, the rest are Champion tabs, and every old Hero URL lands on one", () => {
-    for (const p of ["/quests", "/arena", "/bestiary", "/champion"]) expect(served, p).toContain(p);
+    for (const p of ["/quests", "/arena", "/bestiary", "/champion", "/adventurer"]) expect(served, p).toContain(p);
+    expect(ROUTES.heroProfile).toBe("/adventurer");                    // your hero's profile: card, bonuses, settings
     expect(existsSync(fileURLToPath(new URL("../app/hero/route.ts", import.meta.url)))).toBe(true);   // /hero?tab= redirects (legacyHeroUrl)
     expect([...PLAY_PAGES]).toEqual(["quests", "arena", "bestiary"]);
     expect([...CHAMPION_TABS]).toEqual(["champion", "inventory", "forge", "shop", "achievements", "mastery"]);

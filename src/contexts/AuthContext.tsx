@@ -29,6 +29,8 @@ export interface User {
   sign_in_providers?: string[];
   tier?: string;
   tier_name?: string;
+  /** The Terms / Privacy Policy version accepted (null: not yet); the app asks while it isn't the current one. */
+  terms_version?: string | null;
 }
 
 export type RegisterResult = { ok: true; signedIn: boolean } | { ok: false; failure: AuthFailure };

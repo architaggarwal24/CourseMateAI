@@ -1,4 +1,5 @@
 // The arena's routes, as functions (Stage 4.5b; the flows of backend/routers/arena.py).
+import * as log from "../log";
 import type { CurrentUser, RequestContext } from "../context";
 import { HttpError } from "../http";
 import { callerFor } from "../chat";
@@ -200,7 +201,7 @@ export async function travel(ctx: RequestContext, user: CurrentUser, runId: stri
   const battleId = (result as { battle_id?: unknown }).battle_id;
   if (typeof battleId === "string") {
     // the run has already moved on to the fight: if its questions can't be written now, the fight writes them as it goes
-    try { await arena.prepare(ctx, caller, battleId, user.id); } catch (e) { console.warn(`[coursemate-arena] run ${runId}: preparing failed: ${e instanceof Error ? e.message.slice(0, 160) : e}`); }
+    try { await arena.prepare(ctx, caller, battleId, user.id); } catch (e) { log.warn(`[coursemate-arena] run ${runId}: preparing failed: ${e instanceof Error ? e.message.slice(0, 160) : e}`); }
     arena.prefetch(ctx, caller, battleId, user.id);
     arena.enrich(ctx, caller, battleId, user.id);
   }

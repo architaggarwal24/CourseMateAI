@@ -1,6 +1,7 @@
 // The tutor (round 7): a teacher who knows the student's course material, not a search box. It talks like a person,
 // builds on the conversation, teaches in the mode the student picked, and stays honest: what comes from the PDFs is
 // cited by passage number, anything it adds from general knowledge is said to be that, and it never invents a page.
+import { fenceMaterial } from "../ai/guard";
 import type { ChatMessage } from "../ai/run";
 import type { Turn } from "./rewrite";
 
@@ -84,7 +85,7 @@ export function buildChatMessages(context: string, question: string, history: Tu
     .filter(Boolean).join("\n\n");
   const user = coverage === "conversation"
     ? question
-    : `Passages from the student's material:\n${context || "(none found)"}\n\nStudent: ${question}`;
+    : `Passages from the student's material:\n${context ? fenceMaterial(context) : "(none found)"}\n\nStudent: ${question}`;
   return [
     { role: "system", content: system },
     ...recent.map((t) => ({ role: t.role, content: t.content }) as ChatMessage),

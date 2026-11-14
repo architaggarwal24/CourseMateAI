@@ -155,6 +155,8 @@ describe("upgrading", () => {
     render(<PlanUsage />);
     await screen.findByRole("heading", { name: "Apprentice", level: 2 });
     fireEvent.click(screen.getByRole("button", { name: /Yearly/ }));
+    // auto-renewal is said before paying (legal and trust pass)
+    expect(sageCard().textContent).toMatch(/Renews every year at ₹[\d,]+ until you cancel\. Cancel any time in Plan & usage: you keep the plan until the paid period ends\./);
     fireEvent.click(within(sageCard()).getByRole("button", { name: "Upgrade to Sage" }));
     const dialog = await screen.findByRole("dialog", { name: "Test payment" });
     expect(log.checkouts).toEqual([{ tier: "sage", period: "year" }]);

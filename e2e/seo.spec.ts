@@ -14,7 +14,7 @@ const PUBLIC = [
   { path: "/legal/privacy", title: "Privacy Policy | CourseMateAI", h1: /Privacy Policy/ },
   { path: "/legal/refunds", title: "Cancellation & Refund Policy | CourseMateAI", h1: /Cancellation/ },
 ];
-const PRIVATE = ["/today", "/study", "/study?tab=notes", "/quests", "/arena", "/bestiary", "/champion", "/account", "/account/settings", "/login", "/login?mode=register", "/offline"];
+const PRIVATE = ["/today", "/study", "/study?tab=notes", "/quests", "/arena", "/bestiary", "/champion", "/adventurer", "/account", "/account/settings", "/login", "/login?mode=register", "/offline"];
 
 test.describe.configure({ mode: "serial" });
 test.beforeEach(({}, info) => { test.skip(info.project.name !== "desktop", "server output: one project is enough"); });

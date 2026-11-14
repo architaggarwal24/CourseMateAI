@@ -1,5 +1,6 @@
 "use client";
 
+import { API_BASE_URL, throwForResponse } from "@/lib/api/client";
 import { useState, useEffect, useRef } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useRouter } from "next/navigation";
@@ -147,7 +148,7 @@ export default function SettingsPage() {
     try {
       const { error: err, response } = await rawApi.POST("/auth/update-profile", { body });
       if (response.ok) {
-        toast.success("Profile updated!", { icon: "✅" });
+        toast.success("Profile saved");
         setForm(f => ({ ...f, currentPassword: "", newPassword: "", confirmPassword: "" }));
         setTimeout(() => window.location.reload(), 800);
       } else {
@@ -162,7 +163,7 @@ export default function SettingsPage() {
     if (!deletePassword) { toast.error("Enter your password to delete your account"); return; }
     setDeletingAccount(true);
     try {
-      const { error: err, response } = await rawApi.DELETE("/auth/delete-account", { body: { password: deletePassword } });
+      const { error: err, response } = await rawApi.DELETE("/auth/delete-account", { body: { password: deletePassword, confirm: deleteConfirm } } as never);
       if (response.ok) {
         toast.success("Account deleted");
         await logout();
@@ -199,31 +200,22 @@ export default function SettingsPage() {
     setClearingSessions(false);
   };
 
+  // a copy of everything the app keeps about you (GET /account/export: the server reads every table, not the
+  // browser stitching two screens together)
   const handleExport = async () => {
     setExporting(true);
     try {
-      const profile = await rawApi.GET("/profile");
-      if (!profile.response.ok) throw parseApiError(profile.response.status, profile.error);
-      const quests = await rawApi.GET("/daily-quests");
-      if (!quests.response.ok) throw parseApiError(quests.response.status, quests.error);
-      const profileData: any = profile.data;
-      const questData: any = quests.data;
-
-      const exportObj = {
-        exported_at: new Date().toISOString(),
-        user: { username: user?.username, email: user?.email, full_name: user?.full_name },
-        progress: profileData?.progress,
-        quests: questData?.quests,
-      };
-
-      const blob = new Blob([JSON.stringify(exportObj, null, 2)], { type: "application/json" });
+      const res = await fetch(`${API_BASE_URL}/account/export`, { credentials: "include" });
+      if (!res.ok) await throwForResponse(res);
+      const blob = await res.blob();
+      const name = /filename="([^"]+)"/.exec(res.headers.get("content-disposition") ?? "")?.[1] ?? "coursemateai-data.json";
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `coursemate_data_${new Date().toISOString().slice(0, 10)}.json`;
+      a.download = name;
       a.click();
       URL.revokeObjectURL(url);
-      toast.success("Data exported!");
+      toast.success("Your data is downloading");
     } catch (e) { toast.apiError(e, { onRetry: handleExport }); }
     setExporting(false);
   };
@@ -275,7 +267,7 @@ export default function SettingsPage() {
 
             {/* Divider */}
             <div className="border-t border-line pt-4">
-              <p className="text-xs font-medium text-fg-muted uppercase tracking-wide mb-4 flex items-center gap-2">
+              <p className="text-sm font-medium text-fg-2 mb-4 flex items-center gap-2">
                 <Lock size={12} /> Password (also needed to change your email)
               </p>
 
@@ -370,8 +362,8 @@ export default function SettingsPage() {
 
             <Card surface="inset" pad="lg" className="flex items-center justify-between gap-4">
               <div>
-                <p className="text-sm font-medium text-fg">Clear All Session Data</p>
-                <p className="text-xs text-fg-muted mt-0.5">Removes uploaded PDFs, quizzes, notes, and arena data</p>
+                <p className="text-sm font-medium text-fg">Clear saved sessions on this device</p>
+                <p className="text-xs text-fg-muted mt-0.5">Forgets the chats and study sessions this browser remembers. Your account, PDFs and progress stay.</p>
               </div>
               <Button onClick={handleClearAllSessions} loading={clearingSessions} className="shrink-0">
                 <Trash2 size={14} />Clear
@@ -380,8 +372,8 @@ export default function SettingsPage() {
 
             <Card surface="inset" pad="lg" className="flex items-center justify-between gap-4">
               <div>
-                <p className="text-sm font-medium text-fg">Export My Data</p>
-                <p className="text-xs text-fg-muted mt-0.5">Download your XP, coins, level, and quest history as JSON</p>
+                <p className="text-sm font-medium text-fg">Download a copy of your data</p>
+                <p className="text-xs text-fg-muted mt-0.5">Everything we keep about your account, as one JSON file</p>
               </div>
               <Button onClick={handleExport} loading={exporting} className="shrink-0">
                 <Download size={14} />Export

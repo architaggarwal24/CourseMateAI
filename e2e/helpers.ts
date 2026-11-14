@@ -47,6 +47,7 @@ export async function openPage(page: Page, c: PageCase) {
       await page.getByLabel("Email").fill("alice@example.com");
       await page.getByLabel("Password", { exact: true }).fill("correct-horse-1");
       await page.getByLabel("Confirm Password").fill("correct-horse-1");
+      await page.getByRole("checkbox", { name: /I'm 12 or older/ }).check();
       await page.getByRole("button", { name: "Create account", exact: true }).click();
     }
   }

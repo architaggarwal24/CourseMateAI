@@ -81,8 +81,17 @@ html[data-sidebar="collapsed"] .side__portal { justify-content: center; width: 2
 @keyframes hside-blink { 50% { opacity: 0; } }
 @media (prefers-reduced-motion: reduce) { .hside__link:hover::before, .hside__link:focus-visible::before { animation: none; } }
 
-.hside__foot { display: flex; align-items: center; gap: var(--space-2); padding: var(--space-2) var(--space-3) var(--space-3); border-top: 3px solid var(--px-ink); box-shadow: inset 0 2px 0 0 var(--color-border-strong); }
+.hside__foot { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); padding: var(--space-2) var(--space-3) var(--space-3); border-top: 3px solid var(--px-ink); box-shadow: inset 0 2px 0 0 var(--color-border-strong); }
 .hside__sound { flex: none; }
+.hside__profile {
+  position: relative; display: inline-grid; place-items: center; flex: none; width: 2.75rem; height: 2.75rem;
+  color: var(--color-text); background: var(--color-elevated); border: 2px solid var(--color-border-strong); border-radius: 0;
+  box-shadow: 2px 2px 0 var(--px-ink);
+}
+.hside__profile:hover { color: var(--color-reward); background: var(--color-elevated-hover); }
+.hside__profile:active { transform: translate(2px, 2px); box-shadow: none; }
+.hside__profile[aria-current="page"] { color: var(--px-ink); background: var(--color-reward); border-color: var(--px-ink); }
+.hside__profile:focus-visible { outline: 2px solid var(--color-reward); outline-offset: 2px; }
 .hside__portal { flex: 1; min-width: 0; border: 2px solid var(--portal-color); border-radius: 0; box-shadow: 3px 3px 0 0 var(--px-ink); font-family: var(--font-label); font-size: 0.6rem; }
 .hside__portal:hover, .hside__portal:focus-visible { background: color-mix(in srgb, var(--portal-color) 18%, var(--hside-bg)); }
 .hside .portal__ring { border-radius: 0; }
@@ -97,7 +106,8 @@ html[data-sidebar="collapsed"] .hside__top { display: grid; justify-items: cente
 html[data-sidebar="collapsed"] .hside__sub { display: none; }
 html[data-sidebar="collapsed"] .hside__link { justify-content: center; width: 3rem; padding: 0; margin: 0 auto; }
 html[data-sidebar="collapsed"] .hside__link::before { display: none; }
-html[data-sidebar="collapsed"] .hside__foot { flex-direction: column; padding: var(--space-2) 0 var(--space-3); }
+html[data-sidebar="collapsed"] .hside__foot { flex-direction: column; flex-wrap: nowrap; padding: var(--space-2) 0 var(--space-3); }
+html[data-sidebar="collapsed"] .hside__foot .portal-wrap { flex: none; }
 html[data-sidebar="collapsed"] .hside__portal { justify-content: center; width: 3rem; padding: 0; flex: none; }
 html[data-sidebar="collapsed"] .hside [data-tip]:hover::after,
 html[data-sidebar="collapsed"] .hside [data-tip]:focus-visible::after { border-radius: 0; font-family: var(--font-sans); }
@@ -116,7 +126,7 @@ html[data-sidebar="collapsed"] .hside [data-tip]:focus-visible::after { border-r
 
 /* ── Stage 2: the crossing ───────────────────────────────────────────────────────────────────────────────────── */
 .portal-wrap { position: relative; display: block; }
-.hside__foot .portal-wrap { flex: 1; min-width: 0; }
+.hside__foot .portal-wrap { flex: 1 1 100%; min-width: 0; }
 /* a glimpse through the portal: on hover and focus (desktop) */
 .portal-peek {
   position: absolute; z-index: 60; left: var(--space-3); right: var(--space-3); bottom: calc(100% + 0.4rem);
@@ -336,3 +346,19 @@ html[data-sidebar="collapsed"] .side__hero-chip { display: none; }
 .adv-card__recent { margin: var(--space-2) 0 0; font-size: 0.78rem; color: var(--color-text-secondary); }
 .adv-card__actions { display: flex; gap: var(--space-2); margin-top: var(--space-3); }
 @media (max-width: 560px) { .adv-card { grid-template-columns: 1fr; } .adv-card__hero { max-width: 10rem; } }
+
+/* ── scrollbars in the Hero world (pages and the side menu): a square thumb in an inset track ────────────────── */
+:is([data-theme="play"], .hside) ::-webkit-scrollbar { width: 12px; height: 12px; }
+:is([data-theme="play"], .hside) ::-webkit-scrollbar-track { background: var(--color-surface-sunken); box-shadow: inset 2px 0 0 0 var(--px-ink, #03040d); }
+:is([data-theme="play"], .hside) ::-webkit-scrollbar-thumb { background: var(--color-border-strong); border: 2px solid var(--px-ink, #03040d); box-shadow: inset -2px -2px 0 0 rgb(0 0 0 / 0.35); }
+:is([data-theme="play"], .hside) ::-webkit-scrollbar-thumb:hover { background: var(--color-accent); }
+:is([data-theme="play"], .hside) ::-webkit-scrollbar-corner { background: var(--color-surface-sunken); }
+:is([data-theme="play"], .hside) ::-webkit-scrollbar-button { display: none; }
+.hside .hside__menu { scrollbar-width: auto; }
+.hside .hside__menu::-webkit-scrollbar { width: 8px; }
+@supports not selector(::-webkit-scrollbar) {
+  :is([data-theme="play"], .hside), :is([data-theme="play"], .hside) * { scrollbar-color: var(--color-border-strong) var(--color-surface-sunken); }
+  .hside .hside__menu { scrollbar-width: thin; }
+}
+/* the Study world: thin, quiet bars in the theme's own colours */
+.app-main:not([data-theme="play"]) { scrollbar-color: var(--color-scroll-thumb) transparent; }

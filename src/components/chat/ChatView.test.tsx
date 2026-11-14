@@ -350,7 +350,7 @@ describe("ChatView: auto-scroll", () => {
     try {
       server({});
       render(<ChatView documentId="d1" />);
-      expect(screen.getByRole("heading", { name: /your tutor/i })).toBeTruthy();
+      expect(screen.getByRole("heading", { name: /^(Ask about|Your tutor reads)/ })).toBeTruthy();
       expect(tops.filter((v) => v > 0)).toEqual([]);
     } finally {
       delete (proto as unknown as Record<string, unknown>).scrollHeight;

@@ -1,3 +1,4 @@
+import { TERMS_VERSION } from "@/lib/legal";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { act, cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 
@@ -68,8 +69,27 @@ async function fillAccount() {
   type("Email", "ada@example.com");
   type("Password", "correct-horse");
   type("Confirm Password", "correct-horse");
+  fireEvent.click(screen.getByRole("checkbox", { name: /I'm 12 or older/ }));    // the box: never pre-ticked
   await settle(500);
 }
+
+describe("the box: age, Terms and Privacy Policy (legal and trust pass)", () => {
+  it("is unticked at first, and Create account won't go without it", async () => {
+    await open();
+    type("Full Name", "Ada Lovelace");
+    type("Username", "ada_l");
+    type("Email", "ada@example.com");
+    type("Password", "correct-horse");
+    type("Confirm Password", "correct-horse");
+    await settle(500);
+    const box = screen.getByRole("checkbox", { name: /I'm 12 or older, and I agree to the Terms of Service and Privacy Policy/ }) as HTMLInputElement;
+    expect(box.checked).toBe(false);
+    await click("Create account");
+    expect(auth.register).not.toHaveBeenCalled();
+    expect(screen.getByRole("alert").textContent).toBe("Tick the box to create your account.");
+    expect(document.activeElement).toBe(box);
+  });
+});
 
 describe("the account step", () => {
   it("shows the server's messages beside each field as you leave it", async () => {
@@ -140,7 +160,7 @@ describe("verifying the email", () => {
     const onDone = await open();
     await fillAccount();
     await click("Create account");
-    expect(auth.register).toHaveBeenCalledWith({ email: "ada@example.com", password: "correct-horse", username: "ada_l", fullName: "Ada Lovelace" });
+    expect(auth.register).toHaveBeenCalledWith({ email: "ada@example.com", password: "correct-horse", username: "ada_l", fullName: "Ada Lovelace", termsVersion: TERMS_VERSION });
     expect(screen.getByText("Verify your email")).toBeTruthy();
     expect(screen.getByText(/sent a 6-digit code to ada@example.com/)).toBeTruthy();
     expect(screen.getByRole("listitem", { current: "step" }).textContent).toContain("Verify email");

@@ -23,7 +23,8 @@ describe("your hero's workshop", () => {
     const saveBuild = vi.fn().mockResolvedValue(true), saveTree = vi.fn().mockResolvedValue(true);
     useMyHero.setState({ view: heroView(), saveBuild, saveTree, load: vi.fn() });
     render(<HeroBuilder onEditLook={() => {}} />);
-    expect(screen.getByText(/Kaien at 100% mastery \(42%\)/)).toBeTruthy();
+    expect(screen.getByText(/Unlocks: Kaien at 100% mastery/)).toBeTruthy();
+    expect(screen.getByRole("progressbar", { name: /Kaien at 100% mastery/ }).getAttribute("aria-valuenow")).toBe("42");
     expect(screen.getByRole("button", { name: /Player Lv 12/ })).toHaveProperty("disabled", true);
 
     fireEvent.click(screen.getByRole("tab", { name: /Loadout/ }));

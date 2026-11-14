@@ -3,7 +3,8 @@
 import { showUpgradeNow } from "@/lib/account/upgrade-notice";
 import { useEffect, useRef, useState } from "react";
 import { Check, Eye, EyeOff } from "@/components/ui/icons";
-import { Button, Card, Input, toast } from "@/components/ui";
+import { Button, Card, Checkbox, Input, toast } from "@/components/ui";
+import { AGREE_LABEL, TERMS_VERSION } from "@/lib/legal";
 import { useAuth } from "@/contexts/AuthContext";
 import { parseApiError, rawApi } from "@/lib/api";
 import { fetchAuthConfig } from "@/lib/auth/config";
@@ -29,6 +30,10 @@ export default function SignupFlow({ onDone }: { onDone: () => void }) {
   const [account, setAccount] = useState<AccountForm>(emptyAccountForm);
   const [touched, setTouched] = useState<Partial<Record<AccountField, boolean>>>({});
   const [serverErrors, setServerErrors] = useState<AccountErrors>({});
+  // the box (legal and trust pass): age and the Terms / Privacy Policy, ticked by the person, never pre-ticked
+  const [agreed, setAgreed] = useState(false);
+  const [agreeError, setAgreeError] = useState(false);
+  const agreeRef = useRef<HTMLInputElement>(null);
   const [general, setGeneral] = useState("");
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -110,9 +115,15 @@ export default function SignupFlow({ onDone }: { onDone: () => void }) {
       setFocusTick((n) => n + 1);
       return;
     }
+    if (!agreed) {
+      setAgreeError(true);
+      agreeRef.current?.focus();
+      return;
+    }
     setLoading(true);
     const result = await register({
       email: account.email.trim(), password: account.password, username: account.username.trim(), fullName: account.fullName.trim(),
+      termsVersion: TERMS_VERSION,
     });
     setLoading(false);
     if (result.ok) {
@@ -190,6 +201,14 @@ export default function SignupFlow({ onDone }: { onDone: () => void }) {
             <Input label="Invite code (optional)" type="text" name="inviteCode"
               value={account.inviteCode} onChange={change} onBlur={blur} placeholder="BETA-XXXX" autoComplete="off"
               spellCheck={false} hint="A code from the team puts you on its plan." />
+
+            <div>
+              <Checkbox ref={agreeRef} name="agree" checked={agreed}
+                onChange={(e) => { setAgreed(e.currentTarget.checked); if (e.currentTarget.checked) setAgreeError(false); }}
+                aria-invalid={agreeError || undefined} aria-describedby={agreeError ? "agree-error" : undefined}
+                label={<>{AGREE_LABEL.replace(/Terms of Service and Privacy Policy$/, "")}<a href="/legal/terms" target="_blank" rel="noopener" className="underline">Terms of Service</a> and <a href="/legal/privacy" target="_blank" rel="noopener" className="underline">Privacy Policy</a></>} />
+              {agreeError && <p id="agree-error" role="alert" className="mt-1 text-sm text-ink-red">Tick the box to create your account.</p>}
+            </div>
 
             {general && (
               <Card tone="danger" pad="sm" role="alert">

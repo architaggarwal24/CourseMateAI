@@ -9,7 +9,7 @@ if (process.env.NODE_ENV === "production") parseSiteUrl(process.env.NEXT_PUBLIC_
 
 // Private and utility pages: never indexed, said in the response header as well as the page's meta tag (the
 // header also covers anything that isn't HTML). The public pages are listed in src/lib/site.ts PUBLIC_PAGES.
-const NOINDEX_PATHS = ["/today", "/study", "/quests", "/arena", "/bestiary", "/champion", "/hero", "/account", "/login", "/offline", "/api"];
+const NOINDEX_PATHS = ["/today", "/study", "/quests", "/arena", "/bestiary", "/champion", "/adventurer", "/hero", "/account", "/login", "/offline", "/api"];
 
 // The API: the browser only ever calls this site (/api/*), answered by the Worker's routes under src/app/api/
 // (an unknown path is a JSON 404). One site, so no CORS and a first-party cookie.
@@ -20,6 +20,8 @@ const nextConfig: NextConfig = {
   turbopack: { root: typeof __dirname !== "undefined" ? __dirname : process.cwd() },
   // A self-contained server (.next/standalone) so the Docker image ships no node_modules.
   output: "standalone",
+  // `next dev`'s badge sits bottom-right: bottom-left it covered the Hero panel's sound and profile buttons.
+  devIndicators: { position: "bottom-right" },
   // The old top-level pages now live under /study, /hero and /account (src/lib/routes.ts). The query string is kept.
   async redirects() {
     return [

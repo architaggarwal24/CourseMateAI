@@ -8,6 +8,7 @@
 //   cancel    at the end of the paid period (the plan stays until then)
 // The plan (user_plans, source 'subscription'): live -> until the period ends + GRACE_DAYS; cancelled /
 // completed -> until the period ends; halted / paused / expired -> back to Free now.
+import * as log from "../log";
 import { and, desc, eq, inArray, ne, sql } from "drizzle-orm";
 import type { CurrentUser, RequestContext } from "../context";
 import { paymentEvents, subscriptions, userPlans } from "../db/schema";
@@ -60,7 +61,7 @@ export function razorpay(keyId: string, secret: string, webhookSecret: string, p
       body: body ? JSON.stringify(body) : undefined, signal: AbortSignal.timeout(20_000),
     });
     if (!r.ok) {
-      console.warn(`[coursemate-billing] razorpay ${method} ${path} -> ${r.status}`);
+      log.warn(`[coursemate-billing] razorpay ${method} ${path} -> ${r.status}`);
       throw new HttpError(502, "payment_provider_error", "The payment provider didn't accept that. Please try again.", "retry");
     }
     return (await r.json()) as Entity;
@@ -98,9 +99,9 @@ export function provider(e: Env = process.env): Provider | null {
   if (!["1", "true", "yes"].includes(env(e, "PAYMENTS_ENABLED").toLowerCase())) return null;
   if (env(e, "PAYMENTS_PROVIDER").toLowerCase() === "stub") return stub();
   const kid = env(e, "RAZORPAY_KEY_ID"), secret = env(e, "RAZORPAY_KEY_SECRET");
-  if (!kid || !secret) { console.warn("[coursemate-billing] PAYMENTS_ENABLED is on but Razorpay keys are missing: payments stay off"); return null; }
+  if (!kid || !secret) { log.warn("[coursemate-billing] PAYMENTS_ENABLED is on but Razorpay keys are missing: payments stay off"); return null; }
   let plans: Record<string, string> = {};
-  try { plans = JSON.parse(env(e, "RAZORPAY_PLAN_IDS_JSON") || "{}"); } catch { console.warn("[coursemate-billing] RAZORPAY_PLAN_IDS_JSON is not valid JSON"); }
+  try { plans = JSON.parse(env(e, "RAZORPAY_PLAN_IDS_JSON") || "{}"); } catch { log.warn("[coursemate-billing] RAZORPAY_PLAN_IDS_JSON is not valid JSON"); }
   return razorpay(kid, secret, env(e, "RAZORPAY_WEBHOOK_SECRET"), plans);
 }
 
@@ -232,7 +233,7 @@ async function syncPlan(ctx: RequestContext, row: Sub) {
 async function retireOthers(ctx: RequestContext, p: Provider, row: Sub) {
   const others = await ctx.db.select().from(subscriptions).where(and(eq(subscriptions.userId, row.userId), ne(subscriptions.id, row.id), inArray(subscriptions.status, LIVE))).all();
   for (const o of others) {
-    try { await p.cancel(o.id, false); } catch { console.warn(`[coursemate-billing] could not cancel the previous subscription ${o.id}`); }
+    try { await p.cancel(o.id, false); } catch { log.warn(`[coursemate-billing] could not cancel the previous subscription ${o.id}`); }
     await ctx.db.update(subscriptions).set({ status: "cancelled", updatedAt: iso(new Date())! }).where(eq(subscriptions.id, o.id));
   }
 }

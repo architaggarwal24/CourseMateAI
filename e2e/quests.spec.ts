@@ -5,15 +5,15 @@ import { settle } from "./helpers";
 
 // Stage Q1: the quest board. Every quest is a sealed scroll; "Answer the call" goes where it is done; a finished
 // one's seal breaks and pays.
-test("the quest board: scrolls by kind, Answer the call, and a hunt's seal breaking for its lost page", async ({ page }) => {
+test("the quest board: scrolls by kind, each button says what you'll do there, and a hunt's seal breaking for its lost page", async ({ page }) => {
   const { unanswered } = await mockApi(page);
   await page.goto("/quests");
   for (const title of ["Today's quests", "Weekly trials", "Hunts", "Kaien's story"]) await expect(page.getByRole("heading", { name: title })).toBeVisible();
   await expect(page.getByRole("listitem", { name: "Trial of Questions" }).getByRole("progressbar")).toHaveAttribute("aria-valuenow", "3");
 
   const cyclops = page.getByRole("listitem", { name: "Hunt the Cyclops" });
-  await expect(cyclops.getByRole("link", { name: "Answer the call" })).toHaveAttribute("href", "/arena?topic=mechanics");
-  await expect(page.getByRole("listitem", { name: "Trial of Memory" }).getByRole("link", { name: "Answer the call" })).toHaveAttribute("href", "/study?tab=review");
+  await expect(cyclops.getByRole("link", { name: "Hunt it" })).toHaveAttribute("href", "/arena?topic=mechanics");
+  await expect(page.getByRole("listitem", { name: "Trial of Memory" }).getByRole("link", { name: "Review cards" })).toHaveAttribute("href", "/study?tab=review");
 
   await settle(page);
   const axe = await new AxeBuilder({ page }).include(".qboard").analyze();

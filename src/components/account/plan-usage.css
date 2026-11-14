@@ -50,6 +50,7 @@
 .pu-card__price { margin: 0; font-size: 1.6rem; font-weight: 700; color: var(--color-text); font-variant-numeric: tabular-nums; }
 .pu-card__price span { font-size: 0.8rem; font-weight: 500; color: var(--color-muted); }
 .pu-card__tag { margin: 0; font-size: 0.82rem; color: var(--color-text-secondary); min-height: 2.4em; }
+.pu-card__renew { margin: 0; font-size: 0.75rem; line-height: 1.45; color: var(--color-text-secondary); }
 .pu-card__list { margin: 0; padding: 0; list-style: none; display: grid; gap: var(--space-2); flex: 1; font-size: 0.82rem; color: var(--color-text-secondary); }
 .pu-card__list li { display: flex; gap: var(--space-2); align-items: flex-start; }
 .pu-card__list svg { flex: none; margin-top: 2px; color: var(--color-success-text); }

@@ -75,3 +75,29 @@
 .profile-link__detail { color: var(--color-muted); font-size: 0.8rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .profile-link__go { flex: none; color: var(--color-muted); }
 .profile-link:focus-visible { outline-offset: calc(-1 * var(--focus-ring-width)); }
+
+/* Account -> Trash (data-loss safety): one row per deleted PDF or course */
+.trash { display: grid; gap: var(--space-5); max-width: 48rem; padding: var(--space-6); }
+.trash__title { margin: 0; font-size: 1.4rem; font-weight: 700; }
+.trash__lead { margin: var(--space-1) 0 0; color: var(--color-text-secondary); font-size: 0.9rem; }
+.trash__list { display: grid; gap: var(--space-2); margin: 0; padding: 0; list-style: none; }
+.trash__item {
+  display: grid; grid-template-columns: auto minmax(0, 1fr) auto auto; align-items: center; gap: var(--space-3);
+  padding: var(--space-3) var(--space-4); border: 1px solid var(--color-border); border-radius: var(--radius-lg); background: var(--color-elevated);
+}
+.trash__icon { display: grid; place-items: center; width: 2.25rem; height: 2.25rem; border-radius: var(--radius-md); background: var(--color-surface-sunken); color: var(--color-text-secondary); }
+.trash__text { display: grid; gap: 2px; min-width: 0; }
+.trash__name { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.trash__meta { color: var(--color-text-secondary); font-size: 0.8rem; }
+.trash__actions { display: flex; gap: var(--space-1); }
+@media (max-width: 639.98px) {
+  .trash { padding: var(--space-4); }
+  .trash__item { grid-template-columns: auto minmax(0, 1fr); }
+  .trash__item > .ui-badge { grid-column: 2; justify-self: start; }
+  .trash__actions { grid-column: 1 / -1; justify-content: flex-end; }
+}
+
+/* Admin: which copy of the app this is (words, not only colour) */
+.admin-env { display: inline-flex; flex-wrap: wrap; gap: 0 var(--space-1); margin: var(--space-2) 0 0; padding: var(--space-1) var(--space-3); border: 1px solid var(--color-border); border-radius: var(--radius-md); font-size: 0.8rem; color: var(--color-text-secondary); }
+.admin-env[data-env="live"] { border-color: var(--color-danger-text); }
+.admin-env[data-env="live"] strong { color: var(--color-danger-text); }

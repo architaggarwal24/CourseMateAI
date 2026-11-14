@@ -8,13 +8,13 @@ export default function TermsPage() {
     <>
       <h1>Terms of Service</h1>
       <p className="legal__updated">Last updated {UPDATED}</p>
-      <p>CourseMateAI (&quot;the service&quot;) is run by {OPERATOR.name}, {OPERATOR.country}. By creating an account or using the service you agree to these terms.</p>
+      <p>CourseMateAI (&quot;the service&quot;) is run by {OPERATOR.name}, {OPERATOR.country}. You agree to these terms by ticking the box when you create your account (or when the app asks after they change); we keep a record of the version you accepted and when.</p>
       <h2>The service</h2>
-      <p>CourseMateAI helps you study the documents you upload: it answers questions about them, writes quizzes, notes, flashcards and mock exams, and turns studying into a game. Answers are written by AI models and can be wrong; check anything important against your own material.</p>
+      <p>CourseMateAI helps you study the documents you upload: it answers questions about them, writes quizzes, notes, flashcards and mock exams, and turns studying into a game. Answers, notes, quizzes and flashcards are written by AI models (the app labels them) and can be wrong; check anything important against your own material.</p>
       <h2>Your account</h2>
       <ul>
         <li>You must give a working email address and keep your password safe. You are responsible for what happens under your account.</li>
-        <li>You must be at least 13 years old, or have a parent&apos;s or guardian&apos;s permission.</li>
+        <li>You must be at least 12 years old.</li>
         <li>One person per account. Don&apos;t share accounts or resell access.</li>
       </ul>
       <h2>Your documents</h2>
@@ -28,7 +28,7 @@ export default function TermsPage() {
       <h2>Liability</h2>
       <p>The service is provided &quot;as is&quot;. To the extent the law allows, we are not liable for indirect losses, lost data or results of decisions made on AI-written content. Our total liability is limited to what you paid us in the 3 months before the claim.</p>
       <h2>Ending</h2>
-      <p>You can delete your account at any time in Account → Settings; your documents and data are deleted with it. These terms are governed by the laws of India.</p>
+      <p>You can delete your account at any time in Account → Settings; your documents and data are deleted with it. A PDF or course you delete waits in Account → Trash for 30 days, then it is deleted for good. These terms are governed by the laws of India.</p>
       <h2>Contact</h2>
       <p>{OPERATOR.name} · <a href={`mailto:${OPERATOR.email}`}>{OPERATOR.email}</a></p>
     </>

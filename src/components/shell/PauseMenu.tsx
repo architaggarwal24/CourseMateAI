@@ -1,11 +1,12 @@
 "use client";
 
 import { useEffect } from "react";
-import { ArrowLeft, ChevronRight, HelpCircle, Settings, Sparkles } from "@/components/ui/icons";
-import { Button, Modal } from "@/components/ui";
+import { ArrowLeft, ChevronRight, HelpCircle, Settings, Sparkles, UserCircle } from "@/components/ui/icons";
+import { Button, ButtonLink, Modal } from "@/components/ui";
 import SoundToggle from "@/components/fx/SoundToggle";
 import { usePause } from "@/hooks/usePause";
 import { useHeroPrefs, type HeroPrefs } from "@/hooks/useHeroPrefs";
+import { ROUTES } from "@/lib/routes";
 import { lastPage } from "@/lib/worlds";
 import { portalCross } from "./PortalLink";
 
@@ -46,6 +47,7 @@ export default function PauseMenu() {
       {view === "menu" && (
         <div className="pause__menu" role="group" aria-label="Pause menu">
           <Button variant="primary" block onClick={close}><ChevronRight size={16} aria-hidden="true" />Resume</Button>
+          <ButtonLink block href={ROUTES.heroProfile} onClick={close}><UserCircle size={16} aria-hidden="true" />Hero profile</ButtonLink>
           <Button block onClick={() => setView("options")}><Settings size={16} aria-hidden="true" />Options</Button>
           <Button block onClick={() => setView("controls")}><HelpCircle size={16} aria-hidden="true" />Controls</Button>
           <Button variant="ghost" block onClick={() => { close(); portalCross("study", lastPage("study")); }}><Sparkles size={16} aria-hidden="true" />Return to Study</Button>
@@ -101,7 +103,7 @@ function PauseExtras() {
 }
 
 /** An on/off switch (a button with aria-pressed, like the sound switch). */
-function Switch({ checked, onChange, label }: { checked: boolean; onChange: (on: boolean) => void; label: string }) {
+export function Switch({ checked, onChange, label }: { checked: boolean; onChange: (on: boolean) => void; label: string }) {
   return (
     <button type="button" className="pause__switch" aria-pressed={checked} aria-label={label} onClick={() => onChange(!checked)} data-on={checked || undefined}>
       <span aria-hidden="true">{checked ? "ON" : "OFF"}</span>

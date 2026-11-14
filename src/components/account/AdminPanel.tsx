@@ -450,11 +450,29 @@ export default function AdminPanel() {
       <div>
         <h1 className="text-2xl font-bold tracking-tight text-fg">Admin</h1>
         <p className="text-sm text-fg-muted">Accounts, plans and invite codes</p>
+        <EnvironmentLabel />
       </div>
       <Users isOwnerActor={!!user.is_owner} />
       <AiSpend />
       <AiModelsCard />
       <Invites />
     </div>
+  );
+}
+
+/**
+ * Which copy of the app this is (data-loss safety, control 02): on the live site every change here reaches real
+ * accounts, so it says so in words, not only colour. Read from the address the page was served from.
+ */
+export function EnvironmentLabel({ host }: { host?: string }) {
+  const [where, setWhere] = useState<string | null>(host ?? null);
+  useEffect(() => { if (!host) setWhere(window.location.hostname); }, [host]);
+  if (!where) return null;
+  const local = /^(localhost|127\.0\.0\.1|\[::1\])$/.test(where) || where.endsWith(".localhost") || where.endsWith(".test");
+  return (
+    <p className="admin-env" data-env={local ? "local" : "live"} role="note">
+      <strong>{local ? "Local test copy" : "LIVE production"}</strong>
+      <span>{local ? ` · ${where}: nothing here touches real accounts` : ` · ${where}: changes here affect real accounts`}</span>
+    </p>
   );
 }

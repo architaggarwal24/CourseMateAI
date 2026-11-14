@@ -12,8 +12,15 @@ import { citationNumber, linkCitations } from "@/lib/study/citations";
 import "@/components/pdf/pdf.css";             // .cite-mark (also needed before the viewer has loaded)
 
 // Tables scroll sideways inside the message instead of stretching it; links open in a new tab. (Raw HTML in the
-// answer is never rendered: react-markdown escapes it.)
+// answer is never rendered: react-markdown escapes it, and drops javascript: links.)
+// Images are never loaded: an answer is text, and an image URL is a way to send data to any server the page asks
+// (a PDF could tell the model to write one: the AI security pass, control 19). The alt text shows instead.
+/** Only these link targets stay links; anything else is shown as plain text. */
+export const SAFE_LINK = /^(https?:|mailto:|#)/i;
 const components: Components = {
+  img: ({ alt }: ComponentProps<"img"> & { node?: unknown }) => (
+    <span className="chat-img-blocked">[image{alt ? `: ${alt}` : ""}]</span>
+  ),
   table: ({ node: _node, ...props }: ComponentProps<"table"> & { node?: unknown }) => (
     <div className="chat-table overflow-x-auto"><table {...props} /></div>
   ),
@@ -44,7 +51,8 @@ function ChatMarkdown({ children, citations = 0, onCite }: Props) {
           <button type="button" className="cite-mark" onClick={() => cite.current?.(n)} aria-label={`Source ${n}`}>{n}</button>
         );
       }
-      return <a href={href} {...props} target="_blank" rel="noopener noreferrer" />;
+      if (!href || !SAFE_LINK.test(href)) return <span>{props.children}</span>;
+      return <a href={href} {...props} target="_blank" rel="noopener noreferrer nofollow" />;
     },
   }), []);
   return (

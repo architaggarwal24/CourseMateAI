@@ -17,11 +17,13 @@ import ForgeTab from "./ForgeTab";
 import HeroHeader from "./HeroHeader";
 import InventoryTab from "./InventoryTab";
 import MasteryTab from "./MasteryTab";
+import ProfileTab from "./ProfileTab";
 import PurchaseFlow from "./PurchaseFlow";
 import QuestsTab from "./QuestsTab";
 import ShopTab from "./ShopTab";
 import "./hero.css";
 import "./pixel-ui.css";
+import "./collection.css";
 
 const ArenaArea = dynamic(() => import("@/components/arena/ArenaArea"), { ssr: false });
 const AchievementsView = dynamic(() => import("@/components/play/AchievementsView"), { ssr: false });
@@ -44,7 +46,7 @@ const TABS: ReadonlyArray<{ id: ChampionTabId; label: string }> = [
  * useHeroStore, useChampion), so what is bought, worn or chosen in one place shows everywhere. A Champion link with
  * an old tab (?tab=avatar) or a tab that now has its own page (?tab=arena) is sent to the right place.
  */
-export default function PlayArea({ page }: { page: PlayPage | "champion" }) {
+export default function PlayArea({ page }: { page: PlayPage | "champion" | "adventurer" }) {
   const router = useRouter();
   const params = useSearchParams();
   const tabParam = params.get("tab");
@@ -53,7 +55,7 @@ export default function PlayArea({ page }: { page: PlayPage | "champion" }) {
   const moved: HeroTab | undefined = page === "champion" && isHeroTab(tabParam) && !isChampionTab(tabParam) ? tabParam : undefined;
   const tab: ChampionTabId = isChampionTab(tabParam) ? tabParam : (legacy && isChampionTab(legacy) ? legacy : DEFAULT_CHAMPION_TAB);
   /** What is on screen: the page, or (on Champion) its tab. */
-  const screen: HeroTab = page === "champion" ? tab : page;
+  const screen: HeroTab | "adventurer" = page === "champion" ? tab : page;
   const { user, loading: authLoading } = useAuth();
 
   const loadShop = useHeroStore((s) => s.loadShop);
@@ -112,6 +114,7 @@ export default function PlayArea({ page }: { page: PlayPage | "champion" }) {
         {screen === "forge" && <ForgeTab />}
         {screen === "achievements" && <AchievementsView />}
         {screen === "mastery" && <MasteryTab />}
+        {screen === "adventurer" && <ProfileTab />}
       </div>
       {/* not over a fight: the arena's result panel offers the ceremony itself ("Meet ...") */}
       {ceremony && screen !== "arena" && <ChampionCeremony />}

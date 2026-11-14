@@ -67,3 +67,11 @@ describe("structured data", () => {
     expect(jsonLdScript({ a: "</script><script>" })).not.toContain("</script>");
   });
 });
+
+describe("the Terms version", () => {
+  it("is the policies' date: changing one without the other would ask nobody, or everyone, by mistake", async () => {
+    const { TERMS_VERSION } = await import("./legal");
+    const { LEGAL_UPDATED_ISO } = await import("./site");
+    expect(TERMS_VERSION).toBe(LEGAL_UPDATED_ISO);
+  });
+});

@@ -118,6 +118,9 @@ const INVITES = [
 /** Installs the mock. Returns the list of GET paths nothing answered, so a test can say a new call needs a fixture. */
 export async function mockApi(page: Page, { signedIn = true, advanced = true, documents = [DOCUMENT], ceremony, buyable, planNotice }: MockOptions = {}) {
   const unanswered: string[] = [];
+  const binned: { id: string; kind: string; name: string; [k: string]: unknown }[] = [
+    { id: "course-old", kind: "course", name: "Old chemistry", deleted_at: "2026-11-01T10:00:00.000Z", expires_at: "2026-12-01T10:00:00.000Z", days_left: 3, documents: 2 },
+  ];
   let notice: Record<string, unknown> | null = planNotice ?? null;
   const progress = { ...hud.progress, current_level: advanced ? 7 : 1, total_xp: advanced ? 1450 : 0, coins: advanced ? 320 : 0, xp_into_level: advanced ? 150 : 0, xp_to_next: 400, streak_days: advanced ? 4 : 0 };
   const shopData = { ...shop, shop_unlocked: advanced, level: progress.current_level, coins: progress.coins,
@@ -403,8 +406,18 @@ export async function mockApi(page: Page, { signedIn = true, advanced = true, do
     const doc = path.match(/^\/documents\/([^/]+)$/);
     if (doc && method === "DELETE") {
       const i = documents.findIndex((d) => d.id === doc[1]);
+      if (i >= 0) binned.push({ id: documents[i].id, kind: "document", name: documents[i].filename, deleted_at: new Date().toISOString(), expires_at: new Date(Date.now() + 30 * 86_400_000).toISOString(), days_left: 30, pages: 12, courses: 1 });
       if (i >= 0) documents.splice(i, 1);
       return json(route, 200, { ok: true });
+    }
+    // the Trash (data-loss safety): what was deleted here, plus an old course
+    if (path === "/trash" && method === "GET") return json(route, 200, { days: 30, items: binned });
+    const binItem = path.match(/^\/trash\/([^/]+)(\/restore)?$/);
+    if (binItem) {
+      const i = binned.findIndex((b) => b.id === binItem[1]);
+      if (i < 0) return json(route, 404, { error: { code: "not_in_trash", message: "That isn't in your Trash.", action: null, details: null } });
+      const [item] = binned.splice(i, 1);
+      return json(route, 200, binItem[2] ? { ok: true, kind: item.kind, id: item.id, name: item.name } : { ok: true });
     }
     if (doc) {
       const found = documents.find((d) => d.id === doc[1]);

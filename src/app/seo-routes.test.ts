@@ -1,5 +1,6 @@
 /** @vitest-environment node */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { LEGAL_UPDATED_ISO } from "@/lib/site";
 
 const PROD = "https://coursemateai.architaggarwal.workers.dev";
 beforeEach(() => vi.stubEnv("NEXT_PUBLIC_SITE_URL", PROD));
@@ -11,7 +12,7 @@ describe("sitemap.xml", () => {
     const entries = sitemap();
     expect(entries.map((e) => e.url)).toEqual(["/", "/features", "/features/ai-tutor", "/features/quizzes-flashcards-exams", "/features/spaced-repetition", "/features/study-game", "/legal/terms", "/legal/privacy", "/legal/refunds"].map((p) => `${PROD}${p === "/" ? "/" : p}`));
     expect(entries[0].lastModified).toBeUndefined();                     // not known: not invented
-    expect(entries.find((e) => e.url.endsWith("/legal/terms"))!.lastModified).toBe("2026-11-10");
+    expect(entries.find((e) => e.url.endsWith("/legal/terms"))!.lastModified).toBe(LEGAL_UPDATED_ISO);
     for (const e of entries) expect(new URL(e.url).pathname).not.toMatch(/^\/(today|study|hero|account|login|offline|api)(\/|$)/);
   });
 });

@@ -12,7 +12,7 @@
 .cmap-panel h3 { margin: 0; font-size: 1.05rem; font-weight: 700; color: var(--color-text); }
 .cmap-panel p { margin: 0; font-size: 0.875rem; color: var(--color-text-secondary); line-height: 1.5; }
 .cmap-panel__meta { font-size: 0.78rem !important; color: var(--color-muted) !important; }
-.cmap-panel h4 { margin: 0 0 var(--space-1); font-size: 0.72rem; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; color: var(--color-muted); }
+.cmap-panel h4 { margin: 0 0 var(--space-1); font-size: 0.8rem; font-weight: 600; color: var(--color-text-secondary); }
 .cmap-panel__links { display: flex; flex-wrap: wrap; gap: var(--space-1); margin: 0; padding: 0; list-style: none; }
 .cmap-panel__actions { display: grid; gap: var(--space-2); }
 
@@ -87,4 +87,4 @@
 .mm__node--root .mm__label { fill: var(--color-on-accent); font-size: 17px; font-weight: 700; }
 .mm__node--root .mm__dot { stroke: var(--color-on-accent); stroke-width: 1.5; }
 .mm__node--root[data-selected] .mm__pill { stroke: var(--color-text); stroke-width: 3; }
-.mm__caption { fill: var(--color-muted); font-size: 12px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; text-anchor: middle; }
+.mm__caption { fill: var(--color-text-secondary); font-size: 13px; font-weight: 600; text-anchor: middle; }

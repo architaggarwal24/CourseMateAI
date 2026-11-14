@@ -46,7 +46,7 @@ describe("the bridges between the worlds (two worlds, Stage 5)", () => {
     act(() => { useReview.setState({ stats: { due: 4 } as never }); });
     rerender(<ReviewScroll />);
     expect(screen.getByRole("region", { name: "4 reviews await" })).toBeTruthy();
-    fireEvent.click(screen.getByRole("link", { name: "Answer the call" }));
+    fireEvent.click(screen.getByRole("link", { name: "Review 4 cards" }));
     expect(usePortal.getState()).toMatchObject({ phase: "cover", to: "study", href: "/study?tab=review" });
   });
 

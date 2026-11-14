@@ -150,13 +150,14 @@ describe("<PlayArea />", () => {
   it("buying an item updates coins, inventory and the champion preview with no reload", async () => {
     const { rerender } = render(<HeroArea />);
     await screen.findByText("New Hat");
-    const card = () => screen.getByText("New Hat").closest("li")!;
+    const card = () => document.querySelector<HTMLElement>('[data-item-id="hat_new"]')!;
 
-    // Try it on: the header's champion and the shop's both show it.
-    fireEvent.click(within(card()).getByRole("button", { name: "Try on New Hat" }));
+    // Click it: the left panel previews it on the champion; the side panel's champion shows it too.
+    fireEvent.click(within(card()).getByRole("button", { name: "Preview New Hat" }));
+    const preview = screen.getByTestId("item-preview");
+    expect(within(preview).getByRole("img", { name: "Kaien, wearing New Hat" })).toBeTruthy();
+    expect(within(preview).getByRole("heading", { name: "New Hat" })).toBeTruthy();
     expect(screen.getByRole("img", { name: "Your champion, Kaien, trying on New Hat" })).toBeTruthy();
-    expect(screen.getByRole("img", { name: "Kaien, trying on New Hat" })).toBeTruthy();
-    expect(screen.getByTestId("shop-preview-name").textContent).toContain("New Hat");
 
     const shopReads = () => api.GET.mock.calls.filter(([p]) => p === "/shop").length;
     const readsBefore = shopReads();
@@ -172,13 +173,13 @@ describe("<PlayArea />", () => {
     // Coins, the card and the preview change from the purchase's own answer ...
     await vi.waitFor(() => expect(coins()).toBe("50"));
     expect(within(card()).getByRole("button", { name: "Equip" })).toBeTruthy();
-    expect(screen.getByRole("img", { name: "Your champion, Kaien, trying on New Hat" })).toBeTruthy();
+    expect(within(screen.getByTestId("item-preview")).getByRole("button", { name: "Equip" })).toBeTruthy();   // the preview stays open on it
 
     // ... and the inventory tab (same page, same stores) already lists it, without the page being reloaded.
     nav.query = "tab=inventory";
     rerender(<HeroArea />);
     expect(screen.getByTestId("inventory-count").textContent).toBe("3 items owned");
-    expect(screen.getByText("New Hat")).toBeTruthy();
+    expect(document.querySelector('[data-item-id="hat_new"]')).toBeTruthy();
     expect(coins()).toBe("50");
 
     // The quiet confirmation happened, and it agrees with what was shown.
@@ -335,15 +336,24 @@ describe("<PlayArea />: the Mastery tab", () => {
     };
   });
 
-  it("lists all six champions with their mastery and challenges; locked ones say how they join", async () => {
+  it("a roster of the six champions with their mastery; picking one shows its challenges, or how a locked one joins", async () => {
     render(<HeroArea />);
     const tab = await screen.findByTestId("mastery");
+    const roster = within(tab).getByRole("tablist", { name: "Champions" });
+    // Kaien (the champion you fight as) is open first
     await vi.waitFor(() => expect(within(tab).getByRole("progressbar", { name: "Kaien's mastery" }).getAttribute("aria-valuenow")).toBe("12"));
     expect(within(tab).getByText("1/6")).toBeTruthy();                                       // Asha is mastered
-    expect(within(tab).getByRole("region", { name: "Asha" }).hasAttribute("data-mastered")).toBe(true);
     expect(within(tab).getByRole("list", { name: "Kaien's mastery challenges" }).textContent).toContain("Win 5 battles");
-    expect(within(within(tab).getByRole("region", { name: "Thorne" })).getByText(/Finish the Bestiary's first tier \(3\/10\)/)).toBeTruthy();
+    expect(within(roster).getByRole("tab", { name: /Asha.*Mastered/ })).toBeTruthy();
+    expect(within(roster).getByRole("tab", { name: /Thorne.*Not joined yet/ })).toBeTruthy();
+    fireEvent.click(within(roster).getByRole("tab", { name: /Thorne/ }));
+    const thorne = within(tab).getByRole("region", { name: "Thorne" });
+    expect(within(thorne).getByText("Finish the Bestiary's first tier")).toBeTruthy();
+    expect(within(thorne).getByText("3/10 so far")).toBeTruthy();
     expect(within(tab).queryByRole("progressbar", { name: "Thorne's mastery" })).toBeNull();
+    fireEvent.click(within(roster).getByRole("tab", { name: /Asha/ }));
+    expect(within(tab).getByRole("region", { name: "Asha" })).toBeTruthy();
+    expect(within(tab).getByText("Mastered", { selector: ".mmeter__pct" })).toBeTruthy();
   });
 
   it("the Champion tab keeps a short mastery line that links here", async () => {

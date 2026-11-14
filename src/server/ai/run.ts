@@ -1,6 +1,7 @@
 // Calling a model for a user (Stage 4.3): the plan's quota first, then the route's targets in order (the next one
 // takes over when one fails - before the first word, for a streamed answer), and every call metered.
 // Users can't bring their own keys: every call is the server's (and counts against the plan).
+import * as log from "../log";
 import type { Db } from "../db";
 import { HttpError } from "../http";
 import type { Tier } from "../account/plans";
@@ -8,6 +9,7 @@ import { route, type Job, type Target } from "./models";
 import { apiLlm, DEFAULT_MAX_OUTPUT } from "./providers";
 import { isCapped, recordCall, releaseCall, reserveCall } from "./usage";
 import { aiSettings, overrideTarget, withSlots } from "./config";
+import { leaked, safeLength, withGuard } from "./guard";
 
 export interface ChatMessage { role: "system" | "user" | "assistant"; content: string }
 export interface CallOptions {
@@ -67,6 +69,12 @@ export function noModel(): HttpError {
   return new HttpError(503, "ai_unavailable", "The AI couldn't answer just now. Please try again in a moment.", "retry");
 }
 
+/** An answer that repeated the app's instructions (the canary showed up): withheld, and an alert in the logs. */
+export function withheld(caller: Caller, job: Job): HttpError {
+  log.warn(`[coursemate-ai] ALERT canary in an answer: withheld (user ${caller.id}, job ${job})`);
+  return new HttpError(502, "answer_withheld", "That answer was withheld because it didn't follow the app's rules. Please ask again, or rephrase.", "retry");
+}
+
 interface Ctx { db: Db; env: { AI?: unknown } }
 
 /** The models to try, in order. Reserves one of today's calls first (see reserveCall); `reserved` says if it did. */
@@ -95,7 +103,8 @@ async function pickTargets(ctx: Ctx, caller: Caller, job: Job): Promise<Target[]
 }
 
 /** One answer, whole. */
-export async function generate(ctx: Ctx, caller: Caller, job: Job, messages: ChatMessage[], opts: CallOptions = {}) {
+export async function generate(ctx: Ctx, caller: Caller, job: Job, raw: ChatMessage[], opts: CallOptions = {}) {
+  const messages = withGuard(raw);
   const { list, reserved } = await targets(ctx, caller, job);
   let lastError: unknown;
   for (let i = 0; i < list.length; i++) {
@@ -104,13 +113,14 @@ export async function generate(ctx: Ctx, caller: Caller, job: Job, messages: Cha
       const r = await llmFor(t, ctx.env).generate(messages, opts);
       if (!r.text?.trim()) throw new Error("empty answer");
       await recordCall(ctx.db, { userId: caller.id, target: t, job, tokensIn: r.tokensIn ?? promptTokens(messages), tokensOut: r.tokensOut ?? estimateTokens(r.text), fallback: i > 0, reserved });
+      if (leaked(r.text)) { lastError = withheld(caller, job); break; }
       return { text: r.text, target: t };
     } catch (e) {
       lastError = e;
-      console.warn(`[coursemate-ai] ${t.provider}:${t.model} failed (${e instanceof Error ? e.message.slice(0, 200) : "error"})`);
+      log.warn(`[coursemate-ai] ${t.provider}:${t.model} failed (${e instanceof Error ? e.message.slice(0, 200) : "error"})`);
     }
   }
-  void lastError;
+  if (lastError instanceof HttpError && lastError.code === "answer_withheld") throw lastError;   // answered (and metered), not shown
   if (reserved) await releaseCall(ctx.db, caller.id).catch(() => {});      // nobody answered: the call isn't spent
   throw noModel();
 }
@@ -119,7 +129,8 @@ export async function generate(ctx: Ctx, caller: Caller, job: Job, messages: Cha
  * A streamed answer. Resolves once the first words have arrived (from whichever target managed it), so a failure
  * before that is an ordinary error. `pieces` then yields the rest; `done` resolves with the whole text (metered).
  */
-export async function stream(ctx: Ctx, caller: Caller, job: Job, messages: ChatMessage[], opts: CallOptions = {}) {
+export async function stream(ctx: Ctx, caller: Caller, job: Job, raw: ChatMessage[], opts: CallOptions = {}) {
+  const messages = withGuard(raw);
   const { list, reserved } = await targets(ctx, caller, job);
   for (let i = 0; i < list.length; i++) {
     const t = list[i];
@@ -129,7 +140,7 @@ export async function stream(ctx: Ctx, caller: Caller, job: Job, messages: ChatM
       do { first = await it.next(); } while (!first.done && !first.value.text);
       if (first.done) throw new Error("empty answer");
     } catch (e) {
-      console.warn(`[coursemate-ai] ${t.provider}:${t.model} failed before answering (${e instanceof Error ? e.message.slice(0, 200) : "error"})`);
+      log.warn(`[coursemate-ai] ${t.provider}:${t.model} failed before answering (${e instanceof Error ? e.message.slice(0, 200) : "error"})`);
       continue;
     }
     let text = first.value.text ?? "";
@@ -141,15 +152,24 @@ export async function stream(ctx: Ctx, caller: Caller, job: Job, messages: ChatM
     done.catch(() => {});
     const fallback = i > 0;
     async function* pieces(): AsyncGenerator<string> {
+      // the canary check: a tail that could be the start of the marker is held back until the next piece shows
+      // what it is, so not even part of it goes out
+      let sent = 0;
+      const release = function* (final: boolean): Generator<string> {
+        if (leaked(text)) throw withheld(caller, job);
+        const upTo = final ? text.length : safeLength(text);
+        if (upTo > sent) { yield text.slice(sent, upTo); sent = upTo; }
+      };
       try {
-        yield first.value.text!;
+        yield* release(false);
         for (;;) {
           const r = await it.next();
           if (r.done) break;
-          if (r.value.text) { text += r.value.text; yield r.value.text; }
+          if (r.value.text) { text += r.value.text; yield* release(false); }
           if (r.value.tokensIn !== undefined) tokensIn = r.value.tokensIn;
           if (r.value.tokensOut !== undefined) tokensOut = r.value.tokensOut;
         }
+        yield* release(true);
         await recordCall(ctx.db, { userId: caller.id, target: t, job, tokensIn: tokensIn ?? promptTokens(messages), tokensOut: tokensOut ?? estimateTokens(text), fallback, reserved });
         resolveDone({ text });
       } catch (e) {

@@ -9,8 +9,9 @@ import { and, eq, sql } from "drizzle-orm";
 import type { RequestContext } from "../context";
 import { dailyQuests, userAchievements, userBuffs } from "../db/schema";
 import {
-  ACHIEVEMENTS, ITEMS, REWARD_ACTIONS, dailyQuestPool, rewards as REWARDS, xpProgress, type AchievementDef, type ItemBonus, type RewardAction,
+  ACHIEVEMENTS, ITEMS, REWARD_ACTIONS, dailyQuestPool, rewards as REWARDS, xpProgress, type AchievementDef, type RewardAction,
 } from "./content";
+import { studyBonuses } from "@/lib/game/bonuses";
 import {
   getAvatar, getProgress, incrementProgress, localDate, modifyAvatar, nowIso, recordRewardEvent, setProgress, takeDailySlot, type Player,
   type Progress,
@@ -238,23 +239,13 @@ export async function applyBuff(ctx: RequestContext, p: Player, effect: string):
 }
 
 // ── equipment bonuses ────────────────────────────────────────────────────────────────────────────────────────
-/** The passive bonuses of what the player wears (owned items only). */
+/** The passive bonuses of what the player wears (owned items only): the best item for each stat (lib/game/bonuses). */
 export async function equipmentBonuses(ctx: RequestContext, userId: number) {
   const a = await getAvatar(ctx, userId);
-  const totals: { xp_pct: number; coin_pct: number; combo_xp_pct: number; arena_hints: number; streak_freeze_days?: number } =
-    { xp_pct: 0, coin_pct: 0, combo_xp_pct: 0, arena_hints: 0 };
-  let freeze: number | undefined;
-  for (const id of Object.values(a.equipped)) {
-    if (typeof id !== "string" || !canUseItem(id, a.owned)) continue;
-    const b: ItemBonus = ITEMS.get(id)?.bonus ?? {};
-    totals.xp_pct += b.xp_pct ?? 0;
-    totals.coin_pct += b.coin_pct ?? 0;
-    totals.combo_xp_pct += b.combo_xp_pct ?? 0;
-    totals.arena_hints += b.arena_hints ?? 0;
-    if (b.streak_freeze_days !== undefined) freeze = freeze === undefined ? b.streak_freeze_days : Math.min(freeze, b.streak_freeze_days);
-  }
-  if (freeze !== undefined) totals.streak_freeze_days = freeze;
-  return totals;
+  const worn = Object.values(a.equipped)
+    .filter((id): id is string => typeof id === "string" && canUseItem(id, a.owned))
+    .map((id) => ({ id, name: ITEMS.get(id)?.name ?? id, bonus: ITEMS.get(id)?.bonus ?? {} }));
+  return studyBonuses(worn).totals;
 }
 
 // ── rewards ──────────────────────────────────────────────────────────────────────────────────────────────────

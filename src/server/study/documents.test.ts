@@ -16,6 +16,9 @@ import * as course from "@/app/api/v1/courses/[id]/route";
 import * as progress from "@/app/api/v1/courses/[id]/progress/route";
 import * as usage from "@/app/api/v1/account/usage/route";
 import * as chatStream from "@/app/api/v1/chat/stream/route";
+import * as trashList from "@/app/api/v1/trash/route";
+import * as trashItem from "@/app/api/v1/trash/[id]/route";
+import * as restore from "@/app/api/v1/trash/[id]/restore/route";
 import { setMailerForTests } from "../context";
 import { setEnvForTests } from "../env";
 import { setSearchForTests } from "../search";
@@ -122,6 +125,19 @@ describe("uploading", () => {
     expect((await json(put)).error.message).toMatch(/changed during the upload/);
   });
 
+  it("a file that isn't really a PDF (no %PDF- header) is refused and not kept (AI security pass, control 06)", async () => {
+    const b = await person("owner@example.com", "boss");
+    const fake = new Uint8Array(2048);
+    fake.set(new TextEncoder().encode("<html><script>alert(1)</script></html>"));
+    const start = await json(await upload.POST(b.request("/api/v1/upload", { body: { filename: "notes.pdf", size: fake.length, pages: 1, file_hash: await sha256(fake) } })));
+    const put = await file.PUT(new Request(`${ORIGIN}/api/v1/documents/${start.session_id}/file`, {
+      method: "PUT", headers: { cookie: b.header(), origin: ORIGIN, "content-length": String(fake.length) }, body: fake, duplex: "half",
+    } as RequestInit), params({ id: start.session_id }));
+    expect(put.status).toBe(400);
+    expect((await json(put)).error).toMatchObject({ code: "not_a_pdf" });
+    expect(await p.env.FILES.list()).toMatchObject({ objects: [] });                 // nothing left in storage
+  });
+
   it("a PDF with no text fails with the scanned-PDF message", async () => {
     const b = await person("owner@example.com", "boss");
     const { done } = await uploadPdf(b, "Scan.pdf", [{ page: 1, text: "   " }, { page: 2, text: "" }]);
@@ -206,23 +222,71 @@ describe("the PDF viewer's file", () => {
 });
 
 describe("deleting", () => {
-  it("a document takes its PDF, chunks and vectors with it", async () => {
+  it("deleting a PDF moves it to the Trash: gone from the library, restorable with its search index (data-loss 11)", async () => {
     const b = await person("owner@example.com", "boss");
     const { id } = await uploadPdf(b, "Gone.pdf");
     expect((await doc.DELETE(b.request(`/api/v1/documents/${id}`, { method: "DELETE" }), params({ id }))).status).toBe(200);
-    expect(vectors.store.size).toBe(0);
+    expect((await json(await docs.GET(b.request("/api/v1/documents")))).documents).toEqual([]);
+    expect((await doc.GET(b.request(`/api/v1/documents/${id}`), params({ id }))).status).toBe(404);
     expect(await p.env.DB.prepare("SELECT COUNT(*) AS n FROM document_chunks").first("n")).toBe(0);
-    const keys = await p.env.FILES.list();
-    expect(keys.objects).toHaveLength(0);
+    expect(vectors.store.size).toBe(3);                                                   // waiting with it
+    const bin = await json(await trashList.GET(b.request("/api/v1/trash")));
+    expect(bin).toMatchObject({ days: 30, items: [{ id, kind: "document", name: "Gone.pdf", days_left: 30, pages: 3 }] });
+
+    expect((await restore.POST(b.request(`/api/v1/trash/${id}/restore`, { method: "POST" }), params({ id }))).status).toBe(200);
+    expect((await json(await docs.GET(b.request("/api/v1/documents")))).documents.map((d: { id: string }) => d.id)).toEqual([id]);
+    const hits = await json(await search.GET(b.request(`/api/v1/documents/${id}/search?q=${encodeURIComponent("mitochondria ATP")}&k=1`), params({ id })));
+    expect(hits.passages[0].text).toMatch(/Mitochondria/);                                // searchable again at once
+    expect((await json(await trashList.GET(b.request("/api/v1/trash")))).items).toEqual([]);
+    const log = await p.env.DB.prepare("SELECT action, kind, item_name FROM deletion_log ORDER BY id").all();
+    expect(log.results).toEqual([
+      { action: "trashed", kind: "document", item_name: "Gone.pdf" },
+      { action: "restored", kind: "document", item_name: "Gone.pdf" },
+    ]);
   });
 
-  it("deleting the account removes every document's files and vectors", async () => {
+  it("deleted for good (by hand, or after 30 days), a PDF takes its file, chunks and vectors with it", async () => {
+    const b = await person("owner@example.com", "boss");
+    const one = (await uploadPdf(b, "One.pdf")).id;
+    const two = (await uploadPdf(b, "Two.pdf")).id;
+    for (const id of [one, two]) await doc.DELETE(b.request(`/api/v1/documents/${id}`, { method: "DELETE" }), params({ id }));
+    expect((await trashItem.DELETE(b.request(`/api/v1/trash/${one}`, { method: "DELETE" }), params({ id: one }))).status).toBe(200);
+    expect((await p.env.FILES.list()).objects).toHaveLength(1);
+    await p.env.DB.prepare("UPDATE trash SET expires_at = '2000-01-01T00:00:00.000Z'").run();         // its 30 days are up
+    expect((await json(await trashList.GET(b.request("/api/v1/trash")))).items).toEqual([]);
+    expect(vectors.store.size).toBe(0);
+    expect((await p.env.FILES.list()).objects).toHaveLength(0);
+    expect(await p.env.DB.prepare("SELECT COUNT(*) AS n FROM trash_chunks").first("n")).toBe(0);
+    const actions = (await p.env.DB.prepare("SELECT action FROM deletion_log ORDER BY id").all()).results.map((r) => r.action);
+    expect(actions).toEqual(["trashed", "trashed", "purged", "expired"]);
+    expect((await restore.POST(b.request(`/api/v1/trash/${one}/restore`, { method: "POST" }), params({ id: one }))).status).toBe(404);
+  });
+
+  it("only you can see, restore or empty your Trash; a restore still respects the plan's document count", async () => {
+    const b = await person("owner@example.com", "boss");
+    const other = await person("other@example.com", "other");
+    const { id } = await uploadPdf(b, "Mine.pdf");
+    await doc.DELETE(b.request(`/api/v1/documents/${id}`, { method: "DELETE" }), params({ id }));
+    expect((await json(await trashList.GET(other.request("/api/v1/trash")))).items).toEqual([]);
+    expect((await restore.POST(other.request(`/api/v1/trash/${id}/restore`, { method: "POST" }), params({ id }))).status).toBe(404);
+    expect((await trashItem.DELETE(other.request(`/api/v1/trash/${id}`, { method: "DELETE" }), params({ id }))).status).toBe(404);
+    expect((await json(await trashList.GET(b.request("/api/v1/trash")))).items).toHaveLength(1);       // untouched
+  });
+
+  it("deleting the account needs DELETE typed (checked on the server) and removes every file, in the Trash too", async () => {
     const b = await person("leaver@example.com", "leaver");
     await uploadPdf(b, "One.pdf");
-    expect((await deleteAccount.DELETE(b.request("/api/v1/auth/delete-account", { method: "DELETE", body: { password: "correct-horse-1" } }))).status).toBe(200);
+    const { id } = await uploadPdf(b, "Two.pdf");
+    await doc.DELETE(b.request(`/api/v1/documents/${id}`, { method: "DELETE" }), params({ id }));
+    const refused = await deleteAccount.DELETE(b.request("/api/v1/auth/delete-account", { method: "DELETE", body: { password: "correct-horse-1" } }));
+    expect(refused.status).toBe(400);
+    expect((await json(refused)).error).toMatchObject({ code: "confirm_required" });
+    expect((await deleteAccount.DELETE(b.request("/api/v1/auth/delete-account", { method: "DELETE", body: { password: "correct-horse-1", confirm: "DELETE" } }))).status).toBe(200);
     expect(vectors.store.size).toBe(0);
     expect((await p.env.FILES.list()).objects).toHaveLength(0);
     expect((await me.GET(b.request("/api/v1/auth/me"))).status).toBe(401);
+    const last = await p.env.DB.prepare("SELECT action, kind, item_name FROM deletion_log ORDER BY id DESC LIMIT 1").first();
+    expect(last).toEqual({ action: "account_deleted", kind: "account", item_name: null });          // no name kept
   });
 });
 
@@ -239,6 +303,24 @@ describe("courses", () => {
     expect(first.status).toBe(200);
     const second = await courses.POST(b.request("/api/v1/courses", { body: { name: "Chemistry" } }));
     expect((await json(second)).error).toMatchObject({ code: "plan_limit", details: { limit: "courses", allowed: 1 } });
+  });
+
+  it("a deleted course waits in the Trash with its list of PDFs; a PDF deleted and restored rejoins it", async () => {
+    const b = await person("owner@example.com", "boss");
+    const bio = await uploadPdf(b, "Biology.pdf");
+    const made = await json(await courses.POST(b.request("/api/v1/courses", { body: { name: "Life", document_ids: [bio.id] } })));
+    // a PDF out and back: it rejoins the course it was in
+    await doc.DELETE(b.request(`/api/v1/documents/${bio.id}`, { method: "DELETE" }), params({ id: bio.id }));
+    expect((await json(await course.GET(b.request(`/api/v1/courses/${made.id}`), params({ id: made.id })))).documents).toEqual([]);
+    expect(await json(await restore.POST(b.request(`/api/v1/trash/${bio.id}/restore`, { method: "POST" }), params({ id: bio.id })))).toMatchObject({ kind: "document", courses: 1 });
+    expect((await json(await course.GET(b.request(`/api/v1/courses/${made.id}`), params({ id: made.id })))).documents).toMatchObject([{ id: bio.id }]);
+    // the course out and back: its PDFs never left the library, and it holds them again
+    expect((await course.DELETE(b.request(`/api/v1/courses/${made.id}`, { method: "DELETE" }), params({ id: made.id }))).status).toBe(200);
+    expect((await json(await courses.GET(b.request("/api/v1/courses")))).courses).toEqual([]);
+    expect((await json(await docs.GET(b.request("/api/v1/documents")))).documents).toHaveLength(1);
+    expect((await json(await trashList.GET(b.request("/api/v1/trash")))).items).toMatchObject([{ id: made.id, kind: "course", name: "Life", documents: 1 }]);
+    expect(await json(await restore.POST(b.request(`/api/v1/trash/${made.id}/restore`, { method: "POST" }), params({ id: made.id })))).toMatchObject({ kind: "course", documents: 1 });
+    expect((await json(await course.GET(b.request(`/api/v1/courses/${made.id}`), params({ id: made.id })))).documents).toMatchObject([{ id: bio.id }]);
   });
 
   it("a PDF uploaded inside a course joins it; someone else's course is refused", async () => {

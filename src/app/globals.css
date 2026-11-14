@@ -129,10 +129,6 @@
     box-shadow: var(--shadow-lg);
   }
 
-  /* Headline emphasis (historic names): plain ink, and the accent for the highlighted word. */
-  .text-gradient { color: var(--color-text); }
-  .text-gradient-accent { color: var(--color-accent-text); }
-
   /* The CourseMateAI logo (components/brand/Logo.tsx): the mark in ink, its dot and "AI" in the accent. */
   .brand { display: inline-flex; align-items: center; gap: calc(var(--brand-size, 28px) * 0.34); color: var(--color-text); line-height: 1; }
   .brand-mark { flex: none; display: block; }

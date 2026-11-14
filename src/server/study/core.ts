@@ -1,5 +1,6 @@
 // What every study tool needs (Stage 4.4): the activity history, the cache of generated content, searching the
 // document for a topic (and refusing a topic it doesn't cover), and asking a model for data (JSON) with one retry.
+import * as log from "../log";
 import { and, asc, desc, eq, lt, ne } from "drizzle-orm";
 import type { RequestContext } from "../context";
 import { activityLog, generationCache } from "../db/schema";
@@ -22,7 +23,7 @@ export async function logActivity(ctx: RequestContext, userId: number, sessionId
   try {
     await ctx.db.insert(activityLog).values({ userId, sessionId: String(sessionId ?? ""), mode, actionType, content: JSON.stringify(content ?? {}), createdAt: sqliteNow() });
   } catch (e) {
-    console.warn("[coursemate] history write failed", e instanceof Error ? e.message : e);
+    log.warn("[coursemate] history write failed", e instanceof Error ? e.message : e);
   }
 }
 
@@ -130,7 +131,7 @@ export async function generateData<T>(
     } catch (e) {
       if (!(e instanceof BadAnswer)) throw e;
       last = e;
-      console.warn(`[coursemate-ai] unusable structured answer (${i + 1}/${attempts}): ${e.message}`);
+      log.warn(`[coursemate-ai] unusable structured answer (${i + 1}/${attempts}): ${e.message}`);
     }
   }
   throw last instanceof Error ? last : new BadAnswer("unusable answer");

@@ -46,13 +46,19 @@ test("old Avatar and Hero Forge links open the Champion tab", async ({ page }) =
   }
 });
 
-test("the shop's try-on dresses the champion, and the inventory shows the same champion", async ({ page }) => {
+test("clicking an item previews it in the side panel (on the champion, with what it does); Esc closes it", async ({ page }) => {
   await mockApi(page);
   await page.goto("/champion?tab=shop");
   await page.getByRole("button", { name: /Head Pieces/ }).click();
-  await page.getByRole("button", { name: "Try on Red Headband" }).click();
-  await expect(page.getByTestId("shop-preview").getByRole("img", { name: "Kaien, trying on Red Headband" })).toBeVisible();
+  await page.getByRole("button", { name: "Preview Red Headband" }).click();
+  const preview = page.getByTestId("item-preview");
+  await expect(preview.getByRole("img", { name: "Kaien, wearing Red Headband" })).toBeVisible();
+  await expect(preview.getByRole("heading", { name: "Red Headband" })).toBeVisible();
   await expect(header(page)).toHaveAttribute("aria-label", "Your champion, Kaien, trying on Red Headband");
+  await page.keyboard.press("Escape");
+  await expect(preview).toBeHidden();
+  await expect(page.getByRole("dialog", { name: "Paused" })).toHaveCount(0);   // Esc closed the preview, not the game
+  await expect(page.getByTestId("shop-preview").getByRole("img", { name: "Kaien, your champion" })).toBeVisible();
   await page.goto("/champion?tab=inventory");
   await expect(page.getByRole("img", { name: "Kaien, your champion, in your skins" })).toBeVisible();
 });
@@ -146,7 +152,8 @@ test("your hero: pick it, build its look, and see its styles, loadout and skills
   expect((await saved).postDataJSON()).toEqual({ champion_id: "hero" });
   const builder = page.getByTestId("hero-builder");
   await expect(builder).toContainText("Fighting with Apprentice Blade");
-  await expect(builder.getByText("Kaien at 100% mastery (42%)")).toBeVisible();
+  await expect(builder.getByText("Unlocks: Kaien at 100% mastery")).toBeVisible();
+  await expect(builder.getByRole("progressbar", { name: /Kaien at 100% mastery/ })).toHaveAttribute("aria-valuenow", "42");
 
   await page.getByTestId("customize-look").click();
   const editor = page.getByRole("dialog", { name: "Your hero's look" });
@@ -278,9 +285,15 @@ test("the Mastery tab: every champion's mastery and your hero's level", async ({
   const { unanswered } = await mockApi(page);
   await page.goto("/champion?tab=mastery");
   const tab = page.getByTestId("mastery");
+  // a roster of your hero and the six champions; picking one shows its page beside it
+  const roster = tab.getByRole("tablist", { name: "Champions" });
+  await expect(roster.getByRole("tab")).toHaveCount(7);
+  await roster.getByRole("tab", { name: /Your hero/ }).click();
   await expect(tab.getByRole("region", { name: "Your hero" })).toContainText("Lv 4");
-  for (const name of ["Kaien", "Asha", "Brak", "Mira", "Vex", "Thorne"]) await expect(tab.getByRole("region", { name })).toBeVisible();
+  await roster.getByRole("tab", { name: /Kaien/ }).click();
   await expect(tab.getByRole("progressbar", { name: "Kaien's mastery" })).toHaveAttribute("aria-valuenow", "8");
+  await roster.getByRole("tab", { name: /Mira/ }).click();
+  await expect(tab.getByRole("region", { name: "Mira" })).toBeVisible();
   await expect(tab.getByRole("list", { name: "Mira's mastery challenges" }).getByRole("listitem")).toHaveCount(2);
   await settle(page);
   const axe = await new AxeBuilder({ page }).include("[data-testid='mastery']").analyze();

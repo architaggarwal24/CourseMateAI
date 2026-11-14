@@ -30,7 +30,7 @@ import { fakeEmbedder, fakeVectors } from "../test/search-fakes";
 import { AI_ENV, fakeLlms } from "../test/ai-fakes";
 import { person, uploadPdf } from "../test/flows";
 import { ACHIEVEMENTS, CATALOG, ITEMS, KNOWN_EFFECTS, KNOWN_UNLOCK_TYPES, levelFromTotalXp, xpProgress } from "./content";
-import { calculateRewards } from "./progression";
+import { calculateRewards, equipmentBonuses } from "./progression";
 import { localDate, recordRewardEvent } from "./store";
 
 let p: LocalPlatform;
@@ -186,6 +186,18 @@ describe("streaks", () => {
     await db().prepare("UPDATE user_progress SET last_active_utc = ? WHERE user_id = ?").bind(day(-3), id).run();
     expect(await finishQuiz()).toBe(1);                                              // two missed, no freezes: back to 1
   }, 30_000);
+});
+
+describe("study bonuses from worn gear", () => {
+  it("only the best item for each stat counts (they used to add up: five items reached +97% XP)", async () => {
+    const b = await person(mail, "gear@example.com", "gear");
+    const id = Number(await uid(b));
+    await db().prepare("UPDATE user_avatar SET owned_json = ?, equipped_json = ? WHERE user_id = ?").bind(
+      JSON.stringify(["armor_legends_mantle", "hat_crown_gold", "pet_owl"]),
+      JSON.stringify({ armor: "armor_legends_mantle", headgear: "hat_crown_gold", pet: "pet_owl" }), id).run();
+    const ctx = await requestContext(b.request("/api/v1/profile"));
+    expect(await equipmentBonuses(ctx, id)).toEqual({ xp_pct: 0.3, coin_pct: 0.2, combo_xp_pct: 0, arena_hints: 1 });
+  });
 });
 
 describe("the shop, potions and the avatar", () => {

@@ -1,7 +1,11 @@
 "use client";
+
+import DeskObject from "@/components/study/DeskObject";
+import { rewardText } from "@/lib/game/reward-text";
+import AiLabel from "@/components/study/AiLabel";
 import { useState, useRef, useEffect, useCallback, useMemo, type ReactNode } from "react";
 import dynamic from "next/dynamic";
-import { Download, RefreshCw, Sparkles, FileText, Zap, Brain, NotebookPen, TableCells, List, KeyRound, ScrollText, Printer, Copy } from "@/components/ui/icons";
+import { Download, RefreshCw, Sparkles, FileText, Zap, Brain, TableCells, List, KeyRound, ScrollText, Printer, Copy } from "@/components/ui/icons";
 import HistoryPanel from "../history/HistoryPanel";
 import StudyToolbar from "../study/StudyToolbar";
 import Writing from "../study/Writing";
@@ -104,7 +108,7 @@ export default function NotesView({ documentId, restoreSessionId }: { documentId
         { notes: data.content, topic: finalTopic, format: fmt, citations: cites } as SavedNotes, finalTopic);
       rememberSession("notes", scope, id);                 // these notes reopen here next time
       if (data.rewards?.ok) {
-        toast.success(`+${data.rewards.xp_gained} XP | +${data.rewards.coins_gained} Coins`, { icon: "🎉" });
+        toast.success(rewardText(data.rewards.xp_gained, data.rewards.coins_gained));
         refreshIfStale(5_000);
       }
       return id;
@@ -203,9 +207,9 @@ export default function NotesView({ documentId, restoreSessionId }: { documentId
           <div className="flex-1 min-h-0 overflow-y-auto px-6 py-10">
             <div className="mx-auto w-full max-w-[72ch]">
               <div className="study-intro">
-                <span className="study-intro__icon" aria-hidden="true"><NotebookPen size={26} /></span>
+                <DeskObject kind="notes" />
                 <div>
-                  <h3>Generate study notes</h3>
+                  <h3>Write study notes</h3>
                   <p>Pick a topic and a format. Every fact links back to the page it came from.</p>
                 </div>
               </div>
@@ -287,6 +291,7 @@ export default function NotesView({ documentId, restoreSessionId }: { documentId
                     onCite={citations.length ? (n) => setOpenCitation(citations.find((c) => c.n === n) ?? null) : undefined}>
                     {notes}
                   </ChatMarkdown>
+                  <AiLabel what="notes" />
                   {sources.length > 0 && (
                     <section className="notes-sources" aria-labelledby="notes-sources-h">
                       <h2 id="notes-sources-h" className="notes-sources__title">Sources</h2>
