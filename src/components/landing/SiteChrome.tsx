@@ -3,6 +3,7 @@ import Link from "next/link";
 import Logo from "@/components/brand/Logo";
 import { ButtonLink } from "@/components/ui";
 import { FEATURE_PAGES, featurePath } from "@/lib/landing/features";
+import { TOOL_PAGES, toolPath } from "@/lib/landing/tools";
 import { ROUTES } from "@/lib/routes";
 
 /** `links`: the header's section links (the landing page jumps within itself; other pages link back to it). */
@@ -24,6 +25,7 @@ export function SiteHeader({ links }: { links: { href: string; label: string }[]
 /** Links shown in the header away from the landing page. */
 export const SITE_LINKS = [
   { href: "/features", label: "Features" },
+  { href: "/tools", label: "Free tools" },
   { href: "/#how", label: "How it works" },
   { href: "/#plans", label: "Plans" },
   { href: "/#faq", label: "FAQ" },
@@ -36,6 +38,10 @@ export function SiteFooter() {
       <ul className="landing-foot__links" aria-label="Features">
         <li><Link href="/features">All features</Link></li>
         {FEATURE_PAGES.map((f) => <li key={f.slug}><Link href={featurePath(f.slug)}>{f.h1Short}</Link></li>)}
+      </ul>
+      <ul className="landing-foot__links" aria-label="Free tools">
+        <li><Link href="/tools">Free tools</Link></li>
+        {TOOL_PAGES.map((t) => <li key={t.slug}><Link href={toolPath(t.slug)}>{t.name}</Link></li>)}
       </ul>
       <ul className="landing-foot__links" aria-label="Legal">
         <li><Link href="/legal/terms">Terms</Link></li>

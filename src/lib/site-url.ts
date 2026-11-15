@@ -24,3 +24,17 @@ export function parseSiteUrl(raw: string | undefined, production: boolean): URL 
   return new URL(url.origin);
 }
 
+
+/**
+ * Addresses the site used to live at. Once NEXT_PUBLIC_SITE_URL is a new domain, each of these redirects every path
+ * to the same path there, permanently (next.config.ts), so old links and search results keep working.
+ */
+export const OLD_SITE_HOSTS: readonly string[] = ["coursemateai.architaggarwal.workers.dev"];
+
+/** The host redirects for next.config.ts: none until the canonical origin is somewhere new, never on localhost. */
+export function hostRedirects(site: URL, oldHosts: readonly string[] = OLD_SITE_HOSTS) {
+  if (LOCAL.test(site.hostname)) return [];
+  return oldHosts.filter((h) => h !== site.host).map((h) => ({
+    source: "/:path*", has: [{ type: "host" as const, value: h }], destination: `${site.origin}/:path*`, permanent: true,
+  }));
+}

@@ -7,7 +7,9 @@ test("logged out: '/' is the landing page, and its buttons lead to sign-up and l
   await page.goto("/");
   await expect(page.getByRole("heading", { level: 1 })).toHaveText(/Your PDFs, turned into a tutor/);
   // the section links are in the top bar on wide screens (phones scroll the page instead)
-  if ((page.viewportSize()?.width ?? 0) >= 900) await expect(page.getByRole("navigation", { name: "Sections" }).getByRole("link")).toHaveText(["Features", "How it works", "The game", "Plans", "FAQ"]);
+  if ((page.viewportSize()?.width ?? 0) >= 900) await expect(page.getByRole("navigation", { name: "Sections" }).getByRole("link")).toHaveText(["Features", "Free tools", "How it works", "The game", "Plans", "FAQ"]);
+  // "Features" is the features page itself (a crawlable link to it from every visit), the rest jump down this page
+  if ((page.viewportSize()?.width ?? 0) >= 900) await expect(page.getByRole("navigation", { name: "Sections" }).getByRole("link", { name: "Features" })).toHaveAttribute("href", "/features");
   await expect(page.getByRole("heading", { name: "Start free. Upgrade when the exams get serious." })).toBeAttached();
   await expect(page.locator(".landing-plan")).toHaveCount(4);
   await page.getByRole("link", { name: "Start studying free" }).first().click();

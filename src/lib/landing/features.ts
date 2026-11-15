@@ -7,6 +7,8 @@ import { FEATURES, TIER_NAMES } from "../account/plan-tiers";
 export interface FeatureSection { h2: string; text: string; points?: string[] }
 export interface FeaturePage {
   slug: string;
+  /** When this page's words last really changed (the sitemap's lastmod). */
+  updated: string;
   /** <title> (the template adds "| CourseMateAI"). */
   title: string;
   /** A short name for links and the hub's cards. */
@@ -27,6 +29,7 @@ const plan = (f: keyof typeof FEATURES) => TIER_NAMES[FEATURES[f]];
 export const FEATURE_PAGES: FeaturePage[] = [
   {
     slug: "ai-tutor",
+    updated: "2026-11-14",
     h1Short: "AI tutor",
     title: "AI tutor for your PDFs: chat, notes and concept maps",
     description: "Ask questions about your own course PDFs and get answers that cite the page, notes in six formats, and a concept map of how the ideas connect.",
@@ -78,6 +81,7 @@ export const FEATURE_PAGES: FeaturePage[] = [
   },
   {
     slug: "quizzes-flashcards-exams",
+    updated: "2026-11-14",
     h1Short: "Quizzes, flashcards and exams",
     title: "Quizzes, flashcards and mock exams from your notes",
     description: "Practice questions written from your own PDFs: quizzes graded one by one with explanations, flashcards, and timed mock exams with a report.",
@@ -113,6 +117,7 @@ export const FEATURE_PAGES: FeaturePage[] = [
   },
   {
     slug: "spaced-repetition",
+    updated: "2026-11-14",
     h1Short: "Spaced-repetition review",
     title: "Spaced-repetition review for what you study",
     description: "A daily review that brings each card back just before you'd forget it, using the FSRS scheduler, with cards from your flashcards and missed questions.",
@@ -148,6 +153,7 @@ export const FEATURE_PAGES: FeaturePage[] = [
   },
   {
     slug: "study-game",
+    updated: "2026-11-14",
     h1Short: "The study game",
     title: "A study game: boss fights built from your notes",
     description: "Turn revision into a pixel RPG: boss fights where every question comes from your PDFs, champions, a Bestiary, daily quests, streaks and a daily chest.",
@@ -189,4 +195,5 @@ export const FEATURES_HUB = {
   title: "Features: AI study tools built on your own notes",
   description: "What CourseMateAI does: an AI tutor that cites your PDFs, notes, quizzes, flashcards, mock exams, spaced-repetition review and a study game.",
   h1: "Study tools built on your own notes",
+  updated: "2026-11-14",
 };

@@ -79,6 +79,28 @@ export async function recordCall(db: Db, call: { userId: number; target: Target;
   });
 }
 
+/**
+ * A call made for nobody in particular (the free tools on the public pages, src/server/tools): counted in the AI cost
+ * report and the daily spend cap like any other, but against no user's quota.
+ */
+export async function recordAnonymousCall(db: Db, call: { target: Target; job: Job; tokensIn: number; tokensOut: number; fallback: boolean }, now = new Date()) {
+  const day = dayOf(now);
+  const tokensIn = Math.max(0, Math.round(call.tokensIn));
+  const tokensOut = Math.max(0, Math.round(call.tokensOut));
+  const cost = costMicroUsd(call.target.provider, call.target.model, tokensIn, tokensOut);
+  await db.insert(aiUsage).values({
+    day, provider: call.target.provider, model: call.target.model, job: call.job, calls: 1, fallbacks: call.fallback ? 1 : 0,
+    tokensIn, tokensOut, costMicroUsd: cost,
+  }).onConflictDoUpdate({
+    target: [aiUsage.day, aiUsage.provider, aiUsage.model, aiUsage.job],
+    set: {
+      calls: sql`${aiUsage.calls} + 1`, fallbacks: sql`${aiUsage.fallbacks} + ${call.fallback ? 1 : 0}`,
+      tokensIn: sql`${aiUsage.tokensIn} + ${tokensIn}`, tokensOut: sql`${aiUsage.tokensOut} + ${tokensOut}`,
+      costMicroUsd: sql`${aiUsage.costMicroUsd} + ${cost}`,
+    },
+  });
+}
+
 export async function usedToday(db: Db, userId: number, now = new Date()) {
   const row = await db.select().from(usageDaily).where(and(eq(usageDaily.userId, userId), eq(usageDaily.day, dayOf(now)))).get();
   return { ai_calls: row?.aiCalls ?? 0 };

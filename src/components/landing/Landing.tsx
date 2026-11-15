@@ -48,7 +48,7 @@ export default function Landing({ plans }: { plans: LandingPlan[] }) {
   return (
     <div className="landing">
       <SiteHeader links={[
-        { href: "#features", label: "Features" }, { href: "#how", label: "How it works" }, { href: "#play", label: "The game" },
+        { href: "/features", label: "Features" }, { href: "/tools", label: "Free tools" }, { href: "#how", label: "How it works" }, { href: "#play", label: "The game" },
         { href: "#plans", label: "Plans" }, { href: "#faq", label: "FAQ" },
       ]} />
 

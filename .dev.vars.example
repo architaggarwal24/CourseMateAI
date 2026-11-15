@@ -18,7 +18,7 @@ GITHUB_CLIENT_SECRET=
 # Emails the site may send a day (codes stop for the day past it; the log says so). Default 100 (Resend's free plan).
 # EMAIL_DAILY_CAP=100
 # New passwords are checked against Have I Been Pwned (only 5 characters of the password's SHA-1 leave the Worker).
-PASSWORD_BREACH_CHECK=om
+PASSWORD_BREACH_CHECK=on
 # PBKDF2 work for passwords: 20000 fits the free plan's CPU limit; raise to 100000 on Workers Paid.
 # PASSWORD_HASH_ITERATIONS=20000
 

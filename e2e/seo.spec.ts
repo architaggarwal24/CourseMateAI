@@ -10,6 +10,11 @@ const PUBLIC = [
   { path: "/features/quizzes-flashcards-exams", title: "Quizzes, flashcards and mock exams from your notes | CourseMateAI", h1: /Practice questions written from your own notes/ },
   { path: "/features/spaced-repetition", title: "Spaced-repetition review for what you study | CourseMateAI", h1: /A daily review that brings cards back/ },
   { path: "/features/study-game", title: "A study game: boss fights built from your notes | CourseMateAI", h1: /Boss fights where every question/ },
+  { path: "/tools", title: "Free study tools: flashcards, quizzes, summaries and a revision planner | CourseMateAI", h1: /Free study tools/ },
+  { path: "/tools/ai-flashcard-maker", title: "AI flashcard maker: turn your notes into flashcards, free | CourseMateAI", h1: /Turn your notes into flashcards/ },
+  { path: "/tools/quiz-generator", title: "Quiz generator from notes: a free AI practice quiz | CourseMateAI", h1: /Make a practice quiz from your notes/ },
+  { path: "/tools/notes-summarizer", title: "Notes summarizer: a free AI summary of your study notes | CourseMateAI", h1: /Summarise your notes/ },
+  { path: "/tools/revision-planner", title: "Board exam revision planner: a free day-by-day study plan | CourseMateAI", h1: /Plan your revision, day by day/ },
   { path: "/legal/terms", title: "Terms of Service | CourseMateAI", h1: /Terms of Service/ },
   { path: "/legal/privacy", title: "Privacy Policy | CourseMateAI", h1: /Privacy Policy/ },
   { path: "/legal/refunds", title: "Cancellation & Refund Policy | CourseMateAI", h1: /Cancellation/ },
@@ -64,13 +69,16 @@ test("feature pages carry a BreadcrumbList that matches their visible breadcrumb
   expect(body).toContain('aria-label="Breadcrumb"');
 });
 
-test("the homepage's JSON-LD parses and claims only Organization and WebSite on the canonical origin", async ({ request }) => {
+test("the homepage's JSON-LD parses: Organization, WebSite and the app with the plans' rupee prices, no ratings", async ({ request }) => {
   const { body } = await html(request, "/");
   const blocks = [...body.matchAll(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/g)].map((m) => JSON.parse(m[1]));
   expect(blocks).toHaveLength(1);
-  expect(blocks[0]["@graph"].map((n: { "@type": string }) => n["@type"])).toEqual(["Organization", "WebSite"]);
+  expect(blocks[0]["@graph"].map((n: { "@type": string }) => n["@type"])).toEqual(["Organization", "WebSite", "WebApplication"]);
   expect(blocks[0]["@graph"][0]).toMatchObject({ name: "CourseMateAI", url: `${ORIGIN}/` });
-  expect(JSON.stringify(blocks[0])).not.toMatch(/Rating|review|offers|price/i);
+  expect(blocks[0]["@graph"][2]).toMatchObject({ applicationCategory: "EducationalApplication", offers: { priceCurrency: "INR", lowPrice: 0 } });
+  // the highest price is the dearest plan shown on the page
+  expect(body).toContain(`₹${blocks[0]["@graph"][2].offers.highPrice}`);
+  expect(JSON.stringify(blocks[0])).not.toMatch(/aggregateRating|ratingValue|"review"/);
 });
 
 for (const path of PRIVATE) {

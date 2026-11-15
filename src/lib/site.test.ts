@@ -1,6 +1,7 @@
 /** @vitest-environment node */
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { LEGAL_UPDATED_ISO, NOINDEX, PUBLIC_PAGES, jsonLdScript, pageMetadata, parseSiteUrl, siteJsonLd } from "./site";
+import { OLD_SITE_HOSTS, hostRedirects } from "./site-url";
 import { UPDATED } from "@/app/legal/legal";
 
 const PROD = "https://coursemateai.architaggarwal.workers.dev";
@@ -29,9 +30,25 @@ describe("the canonical origin", () => {
   });
 });
 
+describe("moving to a new domain (SEO stage 2)", () => {
+  it("while the site is still on workers.dev there is nothing to redirect", () => {
+    expect(OLD_SITE_HOSTS).toContain("coursemateai.architaggarwal.workers.dev");
+    expect(hostRedirects(parseSiteUrl(PROD, true))).toEqual([]);
+    expect(hostRedirects(parseSiteUrl(undefined, false))).toEqual([]);      // next dev: never
+  });
+
+  it("once NEXT_PUBLIC_SITE_URL is the new domain, every old address goes to the same path there, permanently", () => {
+    expect(hostRedirects(parseSiteUrl("https://coursemate.app", true))).toEqual([{
+      source: "/:path*", has: [{ type: "host", value: "coursemateai.architaggarwal.workers.dev" }],
+      destination: "https://coursemate.app/:path*", permanent: true,
+    }]);
+  });
+});
+
 describe("the public pages", () => {
   it("are an explicit allowlist with no private or utility page in it", () => {
-    expect(PUBLIC_PAGES.map((p) => p.path)).toEqual(["/", "/features", "/features/ai-tutor", "/features/quizzes-flashcards-exams", "/features/spaced-repetition", "/features/study-game", "/legal/terms", "/legal/privacy", "/legal/refunds"]);
+    expect(PUBLIC_PAGES.map((p) => p.path)).toEqual(["/", "/features", "/features/ai-tutor", "/features/quizzes-flashcards-exams", "/features/spaced-repetition", "/features/study-game",
+      "/tools", "/tools/ai-flashcard-maker", "/tools/quiz-generator", "/tools/notes-summarizer", "/tools/revision-planner", "/legal/terms", "/legal/privacy", "/legal/refunds"]);
     for (const p of PUBLIC_PAGES) expect(p.path).not.toMatch(/^\/(today|study|hero|account|login|offline|api|dev)(\/|$)/);
   });
 
@@ -57,14 +74,41 @@ describe("the public pages", () => {
 });
 
 describe("structured data", () => {
-  it("is Organization + WebSite with only verified facts, on the canonical origin", () => {
+  const PLANS = [{ name: "Apprentice", price_month: 0 }, { name: "Scholar", price_month: 149 }, { name: "Sage", price_month: 299 }, { name: "Archmage", price_month: 599 }];
+
+  it("is Organization + WebSite + WebApplication with only verified facts, on the canonical origin", () => {
     vi.stubEnv("NEXT_PUBLIC_SITE_URL", PROD);
-    const data = siteJsonLd();
+    const data = siteJsonLd(PLANS);
     const json = JSON.stringify(data);
-    expect(data["@graph"].map((n) => n["@type"])).toEqual(["Organization", "WebSite"]);
+    expect(data["@graph"].map((n) => n["@type"])).toEqual(["Organization", "WebSite", "WebApplication"]);
     expect(data["@graph"][0]).toMatchObject({ name: "CourseMateAI", url: `${PROD}/`, logo: `${PROD}/icons/icon-512.png` });
-    expect(json).not.toMatch(/aggregateRating|review|ratingValue|offers|price|Course"|localhost/i);
+    // the site name Google shows: the name, and the spelling people also type
+    expect(data["@graph"][1]).toMatchObject({ name: "CourseMateAI", alternateName: ["CourseMate AI"], url: `${PROD}/` });
+    // no ratings or reviews until there are real ones; no invented user counts; nothing local
+    expect(json).not.toMatch(/aggregateRating|"review|ratingValue|userCount|interactionStatistic|Course"|localhost/i);
     expect(jsonLdScript({ a: "</script><script>" })).not.toContain("</script>");
+  });
+
+  it("the app's prices are the plans the page shows, in rupees, from the same list", () => {
+    vi.stubEnv("NEXT_PUBLIC_SITE_URL", PROD);
+    const app = siteJsonLd(PLANS)["@graph"][2] as Record<string, any>;
+    expect(app).toMatchObject({
+      name: "CourseMateAI", url: `${PROD}/`, applicationCategory: "EducationalApplication", isAccessibleForFree: true,
+      offers: { "@type": "AggregateOffer", priceCurrency: "INR", lowPrice: 0, highPrice: 599, offerCount: 4 },
+      publisher: { "@id": `${PROD}/#organization` },
+    });
+    expect(app.description).toBe(PUBLIC_PAGES[0].description);
+    // without the plans (any other caller), no offers at all rather than made-up ones
+    expect((siteJsonLd()["@graph"][2] as Record<string, any>).offers).toBeUndefined();
+  });
+});
+
+describe("the sitemap dates", () => {
+  it("every public page says when it last changed (a real date, not in the future)", () => {
+    for (const p of PUBLIC_PAGES) {
+      expect(p.lastModified, p.path).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+      expect(new Date(`${p.lastModified}T00:00:00Z`).getTime(), p.path).toBeLessThanOrEqual(Date.now());
+    }
   });
 });
 

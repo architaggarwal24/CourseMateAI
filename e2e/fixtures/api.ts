@@ -396,6 +396,16 @@ export async function mockApi(page: Page, { signedIn = true, advanced = true, do
         scholar: { small: [], strong: [] }, sage: { small: [], strong: [] }, archmage: { small: [], strong: [] } } });
     if (path === "/auth/check-username") return json(route, 200, { available: true });
     if (path === "/documents") return json(route, 200, { documents: signedIn ? documents : [] });
+    // The free tools (SEO stage 3): a result for each tool, no account needed
+    if (path === "/tools/run" && method === "POST") {
+      const tool = (route.request().postDataJSON() ?? {}).tool;
+      if (tool === "flashcards") return json(route, 200, { tool, remaining: 4, cards: [
+        { front: "What is chlorophyll?", back: "The green pigment in chloroplasts that absorbs light." },
+        { front: "What gas do plants release in photosynthesis?", back: "Oxygen." }] });
+      if (tool === "quiz") return json(route, 200, { tool, remaining: 4, questions: [
+        { question: "Where does photosynthesis mostly happen?", options: ["Roots", "Leaves", "Stem", "Flowers"], answer: 1, explanation: "Leaves hold most of the chloroplasts." }] });
+      return json(route, 200, { tool, remaining: 4, summary: { title: "Photosynthesis", points: ["Plants make glucose from light"], terms: [{ term: "Chlorophyll", meaning: "The green pigment" }], takeaway: "Light becomes food." } });
+    }
     if (path === "/plans") return json(route, 200, PLANS);
     if (path === "/account/usage") return json(route, 200, USAGE);
     if (path === "/billing") return json(route, 200, { enabled: false, provider: null, key_id: null, subscription: null });

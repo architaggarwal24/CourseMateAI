@@ -20,8 +20,8 @@ export default async function Home() {
   }));
   return (
     <>
-      {/* Organization + WebSite, only verified facts (src/lib/site.ts) */}
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLdScript(siteJsonLd()) }} />
+      {/* Organization + WebSite + WebApplication, only verified facts (src/lib/site.ts) */}
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLdScript(siteJsonLd(plans)) }} />
       <Landing plans={plans} />
     </>
   );

@@ -1,6 +1,6 @@
 /** @vitest-environment node */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { LEGAL_UPDATED_ISO } from "@/lib/site";
+import { LANDING_UPDATED_ISO, LEGAL_UPDATED_ISO } from "@/lib/site";
 
 const PROD = "https://coursemateai.architaggarwal.workers.dev";
 beforeEach(() => vi.stubEnv("NEXT_PUBLIC_SITE_URL", PROD));
@@ -10,8 +10,9 @@ describe("sitemap.xml", () => {
   it("lists exactly the public pages, on the canonical origin", async () => {
     const { default: sitemap } = await import("./sitemap");
     const entries = sitemap();
-    expect(entries.map((e) => e.url)).toEqual(["/", "/features", "/features/ai-tutor", "/features/quizzes-flashcards-exams", "/features/spaced-repetition", "/features/study-game", "/legal/terms", "/legal/privacy", "/legal/refunds"].map((p) => `${PROD}${p === "/" ? "/" : p}`));
-    expect(entries[0].lastModified).toBeUndefined();                     // not known: not invented
+    expect(entries.map((e) => e.url)).toEqual(["/", "/features", "/features/ai-tutor", "/features/quizzes-flashcards-exams", "/features/spaced-repetition", "/features/study-game", "/tools", "/tools/ai-flashcard-maker", "/tools/quiz-generator", "/tools/notes-summarizer", "/tools/revision-planner", "/legal/terms", "/legal/privacy", "/legal/refunds"].map((p) => `${PROD}${p === "/" ? "/" : p}`));
+    expect(entries[0].lastModified).toBe(LANDING_UPDATED_ISO);            // every page says when its words last changed
+    expect(entries.every((e) => typeof e.lastModified === "string")).toBe(true);
     expect(entries.find((e) => e.url.endsWith("/legal/terms"))!.lastModified).toBe(LEGAL_UPDATED_ISO);
     for (const e of entries) expect(new URL(e.url).pathname).not.toMatch(/^\/(today|study|hero|account|login|offline|api)(\/|$)/);
   });

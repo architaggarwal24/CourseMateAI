@@ -1,7 +1,7 @@
 // Small pieces every Worker route shares: an error that becomes the API's error shape, JSON bodies, the
 // same-site check for changes, and fixed-window rate limits kept in D1 (so every Worker instance shares them).
 import * as log from "./log";
-import { eq, sql } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import type { ApiErrorAction } from "@/lib/api/errors";
 import type { Db } from "./db";
 import { apiRateLimits } from "./db/schema";
@@ -20,8 +20,26 @@ export class HttpError extends Error {
   }
 }
 
+/**
+ * "no such table" anywhere in an error's causes means the database was never migrated (a fresh clone's empty local
+ * D1, or a deploy without migrations): the command that fixes it, or null.
+ */
+export function missingTableHint(e: unknown, nodeEnv = process.env.NODE_ENV): string | null {
+  for (let cur: unknown = e, depth = 0; cur && depth < 5; cur = (cur as { cause?: unknown }).cause, depth++) {
+    const m = String((cur as Error)?.message ?? cur).match(/no such table: (\w+)/);
+    if (m) {
+      return nodeEnv === "production"
+        ? `[coursemate] The database has no "${m[1]}" table: run \`npm run db:migrate:remote\` (the deploy job normally does it).`
+        : `[coursemate] The local database is empty (no "${m[1]}" table). Stop the dev server, run \`npm run db:migrate:local\`, and start it again.`;
+    }
+  }
+  return null;
+}
+
 export function toResponse(e: unknown): Response {
   if (e instanceof HttpError) return apiError(e.status, e.code, e.message, e.action, e.details, e.headers);
+  const hint = missingTableHint(e);
+  if (hint) log.error(hint);
   log.error("[coursemate] unhandled error", e);
   return apiError(500, "internal_error", "Something went wrong on our side. Please try again.", "retry");
 }
@@ -77,6 +95,12 @@ export async function bumpCounter(db: Db, key: string, windowSeconds: number, no
 export async function peekCounter(db: Db, key: string, windowSeconds: number, now = Date.now()): Promise<number> {
   const row = await db.select().from(apiRateLimits).where(eq(apiRateLimits.key, key)).get();
   return row && row.windowStart === windowOf(now, windowSeconds) ? row.count : 0;
+}
+
+/** Give back one hit counted for `key` in the current window (a request that did no work). */
+export async function unbumpCounter(db: Db, key: string, windowSeconds: number, now = Date.now()): Promise<void> {
+  await db.update(apiRateLimits).set({ count: sql`max(${apiRateLimits.count} - 1, 0)` })
+    .where(and(eq(apiRateLimits.key, key), eq(apiRateLimits.windowStart, windowOf(now, windowSeconds))));
 }
 
 export async function clearCounter(db: Db, key: string): Promise<void> {

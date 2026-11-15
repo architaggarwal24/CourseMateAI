@@ -1,7 +1,7 @@
 import type { NextConfig } from "next";
 import { initOpenNextCloudflareForDev } from "@opennextjs/cloudflare";
 import { LEGACY_REDIRECTS, STUDY_TAB_PATH_SOURCE, STUDY_UNKNOWN_TAB_SOURCE } from "./src/lib/routes";
-import { parseSiteUrl } from "./src/lib/site-url";
+import { hostRedirects, parseSiteUrl } from "./src/lib/site-url";
 
 // The canonical address (src/lib/site.ts): a production build stops here, with a clear message, when
 // NEXT_PUBLIC_SITE_URL is missing, not https, local, or has a path. (`next dev` falls back to localhost.)
@@ -25,6 +25,9 @@ const nextConfig: NextConfig = {
   // The old top-level pages now live under /study, /hero and /account (src/lib/routes.ts). The query string is kept.
   async redirects() {
     return [
+      // SEO stage 2: after a move to a new domain, the old address (workers.dev) sends every path there for good.
+      // Nothing happens while NEXT_PUBLIC_SITE_URL is still the workers.dev address (docs/domain-move.md).
+      ...hostRedirects(parseSiteUrl(process.env.NEXT_PUBLIC_SITE_URL, false)),
       ...LEGACY_REDIRECTS.map(({ from, to }) => ({ source: from, destination: to, permanent: false })),
       // The active Study tab lives in the query string: /study/quiz -> /study?tab=quiz
       { source: STUDY_TAB_PATH_SOURCE, destination: "/study?tab=:tab", permanent: false },
