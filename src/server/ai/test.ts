@@ -1,10 +1,13 @@
 // Admin -> AI -> "Test connection": ask one model for a one-word answer and say how it went (time, reply, or the
-// error with a plain hint). Admins only; not metered (a few tokens). Also explains why a slot can't be used (a
+// error with a plain hint). Admins only; not in the cost report (a few tokens), but held to the global spend cap like
+// every call (ai/budget.ts). Also explains why a slot can't be used (a
 // setting without "provider:", a provider with no key), which otherwise silently falls through to the next model.
 import type { Db } from "../db";
 import { aiSettings, overrideTarget, SLOT_ENV, withSlots, type SlotName } from "./config";
 import { KEY_ENV, parseSpec, slotTarget, type KeyedProvider, type Target } from "./models";
 import { llmFor } from "./run";
+import { loadLimits, release, reserve, settle, userScopes, worstCostMicro } from "./budget";
+import { costMicroUsd } from "./usage";
 
 type Env = Record<string, string | undefined>;
 
@@ -101,10 +104,22 @@ export async function testModel(db: Db, adminId: number, input: { spec?: string 
     return { ok: false, spec: null, source, error: "Nothing to test." };
   }
   const spec = `${target.provider}:${target.model}`;
+  // a budget a thinking model can think in and still answer (16 tokens went entirely on thinking)
+  const opts = { maxOutputTokens: 512, temperature: 0, timeoutMs: 30_000 };
+  const global = userScopes({ id: adminId, owner: true, tier: "archmage" }, await loadLimits(db, env));     // the cap only
+  const hold = await reserve(db, global, worstCostMicro(target, PROMPT, opts, env));
+  if (!hold) return { ok: false, spec, source, error: "Today's AI spend cap is reached.", hint: "Raise the daily cap above, or test again after midnight UTC." };
   const start = now();
   try {
-    // a budget a thinking model can think in and still answer (16 tokens went entirely on thinking)
-    const r = await llmFor(target, bindings).generate(PROMPT, { maxOutputTokens: 512, temperature: 0, timeoutMs: 30_000 });
+    let r: Awaited<ReturnType<ReturnType<typeof llmFor>["generate"]>>;
+    try {
+      r = await llmFor(target, bindings).generate(PROMPT, opts);
+    } catch (e) {
+      await release(db, hold).catch(() => {});
+      throw e;
+    }
+    const cost = costMicroUsd(target.provider, target.model, r.tokensIn ?? 16, r.tokensOut ?? opts.maxOutputTokens, env);
+    await settle(db, hold, cost).catch(() => {});
     const reply = (r.text || "").trim();
     if (!reply) {
       return { ok: false, spec, source, latency_ms: now() - start, error: "The model answered with nothing.",

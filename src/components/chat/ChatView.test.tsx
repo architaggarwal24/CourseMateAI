@@ -332,6 +332,25 @@ describe("ChatView: the tutor's teaching style", () => {
     await act(async () => { body.push(frame("token", { text: "Your notes don't cover that." }) + frame("sources", { ...FINAL, coverage: "none", citations: [], sources: [] })); body.close(); });
     expect(await screen.findByText("Not in your PDFs: a general explanation")).toBeTruthy();
   });
+
+  it("an answer a budget sent to a lighter model says so calmly, with a way to top up (paid) or see plans (free)", async () => {
+    const paid = sseBody();
+    const free = sseBody();
+    const mana = sseBody();
+    server({ streams: [() => sse(paid), () => sse(free), () => sse(mana)] });
+    render(<ChatView documentId="d1" />);
+    ask("What is ATP?");
+    await act(async () => { paid.push(frame("token", { text: "Energy." }) + frame("sources", { ...FINAL, budget: "limited", can_top_up: true })); paid.close(); });
+    const note = await screen.findByText(/Today's AI budget is used up, so a lighter model answered/);
+    expect(note.textContent).toMatch(/back at \d{1,2}:\d{2}/);
+    expect(within(note).getByRole("link", { name: "Top up Mana" }).getAttribute("href")).toBe("/account/usage#mana");
+    ask("And ADP?");
+    await act(async () => { free.push(frame("token", { text: "Less energy." }) + frame("sources", { ...FINAL, budget: "limited", can_top_up: false })); free.close(); });
+    await waitFor(() => expect(screen.getAllByRole("link", { name: "See plans" })).toHaveLength(1));
+    ask("And AMP?");
+    await act(async () => { mana.push(frame("token", { text: "Even less." }) + frame("sources", { ...FINAL, budget: "mana", can_top_up: true })); mana.close(); });
+    expect(await screen.findByText("Answered with your Mana.")).toBeTruthy();
+  });
 });
 
 describe("ChatView: auto-scroll", () => {

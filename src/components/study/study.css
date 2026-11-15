@@ -339,6 +339,9 @@ pointer-events: none;
 /* an answer from outside the course material (the tutor said so) */
 .chat-ai__outside { display: inline-flex; margin: 0 0 var(--space-2); padding: 0.1rem 0.5rem; border-radius: var(--radius-full); font-size: 0.72rem; font-weight: 600;
   color: var(--color-warning-text); border: 1px solid var(--color-border); }
+/* the day's AI budget changed who answered (a lighter model, or the user's Mana): a calm line, never an alert */
+.chat-ai__budget { margin: var(--space-2) 0 0; font-size: 0.78rem; color: var(--color-text-secondary); }
+.chat-ai__budget a { color: var(--color-accent-text); text-decoration: underline; text-underline-offset: 2px; }
 
 /* Quiz (round 7): where the answer is and what the question tests; what to do after a quiz */
 .quiz-verdict__meta { display: flex; flex-wrap: wrap; gap: var(--space-1) var(--space-4); margin: var(--space-1) 0 0; font-size: 0.78rem; color: var(--color-text-secondary); }

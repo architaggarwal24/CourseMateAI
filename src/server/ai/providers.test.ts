@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { apiLlm, ollamaCloudModel, ProviderError, sseData } from "./providers";
+import { apiLlm, ollamaCloudModel, outputCeiling, ProviderError, sseData } from "./providers";
 import type { Target } from "./models";
 
 type Seen = { url: string; headers: Record<string, string>; body: any };
@@ -70,6 +70,26 @@ describe("gemini", () => {
     ] }, seen));
     expect(await collect(llm.stream(msgs, {}))).toEqual([{ text: "Hel" }, { text: "lo" }, { tokensIn: 3, tokensOut: 1 }]);
     expect(seen[0].url).toContain(":streamGenerateContent?alt=sse");
+  });
+
+  it("counts thinking as output, as Google bills it (or the budgets would see less than the bill)", async () => {
+    const llm = apiLlm(target("gemini", "g"), fakeFetch({ json: {
+      candidates: [{ content: { parts: [{ text: "hmm", thought: true }, { text: "Yes" }] } }],
+      usageMetadata: { promptTokenCount: 5, candidatesTokenCount: 2, thoughtsTokenCount: 40 },
+    } }));
+    expect(await llm.generate(msgs, {})).toEqual({ text: "Yes", tokensIn: 5, tokensOut: 42 });
+    const streamed = apiLlm(target("gemini", "g"), fakeFetch({ sse: [
+      `data: ${JSON.stringify({ candidates: [{ content: { parts: [{ text: "Yes" }] } }], usageMetadata: { promptTokenCount: 3, thoughtsTokenCount: 9 } })}\n\n`,
+    ] }));
+    expect((await collect(streamed.stream(msgs, {}))).at(-1)).toEqual({ tokensIn: 3, tokensOut: 9 });
+  });
+});
+
+describe("outputCeiling", () => {
+  it("is the max output asked for, raised for Ollama's thinking models", () => {
+    expect(outputCeiling({ provider: "gemini" }, {})).toBe(4096);
+    expect(outputCeiling({ provider: "claude" }, { maxOutputTokens: 300 })).toBe(300);
+    expect(outputCeiling({ provider: "ollama-cloud" }, { maxOutputTokens: 300 })).toBe(1024);
   });
 });
 

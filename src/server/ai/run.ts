@@ -1,5 +1,9 @@
 // Calling a model for a user (Stage 4.3): the plan's quota first, then the route's targets in order (the next one
 // takes over when one fails - before the first word, for a streamed answer), and every call metered.
+// Money (ai/budget.ts): before each paid model is tried, its worst-case cost is reserved against the user's, the
+// plan's and the global budget; a model a budget refuses is skipped (the free Workers AI one at the end always
+// answers), and the reservation is settled to the real cost with the meters. When the user's own budgets have no
+// room, their bought Mana (account/wallet.ts) pays for the model instead, if they have enough.
 // Users can't bring their own keys: every call is the server's (and counts against the plan).
 import * as log from "../log";
 import type { Db } from "../db";
@@ -7,7 +11,8 @@ import { HttpError } from "../http";
 import type { Tier } from "../account/plans";
 import { route, type Job, type Target } from "./models";
 import { apiLlm, DEFAULT_MAX_OUTPUT } from "./providers";
-import { isCapped, recordCall, releaseCall, reserveCall } from "./usage";
+import { releaseCall, reserveCall } from "./usage";
+import { loadLimits, meter, release, reserve, userScopes, worstCostMicro, type Hold, type Scope } from "./budget";
 import { aiSettings, overrideTarget, withSlots } from "./config";
 import { leaked, safeLength, withGuard } from "./guard";
 
@@ -77,48 +82,78 @@ export function withheld(caller: Caller, job: Job): HttpError {
 
 interface Ctx { db: Db; env: { AI?: unknown } }
 
-/** The models to try, in order. Reserves one of today's calls first (see reserveCall); `reserved` says if it did. */
-async function targets(ctx: Ctx, caller: Caller, job: Job): Promise<{ list: Target[]; reserved: boolean }> {
+/** The models to try, in order, and the budgets they're held to. Reserves one of today's calls first (see reserveCall). */
+async function targets(ctx: Ctx, caller: Caller, job: Job): Promise<{ list: Target[]; reserved: boolean; scopes: Scope[] }> {
   const reserved = await reserveCall(ctx.db, caller);
   try {
-    return { list: await pickTargets(ctx, caller, job), reserved };
+    return { ...(await pickTargets(ctx, caller, job)), reserved };
   } catch (e) {
     if (reserved) await releaseCall(ctx.db, caller.id).catch(() => {});
     throw e;
   }
 }
 
-async function pickTargets(ctx: Ctx, caller: Caller, job: Job): Promise<Target[]> {
-  const [capped, saved] = await Promise.all([isCapped(ctx.db), aiSettings(ctx.db, caller.admin ? caller.id : undefined)]);
+async function pickTargets(ctx: Ctx, caller: Caller, job: Job): Promise<{ list: Target[]; scopes: Scope[] }> {
+  const [limits, saved] = await Promise.all([loadLimits(ctx.db), aiSettings(ctx.db, caller.admin ? caller.id : undefined)]);
   // The models admins saved for everyone, over the LLM_* settings.
-  const list = route(caller.tier, job, { capped, env: withSlots(process.env, saved.slots) });
-  // An admin's own model goes first (the normal ones stay behind it). Past the spend cap only a free one still does.
+  const list = route(caller.tier, job, { env: withSlots(process.env, saved.slots) });
+  // An admin's own model goes first (the normal ones stay behind it). It is held to the budgets like any other, so
+  // past the cap only a free one still answers.
   const mine = caller.admin ? overrideTarget(saved.override, process.env, saved.ollamaUrl) : null;
-  if (mine && (!capped || mine.provider === "ollama" || mine.provider === "workers-ai")) {
+  if (mine) {
     list.unshift(mine);
     for (let i = list.length - 1; i > 0; i--) if (list[i].provider === mine.provider && list[i].model === mine.model) list.splice(i, 1);
   }
   if (!list.length) throw new HttpError(503, "ai_not_configured", "This server has no AI model set up yet (LLM_FAST and a provider key).", "retry");
-  return list;
+  return { list, scopes: userScopes(caller, limits) };
 }
 
-/** One answer, whole. */
+/**
+ * Room for a call: the user's, the plan's and the global budget first; past the user's or the plan's, their Mana (with
+ * the global cap still in force). `mana`: the Mana pays for this one.
+ */
+async function holdFor(ctx: Ctx, caller: Caller, scopes: Scope[], worst: number): Promise<{ hold: Hold | null; mana: boolean }> {
+  const hold = await reserve(ctx.db, scopes, worst);
+  if (hold || caller.owner) return { hold, mana: false };
+  const paid = await reserve(ctx.db, scopes.filter((s) => s.key === "global"), worst, undefined, caller.id);
+  return { hold: paid, mana: !!paid };
+}
+
+/** Meter a call and settle its reservation; a failure here is logged, not shown (the reservation then stays held). */
+async function meterQuietly(ctx: Ctx, call: Parameters<typeof meter>[1], hold: Hold): Promise<void> {
+  try {
+    await meter(ctx.db, call, hold);
+  } catch (e) {
+    log.error(`[coursemate-ai] metering failed (${e instanceof Error ? e.message.slice(0, 200) : "error"})`);
+  }
+}
+
+/**
+ * One answer, whole. `limited`: a budget turned at least one model away (the answer came from a later, cheaper or
+ * free one). `mana`: the user's Mana paid for it.
+ */
 export async function generate(ctx: Ctx, caller: Caller, job: Job, raw: ChatMessage[], opts: CallOptions = {}) {
   const messages = withGuard(raw);
-  const { list, reserved } = await targets(ctx, caller, job);
+  const { list, reserved, scopes } = await targets(ctx, caller, job);
   let lastError: unknown;
+  let limited = false;
   for (let i = 0; i < list.length; i++) {
     const t = list[i];
+    const { hold, mana } = await holdFor(ctx, caller, scopes, worstCostMicro(t, messages, opts));
+    if (!hold) { limited = true; continue; }
+    let r: Awaited<ReturnType<Llm["generate"]>>;
     try {
-      const r = await llmFor(t, ctx.env).generate(messages, opts);
+      r = await llmFor(t, ctx.env).generate(messages, opts);
       if (!r.text?.trim()) throw new Error("empty answer");
-      await recordCall(ctx.db, { userId: caller.id, target: t, job, tokensIn: r.tokensIn ?? promptTokens(messages), tokensOut: r.tokensOut ?? estimateTokens(r.text), fallback: i > 0, reserved });
-      if (leaked(r.text)) { lastError = withheld(caller, job); break; }
-      return { text: r.text, target: t };
     } catch (e) {
+      await release(ctx.db, hold).catch(() => {});
       lastError = e;
       log.warn(`[coursemate-ai] ${t.provider}:${t.model} failed (${e instanceof Error ? e.message.slice(0, 200) : "error"})`);
+      continue;
     }
+    await meterQuietly(ctx, { userId: caller.id, target: t, job, tokensIn: r.tokensIn ?? promptTokens(messages), tokensOut: r.tokensOut ?? estimateTokens(r.text), fallback: i > 0, reserved }, hold);
+    if (leaked(r.text)) { lastError = withheld(caller, job); break; }
+    return { text: r.text, target: t, limited: limited && !mana, mana };
   }
   if (lastError instanceof HttpError && lastError.code === "answer_withheld") throw lastError;   // answered (and metered), not shown
   if (reserved) await releaseCall(ctx.db, caller.id).catch(() => {});      // nobody answered: the call isn't spent
@@ -128,18 +163,24 @@ export async function generate(ctx: Ctx, caller: Caller, job: Job, raw: ChatMess
 /**
  * A streamed answer. Resolves once the first words have arrived (from whichever target managed it), so a failure
  * before that is an ordinary error. `pieces` then yields the rest; `done` resolves with the whole text (metered).
+ * A stream that is never read to the end keeps its reservation until the day ends (the safe side).
  */
 export async function stream(ctx: Ctx, caller: Caller, job: Job, raw: ChatMessage[], opts: CallOptions = {}) {
   const messages = withGuard(raw);
-  const { list, reserved } = await targets(ctx, caller, job);
+  const { list, reserved, scopes } = await targets(ctx, caller, job);
+  let limited = false;
   for (let i = 0; i < list.length; i++) {
     const t = list[i];
-    const it = llmFor(t, ctx.env).stream(messages, opts)[Symbol.asyncIterator]();
+    const { hold, mana } = await holdFor(ctx, caller, scopes, worstCostMicro(t, messages, opts));
+    if (!hold) { limited = true; continue; }
+    let it: AsyncIterator<{ text?: string; tokensIn?: number; tokensOut?: number }>;
     let first: IteratorResult<{ text?: string; tokensIn?: number; tokensOut?: number }>;
     try {
+      it = llmFor(t, ctx.env).stream(messages, opts)[Symbol.asyncIterator]();
       do { first = await it.next(); } while (!first.done && !first.value.text);
       if (first.done) throw new Error("empty answer");
     } catch (e) {
+      await release(ctx.db, hold).catch(() => {});
       log.warn(`[coursemate-ai] ${t.provider}:${t.model} failed before answering (${e instanceof Error ? e.message.slice(0, 200) : "error"})`);
       continue;
     }
@@ -151,35 +192,37 @@ export async function stream(ctx: Ctx, caller: Caller, job: Job, raw: ChatMessag
     const done = new Promise<{ text: string }>((res, rej) => { resolveDone = res; rejectDone = rej; });
     done.catch(() => {});
     const fallback = i > 0;
+    const source = it;
+    const held: Hold = hold;
     async function* pieces(): AsyncGenerator<string> {
       // the canary check: a tail that could be the start of the marker is held back until the next piece shows
       // what it is, so not even part of it goes out
       let sent = 0;
-      const release = function* (final: boolean): Generator<string> {
+      const out = function* (final: boolean): Generator<string> {
         if (leaked(text)) throw withheld(caller, job);
         const upTo = final ? text.length : safeLength(text);
         if (upTo > sent) { yield text.slice(sent, upTo); sent = upTo; }
       };
       try {
-        yield* release(false);
+        yield* out(false);
         for (;;) {
-          const r = await it.next();
+          const r = await source.next();
           if (r.done) break;
-          if (r.value.text) { text += r.value.text; yield* release(false); }
+          if (r.value.text) { text += r.value.text; yield* out(false); }
           if (r.value.tokensIn !== undefined) tokensIn = r.value.tokensIn;
           if (r.value.tokensOut !== undefined) tokensOut = r.value.tokensOut;
         }
-        yield* release(true);
-        await recordCall(ctx.db, { userId: caller.id, target: t, job, tokensIn: tokensIn ?? promptTokens(messages), tokensOut: tokensOut ?? estimateTokens(text), fallback, reserved });
+        yield* out(true);
+        await meterQuietly(ctx, { userId: caller.id, target: t, job, tokensIn: tokensIn ?? promptTokens(messages), tokensOut: tokensOut ?? estimateTokens(text), fallback, reserved }, held);
         resolveDone({ text });
       } catch (e) {
         // what was said still counts: the provider charges for it
-        await recordCall(ctx.db, { userId: caller.id, target: t, job, tokensIn: promptTokens(messages), tokensOut: estimateTokens(text), fallback, reserved }).catch(() => {});
+        await meterQuietly(ctx, { userId: caller.id, target: t, job, tokensIn: promptTokens(messages), tokensOut: estimateTokens(text), fallback, reserved }, held);
         rejectDone(e);
         throw e;
       }
     }
-    return { target: t, pieces: pieces(), done };
+    return { target: t, pieces: pieces(), done, limited: limited && !mana, mana };
   }
   if (reserved) await releaseCall(ctx.db, caller.id).catch(() => {});
   throw noModel();

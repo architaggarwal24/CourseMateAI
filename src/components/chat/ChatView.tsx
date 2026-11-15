@@ -14,6 +14,7 @@ import SourceChips from "./SourceChips";
 import CitationList from "./CitationList";
 import { citedFirst, type Citation } from "@/lib/study/citations";
 import dynamic from "next/dynamic";
+import Link from "next/link";
 import { Button, ErrorState, Textarea } from "@/components/ui";
 import { askChat, isAbortError, type TutorMode } from "@/lib/chat/chat-stream";
 import { useDocument } from "@/hooks/useSessions";
@@ -35,6 +36,27 @@ interface Message {
   notFound?: { question: string };
   /** The tutor answered from outside the course material (it said so): a small label over the answer. */
   outside?: boolean;
+  /** The day's AI budget changed who answered (a lighter model, or the user's Mana): a calm note under it. */
+  budget?: { state: "limited" | "mana"; canTopUp: boolean };
+}
+
+/** When the day's AI budgets come back: midnight UTC, in the reader's own time ("5:30 am"). */
+export function budgetResetText(now = new Date()): string {
+  const next = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1));
+  return next.toLocaleTimeString("en-IN", { hour: "numeric", minute: "2-digit" });
+}
+
+/** The note under an answer that a budget changed. Plain text with one link; never an error. */
+export function BudgetNote({ budget }: { budget: NonNullable<Message["budget"]> }) {
+  if (budget.state === "mana") return <p className="chat-ai__budget">Answered with your Mana.</p>;
+  return (
+    <p className="chat-ai__budget">
+      Today&apos;s AI budget is used up, so a lighter model answered. The full model is back at {budgetResetText()}.{" "}
+      {budget.canTopUp
+        ? <Link href="/account/usage#mana">Top up Mana</Link>
+        : <Link href="/account/usage#plans">See plans</Link>}
+    </p>
+  );
 }
 
 /**
@@ -218,7 +240,8 @@ export default function ChatView({ documentId, restoreSessionId }: { documentId?
       const { main, followUps: parsed } = parseFollowUps(answer.content || "No response received");
       patchAnswer(() => answer.blocked
         ? { role: "assistant", content: answer.content, notFound: { question } }
-        : { role: "assistant", content: main, sources: answer.sources, citations: answer.citations, ...(answer.coverage === "none" ? { outside: true } : {}) });
+        : { role: "assistant", content: main, sources: answer.sources, citations: answer.citations, ...(answer.coverage === "none" ? { outside: true } : {}),
+            ...(answer.budget ? { budget: { state: answer.budget, canTopUp: !!answer.canTopUp } } : {}) });
       if (parsed.length > 0 && !answer.blocked) put({ followUps: parsed });
       answered = true;
       setAnnouncement(answer.blocked ? "The document doesn't cover that question." : "Answer complete.");
@@ -388,6 +411,7 @@ export default function ChatView({ documentId, restoreSessionId }: { documentId?
                       {!isStreaming && (msg.citations?.length
                         ? <CitationList citations={citedFirst(shown, msg.citations)} onOpen={setOpenCitation} />
                         : <SourceChips sources={msg.sources} />)}
+                      {!isStreaming && msg.budget && <BudgetNote budget={msg.budget} />}
                       {!isStreaming && (
                         <div className="chat-ai__actions">
                           <Button variant="ghost" size="sm" onClick={() => void copyToClipboard(msg.content, idx)}>

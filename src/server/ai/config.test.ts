@@ -7,6 +7,7 @@ import { localPlatform, type LocalPlatform } from "../test/platform";
 import { AI_ENV, fakeLlms } from "../test/ai-fakes";
 import { route } from "./models";
 import { generate, setLlmFactoryForTests } from "./run";
+import { DEFAULT_BUDGETS, saveBudgets } from "./budget";
 import { setCapUsd } from "./usage";
 import {
   aiSettings, checkOllamaUrl, effectiveEnv, ollamaBase, ollamaEnabled, ollamaModels, overrideTarget, providerStatus, saveOllamaUrl, saveOverride, saveSlots,
@@ -43,6 +44,9 @@ describe("models for everyone", () => {
     const f = fakeLlms({ "*": "ok" });
     setLlmFactoryForTests(f.factory);
     await saveSlots(db, { fast: "claude:haiku" });
+    // a Claude call's worst case (4,096 tokens out at $15 per 1M) is more than a free user's $0.02 day, so the
+    // budgets would rightly send it to the free model; here they're lifted to see the saved model answer
+    await saveBudgets(db, { ...DEFAULT_BUDGETS, user: { ...DEFAULT_BUDGETS.user, apprentice: null } });
     expect((await generate(ctx(), student, "strong", ask)).target).toMatchObject({ provider: "claude", model: "haiku" });
   });
 

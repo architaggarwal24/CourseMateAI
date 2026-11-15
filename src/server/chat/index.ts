@@ -167,13 +167,18 @@ export async function logAnswer(ctx: RequestContext, plan: ChatPlan, answer: str
   await logActivity(ctx, plan.caller.id, plan.sessionId, "chat", "response", content);
 }
 
-export function finalPayload(plan: ChatPlan, blocked = false, rewards: unknown = null) {
+/**
+ * `budget` (ai/budget.ts): "limited" when the day's AI budget sent the answer to a lighter model, "mana" when the
+ * user's Mana paid for it, null otherwise; `can_top_up` says whether this user can buy Mana (paid plans).
+ */
+export function finalPayload(plan: ChatPlan, blocked = false, rewards: unknown = null, spent: { limited?: boolean; mana?: boolean } = {}) {
   // a "not covered" answer has nothing from the material to cite
   const cite = !blocked && plan.coverage !== "none" && plan.coverage !== "conversation";
   return {
     mode: "chat", tutor_mode: plan.mode, coverage: plan.coverage,
     sources: cite ? plan.found.sources : [], citations: cite ? plan.found.citations : [],
     blocked, needs_clarification: plan.quality.needs_clarification, rewards,
+    budget: spent.mana ? "mana" : spent.limited ? "limited" : null, can_top_up: plan.caller.tier !== "apprentice",
   };
 }
 

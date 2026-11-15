@@ -1,400 +1,189 @@
 # CourseMateAI: context for the next session
 
-> Paste this file at the start of a new chat. It covers how the owner works, what the app is, the journey so far,
-> where it stands now and the weak spots we know about.
-> Last updated: 8 Nov 2026 (after the performance pass, stages P1 to P5).
+> Paste this file at the start of a new chat. It covers how the owner works, what the app is, what has been built,
+> and what's left (the top 5 first). Deep detail lives in the code comments and the other files in `docs/`.
+> Last updated: 15 Nov 2026 (after the SEO pass: stages 1, 3 and 4 built, stage 2 prepared).
 
 ---
 
 ## 1. How the owner works (read this first)
 
-**Who:** Archit Aggarwal, building CourseMateAI alone. Windows, PowerShell, project at `C:\Archit\Projects\CourseMateAI`.
+**Who:** Archit Aggarwal, building CourseMateAI alone. Windows, PowerShell, project at `C:\Archit\Projects\CourseMateAI`,
+code on GitHub, deployed by GitHub Actions on every push to `main`.
 
-**The working rules (the owner's own words: "ask me questions first; zips of changed files only, plus a "what to
-test" checklist after each stage; deleted files go into remove-old-files.mjs; TDD; all suites green"):**
+**Rules:**
 
-1. **Ask first.** Before building, ask scope questions as multiple choice (the AskUserQuestion tool), each option
-   with a short explanation and a recommended pick. When the owner says "show them all, I will choose", build a
-   live picker (we built a mix-and-match artifact for the redesign).
-2. **Plan in stages.** Big work is split into numbered stages. The owner says when to start, pause or continue
-   ("pause until I say so" means stop).
-3. **TDD.** Write a failing test, then the fix. Add guard tests so a rule can't quietly be undone.
-4. **All suites green** before handing over: `tsc`, vitest, the full Playwright e2e run, and the Worker build
-   (`npm run cf:build`, under 3 MB gzip).
-5. **Deliver a zip of only the changed files** (paths relative to the project root) in `/mnt/user-data/outputs`, plus:
-   - PowerShell commands to extract and check (`Expand-Archive -Force ...`, `npm run check`, `npx playwright test`,
-     `npm run cf:build`);
-   - the **extract order** when zips build on each other;
-   - a short **"what to test"** checklist.
-6. **Deleted files** go into `scripts/remove-old-files.mjs`, because unzipping can't delete. Tell the owner to run it.
-7. **Commit** each stage on `master` with the attribution lines the session gives.
+1. **Ask first.** Before real work, ask scope questions as multiple choice (AskUserQuestion), each option explained,
+   the recommended one first. "Show them all, I will choose" means build a live picker.
+2. **Stages.** Split big work into numbered stages and run them back to back: finish one, hand it over, start the
+   next. Stop only when the owner says so.
+3. **TDD**, plus guard tests so a rule can't quietly be undone. **All suites green** before hand-over: `tsc`, vitest,
+   Playwright, and `npm run cf:build` (Worker under 3 MB gzip).
+4. **Hand-over:** one zip of only the changed files (paths from the project root) in `/mnt/user-data/outputs`, the
+   commands to run (if any), and a short "what to test" list. Deleted files go into `scripts/remove-old-files.mjs`,
+   because unzipping can't delete.
+5. **Never commit or push, and never ask about it.** The owner always does that. When a stop hook asks, answer that
+   the changes stay uncommitted because the owner handles all commits and pushes.
+6. **Secrets** go only in Cloudflare secrets or `.dev.vars`: never in the repo, never in chat, never `NEXT_PUBLIC_`.
+   The owner's email is for identification only; never send it to an outside service.
 
-**Hand-over rules (the owner's words, 8 Nov):**
-- Never commit, push or ask about either. The owner commits and pushes, always.
-- Deliver one zip with only the updated files, no extra files. With it: the commands to run (if any) and a
-  "what to test" list.
-- No unnecessary information: only what matters, short, in simple language.
-- **Stages run back to back:** finish a stage, hand it over (zip, commands, what to test), then start the next one
-  at once. Don't wait for input; keep going until the owner says stop.
+**Talking:**
+- **Caveman mode** in chat (terse; fragments fine) until the owner says "stop caveman". Code, comments and docs stay
+  in full, plain sentences.
+- Errors in plain words: find the one real failure in a pasted log, say what broke, then the fix.
+- "Fix this fast" = a small fix and a one-file zip, no new round of questions.
+- Don't work around blocked fetches or proxies.
 
-**Communication:**
-- **Caveman mode:** terse chat (fragments are fine). Code, commits and docs stay in normal, full sentences.
-- **Plain language for errors.** Logs confuse the owner. Say what broke in plain words, then the fix. When they
-  paste a long log, find the one real failure and ignore the noise (Wrangler warnings and "API error" lines from
-  tests are normal).
-- **"Fix this fast"** means a small, targeted fix and a one-file zip, not a new round of questions.
-- The owner's email is for identification only; never send it to outside services.
-
-**Taste and limits:**
-- Design: flat, calm, minimal "Ink" look; no gradients, glass, blur or glow. Sentence case in the UI.
-- The pixel art in the arena is loved ("perfect"); keep it.
-- **IP rule:** only original characters. The owner's references showed known anime characters; we draw our own in
-  that pixel-fighter style, never theirs.
-- The owner invokes skills such as `/caveman`, `/superpowers-workflow`, `/ui-styling`, `/ui-ux-pro-max`, `/design`
-  and `/design-system`. Use them when asked.
+**Taste:**
+- Study: flat, calm "Ink" look (no gradients, glass, blur or glow), sentence case. The highlighter is the one
+  signature detail.
+- Hero: pixel-art JRPG look, always dark. The pixel art is loved; keep it.
+- **IP rule:** original characters only, never known ones, even when the owner's references show them.
+- The owner invokes skills such as `/caveman`, `/superpowers-workflow`, `/ui-ux-pro-max`, `/unslop`, `/llm-council`.
 
 ---
 
 ## 2. What CourseMateAI is
 
-An AI study companion with an RPG game layer, aimed at **launching to real students** (paid plans in INR).
+An AI study companion with an RPG game layer, aimed at **launching to real students** (Indian school students, exam
+aspirants, and college students anywhere). Live at <https://coursemateai.architaggarwal.workers.dev>.
 
-- **Study:** upload PDFs, then chat with page citations, quizzes, flashcards, notes, a spaced-repetition review
-  queue (FSRS), mock exams, courses (several PDFs together) and a concept map.
-- **Hero:** XP, coins, levels, streaks, daily quests, achievements, a shop of champion skins and pets.
-- **Arena:** questions from your PDF become fights against 13 mythic creatures, drawn as a side-view pixel fighting
-  game, with 6 original champions, creature mechanics, ultimates and a roguelite "Expedition".
-- **Plans:** Apprentice (free), Scholar ₹149, Sage ₹299, Archmage ₹599 a month. Invite codes grant plans. The
-  `OWNER_EMAIL` account is always admin and on Archmage.
-- **Sign-in:** email + password, and Google / GitHub, each on once its `*_CLIENT_ID` and `*_SECRET` are set
-  (`socialProviders` in `src/server/auth/index.ts`). Google is trusted to link by email; GitHub links only verified
-  emails.
-- **"You've been upgraded":** a higher plan (or more days, from an admin or an invite) leaves a notice
-  (`plan_notices`, `src/server/account/plan-notices.ts`) that arrives with GET /hud and shows once on any device: a calm card
-  in Study/Account, a pixel celebration in Hero (`components/fx/UpgradeCeremony.tsx`). Admins can add a note and
-  preview it. Anything that changes a plan calls `planState` before and `notePlanChange` after.
+- **Study** (inside courses: one per subject, holding its PDFs): a tutor chat that teaches and cites pages, quizzes
+  (checked by a second AI pass), flashcards, notes in 6 formats, FSRS review, mock exams, a concept/mind map, focus
+  mode. Study remembers each tool's session and keeps working in the background.
+- **Hero:** a second world with its own frame. A pixel champion (6 originals, styles, skills, mounts, pets, forge,
+  mastery), XP, coins, quests as sealed scrolls, achievements, a painted Bestiary book of 13 creatures in 4 tiers,
+  and an arcade arena where questions from your PDFs become fights (combo, final move, Boss Rush, Survival,
+  invasions, seasons).
+- **Public site:** landing, feature pages, pricing, free tools that work without an account, CBSE chapter pages.
+- **Plans:** Apprentice (free), Scholar ₹149, Sage ₹299, Archmage ₹599 a month. Invite codes grant plans; the
+  `OWNER_EMAIL` account is always admin on Archmage. Payments (Razorpay) are off until `PAYMENTS_ENABLED`.
+- **Sign-in:** email codes, two-step sign-in, optional Google and GitHub. Ages 12+, terms version recorded.
 
 ---
 
-## 3. Stack today
+## 3. Stack
 
-- **One Next.js 16.4 app** (App Router, Turbopack, React 19, TypeScript, Tailwind 4) deployed to **Cloudflare
-  Workers through OpenNext**. No Python any more.
-- **Cloudflare:** D1 (Drizzle), R2 (PDFs), Vectorize plus Workers AI (`bge-small` embeddings and the small model),
-  Cloudflare Email. Better Auth for accounts (email codes, two-step sign-in, optional Google).
-- **AI:** hand-written HTTPS clients for Gemini, OpenAI, Anthropic and NVIDIA NIM (no SDKs, to keep the Worker small).
-  Routes per plan and job, fallbacks, metering, and a daily spend cap only the owner can change.
-- **Payments:** Razorpay behind `PAYMENTS_ENABLED`, with a stub provider for tests.
-- **Tests:** vitest (about 1,200 tests, 93 files) and Playwright (252 pass, the rest are skipped on purpose) with axe,
-  keyboard, 360px, motion, light and dark, all against a mocked API (`e2e/fixtures/api.ts`).
-
-### Project layout (12 Nov 2026)
-
-Everything has one place. New files follow the same rules (`scripts/restructure.mjs` made the move).
-
-```
-src/app/                  routes only: pages, layouts, API route files (thin; the work is in src/server)
-  (app)/                  signed-in pages: today, study, account, and (play)/ quests, arena, bestiary, champion
-  api/v1/                 one route.ts per endpoint
-src/components/<feature>/ every component in its feature's folder, none loose at the top
-  ui/                     the kit (Button, Modal, Tabs, icons, ThemeScope...)
-  shell/                  the app frame (AppShell, NavSidebar, BottomNav, UserMenu, Providers, ErrorBoundary)
-  play/                   the play pages and the Champion tabs (PlayArea, QuestsTab, ForgeTab, MasteryTab...)
-  chat/ quiz/ notes/ flashcards/ history/ pdf/ study/ review/ exam/ map/ course/ today/   Study
-  arena/ bestiary/ champion/ fx/   the game;   account/ auth/ landing/ brand/ pwa/   the rest
-src/hooks/                React hooks and zustand stores (useX.ts)
-src/lib/<feature>/        browser-side logic by feature (api/, study/, game/, pixel/, arena/, account/, auth/...);
-                          only app-wide modules sit at the top (routes, site, theme, utils, keys, undo, pwa...)
-src/server/<feature>/     the Worker by feature (account/, auth/, study/, game/, ai/, chat/, search/, db/);
-                          only its plumbing sits at the top (context, env, errors, http, route, status, idempotency)
-src/styles/ src/fonts/ src/test/ src/types/ src/contexts/
-e2e/                      Playwright specs, fixtures/api.ts (the mocked API), pages.ts, helpers.ts
-migrations/               D1 migrations (drizzle-kit)
-scripts/                  one-off and tooling scripts (remove-old-files, restructure, brand-assets, pixel previews)
-docs/                     this file, deploy, payments, sprites, SEO
-```
-
-**Names:** components PascalCase (`ChatView.tsx`), hooks `useX.ts`, everything else kebab-case (`chat-stream.ts`).
-Tests sit next to the file they test (`x.test.ts`). Import with `@/` across folders, `./` inside one.
+- One **Next.js 16.4** app (App Router, Turbopack, React 19, TypeScript, Tailwind 4) on **Cloudflare Workers** via
+  OpenNext. This Next has breaking changes: read `node_modules/next/dist/docs/` before using an API (AGENTS.md).
+- **Cloudflare:** D1 through Drizzle (22 migrations), R2 for PDFs, Vectorize + Workers AI, Cloudflare Email.
+- **Better Auth** for accounts. **AI:** hand-written clients for Gemini, OpenAI, Anthropic, NVIDIA NIM and Ollama Cloud,
+  routed per plan and job (fast / strong / premium / small, set in Admin), with fallbacks, metering and a daily
+  spend cap.
+- **Tests:** vitest (1,865 tests in 167 files, `src/**` only) and Playwright (29 specs) with axe, against a mocked
+  API (`e2e/fixtures/api.ts`).
+- **Layout:** `src/app` routes only (thin); `src/server/<feature>` the Worker; `src/components/<feature>`;
+  `src/lib/<feature>` browser logic and public-site content; `src/hooks`; `e2e`; `migrations`; `docs`. Components
+  PascalCase, hooks `useX.ts`, the rest kebab-case; tests sit beside their file.
 
 ---
 
-## 4. The journey so far
+## 4. What has been built (2026)
 
-Each step was a set of stages with zips and checklists. Dates are 2026.
+| When | Pass | In one line |
+| --- | --- | --- |
+| Oct | Phase 1–2 | Redesign, server-run tactical arena, then the pure-TypeScript pixel engine (champions, creatures, stages). |
+| 3–5 Nov | Phase 3–4 | Avatar, creature mechanics, FSRS, exams, courses, citations, plans, PWA; the Python backend ported to the Worker and deleted. |
+| 5–6 Nov | UX + Ink redesign | Command palette, Undo, idempotency keys; Ink look, logo, sidebar, Today as home. |
+| 7–8 Nov | Performance P1–P5 | One /hud call, D1 round trips 141 → 97, lighter fonts and bundle, cached static files. |
+| 7–8 Nov | Hero stages 1–7 | Bestiary engine and book, champion unlocks, quest scrolls, arena nav, admin grants, taunts, chest, chiptune sound. |
+| 8–9 Nov | Round 7 | Study inside courses, the tutor that teaches, hardened quizzes, note formats, Ollama Cloud, the Scholar's desk Bestiary, study memory. |
+| 8–10 Nov | Fixes | Security fixes, upload fixes, the "you've been upgraded" window, Google and GitHub sign-in. |
+| 9 Nov | SEO P0–P1 | `metadataBase`, sitemap, robots, feature pages. |
+| 11 Nov | Champions + forge | Redrawn champions, creatures, pets, look editor; styles, skills, mounts, forge, mastery. |
+| 12 Nov | Restructure | Every file in its feature folder (`scripts/restructure.mjs`). |
+| 12 Nov | Arcade arena, 7 stages | Questions made before the fight, enraged forms, combo, final move, continue, select + VS, Boss Rush, Survival, fidgets. |
+| 12 Nov | Two worlds, 7 stages | Hero gets its own frame and sidebar, the portal, pause menu, Insight, invasions, focus mode, Adventurer card, seasons. |
+| 12–13 Nov | Hero speed + phones | One shared sprite clock, fights upright on phones, slim Hero header. |
+| 13–14 Nov | BreakingBreach, 6 stages | AI prompt-injection guard and canary, the Trash (30 days), terms gate and data export, faster start, Study and Hero unslop. |
+| 13 Nov | Import-cycle fix | documents → trash → courses → documents made every API route 500; `import-cycles.test.ts` now forbids cycles. |
+| 13 Nov | Hero UI pass | Only the best item per stat counts (`lib/game/bonuses.ts`), Profile page (`/adventurer`), item preview on the left panel, filter bars, pixel loader. |
+| 14–15 Nov | SEO pass | See below. |
 
-1. **Phase 1: first redesign and Arena v2 (Oct).** Tailwind 4, React 19, Next 16; a glass design system; the study
-   screens rebuilt; a server-authoritative tactical arena (moves, Focus, spells, Nemesis, Expedition, leaderboards).
-2. **Phase 2: the pixel arena (30 Oct to 2 Nov).** The summon took 135 s and failed, so boss creation became instant
-   (no AI call) with flavour added in the background. A pure-TypeScript pixel engine draws 6 original champions,
-   13 creatures and 10 stages, plus the fight scene.
-3. **Brainstorm (2 Nov).** Goal set to "launch to real students". Build order: avatar, arena, study, ship.
-4. **Phase 3 (3 to 4 Nov).**
-   - The pixel champion became the avatar everywhere; shop items became skins and pets.
-   - Every creature got a signature mechanic; champions got passives, ultimates, levels and mastery skins.
-   - Study power: FSRS review queue, mock exams, courses, page citations with a PDF viewer, the concept map.
-   - Shipping: plans, quotas, invite codes, model routing, a quiz bank, Razorpay behind a flag, security hardening,
-     PWA, Sentry.
-5. **Phase 4: everything on Cloudflare (4 to 5 Nov).** The whole Python backend was ported to TypeScript route
-   handlers on the Worker, area by area (auth, documents, AI and chat, study, game, arena, billing), then deleted.
-   The app moved to the repo root. Policy pages were added (terms, privacy, refunds).
-6. **UX details pass (5 Nov).** Delayed skeletons, a command palette (Ctrl K), Undo instead of "are you sure?",
-   revalidation on focus, page transitions, phone bottom sheets, safe areas, idempotency keys on every POST that
-   creates or spends.
-7. **The Ink redesign (5 to 6 Nov).** The owner asked for the 20 UX laws applied, no gradients, a better icon pack,
-   a new layout and a logo, chosen from options. Their picks:
-   - layout: a sectioned sidebar that collapses to an icon rail; Today as the landing page;
-   - surface "Ink" (pure black dark mode, white light mode, both with a toggle); accent: a darker ink blue;
-   - fonts Bricolage Grotesque (headings) and Onest (text); Heroicons outline (Lucide at 1.5 stroke for gaps);
-   - soft corners, compact density, the "Companion C" logo, the name "CourseMateAI" everywhere;
-   - Hero: a darker Ink variant, always dark; the pixel arena kept as it is.
+**The SEO pass (research doc: "CourseMateAI SEO Research and Plan", a Claude Doc):**
+1. **Technical (done):** `siteJsonLd` (Organization, WebSite, WebApplication with INR offers), `lastModified` on every
+   page, IndexNow (`scripts/indexnow.mjs`, key file in `public/`, a CI step after deploy).
+2. **Domain move (prepared, waits on a domain):** `hostRedirects` in `src/lib/site-url.ts` + `next.config.ts`. Change
+   `NEXT_PUBLIC_SITE_URL` in `ci.yml` and every workers.dev URL redirects (308) to the new domain. Steps:
+   `docs/domain-move.md`.
+3. **Free tools (done):** `/tools` (flashcard maker, quiz generator, notes summarizer, revision planner). No account:
+   POST /api/v1/tools/run, 150–4,000 characters, 5 runs per visitor a day (`FREE_TOOL_RUNS_PER_IP`), 300 a day in
+   all (`FREE_TOOL_RUNS_PER_DAY`), metered in the spend cap, guarded like every AI call.
+4. **Chapter pages (built, not live):** `/cbse/class-10/science/...`, chapters 1–3 drafted (`src/lib/content/`).
+   **The review rule:** a chapter is `noindex` and out of the sitemap until a person checks it and adds
+   `reviewed: { by, on }` (`docs/content-review.md`).
 
-   The stages:
-   1. **Ink foundation:** new tokens, light and dark modes, the fonts, effects retired, a guard test against
-      gradients and blur.
-   2. **Logo:** the mark, the wordmark, and every favicon, app icon and link-preview image generated from it.
-   3. **Shell:** the sidebar (Study, Courses, Hero), Ctrl+B to collapse, the phone tab bar, grouped Study tabs.
-   4. **Icons:** one icon module, Heroicons plus Lucide, with a guard test.
-   - **Stage 1 fix and test robustness:** e2e pinned to light mode and normal motion, a `desktop-dark` project,
-     a `settle()` helper before every axe scan, and no faded labels.
-   5. **Today:** the landing page (review, continue, streak, quests, hero, PDFs, add a PDF).
-   6. **Polish:** Hero only darkens the screen (not the sidebar); no coloured glows (guarded); visible progress
-      tracks; Profile no longer duplicates the Settings form; tighter phone headers; empty chat opens at the top;
-      sentence-case login wording. Then a fix for a flaky QuizView test.
-
-8. **Performance pass (7 to 8 Nov).** Measured first (a Playwright harness, since removed, and a D1 round-trip counter),
-   then:
-   - P1 network: one GET /hud at start-up instead of three (none for a signed-out visitor), shared shop load, no
-     duplicate API calls left; the first page paints from the server HTML (the 250 ms rise only on in-app moves); the
-     login entrance is CSS, not motion.
-   - P2 server: D1 round trips on the hot routes 141 -> 97 (session row reused, plan read once per request, review
-     stats / queue, course progress and the concept map batched); exam answers and arena questions saved in one batch;
-     HUD reads in parallel; a 10 s timeout on Resend.
-   - P3 bundle: the command palette loads on idle or first use; Geist Mono subset (71 -> 40 KB) and not preloaded
-     (fonts per page 176 -> 107 KB); highlighting carries 21 languages instead of 37; unused packages removed.
-   - P4: skeletons keep their size (a class like h-[360px] used to lose to the 1rem default); courses load with the
-     documents; `public/_headers` caches hashed build files for a year on Cloudflare; earlier chat answers are not
-     re-parsed per streamed token; Web Vitals through Sentry (`NEXT_PUBLIC_SENTRY_TRACES_SAMPLE_RATE`).
-   - P5: quiz and exam keys bound before paint.
-
-**Zip extract order for the redesign:** stages 1 to 4, then `redesign-fixes.zip`, then 5, then 6, then
-`redesign-6-fix.zip`.
+Also on 15 Nov: `README.md` for GitHub, and a log hint when a D1 table is missing (`missingTableHint` in `server/http.ts`).
 
 ---
 
-## 5. Where things stand
+## 5. What's left
 
-- The redesign is complete. The owner's last run: unit tests green after the QuizView fix, 252 e2e passed,
-  the Cloudflare build completed.
-- The Worker was last measured at **2.71 MB gzip** (limit 3 MB on the free plan).
-- The performance pass is done: `perf-pass.zip` (or `perf-1` to `perf-6` in order); run
-  `node scripts/remove-old-files.mjs` once (it deletes the empty `src/hooks/useApi.ts`) and `npm install` (packages
-  changed). Worker after it: 2.72 MB gzip.
-- **Admin AI (8 Nov):** Admin -> AI models sets the fast / strong / premium / small models for everyone (saved in
-  D1 over the LLM_* settings); Settings -> AI -> Your model lets an admin try a model on their own requests first
-  (Ollama only under `npm run dev`). Settings: the index stays put and only the sections scroll.
-- **Bestiary (agreed 8 Nov; built: Stage 1 engine, Stage 2 book):**
-  - A real book: painted, aged-paper look (an exception to the flat rule, for the book only); pages turn with the
-    arrow keys or a mouse/finger drag.
-  - 4 tiers. I: Minotaur, Cyclops, Oni, Kitsune. II: Naga, Rakshasa, Sphinx, Fenrir. III: Hydra, Kraken, Ammit.
-    IV: Simurgh, Jörmungandr. Beating any 2 in a tier opens the next. Higher tiers: more HP, shorter timers, harsher
-    abilities. Locked creatures are dark silhouettes.
-  - A topic whose creature is locked gets the closest unlocked creature; the locked page teases it.
-  - Each page: art, lore (the myth plus real facts), weakness, tactics, battle record, concepts it tested you on.
-  - Weakness = a move combo. A clue shows first; finding the combo yourself gives an achievement and a bonus; after
-    the first win the combo is written in for good, and using it in a fight gives a bonus (stagger, extra damage).
-  - Rewards: first defeat (page + XP/coins by tier), weakness found alone (achievement + bonus), mastery per
-    creature (bronze 1 win, silver 5, gold flawless or nightmare: a creature-themed skin), tier finished (a champion).
-  - From God of War's Codex (2018, Ragnarök; read on the GoW wiki): entries are written in a character's voice
-    (Atreus: curious, his mother's stories; Mimir in Ragnarök: dry, scholarly asides) with a sketch, then two short
-    tactics lines naming the counter ("disrupt the haymaker for an opening"). Ragnarök adds notes in two voices
-    (Kratos and Atreus) and variant entries of one creature family. For us:
-    - a Scribe voice for the lore, plus a margin note in your current champion's voice;
-    - variants: each creature gains a harder form at higher tiers (e.g. Elder Hydra), as a sub-page;
-    - tactics: two lines, one of them the weakness clue;
-    - lost pages: extra lore pages found through quests and rewards.
-- **Champions (agreed 8 Nov; built in Stage 3):** Kaien free; finishing Bestiary tiers I-IV unlocks Asha, Brak, Mira, Vex;
-  Thorne at level 25; each unlock is a ceremony with a reward; anyone who already picked a champion keeps it.
-  A champion using their own mastery weapon gets exclusive attack/ultimate animations, one small perk and a KO
-  finisher.
-- **Quests (agreed 8 Nov; built in Stage 4):** quests are sealed scrolls; "Answer the call" opens the exact place; done = the seal
-  breaks and the reward is claimed. Keep the daily quests and add Hunts (Bestiary; rewards include lost pages),
-  weekly trials and a short story quest per champion.
-- **Build order:** 1 Bestiary engine (tiers, unlocks, stand-ins, records, weakness combos, rewards) -> 2 the book
-  -> 3 champions (locks, ceremonies, weapons, finishers) -> 4 quests (scrolls, hunts, trials, champion quests).
-- **How Stage 3 works:** `server/game/roster.ts` (rules, `champion_unlocks` table, migration 0010 keeps every
-  champion already picked or fought with). "Finished" = every creature of the tier beaten; Ammit (Nemesis) does not
-  count. Unlocks are written after the winning fight (`result.champions_unlocked`) and also lazily on
-  GET /avatar/champion (Thorne's level). The ceremony (`ChampionCeremony`) shows on Hero tabs except the arena (there
-  the result panel has "Meet ..."); POST /avatar/champion/celebrate pays once. Signature weapon = the champion's own
-  level-10 mastery weapon worn: perk in `kits.ts SIGNATURES`, animations + finisher beat in `lib/pixel/fight.ts`.
-  CSS gotcha: use `--color-text` / `--color-text-secondary`, not `--color-fg*` (those resolve at :root and ignore the
-  dark Play scope inside modals).
-- **How Stage 4 works:** `server/game/scrolls.ts` + `quest_scrolls` table (migration 0011, which also adds
-  `bestiary_records.lost_page`). Daily quests stay in `daily_quests` (claim unchanged). Weekly trials: 3 per ISO week,
-  picked from the user id + week (no randomness, so no duplicates). Hunts: up to 2 at once, first defeats then Elder
-  (nightmare) forms; claiming one finds the creature's lost page (`LOST_PAGES` in lib/bestiary/content.ts, shown in
-  the book). Story: 3 chapters per champion, for the champion you fight as. Every scroll moves by an `event` string
-  (`scrollEvent`): actions from `questsOnAction`, fight events from `arena.end` (`fightEvents`), banes from resolve.
-  UI: `components/play/QuestsTab.tsx` + `QuestScroll.tsx` (seal splits on claim); links in `lib/quests/board.ts`.
-- **Round 5 (8 Nov):** arena tab shows only modes + champions; sidebar has one "Hero" link (the Hero tab bar holds
-  the rest); owner-only XP/coin grants (Admin → Manage → XP and coins; `server/account/admin.ts grantGame`, kind
-  "admin_grant", minus takes away to zero). Bestiary book: IM Fell types (`src/fonts/tome.ts`), worn/torn paper
-  (`tornEdge` clip-path per page), curled 3D turns (leaf = 10 hinged strips moved by rAF outside React; strips use a
-  lighter paper background because the grain is costly to repaint), contents jump = a stack of up to 5 leaves.
-  Hero pixel UI: `components/play/pixel-ui.css` + play tokens (indigo panels, 0 radius, hard shadows, steps()
-  motion, Press Start 2P labels, Pixelify Sans body; fonts given by AppShell's play ThemeScope). The last verdict
-  waits 6 s (`AUTO_ADVANCE_MS.over`) so the KO/finisher plays.
-- **The arcade arena (12 Nov, 7 stages; agreed in the arena brainstorm):**
-  1. Questions before the fight: `arena.prepare` writes 12 phase-1 and 8 phase-2 questions into `arena_questions`
-     (`PREPARED`); turns auto-advance (`AUTO_ADVANCE_MS`), Enter repeats the last move.
-  2. Layout: HUD on top, fighters in the middle, question at the bottom (`components/arena/fight.css`); phones play
-     sideways (a "turn your phone" notice upright); the mount stays under the champion all fight.
-  3. Enraged forms and effects (`server/game/effects.ts`): each boss draws 2-3 shared effects for its normal form
-     and uses its own 2-3 when enraged (clock, burns, locked moves, blind/fog/shuffle on the question...); enraged
-     bosses grow, tint red and get a new pattern (the hydra strikes with every head).
-  4. Combo (x2-x5 damage, points and ultimate charge; a combo special every 3rd right answer at x5), the FINAL MOVE
-     (at 15% HP one 12 s question: right = the champion's finisher, wrong = it staggers up +10%), a score card with
-     an S-D rank instead of K.O./grade, and CONTINUE? when knocked down (potion or coins 100/200/400, 3 a fight,
-     `continueBattle`; the champion lies down until then). Finisher names: `lib/arena/finishers.ts`.
-  5. Character select and VS while the questions are written: POST /arena/battles with `defer: true` makes the battle
-     at once, POST .../prepare writes its questions, POST .../rearm switches the champion before the first question.
-     No round call and no boss card in the fight (the card belongs to the Bestiary).
-  6. Power level, Boss Rush and Survival (they replace Multiplayer): `server/game/power.ts` (10 + best 5 score cards
-     / 40 + each hunted species by tier) and `gauntlet.ts` (`arena_gauntlets`, migration 0018, `arena_battles.gauntlet_id`).
-     Boss Rush = your 3 strongest hunted creatures, weakest first, at 0.9/1.05/1.2x your power, hearts carried, a big
-     chest; Survival = endless bosses from 70% of your power, +12% each, a chest every 5, over when a fight is lost.
-     Every fight pays as usual; chests: `chest.ts openGauntletChest`. Routes: GET /arena/power, /arena/gauntlets...
-  7. Idle fidgets: 3 per fighting style (`FIDGET_KEYS` in lib/pixel/heroes.ts), 2 per creature (`BOSS_FIDGET_KEYS`
-     in bosses.ts); the fight scene plays one after 4.5-9 s idle; `PixelSprite fidget` does the same on the select
-     screen, VS, the Champion tab and the Bestiary.
-- **The two worlds (12 Nov, 7 stages):** Study and Hero each have their own frame; `lib/worlds.ts` holds the Hero
-  menu and world helpers.
-  1. Frames: `AppShell` turns the whole frame Play in Hero, with `HeroSidebar` (JRPG pause-menu panel: champion,
-     level, XP, coins, streak, the menu with Champion's screens under it, ↑↓ cursor) instead of `NavSidebar`; the
-     phone tab bar has a set per world. The Hero header shows on phones only.
-  2. The crossing: `PortalLink` / `PortalTransition` (pixel blocks cover the screen, the page changes, they fall away;
-     a fade with reduced motion), each world remembers its last page (`rememberPage` / `lastPage`), a peek on hover,
-     the portal card on Today.
-  3. Game feel: `PauseMenu` (Esc in Hero; pauses a fight's question on the server: POST .../pause and .../resume,
-     3 a fight), Controls, Hero toasts as the Scribe's typewriter dialogue, `LoreTip` on Hero loading screens, the
-     full-screen LEVEL UP before the level-up window, a living panel (`useHeroMood`: cheers, flinches, dozes).
-  4. Extras (`useHeroPrefs`, in Options): pixel cursor, menu sounds, lobby music (`music.background`), scanlines;
-     `HeroScene` behind the panel (day/night by your clock, weather by your streak).
-  5. Bridges: due reviews as a quest scroll in Hero; level/streak/Insight chip in Study; Insight
-     (`user_progress.insight`, migration 0019; studying fills it, full = +1 Focus and a free 50/50 in the next fight);
-     the weekly invasion (`server/game/invasion.ts`, mode "invasion"); the healthy-play nudge after 40 min in Hero.
-  6. Study's identity: focus mode (`FocusBar`, Pomodoro 25/5, generated ambient sound `lib/sound/ambient.ts`; each
-     session +20 Insight, 4 a day: POST /focus-session) and Study accent colours (`styles/accents.css`).
-  7. The Adventurer card (`/adventurer`, Champion tab, downloads as PNG) and seasons (`lib/game/seasons.ts`: Finals
-     Week in Dec and late Apr-May on the new Exam Hall stage, Lantern Night in late Oct; mode "season"; admins can
-     preview with `?season-preview=finals`).
-- Nothing is in progress (the 4 hero stages, the 7 arcade stages and the 7 two-worlds stages delivered). Ideas waiting in the backlog: chiptune sound, sharing a KO clip, campaign mode, more inputs
-  (YouTube, slides, OCR), ghost duels and other multiplayer, teacher mode.
+### The top 5 (in order)
+
+1. **Test the real thing on production.** The tests use a mocked API, so real models, Vectorize search, embeddings
+   and the free tools have never run in a test. Upload a PDF, chat, make a quiz and notes, and run each free tool on
+   the live site.
+2. **Decide the age rule.** The owner picked 12+ with no parental consent. Under India's DPDP Act everyone under 18 is
+   a child, so this is a legal risk before real students sign up. Get advice, or add parental consent.
+3. **Get a free domain and move to it** (SEO stage 2): follow `docs/domain-move.md`, then Search Console and Bing.
+4. **Review chapters 1–3** against the NCERT textbook and add `reviewed`. That makes the first chapter pages indexable.
+5. **Test Razorpay live** before turning on `PAYMENTS_ENABLED`; only the stub has ever run.
+
+### SEO, after those
+- Draft and review more chapters, a few a week (then other subjects and classes); improve pages with no impressions
+  after about 8 weeks.
+- Watch Search Console (Core Web Vitals, coverage) and Bing; submit the sitemap after the move.
+- Backlinks and listings from the research doc (directories, student communities, the GitHub repo's About link).
+- Update the README's live link and clone line (`github.com/<you>/...`) and choose a license (it says "All rights
+  reserved" for now).
+
+### Launch checklist
+- Real-AI check, age rule, Razorpay live (top 5).
+- Worker size: measure `npm run cf:build` after the SEO pass (last measured 2.72 MB gzip of 3 MB).
+- Set the optional free-tool limits in Cloudflare if the defaults (5 per visitor, 300 a day) don't suit.
+
+### Known weak spots
+- **Tests:** key-press tests can flake under load; timing on the owner's Windows PC differs from the sandbox; dark mode
+  is axe-checked at desktop width only.
+- **Build:** small Worker headroom (any new dependency needs `cf:build`); OpenNext isn't fully happy on Windows (WSL
+  is safer); `next start` warns about `output: standalone` during e2e (noise).
+- **Speed:** on a slow phone, app screens still wait on the sign-in check; the course overview shifts ~0.13 when the
+  course arrives.
+- **Product:** review days are UTC while quests and streaks use local days; the concept map is built in one long
+  request (Worker time limits); D1 has no transactions, so every "exactly once" step is a compare-and-set.
+- **Code:** misleading leftover names (`--glass-*`, `.text-gradient`, `text-ink-gold`); `lib/api/generated/schema.d.ts`
+  is kept by hand (a guard test checks every path has a route).
+- **Local setup:** a fresh clone has an empty local database; run `npm run db:migrate:local` before `npm run dev`
+  (the README says so).
+
+### Backlog ideas (not started)
+Sharing a KO clip, campaign mode, more inputs (YouTube, slides, OCR), ghost duels and other multiplayer, teacher mode.
 
 ---
 
-## 6. Weak spots we know about
+## 6. Gotchas a new session needs
 
-From this work only; nobody has gone looking for more.
-
-**Tests**
-- **Key-press tests can flake under load.** Tests retry until the result shows. The quiz and exam now bind their keys
-  in a layout effect (before paint), which removes the main cause; other screens still bind in effects.
-- **Tests that pass here can fail on the owner's PC.** Timing differs between the sandbox and Windows; this caused most
-  of the back-and-forth rounds.
-- **e2e runs against a mocked API**, and Workers AI and Vectorize can't run locally, so real search, embeddings and
-  model calls are never exercised by the test suites.
-- **Dark mode is axe-checked at desktop width only**; dark on phones is skipped.
-
-**Build and deploy**
-- **Worker size headroom is small:** about 290 KB below the 3 MB gzip limit, and the redesign added about 60 KB.
-  Any new dependency needs checking with `npm run cf:build`.
-- **`metadataBase` is not set**, so link previews (the Open Graph image) point at `localhost:3000` until the real
-  domain is configured.
-- **OpenNext warns it is not fully compatible with Windows**; WSL is the safer way to build there.
-- `next start` warns about `output: standalone` during e2e. It works, but it is noise.
-- **Payments have never run against live Razorpay**; only the stub is tested.
-
-- **Speed on a slow phone is bound by the sign-in check.** Every app screen waits for the JS, then /auth/me (and the
-  HUD in parallel), before it shows content (about 5 s on "fast 3G" with 4x CPU). The next big win is rendering the
-  shell and the screen's skeleton without waiting for /auth/me, or checking the session on the server.
-- **Small layout shifts remain** (measured on 3G): the course overview ~0.13 (the header changes when the course
-  arrives), the admin page 0.045, Today and Champion ~0.04. All but the course are under the 0.1 "good" line.
-
-**Product and code**
-- **"Continue" on Today reads saved sessions from this browser** (localStorage), so it differs per device.
-- **Review days are UTC** while quests and streaks follow the player's local day; a review near midnight can count
-  for a different day than the quest it advances.
-- **The concept map is built inside one long POST request.** A slow model risks the Worker's time limits.
-- **D1 has no transactions:** every "exactly once" step is a compare-and-set. It is tested, but it is easy to get
-  wrong in new code.
-- **Leftover names from the old look:** `--glass-*` tokens are flat now; `.text-gradient` is plain colour; some
-  `text-ink-gold` style classes remain. They work, but the names mislead.
-- **`lib/api/generated/schema.d.ts` is kept by hand** since Python went; a guard test checks each path has a route.
-- **On phones the Hero tabs scroll sideways**, so Champion and Achievements start off screen.
-- The legal pages show the name as text, without the logo mark.
-
----
-
-## 7. Gotchas a new session needs
-
-- Run e2e against a production build (`npm run build`, then `next start`); `next dev` adds a dev button that breaks
-  the keyboard and axe tests. Kill a stale `next start` by PID before rebuilding.
+- **Builds need** `NEXT_PUBLIC_SITE_URL` (CI sets it). Run e2e against a production build (`npm run build`, then
+  `next start`); `next dev` adds a dev button that breaks keyboard and axe tests.
 - In the sandbox, Playwright needs
-  `PW_CHROMIUM_PATH=$(ls -d /opt/pw-browsers/chromium_headless_shell-1243/*/)chrome-headless-shell`.
-- Call `settle(page)` before every axe scan. Never fade text with `opacity`; use a muted colour token.
-- Guard tests to respect: `flat.test.ts` (no gradients, blur or coloured glows; only the arena scene may glow),
-  `icons.test.tsx` (import icons only from `@/components/icons`), `study-screens.test.ts` (list new Study screens),
-  `ux-details.test.ts`, `kit-usage.test.ts` (kit components only), and the pixel font only through `ThemeScope`.
-- Themes: `html[data-mode]` is light or dark (set before first paint); `[data-theme="play"]` is Hero, always dark.
-  The app shell stays in the Study theme; only `<main>` turns Play in Hero.
-- A new Worker route uses `api()` with `requireUser` / `requireAdmin` and `rateLimit()`. A POST that creates or spends
-  is wrapped in `idempotent(...)`, and its client sends an idempotency key.
-- A new AI job calls `generate(...)` or `stream(...)` from `src/server/ai/run.ts`; quotas, fallbacks, metering and
-  the cap come with it. Tests fake models with `setLlmFactoryForTests`.
-- D1 migrations only add, and are generated with `npm run db:generate`.
-- Turbopack can't follow a symlinked `node_modules` in a git worktree; check the commit out directly instead.
+  `PW_CHROMIUM_PATH=$(ls -d /opt/pw-browsers/chromium_headless_shell-1243/*/)chrome-headless-shell`. The full vitest
+  run takes about 11 minutes there; run it in the background.
+- **Guard tests:** `flat.test.ts` (no gradients, blur, coloured glows), `icons.test.tsx`, `study-screens.test.ts`,
+  `kit-usage.test.ts`, `import-cycles.test.ts`, `queries.test.ts` (D1 round trips per hot route), `perf.test.ts`, the
+  ban on `console.*` in server code (use `server/log.ts`), and the legal dates tied together (`lib/legal.ts`).
+- Call `settle(page)` before every axe scan; never fade text with `opacity`.
+- **Themes:** `html[data-mode]` light/dark; `[data-theme="play"]` is Hero. Use `--color-text*`, not `--color-fg*`.
+- **A new route:** `api()` with `requireUser` / `requireAdmin` and `rateLimit()`; a POST that creates or spends is
+  `idempotent(...)` and its client sends a key.
+- **A new AI job:** `generate(...)` / `stream(...)` from `server/ai/run.ts` (quotas, fallbacks, metering, the cap and
+  the injection guard come with it); document text goes through `fenceMaterial`. Tests fake models with
+  `setLlmFactoryForTests`.
+- **D1:** migrations only add (`npm run db:generate`); batch independent reads with `ctx.db.batch`; 100 bound
+  parameters per statement.
+- **SEO:** a page enters the sitemap only through `PUBLIC_PAGES` in `src/lib/site.ts`, with `pageMetadata`; pages that
+  shouldn't be indexed use `NOINDEX`.
+- **Pixel sprites share one clock** (`lib/pixel/ticker.ts`); never give a sprite its own animation loop. Looping CSS
+  animations use only transform and opacity.
+- **Local settings:** `.dev.vars` reaches `process.env` through `getEnv()`; `.env.local` wins when both set a key.
 - After changing the logo, re-run `node scripts/brand-assets.mjs`.
-- **Local settings:** `.dev.vars` values reach `process.env` through `getEnv()` (`fillProcessEnv`); `.env.local` wins
-  when both set a key. Before this, OWNER_EMAIL from `.dev.vars` never applied under `npm run dev`.
-- **Query budgets:** `src/server/queries.test.ts` counts D1 round trips on 20 hot routes. A change that adds one fails
-  there; lower the number if you remove one. Batch independent reads with `ctx.db.batch([...])` (one round trip; one
-  statement per row for writes: D1 allows 100 bound parameters per statement). `tierFor` is cached per request: call
-  `forgetTier` after changing a plan in the same request.
-- `Skeleton`: size it with a Tailwind class or the height prop; `perf.test.ts` guards fonts, the login entrance and
-  `public/_headers` (static files on Cloudflare never get next.config.ts headers).
-- **Pixel sprites share one clock** (`lib/pixel/ticker.ts`): a `PixelSprite` draws only when its frame changes, only
-  while on screen (IntersectionObserver) and the tab is visible. Never give a sprite its own requestAnimationFrame
-  loop again (a dozen loops kept the Hero world busy every display frame). The fight stage (`lib/pixel/fight.ts`) is
-  the one 60 fps loop, on its own compositor layer. Keep looping CSS animations to transform/opacity: a box-shadow,
-  colour or background-position animation repaints its whole layer every frame (the fight HUD's old throb repainted
-  the full screen 60 times a second).
-- **Phones (the mobile pass, 13 Nov 2026):** fights play upright too (no "turn your phone" wall); the Hero header is
-  one slim band, and tapping the champion opens the pause menu (no Esc key on a phone; a fight has its own Pause
-  button). `e2e/mobile.spec.ts` guards the room left for content (Today's Review on the first screen, the Study tabs
-  band, the Hero header height, readable tab labels).
-- **The BreakingBreach pass (14 Nov 2026, 6 stages):**
-  1. AI security: `server/ai/guard.ts` fences document text (`fenceMaterial`, ⟦MATERIAL⟧) in every prompt, adds one
-     security rule to every call (`withGuard`, in `ai/run.ts`) and a canary: an answer containing `CANARY` is withheld
-     (502 `answer_withheld`, metered) and a streamed one is held back so not even part of it goes out. Answers never load
-     images and only keep http(s)/mailto links (`ChatMarkdown`). Uploads must start with `%PDF-` (`looksLikePdf`).
-  2. Data-loss safety: the Trash (`server/study/trash.ts`, tables `trash`, `trash_chunks`, `deletion_log`, migration
-     0020). Deleting a PDF or course moves its row out of the live tables for 30 days (R2 file and vectors stay); restore
-     or delete for good from Account -> Trash; expired items go on the next Trash visit or delete. `deletion_log` keeps
-     who deleted what for a year. Account deletion needs `confirm: "DELETE"` on the server. Admin shows LIVE production /
-     Local test copy. Runbook: `docs/data-recovery.md`.
-  3. Legal and trust: `lib/legal.ts` (TERMS_VERSION = the policies' date, MIN_AGE 12, the box's words). The sign-up box
-     records `user.terms_version` / `terms_accepted_at` (migration 0021); `TermsGate` asks anyone not on the current
-     version (social sign-ups, old accounts, after a change): POST /account/terms. Change TERMS_VERSION together with
-     `app/legal/legal.ts UPDATED` and `lib/site.ts LEGAL_UPDATED_ISO` (a test ties them). AI-written labels (`AiLabel`),
-     the renewal line on paid plans, GET /account/export (a copy of your data). The owner chose 12+ with no parental
-     consent: a known legal risk under India's DPDP Act (under-18s are children there).
-  4. Speed: the app layout preloads /auth/me and /hud from the HTML; Study shows a page skeleton while you're recognised.
-     Server logs go through `server/log.ts` (emails, keys, tokens redacted); a test forbids console.* in server code.
-  5. Study unslop ("a desk at exam time"): the highlighter (`--highlighter`) is the one signature detail (the active
-     study tab, citation marks, weak concepts `mark.hl`); each tool's intro is a desk object (`DeskObject`), not a
-     floating icon; sentence-case labels and badges (Hero keeps all-caps pixel badges); rewards read "+50 XP · +25 coins"
-     (`lib/game/reward-text.ts`), no emoji; Today's streak and quests are compact stats; the course page leads with mastery.
-  6. Hero unslop: quest buttons say what you'll do (`callLabel`); emoji replaced by the app's icons; Quick Battle leads
-     the arena hub.

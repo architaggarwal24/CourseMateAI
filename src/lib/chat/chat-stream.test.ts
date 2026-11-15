@@ -62,7 +62,17 @@ describe("streamChat", () => {
 
     expect(await done).toEqual({
       content: "ATP is energy.", sources: ["bio.pdf · p.4", "bio.pdf · p.9"], citations: [], blocked: false, needsClarification: false, rewards: undefined,
+      budget: null, canTopUp: false,
     });
+  });
+
+  it("passes on when a budget changed who answered", async () => {
+    const body = sseBody();
+    serve(() => sse(body));
+    const done = streamChat({ question: "q", sessionId: "s1", history: [] });
+    body.push(frame("token", { text: "x" }) + frame("sources", { ...FINAL, budget: "limited", can_top_up: true }));
+    body.close();
+    expect(await done).toMatchObject({ budget: "limited", canTopUp: true });
   });
 
   it("reports the not-found answer as blocked", async () => {

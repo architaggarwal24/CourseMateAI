@@ -20,6 +20,8 @@ import { AI_ENV, fakeLlms } from "../test/ai-fakes";
 import { params, person, sseEvents, uploadPdf } from "../test/flows";
 import { isSelfContained, standaloneQuestion } from "./rewrite";
 import { toRetrieval } from "./index";
+import { getDb } from "../db";
+import { DEFAULT_BUDGETS, saveBudgets } from "../ai/budget";
 import { isConversation, isQuizRequest, subjectLine } from "./prompts";
 
 let p: LocalPlatform;
@@ -65,6 +67,18 @@ describe("POST /chat", () => {
     expect(llm.calls.at(-1)!.target).toBe("gemini:flash-lite");             // Apprentice's strong job: the fast model first
     const u = await json(await usage.GET(b.request("/api/v1/account/usage")));
     expect(u.used.ai_calls_day).toBe(1);
+  });
+
+  it("says when the day's AI budget sent the answer to a lighter model, and whether this user can top up", async () => {
+    const b = await person(mail, "free@example.com", "free");
+    const id = await uploadPdf(b, "Bio.pdf", BIO);
+    const ask = async () => json(await chat.POST(b.request("/api/v1/chat", { body: { question: "How do mitochondria make ATP?", session_id: id } })));
+    expect(await ask()).toMatchObject({ budget: null, can_top_up: false });
+    llm = fakeLlms({ "*": "Mitochondria make ATP [1]." });
+    setLlmFactoryForTests(llm.factory);
+    await saveBudgets(getDb(p.env.DB), { ...DEFAULT_BUDGETS, plan: { ...DEFAULT_BUDGETS.plan, apprentice: 0 } });
+    expect(await ask()).toMatchObject({ budget: "limited", can_top_up: false });
+    expect(llm.calls.at(-1)!.target).toBe("workers-ai:@cf/meta/llama-3.1-8b-instruct-fp8");
   });
 
   it("a question the material doesn't cover still gets an honest answer (told it isn't covered; nothing cited)", async () => {
@@ -188,6 +202,23 @@ describe("Admin -> AI", () => {
     expect((await adminAi.PUT(owner.request("/api/v1/admin/ai", { method: "PUT", body: { cap_usd: -1 } }))).status).toBe(400);
     const student = await person(mail, "s@example.com", "student");
     expect((await adminAi.GET(student.request("/api/v1/admin/ai"))).status).toBe(403);
+  });
+
+  it("the owner sets the plan, user and free-tool budgets; a bad value saves nothing; students and admins can't", async () => {
+    const owner = await person(mail, "owner@example.com", "boss");
+    const r = await json(await adminAi.GET(owner.request("/api/v1/admin/ai")));
+    expect(r.budgets).toEqual({ plan: { apprentice: 0.25, scholar: null, sage: null, archmage: null }, user: { apprentice: 0.02, scholar: 0.05, sage: 0.1, archmage: 0.2 }, tools: 0.1 });
+    expect(r.budget_today).toEqual({});
+    const budgets = { ...r.budgets, plan: { ...r.budgets.plan, apprentice: 0.5 }, tools: null };
+    const set = await json(await adminAi.PUT(owner.request("/api/v1/admin/ai", { method: "PUT", body: { budgets } })));
+    expect(set.budgets).toEqual(budgets);
+    expect(set.cap_usd).toBe(2);                                                   // the cap is left alone
+    const bad = await adminAi.PUT(owner.request("/api/v1/admin/ai", { method: "PUT", body: { cap_usd: 3, budgets: { ...budgets, tools: 99 } } }));
+    expect(bad.status).toBe(400);
+    expect((await json(bad)).error).toMatchObject({ code: "invalid_budget", details: { field: "tools", max: 20 } });
+    expect((await json(await adminAi.GET(owner.request("/api/v1/admin/ai")))).cap_usd).toBe(2);   // nothing was saved
+    const student = await person(mail, "s3@example.com", "student3");
+    expect((await adminAi.PUT(student.request("/api/v1/admin/ai", { method: "PUT", body: { budgets } }))).status).toBe(403);
   });
 
   it("only the owner changes the cap, never above the hard ceiling and never off", async () => {

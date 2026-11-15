@@ -6,6 +6,9 @@
 //   verify    Checkout's signature = HMAC-SHA256(payment_id|subscription_id, key secret): the plan is on at once
 //   webhook   X-Razorpay-Signature = HMAC-SHA256(raw body, webhook secret); each event handled once
 //   cancel    at the end of the paid period (the plan stays until then)
+// Mana packs (account/mana.ts) are one-time Razorpay Orders through the same provider: createOrder / fetchOrder,
+// Checkout's signature = HMAC-SHA256(order_id|payment_id, key secret), and the "order.paid" webhook credits the order
+// (account/wallet.ts, exactly once).
 // The plan (user_plans, source 'subscription'): live -> until the period ends + GRACE_DAYS; cancelled /
 // completed -> until the period ends; halted / paused / expired -> back to Free now.
 import * as log from "../log";
@@ -15,6 +18,7 @@ import { paymentEvents, subscriptions, userPlans } from "../db/schema";
 import { HttpError } from "../http";
 import { PLANS, TIER_NAMES, forgetTier, type Tier } from "./plans";
 import { notePlanChange, planState } from "./plan-notices";
+import { creditOrder } from "./wallet";
 
 export const GRACE_DAYS = 3;
 const PERIOD_DAYS: Record<string, number> = { month: 30, year: 365 };
@@ -52,6 +56,10 @@ export interface Provider {
   cancel(id: string, atCycleEnd?: boolean): Promise<Entity>;
   verifyCheckout(paymentId: string, subId: string, signature: string): Promise<boolean>;
   verifyWebhook(body: Uint8Array<ArrayBuffer>, signature: string): Promise<boolean>;
+  /** A one-time order (Mana packs), amount in paise. */
+  createOrder(userId: number, pack: string, amountPaise: number): Promise<{ id?: string; status?: string }>;
+  fetchOrder(id: string): Promise<{ id?: string; status?: string }>;
+  verifyOrder(paymentId: string, orderId: string, signature: string): Promise<boolean>;
 }
 
 export function razorpay(keyId: string, secret: string, webhookSecret: string, planIds: Record<string, string>, fetchImpl: typeof fetch = fetch): Provider {
@@ -77,6 +85,11 @@ export function razorpay(keyId: string, secret: string, webhookSecret: string, p
     cancel: (id, atCycleEnd = true) => call("POST", `/subscriptions/${id}/cancel`, { cancel_at_cycle_end: atCycleEnd ? 1 : 0 }),
     verifyCheckout: async (paymentId, subId, signature) => safeEqual(await hmacHex(secret, `${paymentId}|${subId}`), signature || ""),
     verifyWebhook: async (body, signature) => !!webhookSecret && safeEqual(await hmacHex(webhookSecret, body), signature || ""),
+    createOrder: (userId, pack, amountPaise) => call("POST", "/orders", {
+      amount: amountPaise, currency: "INR", receipt: `mana-${userId}-${Date.now()}`.slice(0, 40), notes: { user_id: String(userId), pack, kind: "mana" },
+    }),
+    fetchOrder: (id) => call("GET", `/orders/${encodeURIComponent(id)}`),
+    verifyOrder: async (paymentId, orderId, signature) => safeEqual(await hmacHex(secret, `${orderId}|${paymentId}`), signature || ""),
   };
 }
 
@@ -87,6 +100,9 @@ export const stub = (): Provider => ({
   cancel: async (id, atCycleEnd = true) => ({ id, status: atCycleEnd ? "active" : "cancelled" }),
   verifyCheckout: async (_p, _s, signature) => signature === "stub",
   verifyWebhook: async () => false,
+  createOrder: async () => ({ id: `order_stub_${crypto.randomUUID().replace(/-/g, "").slice(0, 12)}`, status: "created" }),
+  fetchOrder: async (id) => ({ id, status: "paid" }),
+  verifyOrder: async (_p, _o, signature) => signature === "stub",
 });
 
 let testProvider: Provider | null | undefined;
@@ -162,13 +178,20 @@ export async function webhook(ctx: RequestContext, body: Uint8Array<ArrayBuffer>
   const p = provider();
   if (!p || p.name !== "razorpay") throw paymentsOff();
   if (!await p.verifyWebhook(body, signature)) throw new HttpError(400, "webhook_unverified", "Bad signature.");
-  let data: { event?: string; payload?: { subscription?: { entity?: Entity } } };
+  let data: { event?: string; payload?: { subscription?: { entity?: Entity }; order?: { entity?: { id?: string } }; payment?: { entity?: { id?: string; order_id?: string } } } };
   try { data = JSON.parse(new TextDecoder().decode(body)); } catch { throw new HttpError(400, "invalid_input", "Bad JSON."); }
   const entity = data.payload?.subscription?.entity ?? {};
   const id = eventId || [...new Uint8Array(await crypto.subtle.digest("SHA-256", body))].map((b) => b.toString(16).padStart(2, "0")).join("");
   const took = await ctx.db.insert(paymentEvents).values({ id, provider: "razorpay", event: String(data.event ?? ""), subscriptionId: entity.id ?? null, receivedAt: iso(new Date())! })
     .onConflictDoNothing().returning({ id: paymentEvents.id }).all();
   if (!took.length) return { ok: true, duplicate: true };
+  // A Mana pack paid for (one-time order): credited once, and only if this app created the order
+  if (data.event === "order.paid") {
+    const orderId = data.payload?.order?.entity?.id ?? data.payload?.payment?.entity?.order_id;
+    if (!orderId) return { ok: true, ignored: true };
+    const credited = await creditOrder(ctx.db, orderId, data.payload?.payment?.entity?.id ?? null);
+    return { ok: true, ...(credited ? {} : { ignored: true }) };
+  }
   const row = await subRow(ctx, entity.id ?? "");
   if (!row) return { ok: true, ignored: true };
   await update(ctx, p, row, entity);

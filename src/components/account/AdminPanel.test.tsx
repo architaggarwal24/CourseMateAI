@@ -14,7 +14,9 @@ const STUDENT = {
 };
 const AI = { days: 30, today_usd: 0.42, cap_usd: 2, cap_max_usd: 20, can_edit: true, capped: false, total_usd: 3.1, by_day: [],
   models: [{ provider: "gemini", model: "flash", calls: 12, fallbacks: 0, tokens_in: 9000, tokens_out: 3000, cost_usd: 0.42, priced: false }],
-  routes: { apprentice: { small: ["workers-ai:x"], strong: ["gemini:flash"] }, scholar: { small: [], strong: [] }, sage: { small: [], strong: [] }, archmage: { small: [], strong: [] } } };
+  routes: { apprentice: { small: ["workers-ai:x"], strong: ["gemini:flash"] }, scholar: { small: [], strong: [] }, sage: { small: [], strong: [] }, archmage: { small: [], strong: [] } },
+  budgets: { plan: { apprentice: 0.25, scholar: null, sage: null, archmage: null }, user: { apprentice: 0.02, scholar: 0.05, sage: 0.1, archmage: 0.2 }, tools: 0.1 },
+  budget_today: { "plan:apprentice": { spent_usd: 0.12, reserved_usd: 0 } } };
 const json = (b: unknown, status = 200) => new Response(JSON.stringify(b), { status, headers: { "content-type": "application/json" } });
 const sent: { method: string; path: string; body: unknown }[] = [];
 
@@ -35,7 +37,7 @@ beforeEach(() => {
     }
     if (u.pathname === "/api/v1/admin/invites" && method === "GET") return json({ invites: [] });
     if (u.pathname === "/api/v1/admin/ai" && method === "GET") return json(AI);
-    if (u.pathname === "/api/v1/admin/ai" && method === "PUT") return json({ ...AI, cap_usd: body.cap_usd });
+    if (u.pathname === "/api/v1/admin/ai" && method === "PUT") return json({ ...AI, cap_usd: body.cap_usd ?? AI.cap_usd, budgets: body.budgets ?? AI.budgets });
     if (u.pathname === "/api/v1/admin/invites" && method === "POST") return json({ code: "SAGE-ABCD2345", tier: "sage", tier_name: "Sage", days: 30, max_uses: 10, uses: 0, usable: true });
     return json({ error: { code: "x", message: "unexpected" } }, 500);
   }));
@@ -79,6 +81,41 @@ describe("AdminPanel", () => {
       expect(screen.getByText(/\$2\.00 cap/)).toBeTruthy();
       expect(screen.queryByLabelText("Daily cap (US $)")).toBeNull();
       expect(screen.getByText(/Only the owner changes the cap/)).toBeTruthy();
+    } finally { AI.can_edit = true; }
+  });
+
+  it("shows each plan's spend today and saves the budgets; empty is no limit, a bad value sends nothing", async () => {
+    auth.user = { user_id: 1, email: "o@x.io", is_admin: true, is_owner: true };
+    render(<AdminPanel />);
+    await flush();
+    expect(screen.getByText("Today: $0.12")).toBeTruthy();
+    expect((screen.getByLabelText("Apprentice (Free): all users a day") as HTMLInputElement).value).toBe("0.25");
+    expect((screen.getByLabelText("Sage: all users a day") as HTMLInputElement).value).toBe("");
+    fireEvent.change(screen.getByLabelText("Scholar: each user a day"), { target: { value: "abc" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save budgets" }));
+    await flush();
+    expect(sent.some((c) => c.method === "PUT")).toBe(false);
+    expect(toasts.error).toHaveBeenCalledWith(expect.stringContaining("Scholar: each user"));
+    fireEvent.change(screen.getByLabelText("Scholar: each user a day"), { target: { value: "0.08" } });
+    fireEvent.change(screen.getByLabelText("Free tools a day"), { target: { value: "" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save budgets" }));
+    await flush();
+    expect(sent.find((c) => c.method === "PUT")?.body).toEqual({ budgets: {
+      plan: { apprentice: 0.25, scholar: null, sage: null, archmage: null },
+      user: { apprentice: 0.02, scholar: 0.08, sage: 0.1, archmage: 0.2 },
+      tools: null,
+    } });
+  });
+
+  it("other admins see the budgets but can't change them", async () => {
+    AI.can_edit = false;
+    try {
+      auth.user = { user_id: 2, email: "h@x.io", is_admin: true, is_owner: false };
+      render(<AdminPanel />);
+      await flush();
+      expect((screen.getByLabelText("Sage: each user a day") as HTMLInputElement).disabled).toBe(true);
+      expect(screen.queryByRole("button", { name: "Save budgets" })).toBeNull();
+      expect(screen.getByText(/Only the owner changes the budgets/)).toBeTruthy();
     } finally { AI.can_edit = true; }
   });
 

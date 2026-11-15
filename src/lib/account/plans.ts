@@ -4,7 +4,15 @@ import type { components } from "@/lib/api/generated/schema";
 
 export type Plan = components["schemas"]["PlanOut"];
 export type PlansInfo = components["schemas"]["PlansResponse"];
-export type Usage = components["schemas"]["UsageResponse"];
+export type Usage = components["schemas"]["UsageResponse"] & {
+  /** Today's AI budget as a share (0 to 1); past it a lighter model answers, or Mana pays (server/ai/budget.ts). */
+  ai_budget?: { limited: boolean; share: number; resets_at: string };
+  /** The Mana wallet and the packs on sale (server/account/wallet.ts). */
+  mana?: ManaInfo;
+};
+
+export interface ManaPack { id: "small" | "medium" | "large"; name: string; inr: number; mana: number }
+export interface ManaInfo { balance: number; can_buy: boolean; payments_enabled: boolean; packs: ManaPack[] }
 export type Tier = "apprentice" | "scholar" | "sage" | "archmage";
 export const TIERS: Tier[] = ["apprentice", "scholar", "sage", "archmage"];
 

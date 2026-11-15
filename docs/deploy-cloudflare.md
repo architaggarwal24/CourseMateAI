@@ -186,6 +186,9 @@ If a model fails, the next one in the line takes over. Workers AI is always the 
 - **Admin → AI spend** shows today's spend, the last 30 days by model, and which model answers what.
 - It also sets the **daily cap** (default $2, about ₹170). Once the day's spend reaches the cap, every call goes to Workers AI until midnight UTC: answers get simpler, but the app never stops.
 - Only the owner changes the cap, and never above **`AI_DAILY_CAP_MAX_USD`** (default $20; there is no "off"). Other admins see it but can't change it. To go higher, raise `AI_DAILY_CAP_MAX_USD` in the dashboard on purpose.
+- **Daily budgets** sit under the cap, in the same card: per plan (all its users together), per user (by plan) and for the free tools. They start at Apprentice $0.25 for the plan and $0.02 a user; Scholar $0.05, Sage $0.10 and Archmage $0.20 a user (each under the plan's price over 30 days); free tools $0.10. An empty field is no limit at that level. Owners skip the plan and user budgets, never the cap.
+- **Why they can't be passed:** before each call to a paid model, its worst-case cost (input counted as bytes, output as the max output tokens) is reserved against every budget that applies in one database transaction, and a CHECK on the `ai_budget` table refuses any reservation that would go over. After the call it settles to the real cost. A refused model is skipped and the free Workers AI model answers. Keep `MODEL_PRICES_JSON` right: an unpriced model is charged at a high estimate, but a price set too low would let real spend pass the limits.
+- **A Google-side backstop:** see `docs/one-paid-key-guide.md` section 6 (Prepay billing with a small balance, a project spend cap, budget alerts, a key restricted to the Generative Language API).
 
 **Check:** `/api/system/status` shows `ai.detail` as your fast model. Without any key it says Workers AI only.
 

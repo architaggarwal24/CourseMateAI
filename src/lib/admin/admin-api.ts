@@ -58,6 +58,19 @@ export interface AiReport {
   models: { provider: string; model: string; calls: number; fallbacks: number; tokens_in: number; tokens_out: number; cost_usd: number; priced: boolean }[];
   by_day: { day: string; usd: number }[];
   routes: Record<Tier, { small: string[]; strong: string[] }>;
+  /** The AI budgets (src/server/ai/budget.ts): US dollars a day, null for no limit at that level. */
+  budgets: AiBudgets;
+  /** Today's money per scope: "global", "plan:<tier>", "tools". */
+  budget_today: Record<string, { spent_usd: number; reserved_usd: number }>;
+}
+
+export interface AiBudgets {
+  /** All users of a plan together, per day. */
+  plan: Record<Tier, number | null>;
+  /** Each user of a plan, per day. */
+  user: Record<Tier, number | null>;
+  /** The free tools on the public pages, per day. */
+  tools: number | null;
 }
 
 export type SlotName = "fast" | "strong" | "premium" | "small";
@@ -119,6 +132,7 @@ export const adminApi = {
   },
   ai: () => call<AiReport>("/ai"),
   setCap: (usd: number) => call<AiReport>("/ai", { method: "PUT", body: { cap_usd: usd } }),
+  setBudgets: (budgets: AiBudgets) => call<AiReport>("/ai", { method: "PUT", body: { budgets } }),
   aiModels: () => call<AiModels>("/ai/models"),
   setAiSlots: (slots: Partial<Record<SlotName, string | null>>) => call<AiModels>("/ai/models", { method: "PUT", body: { slots } }),
   setOllamaUrl: (url: string | null) => call<AiModels>("/ai/models", { method: "PUT", body: { ollama_url: url } }),

@@ -10,6 +10,8 @@ import { CANARY } from "../ai/guard";
 import { Browser, json } from "../test/auth-helpers";
 import { localPlatform, type LocalPlatform } from "../test/platform";
 import { AI_ENV, fakeLlms } from "../test/ai-fakes";
+import { getDb } from "../db";
+import { DEFAULT_BUDGETS, saveBudgets } from "../ai/budget";
 
 let p: LocalPlatform;
 const NOTES = "Photosynthesis is how green plants make food. Chlorophyll in the chloroplasts absorbs light energy. "
@@ -102,6 +104,18 @@ describe("the free tools", () => {
     expect(res.status).toBe(200);
     const rows = await p.env.DB.prepare("SELECT provider, model, calls FROM ai_usage").all<{ provider: string; model: string; calls: number }>();
     expect(rows.results).toEqual([expect.objectContaining({ provider: "workers-ai", calls: 1 })]);
+  });
+
+  it("the fast model only while the free tools' budget has room; then the free model, and the paid one isn't asked", async () => {
+    const f = fakeLlms({ "*": script });
+    setLlmFactoryForTests(f.factory);
+    const budget = () => p.env.DB.prepare("SELECT spent_micro AS spent, reserved_micro AS reserved FROM ai_budget WHERE scope = 'tools'").first<{ spent: number; reserved: number }>();
+    expect((await post(new Browser("203.0.113.10"), { tool: "summary", text: NOTES })).status).toBe(200);
+    expect(await budget()).toEqual({ spent: Math.round(100 * 0.1 + 50 * 0.4), reserved: 0 });          // settled to the real cost
+    const db = getDb(p.env.DB);
+    await saveBudgets(db, { ...DEFAULT_BUDGETS, tools: 0 });
+    expect((await post(new Browser("203.0.113.11"), { tool: "summary", text: NOTES })).status).toBe(200);
+    expect(f.calls.map((c) => c.target)).toEqual(["gemini:flash-lite", "workers-ai:@cf/meta/llama-3.1-8b-instruct-fp8"]);
   });
 
   it("nobody answers: a clear 503, and the visitor's run is given back", async () => {

@@ -3,9 +3,10 @@
 // must really work, and because anyone can call them they are fenced in:
 //   - input: 150 to 4,000 characters (a page of notes, not a book)
 //   - FREE_TOOL_RUNS_PER_IP runs a day per visitor (default 5), FREE_TOOL_RUNS_PER_DAY for everyone (default 300)
-//   - the fast model first, then the free Workers AI one; past the daily spend cap, only the free one
+//   - the fast model first, then the free Workers AI one; the fast one only while the free tools' daily budget and
+//     the global spend cap both have room for its worst-case cost (ai/budget.ts, reserved before the call)
 //   - the same prompt guard as the app (the notes are fenced as material; an answer with the canary is withheld)
-//   - every call is in the AI cost report and counts toward the spend cap (recordAnonymousCall)
+//   - every call is in the AI cost report
 // A run that no model managed is given back to the visitor and the daily total.
 import * as log from "../log";
 import type { RequestContext } from "../context";
@@ -13,7 +14,7 @@ import { HttpError, bumpCounter, clientIp, unbumpCounter, windowLeft } from "../
 import { fenceMaterial, leaked, withGuard } from "../ai/guard";
 import { estimateTokens, llmFor, noModel, type ChatMessage } from "../ai/run";
 import { slotTarget, type Target } from "../ai/models";
-import { isCapped, recordAnonymousCall } from "../ai/usage";
+import { loadLimits, meterAnonymous, release, reserve, toolScopes, worstCostMicro } from "../ai/budget";
 import { extractJson } from "../study/text";
 
 export const FREE_TOOLS = ["flashcards", "quiz", "summary"] as const;
@@ -77,11 +78,7 @@ export function parseResult(tool: FreeTool, raw: unknown): { cards: Flashcard[] 
   return { summary: { title: str(d.title, 120) || "Summary", points, terms, takeaway: str(d.takeaway, 300) } };
 }
 
-async function targets(ctx: RequestContext): Promise<Target[]> {
-  const capped = await isCapped(ctx.db);
-  const slots = capped ? (["small"] as const) : (["fast", "small"] as const);
-  return slots.map((s) => slotTarget(s)).filter((t): t is Target => !!t);
-}
+const targets = (): Target[] => (["fast", "small"] as const).map((s) => slotTarget(s)).filter((t): t is Target => !!t);
 
 /** POST /api/v1/tools/run {tool, text}: one free run. */
 export async function runFreeTool(ctx: RequestContext, req: Request, body: Record<string, unknown>) {
@@ -109,13 +106,23 @@ export async function runFreeTool(ctx: RequestContext, req: Request, body: Recor
     { role: "system", content: SYSTEM[tool] },
     { role: "user", content: `The student's notes:\n${fenceMaterial(text)}` },
   ]);
-  const list = await targets(ctx);
+  const list = targets();
+  const scopes = toolScopes(await loadLimits(ctx.db));
+  const opts = { json: true, temperature: 0.4, maxOutputTokens: 1400, timeoutMs: 30_000 };
   for (let i = 0; i < list.length; i++) {
     const t = list[i];
+    const hold = await reserve(ctx.db, scopes, worstCostMicro(t, messages, opts));
+    if (!hold) continue;                                            // over a budget: the free model next
     try {
-      const r = await llmFor(t, ctx.env).generate(messages, { json: true, temperature: 0.4, maxOutputTokens: 1400, timeoutMs: 30_000 });
-      await recordAnonymousCall(ctx.db, { target: t, job: "small", fallback: i > 0,
-        tokensIn: r.tokensIn ?? estimateTokens(messages.map((m) => m.content).join("\n")), tokensOut: r.tokensOut ?? estimateTokens(r.text) });
+      let r: Awaited<ReturnType<ReturnType<typeof llmFor>["generate"]>>;
+      try {
+        r = await llmFor(t, ctx.env).generate(messages, opts);
+      } catch (e) {
+        await release(ctx.db, hold).catch(() => {});
+        throw e;
+      }
+      await meterAnonymous(ctx.db, { target: t, job: "small", fallback: i > 0,
+        tokensIn: r.tokensIn ?? estimateTokens(messages.map((m) => m.content).join("\n")), tokensOut: r.tokensOut ?? estimateTokens(r.text) }, hold);
       if (leaked(r.text)) {
         log.warn(`[coursemate-ai] ALERT canary in a free-tool answer: withheld (${tool})`);
         throw new HttpError(502, "answer_withheld", "That answer was withheld because it didn't follow the app's rules. Try different notes.", "retry");

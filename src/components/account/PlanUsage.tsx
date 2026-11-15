@@ -9,8 +9,9 @@ import { ApiError } from "@/lib/api";
 import { useDocuments, useSessionStore } from "@/hooks/useSessions";
 import {
   deleteDocument, fetchPlans, fetchUsage, fill, formatCount, formatInr, redeemCode, TIERS, untilText,
-  type Plan, type PlansInfo, type Tier, type Usage,
+  type ManaInfo, type Plan, type PlansInfo, type Tier, type Usage,
 } from "@/lib/account/plans";
+import { completeManaStub, payManaWithRazorpay, startManaCheckout, verifyMana, type ManaCheckout } from "@/lib/account/mana";
 import {
   cancelSubscription, completeStub, fetchBilling, payWithRazorpay, startCheckout, verifyPayment,
   type BillingStatus, type Checkout, type Subscription,
@@ -133,6 +134,7 @@ export default function PlanUsage() {
               </li>
             );
           })}
+          {usage.ai_budget?.limited && <BudgetMeter share={usage.ai_budget.share} resetsAt={usage.ai_budget.resets_at} />}
         </ul>
         {billing?.subscription && <SubscriptionLine sub={billing.subscription} onChanged={() => void load()} />}
       </section>
@@ -142,7 +144,9 @@ export default function PlanUsage() {
         <RedeemBox onRedeemed={(u) => { setUsage(u); void showUpgradeNow(`You're on ${u.tier_name} now.`); }} />
       </div>
 
-      <section aria-labelledby="pu-plans-title" className="pu-plans-wrap">
+      {usage.mana && <ManaBox mana={usage.mana} onPaid={() => void load()} />}
+
+      <section id="plans" aria-labelledby="pu-plans-title" className="pu-plans-wrap">
         <div className="pu-plans-head">
           <h2 id="pu-plans-title" className="pu-h2">Plans</h2>
           <div className="pu-billing" role="group" aria-label="Billing period">
@@ -213,6 +217,96 @@ function PlanCard({ plan, current, yearly, payments, busy, onUpgrade }: {
         </p>
       )}
     </li>
+  );
+}
+
+/**
+ * Today's AI budget (server/ai/budget.ts), as a share rather than money. Past it the answers come from a lighter
+ * model until it resets, or Mana pays for the full one.
+ */
+function BudgetMeter({ share, resetsAt }: { share: number; resetsAt: string }) {
+  const pct = Math.round(Math.min(1, Math.max(0, share)) * 100);
+  const state = fill(pct, 100).state;
+  return (
+    <li className="pu-meter" data-state={state}>
+      <div className="pu-meter__row">
+        <span className="pu-meter__label">Today&apos;s AI budget</span>
+        <span className="pu-meter__value">{pct}% <span>used</span></span>
+      </div>
+      <div className="pu-meter__bar" role="progressbar" aria-label="Today's AI budget" aria-valuemin={0} aria-valuemax={100}
+           aria-valuenow={pct} aria-valuetext={`${pct}% used`}>
+        <span style={{ width: `${pct}%` }} />
+      </div>
+      <span className="pu-meter__note">
+        {pct >= 100 ? "Used up: a lighter model answers until it resets, unless Mana pays. " : ""}Resets {untilText(resetsAt)}
+      </span>
+    </li>
+  );
+}
+
+/**
+ * Mana (server/account/wallet.ts): one-time packs that pay for AI answers once the day's budget is used up, so the
+ * full model keeps answering. Paid plans only; only for studying, never game currency; no renewal.
+ */
+function ManaBox({ mana, onPaid }: { mana: ManaInfo; onPaid: () => void }) {
+  const [busy, setBusy] = useState<string | null>(null);
+  const [stub, setStub] = useState<ManaCheckout | null>(null);
+  const done = (added: { status: string; mana: number }, pack: string) => {
+    const name = mana.packs.find((p) => p.id === pack)?.name ?? "Mana";
+    if (added.status === "paid") toast.success(`${name} added. You have ${added.mana} Mana.`);
+    else toast.info("Payment received. Your Mana will show up in a minute.");
+    onPaid();
+  };
+  const buy = async (pack: string) => {
+    setBusy(pack);
+    try {
+      const c = await startManaCheckout(pack);
+      if (c.provider === "stub") { setStub(c); return; }
+      const r = await payManaWithRazorpay(c);
+      if (r) done(await verifyMana(r), pack);
+      else toast.info("Checkout closed. Nothing was charged.");
+    } catch (e) {
+      toast.apiError(e);
+    } finally {
+      setBusy(null);
+    }
+  };
+  return (
+    <section id="mana" className="pu-box pu-mana" aria-labelledby="pu-mana-title">
+      <h2 id="pu-mana-title" className="pu-h2"><Sparkles size={16} aria-hidden="true" />Mana <span className="pu-count">{mana.balance} left</span></h2>
+      <p className="pu-box__text">
+        Mana pays for AI answers once today&apos;s budget is used up, so the full model keeps answering. It never expires,
+        and it&apos;s only for studying: it isn&apos;t game currency.
+      </p>
+      {!mana.can_buy ? (
+        <p className="pu-note">Mana is for Scholar, Sage and Archmage. <a href="#plans">See plans</a></p>
+      ) : !mana.payments_enabled ? (
+        <p className="pu-note">Mana packs open when payments do.</p>
+      ) : (
+        <>
+          <ul className="pu-packs">
+            {mana.packs.map((p) => (
+              <li key={p.id}>
+                <Button variant={p.id === "medium" ? "primary" : "secondary"} block loading={busy === p.id} disabled={!!busy && busy !== p.id}
+                        onClick={() => void buy(p.id)} aria-label={`Buy ${p.name}: ${p.mana} Mana for ${formatInr(p.inr)}`}>
+                  {formatInr(p.inr)} · {p.mana} Mana
+                </Button>
+                <span className="pu-packs__name">{p.name}</span>
+              </li>
+            ))}
+          </ul>
+          <p className="pu-note"><CreditCard size={14} aria-hidden="true" />A one-time payment by Razorpay. Nothing renews.</p>
+        </>
+      )}
+      <Modal open={!!stub} onClose={() => setStub(null)} title="Test payment"
+             actions={<><Button onClick={() => setStub(null)}>Cancel</Button>
+               <Button variant="primary" onClick={async () => {
+                 const c = stub!; setStub(null);
+                 try { done(await completeManaStub(c.order_id), c.pack); } catch (e) { toast.apiError(e); }
+               }}>Pay {stub ? formatInr(stub.amount) : ""} (test)</Button></>}>
+        <p className="m-0 text-fg-2">This server uses the test payment provider: no money moves. Paying adds <b>{stub?.mana} Mana</b> right away.</p>
+      </Modal>
+    </section>
   );
 }
 

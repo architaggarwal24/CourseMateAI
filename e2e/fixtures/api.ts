@@ -75,6 +75,11 @@ const USAGE = {
   own_key: { active: false, exempt: true, calls_today: 0, tokens_month: 0 },
   resets: { ai_calls_day: "2026-11-05T00:00:00+00:00", tokens_month: "2026-12-01T00:00:00+00:00" },
   history: [{ day: "2026-11-04", ai_calls: 126, tokens: 41000 }],
+  ai_budget: { limited: true, share: 0.62, resets_at: "2026-11-05T00:00:00+00:00" },
+  mana: { balance: 12.5, can_buy: true, payments_enabled: true, packs: [
+    { id: "small", name: "Pouch of Mana", inr: 49, mana: 49 }, { id: "medium", name: "Flask of Mana", inr: 99, mana: 104 },
+    { id: "large", name: "Well of Mana", inr: 199, mana: 219 },
+  ] },
 };
 
 const json = (route: Route, status: number, body: unknown) =>
@@ -393,7 +398,9 @@ export async function mockApi(page: Page, { signedIn = true, advanced = true, do
     if (path === "/admin/ai") return json(route, 200, { days: 30, today_usd: 0.42, cap_usd: 2, cap_max_usd: 20, can_edit: true, capped: false, total_usd: 3.1, by_day: [],
       models: [{ provider: "gemini", model: "gemini-3.8-flash", calls: 120, fallbacks: 2, tokens_in: 90000, tokens_out: 30000, cost_usd: 0.42, priced: true }],
       routes: { apprentice: { small: ["workers-ai:@cf/meta/llama-3.1-8b-instruct-fp8"], strong: ["gemini:gemini-3.5-flash-lite"] },
-        scholar: { small: [], strong: [] }, sage: { small: [], strong: [] }, archmage: { small: [], strong: [] } } });
+        scholar: { small: [], strong: [] }, sage: { small: [], strong: [] }, archmage: { small: [], strong: [] } },
+      budgets: { plan: { apprentice: 0.25, scholar: null, sage: null, archmage: null }, user: { apprentice: 0.02, scholar: 0.05, sage: 0.1, archmage: 0.2 }, tools: 0.1 },
+      budget_today: { "plan:apprentice": { spent_usd: 0.12, reserved_usd: 0 }, global: { spent_usd: 0.42, reserved_usd: 0 } } });
     if (path === "/auth/check-username") return json(route, 200, { available: true });
     if (path === "/documents") return json(route, 200, { documents: signedIn ? documents : [] });
     // The free tools (SEO stage 3): a result for each tool, no account needed

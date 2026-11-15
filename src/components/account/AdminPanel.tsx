@@ -11,6 +11,7 @@ import { previewNotice, type PlanNotice } from "@/lib/account/plan-notice";
 import { useAuth } from "@/contexts/AuthContext";
 import { useHUDStore } from "@/hooks/useHUD";
 import AiModelsCard from "./AiModels";
+import AiBudgets from "./AiBudgets";
 import { adminApi, shortDate, TIER_OPTIONS, usd, type AdminUser, type AiReport, type Invite, type Tier } from "@/lib/admin/admin-api";
 
 const PAGE = 25;
@@ -414,6 +415,7 @@ function AiSpend() {
           ) : (
             <p className="text-sm text-fg-muted">Only the owner changes the cap (up to {usd(report.cap_max_usd)} a day).</p>
           )}
+          <AiBudgets report={report} onSaved={setReport} />
           {report.models.length > 0 && (
             <ul className="divide-y divide-line list-none p-0 m-0" aria-label="Cost per model">
               {report.models.map((m) => (

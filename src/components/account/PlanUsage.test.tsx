@@ -201,4 +201,60 @@ describe("upgrading", () => {
     fireEvent.click(within(dialog).getByRole("button", { name: "Cancel subscription" }));
     await waitFor(() => expect(log.cancelled).toBe(1));
   });
+
+  it("shows today's AI budget as a share, and Mana packs for paid plans: the stub pays and the balance updates", async () => {
+    const mana = { balance: 3.5, can_buy: true, payments_enabled: true, packs: [
+      { id: "small", name: "Pouch of Mana", inr: 49, mana: 49 }, { id: "medium", name: "Flask of Mana", inr: 99, mana: 104 }, { id: "large", name: "Well of Mana", inr: 199, mana: 219 },
+    ] };
+    let balance = 3.5;
+    const sent: { path: string; body: unknown; key: string | null }[] = [];
+    vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const path = new URL(urlOf(input)).pathname.replace("/api/v1", "");
+      if (path === "/plans") return json(200, { ...PLANS, payments_enabled: true });
+      if (path === "/billing") return json(200, { enabled: true, provider: "stub", key_id: "stub", subscription: null });
+      if (path === "/account/usage") {
+        return json(200, usage({ tier: "scholar", tier_name: "Scholar", ai_budget: { limited: true, share: 1, resets_at: "2026-11-05T00:00:00+00:00" }, mana: { ...mana, balance } }));
+      }
+      if (path === "/documents") return json(200, { documents: [] });
+      if (path.startsWith("/billing/mana/")) {
+        sent.push({ path, body: await bodyOf(input, init), key: new Headers(init?.headers).get("Idempotency-Key") });
+        if (path === "/billing/mana/checkout") return json(200, { provider: "stub", order_id: "order_stub_1", key_id: "stub", pack: "medium", name: "Flask of Mana", mana: 104, amount: 99, currency: "INR", prefill: {} });
+        balance = 107.5;
+        return json(200, { status: "paid", mana: 107.5, pack: "medium" });
+      }
+      throw new Error(`unexpected ${path}`);
+    }));
+    render(<PlanUsage />);
+    const meter = await screen.findByRole("progressbar", { name: "Today's AI budget" });
+    expect(meter.getAttribute("aria-valuetext")).toBe("100% used");
+    expect(meter.closest("li")!.textContent).toContain("a lighter model answers");
+    const box = screen.getByRole("region", { name: /Mana/ });
+    expect(box.textContent).toContain("3.5 left");
+    expect(box.textContent).toContain("isn't game currency");
+    fireEvent.click(within(box).getByRole("button", { name: "Buy Flask of Mana: 104 Mana for ₹99" }));
+    const dialog = await screen.findByRole("dialog", { name: "Test payment" });
+    expect(dialog.textContent).toContain("104 Mana");
+    fireEvent.click(within(dialog).getByRole("button", { name: /Pay ₹99/ }));
+    await waitFor(() => expect(toasts.success).toHaveBeenCalledWith("Flask of Mana added. You have 107.5 Mana."));
+    expect(sent.map((x) => x.path)).toEqual(["/billing/mana/checkout", "/billing/mana/stub"]);
+    expect(sent[0]).toMatchObject({ body: { pack: "medium" }, key: expect.any(String) });
+    expect(sent[1].body).toEqual({ order_id: "order_stub_1" });
+    expect(await within(box).findByText(/107\.5 left/)).toBeTruthy();
+  });
+
+  it("the free plan sees Mana is for paid plans, with no packs to buy", async () => {
+    vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL) => {
+      const path = new URL(urlOf(input)).pathname.replace("/api/v1", "");
+      if (path === "/plans") return json(200, PLANS);
+      if (path === "/billing") return json(200, { enabled: false, provider: null, key_id: null, subscription: null });
+      if (path === "/account/usage") return json(200, usage({ mana: { balance: 0, can_buy: false, payments_enabled: true, packs: [{ id: "small", name: "Pouch of Mana", inr: 49, mana: 49 }] } }));
+      if (path === "/documents") return json(200, { documents: [] });
+      throw new Error(`unexpected ${path}`);
+    }));
+    render(<PlanUsage />);
+    const box = await screen.findByRole("region", { name: /Mana/ });
+    expect(box.textContent).toContain("Mana is for Scholar, Sage and Archmage.");
+    expect(within(box).queryByRole("button")).toBeNull();
+    expect(screen.queryByRole("progressbar", { name: "Today's AI budget" })).toBeNull();     // no ai_budget sent: no meter
+  });
 });

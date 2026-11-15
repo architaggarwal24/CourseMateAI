@@ -26,6 +26,7 @@ afterEach(async () => {
 
 const ctx = () => ({ db, env: { AI: {} } });
 const free = { id: 1, owner: false, tier: "apprentice" as const };
+const scholar = { id: 1, owner: false, tier: "scholar" as const };
 
 describe("routes", () => {
   it("parse provider:model, need the provider's key, and fall through the slots", () => {
@@ -39,7 +40,9 @@ describe("routes", () => {
 
   it("per plan and job, the spend cap leaving only Workers AI, and MODEL_ROUTES_JSON overriding", () => {
     const names = (ts: { provider: string; model: string }[]) => ts.map((t) => `${t.provider}:${t.model}`);
-    expect(names(route("apprentice", "strong"))).toEqual(["gemini:flash-lite", "gemini:flash", "workers-ai:@cf/meta/llama-3.1-8b-instruct-fp8"]);
+    // the free plan: the cheap model, then the free one; never the strong model
+    expect(names(route("apprentice", "strong"))).toEqual(["gemini:flash-lite", "workers-ai:@cf/meta/llama-3.1-8b-instruct-fp8"]);
+    expect(names(route("scholar", "strong"))).toEqual(["gemini:flash", "gemini:flash-lite", "workers-ai:@cf/meta/llama-3.1-8b-instruct-fp8"]);
     expect(names(route("archmage", "strong"))[0]).toBe("claude:sonnet");
     expect(names(route("sage", "small"))[0]).toBe("workers-ai:@cf/meta/llama-3.1-8b-instruct-fp8");
     expect(names(route("archmage", "strong", { capped: true }))).toEqual(["workers-ai:@cf/meta/llama-3.1-8b-instruct-fp8"]);
@@ -75,16 +78,16 @@ describe("calling a model", () => {
   });
 
   it("falls back to the next model when one fails, and says so when none answers", async () => {
-    setLlmFactoryForTests(fakeLlms({ "gemini:flash-lite": new Error("429"), "gemini:flash": "From the strong one." }).factory);
-    const r = await generate(ctx(), free, "strong", [{ role: "user", content: "hi" }]);
-    expect(r.target.model).toBe("flash");
+    setLlmFactoryForTests(fakeLlms({ "gemini:flash": new Error("429"), "gemini:flash-lite": "From the fast one." }).factory);
+    const r = await generate(ctx(), scholar, "strong", [{ role: "user", content: "hi" }]);
+    expect(r.target.model).toBe("flash-lite");
     expect((await costReport(db)).models[0].fallbacks).toBe(1);
     setLlmFactoryForTests(fakeLlms({ "*": new Error("down") }).factory);
     await expect(generate(ctx(), free, "strong", [{ role: "user", content: "hi" }])).rejects.toMatchObject({ status: 503, code: "ai_unavailable" });
   });
 
   it("streams: the next model takes over before the first word, and the whole text is metered", async () => {
-    setLlmFactoryForTests(fakeLlms({ "gemini:flash-lite": new Error("timeout"), "gemini:flash": "One two three." }).factory);
+    setLlmFactoryForTests(fakeLlms({ "gemini:flash-lite": new Error("timeout"), "workers-ai:@cf/meta/llama-3.1-8b-instruct-fp8": "One two three." }).factory);
     const s = await stream(ctx(), free, "strong", [{ role: "user", content: "hi" }]);
     const got: string[] = [];
     for await (const piece of s.pieces) got.push(piece);
@@ -117,15 +120,16 @@ describe("calling a model", () => {
     expect(await usedToday(db, 1)).toEqual({ ai_calls: 0 });
   });
 
-  it("once the day's spend reaches the cap, only Workers AI answers", async () => {
+  it("once the cap has no room for a call's worst case, only Workers AI answers (the paid model isn't asked)", async () => {
     const f = fakeLlms({ "*": "fine" });
     setLlmFactoryForTests(f.factory);
     expect(await capUsd(db)).toBe(2);
-    await setCapUsd(db, 0.00001);
     await generate(ctx(), free, "strong", [{ role: "user", content: "hi" }]);          // spends a little
-    expect(await spendToday(db)).toBeGreaterThan(0.00001);
+    expect(await spendToday(db)).toBeGreaterThan(0);
+    await setCapUsd(db, 0.00001);
     const r = await generate(ctx(), { ...free, id: 2 }, "strong", [{ role: "user", content: "hi" }]);
-    expect(r.target.provider).toBe("workers-ai");
+    expect(r).toMatchObject({ target: { provider: "workers-ai" }, limited: true });
+    expect(f.calls.map((c) => c.target)).toEqual(["gemini:flash-lite", "workers-ai:@cf/meta/llama-3.1-8b-instruct-fp8"]);
   });
 
   it("the cap is never off and never above the hard ceiling (AI_DAILY_CAP_MAX_USD, default 20)", async () => {

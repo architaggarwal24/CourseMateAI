@@ -73,7 +73,13 @@ function gemini(t: Target, fetchImpl: typeof fetch): Llm {
     };
   };
   const text = (j: any) => (j?.candidates?.[0]?.content?.parts ?? []).filter((p: any) => !p.thought && typeof p.text === "string").map((p: any) => p.text).join("");
-  const usage = (j: any) => ({ tokensIn: j?.usageMetadata?.promptTokenCount, tokensOut: j?.usageMetadata?.candidatesTokenCount });
+  // Thinking is billed as output, and Gemini reports it apart from the answer (thoughtsTokenCount): both are counted,
+  // or the spend cap and budgets would see less than Google charges.
+  const usage = (j: any) => {
+    const m = j?.usageMetadata;
+    const out = m?.candidatesTokenCount;
+    return { tokensIn: m?.promptTokenCount, tokensOut: out === undefined && m?.thoughtsTokenCount === undefined ? undefined : (out ?? 0) + (m?.thoughtsTokenCount ?? 0) };
+  };
   return {
     async generate(messages, o) {
       const j = await (await post(`${base}:generateContent`, headers, body(messages, o), o, fetchImpl)).json();
@@ -103,6 +109,15 @@ function gemini(t: Target, fetchImpl: typeof fetch): Llm {
  * model's own), and never give a budget too small to think and still answer.
  */
 const OLLAMA_MIN_OUTPUT = 1024;
+
+/**
+ * The most output a call to this target can bill: what is asked for as max output tokens (the providers count
+ * thinking inside it), raised for Ollama's thinking models as above. The budgets reserve this before a call.
+ */
+export function outputCeiling(t: Pick<Target, "provider">, o: Pick<CallOptions, "maxOutputTokens">): number {
+  const asked = o.maxOutputTokens ?? DEFAULT_MAX_OUTPUT;
+  return t.provider === "ollama" || t.provider === "ollama-cloud" ? Math.max(asked, OLLAMA_MIN_OUTPUT) : asked;
+}
 const ollamaEffort = () => {
   const v = (process.env.OLLAMA_REASONING_EFFORT ?? "low").trim().toLowerCase();
   return v && v !== "default" ? v : null;

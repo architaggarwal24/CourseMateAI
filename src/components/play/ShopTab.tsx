@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import { Check, Coins, Eye, Lock, ShoppingBag, Sparkles, Swords } from "@/components/ui/icons";
 import PixelSprite from "@/components/arena/pixel/PixelSprite";
 import { useChampionLook } from "@/components/champion/useChampionLook";
@@ -157,6 +158,11 @@ function ShopChampion() {
       </div>
       <p className="side-panel__hint"><Eye size={14} aria-hidden="true" />Pick any item to see it on {hero.name}, with its stats and bonuses.</p>
       <p className="side-panel__coins"><Coins size={14} aria-hidden="true" /><strong className="pixel-font">{coins.toLocaleString()}</strong> coins to spend</p>
+      {/* Mana is bought with real money for AI answers only (server/account/wallet.ts): pointed to here, never sold for coins */}
+      <p className="side-panel__hint" data-testid="shop-mana">
+        <Sparkles size={14} aria-hidden="true" />
+        <span>Out of AI for today? <Link href="/account/usage#mana">Mana packs</Link> keep your tutor on the full model. They cost real money, only pay for AI answers and aren&apos;t coins.</span>
+      </p>
     </div>
   );
 }

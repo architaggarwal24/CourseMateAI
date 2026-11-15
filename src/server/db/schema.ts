@@ -1,7 +1,7 @@
 // The D1 (SQLite) schema of the TypeScript backend (Phase 4). Each stage adds the tables it moves over;
 // `npm run db:generate` turns a change here into the next file in migrations/.
 import { sql } from "drizzle-orm";
-import { index, integer, primaryKey, real, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core";
+import { check, index, integer, primaryKey, real, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core";
 
 const nowMs = sql`(cast(unixepoch('subsecond') * 1000 as integer))`;
 const nowIso = sql`(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))`;
@@ -259,6 +259,24 @@ export const aiUsage = sqliteTable("ai_usage", {
   tokensOut: integer("tokens_out").notNull().default(0),
   costMicroUsd: integer("cost_micro_usd").notNull().default(0),
 }, (t) => [primaryKey({ columns: [t.day, t.provider, t.model, t.job] })]);
+
+// The AI money limits (src/server/ai/budget.ts): one row per scope and UTC day. A scope is "global" (the daily spend
+// cap), "plan:<tier>" (all users of a plan together), "user:<id>" or "tools" (the free tools on the public pages).
+// A call reserves its worst-case cost before it runs and settles to the real cost after. `limit_micro` is the limit
+// at the last reservation; the CHECK below is what makes the limits airtight: a reservation that would take
+// spent + reserved over the limit fails inside the database, and the batch it is in (every scope of that call) rolls
+// back as one. Settling never fails it (budget.ts raises `limit_micro` to fit when a real cost came out higher).
+export const aiBudget = sqliteTable("ai_budget", {
+  scope: text("scope").notNull(),
+  day: text("day").notNull(),
+  spentMicro: integer("spent_micro").notNull().default(0),
+  reservedMicro: integer("reserved_micro").notNull().default(0),
+  limitMicro: integer("limit_micro").notNull(),
+}, (t) => [
+  primaryKey({ columns: [t.scope, t.day] }),
+  check("ai_budget_reserved_not_negative", sql`${t.reservedMicro} >= 0`),
+  check("ai_budget_within_limit", sql`${t.spentMicro} + ${t.reservedMicro} <= ${t.limitMicro}`),
+]);
 
 // ── study tools (Stage 4.4: src/server/study/*). `doc_hash` names what was studied: a document's file hash, or
 //    "course:<id>" for a course as a whole, so re-uploading the same PDF keeps the history. ─────────────────────
@@ -814,6 +832,45 @@ export const subscriptions = sqliteTable("subscriptions", {
   createdAt: text("created_at").notNull(),
   updatedAt: text("updated_at").notNull(),
 }, (t) => [index("subscriptions_user_idx").on(t.userId, t.createdAt)]);
+
+// ── Mana (top-up credit packs, src/server/account/wallet.ts and mana.ts): AI use bought with real money, for when
+//    a paid user's daily AI budget runs out. Kept apart from the game's coins. Amounts are micro-dollars of AI cost
+//    (1 Mana = MANA_MICRO_USD). The wallet's CHECKs keep reservations inside the balance, like ai_budget. ──────────
+export const aiWallet = sqliteTable("ai_wallet", {
+  userId: integer("user_id").primaryKey().references(() => user.id, { onDelete: "cascade" }),
+  balanceMicro: integer("balance_micro").notNull().default(0),
+  reservedMicro: integer("reserved_micro").notNull().default(0),
+  updatedAt: text("updated_at"),
+}, (t) => [
+  check("ai_wallet_reserved_not_negative", sql`${t.reservedMicro} >= 0`),
+  check("ai_wallet_within_balance", sql`${t.reservedMicro} <= ${t.balanceMicro}`),
+]);
+
+// Every change to a wallet, so each Mana can be explained: "purchase" (ref: the order id), "grant", "refund" and
+// "use" (one row a user a day, ref "<user id>:<day>", added up). A purchase, grant or refund row moves the balance
+// through the mana_ledger_credit trigger (migration 0023), so the UNIQUE (kind, ref) is what credits an order once.
+export const manaLedger = sqliteTable("mana_ledger", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  userId: integer("user_id").notNull().references(() => user.id, { onDelete: "cascade" }),
+  kind: text("kind").notNull(),
+  ref: text("ref").notNull(),
+  micro: integer("micro").notNull(),
+  createdAt: text("created_at").notNull(),
+}, (t) => [uniqueIndex("mana_ledger_kind_ref").on(t.kind, t.ref), index("mana_ledger_user_idx").on(t.userId, t.createdAt)]);
+
+// A Mana pack being bought: one Razorpay order (or a stub one). "created" until paid; then "paid".
+export const manaOrders = sqliteTable("mana_orders", {
+  id: text("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => user.id, { onDelete: "cascade" }),
+  provider: text("provider").notNull(),
+  pack: text("pack").notNull(),
+  amountInr: integer("amount_inr").notNull(),
+  manaMicro: integer("mana_micro").notNull(),
+  status: text("status").notNull(),
+  paymentId: text("payment_id"),
+  createdAt: text("created_at").notNull(),
+  paidAt: text("paid_at"),
+}, (t) => [index("mana_orders_user_idx").on(t.userId, t.createdAt)]);
 
 export const paymentEvents = sqliteTable("payment_events", {
   id: text("id").primaryKey(),

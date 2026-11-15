@@ -30,7 +30,7 @@ Plans: Apprentice (free), Scholar ₹149, Sage ₹299 and Archmage ₹599 a mont
 - **Next.js 16** (App Router, React 19, TypeScript, Tailwind 4), deployed to **Cloudflare Workers** with OpenNext
 - **Cloudflare:** D1 (SQLite, through Drizzle), R2 for PDFs, Vectorize and Workers AI for search and small jobs
 - **Better Auth** for accounts (email codes, two-step sign-in, optional Google and GitHub)
-- **AI:** Gemini, OpenAI, Anthropic, NVIDIA NIM or Ollama Cloud, routed per plan with fallbacks, metering and a daily spend cap
+- **AI:** Gemini, OpenAI, Anthropic, NVIDIA NIM or Ollama Cloud, routed per plan with fallbacks, metering, a daily spend cap and per-plan and per-user budgets that can't be passed
 - **Payments:** Razorpay, off until `PAYMENTS_ENABLED` is set
 - **Tests:** Vitest and Playwright (with axe accessibility checks), against a mocked API
 
@@ -39,7 +39,7 @@ Plans: Apprentice (free), Scholar ₹149, Sage ₹299 and Archmage ₹599 a mont
 You need Node.js 22.
 
 ```bash
-git clone https://github.com/<you>/CourseMateAI.git
+git clone https://github.com/architaggarwal24/CourseMateAI.git
 cd CourseMateAI
 npm ci
 cp .dev.vars.example .dev.vars        # then fill in BETTER_AUTH_SECRET, OWNER_EMAIL and an AI key

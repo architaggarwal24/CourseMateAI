@@ -11,6 +11,6 @@ export const POST = api(async (req, ctx) => {
   const u = await requireUser(req, ctx);
   await rateLimit(ctx.db, `chat:${u.id}`, 30, 60);
   const plan = await planChat(ctx, u, await readJson(req));
-  const { text } = await generate(ctx, plan.caller, answerJob(plan), answerMessages(plan), { temperature: answerTemperature(plan) });
-  return { ...finalPayload(plan, false, await afterAnswer(ctx, plan, text)), content: text };
+  const answer = await generate(ctx, plan.caller, answerJob(plan), answerMessages(plan), { temperature: answerTemperature(plan) });
+  return { ...finalPayload(plan, false, await afterAnswer(ctx, plan, answer.text), answer), content: answer.text };
 });

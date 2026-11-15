@@ -4,7 +4,8 @@
 // as estimated in Admin), so the cap still protects you until you set its real price.
 // The cap: app_settings "ai_daily_cap_usd" (set in Admin by the owner) or AI_DAILY_CAP_USD (default 2). It is never off and
 // never above AI_DAILY_CAP_MAX_USD (default 20), which only a dashboard change raises.
-// Once the day's API spend reaches it, everyone's calls go to Workers AI until midnight UTC.
+// Once the day's API spend reaches it, everyone's calls go to Workers AI until midnight UTC. The cap itself is enforced
+// by ai/budget.ts (each call reserves its worst-case cost first), together with the plan, user and free-tool budgets.
 import { and, eq, gte, like, sql } from "drizzle-orm";
 import type { Db } from "../db";
 import { aiUsage, appSettings, usageDaily } from "../db/schema";
@@ -36,7 +37,8 @@ function prices(env: Env): Record<string, [number, number]> {
 
 /** US dollars per 1M tokens (in, out), and whether it is a real price. */
 export function price(provider: string, model: string, env: Env = process.env): { rate: [number, number]; priced: boolean } {
-  if (provider === "workers-ai") return { rate: [0, 0], priced: true };
+  // Workers AI is inside the free daily allowance; "ollama" is a model on an admin's own computer
+  if (provider === "workers-ai" || provider === "ollama") return { rate: [0, 0], priced: true };
   const p = prices(env);
   const exact = p[`${provider}:${model}`.toLowerCase()] ?? p[`${provider}:*`.toLowerCase()];
   if (exact) return { rate: exact, priced: true };
@@ -53,27 +55,39 @@ export function costMicroUsd(provider: string, model: string, tokensIn: number, 
 
 /**
  * Meter one call. `reserved`: the call was already counted by reserveCall (only its tokens are added now); without it
- * the call is counted here too (an owner, who has no quota, or old callers).
+ * the call is counted here too (an owner, who has no quota, or old callers). The statements, for a batch with the
+ * budget's settle step (ai/budget.ts meter); recordCall runs them on their own.
  */
-export async function recordCall(db: Db, call: { userId: number; target: Target; job: Job; tokensIn: number; tokensOut: number; fallback: boolean; reserved?: boolean }, now = new Date()) {
+export function recordCallQueries(db: Db, call: { userId: number; target: Target; job: Job; tokensIn: number; tokensOut: number; fallback: boolean; reserved?: boolean }, now = new Date()) {
   const day = dayOf(now);
   const tokensIn = Math.max(0, Math.round(call.tokensIn));
   const tokensOut = Math.max(0, Math.round(call.tokensOut));
-  const cost = costMicroUsd(call.target.provider, call.target.model, tokensIn, tokensOut);
   const calls = call.reserved ? 0 : 1;
-  await db.insert(usageDaily).values({ userId: call.userId, day, aiCalls: calls, tokensIn, tokensOut })
-    .onConflictDoUpdate({
-      target: [usageDaily.userId, usageDaily.day],
-      set: { aiCalls: sql`${usageDaily.aiCalls} + ${calls}`, tokensIn: sql`${usageDaily.tokensIn} + ${tokensIn}`, tokensOut: sql`${usageDaily.tokensOut} + ${tokensOut}` },
-    });
-  await db.insert(aiUsage).values({
+  return [
+    db.insert(usageDaily).values({ userId: call.userId, day, aiCalls: calls, tokensIn, tokensOut })
+      .onConflictDoUpdate({
+        target: [usageDaily.userId, usageDaily.day],
+        set: { aiCalls: sql`${usageDaily.aiCalls} + ${calls}`, tokensIn: sql`${usageDaily.tokensIn} + ${tokensIn}`, tokensOut: sql`${usageDaily.tokensOut} + ${tokensOut}` },
+      }),
+    modelUsageQuery(db, { ...call, tokensIn, tokensOut }, day),
+  ] as const;
+}
+
+export async function recordCall(db: Db, call: Parameters<typeof recordCallQueries>[1], now = new Date()) {
+  await db.batch([...recordCallQueries(db, call, now)]);
+}
+
+/** The cost report's row for a model: one more call, its tokens and its cost. */
+function modelUsageQuery(db: Db, call: { target: Target; job: Job; tokensIn: number; tokensOut: number; fallback: boolean }, day: string) {
+  const cost = costMicroUsd(call.target.provider, call.target.model, call.tokensIn, call.tokensOut);
+  return db.insert(aiUsage).values({
     day, provider: call.target.provider, model: call.target.model, job: call.job, calls: 1, fallbacks: call.fallback ? 1 : 0,
-    tokensIn, tokensOut, costMicroUsd: cost,
+    tokensIn: call.tokensIn, tokensOut: call.tokensOut, costMicroUsd: cost,
   }).onConflictDoUpdate({
     target: [aiUsage.day, aiUsage.provider, aiUsage.model, aiUsage.job],
     set: {
       calls: sql`${aiUsage.calls} + 1`, fallbacks: sql`${aiUsage.fallbacks} + ${call.fallback ? 1 : 0}`,
-      tokensIn: sql`${aiUsage.tokensIn} + ${tokensIn}`, tokensOut: sql`${aiUsage.tokensOut} + ${tokensOut}`,
+      tokensIn: sql`${aiUsage.tokensIn} + ${call.tokensIn}`, tokensOut: sql`${aiUsage.tokensOut} + ${call.tokensOut}`,
       costMicroUsd: sql`${aiUsage.costMicroUsd} + ${cost}`,
     },
   });
@@ -81,24 +95,14 @@ export async function recordCall(db: Db, call: { userId: number; target: Target;
 
 /**
  * A call made for nobody in particular (the free tools on the public pages, src/server/tools): counted in the AI cost
- * report and the daily spend cap like any other, but against no user's quota.
+ * report like any other, but against no user's quota. Its money goes through the "tools" and global budgets.
  */
-export async function recordAnonymousCall(db: Db, call: { target: Target; job: Job; tokensIn: number; tokensOut: number; fallback: boolean }, now = new Date()) {
-  const day = dayOf(now);
-  const tokensIn = Math.max(0, Math.round(call.tokensIn));
-  const tokensOut = Math.max(0, Math.round(call.tokensOut));
-  const cost = costMicroUsd(call.target.provider, call.target.model, tokensIn, tokensOut);
-  await db.insert(aiUsage).values({
-    day, provider: call.target.provider, model: call.target.model, job: call.job, calls: 1, fallbacks: call.fallback ? 1 : 0,
-    tokensIn, tokensOut, costMicroUsd: cost,
-  }).onConflictDoUpdate({
-    target: [aiUsage.day, aiUsage.provider, aiUsage.model, aiUsage.job],
-    set: {
-      calls: sql`${aiUsage.calls} + 1`, fallbacks: sql`${aiUsage.fallbacks} + ${call.fallback ? 1 : 0}`,
-      tokensIn: sql`${aiUsage.tokensIn} + ${tokensIn}`, tokensOut: sql`${aiUsage.tokensOut} + ${tokensOut}`,
-      costMicroUsd: sql`${aiUsage.costMicroUsd} + ${cost}`,
-    },
-  });
+export function recordAnonymousCallQuery(db: Db, call: { target: Target; job: Job; tokensIn: number; tokensOut: number; fallback: boolean }, now = new Date()) {
+  return modelUsageQuery(db, { ...call, tokensIn: Math.max(0, Math.round(call.tokensIn)), tokensOut: Math.max(0, Math.round(call.tokensOut)) }, dayOf(now));
+}
+
+export async function recordAnonymousCall(db: Db, call: Parameters<typeof recordAnonymousCallQuery>[1], now = new Date()) {
+  await recordAnonymousCallQuery(db, call, now);
 }
 
 export async function usedToday(db: Db, userId: number, now = new Date()) {
@@ -167,14 +171,19 @@ export function capCeilingUsd(env: Env = process.env): number {
   return Number.isFinite(n) && n > 0 ? n : DEFAULT_CAP_CEILING_USD;
 }
 
-/** The cap in US dollars: never off, never above the ceiling (an old "off" now means the ceiling). */
-export async function capUsd(db: Db, env: Env = process.env): Promise<number> {
+/** The cap in US dollars from the saved value (or the setting): never off, never above the ceiling. */
+export function capFrom(saved: string | null | undefined, env: Env = process.env): number {
   const ceiling = capCeilingUsd(env);
-  const row = await db.select().from(appSettings).where(eq(appSettings.key, CAP_KEY)).get();
-  const raw = (row?.value ?? env.AI_DAILY_CAP_USD ?? String(DEFAULT_CAP_USD)).trim().toLowerCase();
-  if (!raw || raw === "off" || raw === "none") return ceiling;
+  const raw = (saved ?? env.AI_DAILY_CAP_USD ?? String(DEFAULT_CAP_USD)).trim().toLowerCase();
+  if (!raw || raw === "off" || raw === "none") return ceiling;                // an old "off" now means the ceiling
   const n = Number(raw);
   return Math.min(Number.isFinite(n) && n >= 0 ? n : DEFAULT_CAP_USD, ceiling);
+}
+
+/** The cap in US dollars: never off, never above the ceiling (an old "off" now means the ceiling). */
+export async function capUsd(db: Db, env: Env = process.env): Promise<number> {
+  const row = await db.select().from(appSettings).where(eq(appSettings.key, CAP_KEY)).get();
+  return capFrom(row?.value, env);
 }
 
 export async function setCapUsd(db: Db, usd: number): Promise<void> {

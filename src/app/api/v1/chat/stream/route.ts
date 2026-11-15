@@ -22,7 +22,7 @@ export const POST = api(async (req, ctx) => {
       try {
         let text = "";
         for await (const piece of answer.pieces) { text += piece; c.enqueue(frame("token", { text: piece })); }
-        c.enqueue(frame("sources", finalPayload(plan, false, await afterAnswer(ctx, plan, text))));
+        c.enqueue(frame("sources", finalPayload(plan, false, await afterAnswer(ctx, plan, text), answer)));
       } catch {
         c.enqueue(frame("error", { error: { code: "ai_request_failed", message: "The answer stopped part-way. Please try again.", action: "retry", details: null } }));
       } finally {

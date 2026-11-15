@@ -16,7 +16,9 @@ export type Slot = (typeof SLOTS)[number];
 export const DEFAULT_WORKERS_AI_MODEL = "@cf/meta/llama-3.1-8b-instruct-fp8";
 
 export const ROUTES: Record<Tier, Record<Job, Slot[]>> = {
-  apprentice: { small: ["small", "fast"], strong: ["fast", "strong", "small"] },
+  // The free plan: the cheap fast model while its budgets last (ai/budget.ts), then the free Workers AI one. Never
+  // the strong model, even when the fast one fails.
+  apprentice: { small: ["small", "fast"], strong: ["fast", "small"] },
   scholar: { small: ["small", "fast"], strong: ["strong", "fast", "small"] },
   sage: { small: ["small", "fast"], strong: ["strong", "fast", "small"] },
   archmage: { small: ["fast", "small"], strong: ["premium", "strong", "fast", "small"] },

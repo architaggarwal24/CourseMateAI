@@ -19,7 +19,13 @@ export interface ChatAnswer {
   /** How well the course material covers it: "none" is an honest answer from outside the PDFs. */
   coverage?: "strong" | "weak" | "none" | "conversation";
   rewards?: any;
+  /** "limited": today's AI budget sent it to a lighter model; "mana": the user's Mana paid for it (ai/budget.ts). */
+  budget?: "limited" | "mana" | null;
+  /** This user can buy Mana (a paid plan). */
+  canTopUp?: boolean;
 }
+
+const budgetOf = (d: any): ChatAnswer["budget"] => (d?.budget === "limited" || d?.budget === "mana" ? d.budget : null);
 
 /** How the tutor teaches (server/chat/prompts.ts). */
 export type TutorMode = "explain" | "socratic" | "quiz" | "simplify";
@@ -135,6 +141,8 @@ export async function streamChat(opts: AskOptions): Promise<ChatAnswer> {
     needsClarification: !!final.needs_clarification,
     coverage: final.coverage,
     rewards: final.rewards ?? undefined,
+    budget: budgetOf(final),
+    canTopUp: !!final.can_top_up,
   };
 }
 
@@ -158,6 +166,8 @@ export async function askChat(opts: AskOptions): Promise<ChatAnswer> {
       needsClarification: !!data?.needs_clarification,
       coverage: data?.coverage,
       rewards: data?.rewards ?? undefined,
+      budget: budgetOf(data),
+      canTopUp: !!data?.can_top_up,
     };
   }
 }

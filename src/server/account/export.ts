@@ -17,7 +17,8 @@ const TABLES: Record<string, SQLiteTable & { userId: SQLiteColumn }> = {
   hero: s.heroState, items: s.itemProgress, forge_materials: s.forgeMaterials, quests: s.questScrolls,
   daily_quests: s.dailyQuests, achievements: s.userAchievements, inventory: s.userInventory, buffs: s.userBuffs,
   arena_battles: s.arenaBattles, arena_scores: s.arenaScores, arena_bests: s.arenaPersonalBests, expeditions: s.arenaRuns,
-  gauntlets: s.arenaGauntlets, subscriptions: s.subscriptions, deletion_log: s.deletionLog,
+  gauntlets: s.arenaGauntlets, subscriptions: s.subscriptions, mana_wallet: s.aiWallet, mana_ledger: s.manaLedger,
+  mana_orders: s.manaOrders, deletion_log: s.deletionLog,
 } as never;
 
 /** Inside some rows: never handed out, even to their owner (keys and signatures from the payment provider). */
