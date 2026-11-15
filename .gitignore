@@ -32,3 +32,5 @@ backups/
 .idea/
 *.swp
 *.swo
+
+/Claude outputs
