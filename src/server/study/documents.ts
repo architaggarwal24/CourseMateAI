@@ -14,6 +14,8 @@ import { chunkText } from "../search/chunker";
 import { EMBEDDING_MODEL, vectorId, type SearchDeps } from "../search";
 import { purgeExpired, purgeTrashFiles, trashDocument } from "./trash";
 import { MAX_COURSE_DOCUMENTS, r2Key } from "./limits";
+import { DOCUMENT_KINDS, formatOf } from "@/lib/study/formats";
+import { checkOcrRoom } from "./ocr-limits";
 
 export { MAX_COURSE_DOCUMENTS, r2Key };
 
@@ -147,7 +149,7 @@ async function purge(ctx: RequestContext, deps: SearchDeps | null, row: Document
 
 /** PDFs one course holds. */
 
-export interface StartUpload { filename?: unknown; size?: unknown; pages?: unknown; file_hash?: unknown; session_id?: unknown; course_id?: unknown }
+export interface StartUpload { filename?: unknown; size?: unknown; pages?: unknown; file_hash?: unknown; session_id?: unknown; course_id?: unknown; ocr_pages?: unknown }
 
 export async function startUpload(ctx: RequestContext, deps: SearchDeps | null, user: CurrentUser, body: StartUpload) {
   const filename = cleanFilename(body.filename);
@@ -165,16 +167,23 @@ export async function startUpload(ctx: RequestContext, deps: SearchDeps | null, 
       .where(and(eq(courseDocuments.courseId, courseId), eq(courseDocuments.documentId, sessionId))).get() : undefined;
     if (!already && n >= MAX_COURSE_DOCUMENTS) throw new HttpError(400, "course_full", `A course holds at most ${MAX_COURSE_DOCUMENTS} PDFs. Start another course for more.`);
   }
-  if (!/\.pdf$/i.test(filename)) throw new HttpError(400, "invalid_file", "Only PDF files are supported.", "reupload");
+  // Files stage 2: Word, PowerPoint, Excel and text files too, read in the browser (lib/study/convert.ts); only a
+  // PDF's own file is stored, so the others go straight to their pages
+  const format = formatOf(filename);
+  if (!format) throw new HttpError(400, "invalid_file", `That kind of file can't be added: use ${DOCUMENT_KINDS}.`, "reupload");
   if (!Number.isInteger(size) || size <= 0) throw new HttpError(400, "invalid_file", "That file is empty.", "reupload");
   if (size > MAX_FILE_BYTES) throw new HttpError(400, "invalid_file", "That PDF is over 50 MB. Try a smaller file.", "reupload");
   if (!Number.isInteger(pages) || pages < 1 || pages > MAX_PAGES) {
     throw new HttpError(400, "invalid_file", `That PDF has no pages, or more than ${MAX_PAGES}.`, "reupload");
   }
   if (!/^[0-9a-f]{64}$/.test(hash)) throw new HttpError(400, "invalid_file", "The file's fingerprint is missing.", "reupload");
+  // Files stage 4: scanned pages and photos the AI will read (study/ocr.ts), refused now if today's cap can't take them
+  const ocrPages = body.ocr_pages === undefined ? (format === "image" ? 1 : 0) : Number(body.ocr_pages);
+  if (!Number.isInteger(ocrPages) || ocrPages < 0 || ocrPages > pages) throw new HttpError(400, "invalid_input", "The number of scanned pages isn't valid.", "reupload");
 
   const tier: Tier = await tierFor(ctx.db, user);
   const lim = limits(tier);
+  await checkOcrRoom(ctx.db, { id: user.id, owner: user.owner, tier }, ocrPages);
   let existing: DocumentRow | undefined;
   if (sessionId) {
     if (await ctx.db.select({ id: courses.id }).from(courses).where(eq(courses.id, sessionId)).get()) {
@@ -208,8 +217,9 @@ export async function startUpload(ctx: RequestContext, deps: SearchDeps | null, 
   }
 
   const now = nowIso();
+  // a PDF waits for its file (queued); the other formats have no file step, so their pages come next (reading)
   const fields = {
-    filename, fileHash: hash, sizeBytes: size, pages, status: "queued" as const, error: null, chunks: 0, indexedPages: 0,
+    filename, fileHash: hash, sizeBytes: size, pages, status: (format === "pdf" ? "queued" : "reading") as "queued" | "reading", error: null, chunks: 0, indexedPages: 0,
     embeddingModel: EMBEDDING_MODEL, pdfStored: false, updatedAt: now, lastUsedAt: now,
   };
   let id: string;
@@ -270,6 +280,7 @@ export async function looksLikePdf(bucket: R2Bucket, key: string): Promise<boole
 
 export async function putFile(ctx: RequestContext, user: CurrentUser, id: string, req: Request) {
   const row = await ownedDocument(ctx, user, id);
+  if (formatOf(row.filename) !== "pdf") throw new HttpError(409, "upload_state", "Only a PDF's file is stored: send this document's pages instead.", "reupload");
   if (row.status !== "queued") throw new HttpError(409, "upload_state", "This document isn't waiting for its file. Upload it again.", "reupload");
   const length = Number(req.headers.get("content-length"));
   if (!req.body || (Number.isFinite(length) && length > 0 && length !== row.sizeBytes)) {

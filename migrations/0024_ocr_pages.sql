@@ -1,0 +1,1 @@
+ALTER TABLE `usage_daily` ADD `ocr_pages` integer DEFAULT 0 NOT NULL;

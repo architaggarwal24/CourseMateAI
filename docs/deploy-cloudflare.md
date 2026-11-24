@@ -169,7 +169,7 @@ Every AI call is the server's: students can't add keys of their own. Each call c
 | `LLM_STRONG` | for questions and answers (default: `LLM_FAST`) | `gemini:gemini-3.8-flash` |
 | `LLM_PREMIUM` | the strongest, for Archmage (default: `LLM_STRONG`) | `claude:claude-sonnet-5-5` |
 | `GOOGLE_API_KEY` / `ANTHROPIC_API_KEY` / `OPENAI_API_KEY` / `NVIDIA_API_KEY` (Secrets) | the key for each provider you use | |
-| `WORKERS_AI_MODEL` | small jobs (follow-up rewrites, boss lines) on Workers AI | default `@cf/meta/llama-3.1-8b-instruct-fp8` |
+| `WORKERS_AI_MODEL` | small jobs (follow-up rewrites, boss lines) on Workers AI | default `@cf/google/gemma-4-26b-a4b-it` (Cloudflare retired `@cf/meta/llama-3.1-8b-instruct-fp8` and the Llama 3.2 models on 20 Nov 2026: calls to them fail with error 5028) |
 
 **Who gets what:**
 
@@ -189,6 +189,11 @@ If a model fails, the next one in the line takes over. Workers AI is always the 
 - **Daily budgets** sit under the cap, in the same card: per plan (all its users together), per user (by plan) and for the free tools. They start at Apprentice $0.25 for the plan and $0.02 a user; Scholar $0.05, Sage $0.10 and Archmage $0.20 a user (each under the plan's price over 30 days); free tools $0.10. An empty field is no limit at that level. Owners skip the plan and user budgets, never the cap.
 - **Why they can't be passed:** before each call to a paid model, its worst-case cost (input counted as bytes, output as the max output tokens) is reserved against every budget that applies in one database transaction, and a CHECK on the `ai_budget` table refuses any reservation that would go over. After the call it settles to the real cost. A refused model is skipped and the free Workers AI model answers. Keep `MODEL_PRICES_JSON` right: an unpriced model is charged at a high estimate, but a price set too low would let real spend pass the limits.
 - **A Google-side backstop:** see `docs/one-paid-key-guide.md` section 6 (Prepay billing with a small balance, a project spend cap, budget alerts, a key restricted to the Generative Language API).
+- **Files and pictures (Files stages 1–4):**
+  - Course files can be PDF, Word, PowerPoint, Excel, text or photos. Office and text files are read in the browser, and only their text is uploaded.
+  - Photos and scanned PDFs are drawn to JPEG in the browser and read by the cheapest model that can see (`POST /documents/{id}/ocr`). The free Workers AI model is skipped, since it can't see.
+  - Scanned pages have their own daily cap: Apprentice 10, Scholar 50, Sage 150, Archmage 400 (`OCR_PAGES_DAY` in `src/server/study/ocr-limits.ts`). They don't count as AI calls, but the money budgets still hold.
+  - Files attached in the tutor chat are for that question only. Pictures go to Gemini, Claude or OpenAI, and each one counts as 3,000 input tokens in the worst case.
 
 **Check:** `/api/system/status` shows `ai.detail` as your fast model. Without any key it says Workers AI only.
 

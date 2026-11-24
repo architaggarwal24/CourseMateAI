@@ -2,10 +2,12 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { frame, json, sseBody, bodyOf, urlOf } from "@/test/sse";
 
+const sessionUploads = vi.hoisted(() => ({ upload: vi.fn() }));
 vi.mock("@/contexts/AuthContext", () => ({ useAuth: () => ({ user: { user_id: 1 } }) }));
 vi.mock("@/hooks/useHUD", () => ({ useHUDStore: (sel: (s: unknown) => unknown) => sel({ refreshIfStale: vi.fn(), refresh: vi.fn() }) }));
 vi.mock("@/hooks/useSessions", () => ({
   useDocument: () => ({ document: { id: "d1", filename: "bio.pdf", status: "ready" }, loaded: true }),
+  useSessionStore: (sel: (s: unknown) => unknown) => sel({ uploadDocument: sessionUploads.upload }),
 }));
 vi.mock("@/components/ui/Toast", async (orig) => ({
   ...(await orig<typeof import("@/components/ui/Toast")>()),
@@ -407,5 +409,82 @@ describe("ChatView: auto-scroll", () => {
     expect(state.top).toBe(1800);                                   // following again
 
     await act(async () => { body.push(frame("sources", FINAL)); body.close(); });
+  });
+});
+
+describe("ChatView: attachments (Files stage 3)", () => {
+  beforeEach(async () => {
+    (await import("@/lib/chat/attachments")).setImageShrinkForTests(async () => ({ mime: "image/jpeg", data: "aGVsbG8=", preview: "data:image/jpeg;base64,aGVsbG8=" }));
+    (await import("@/hooks/useFileDrop")).resetFileDropForTests();
+    sessionUploads.upload.mockReset();
+  });
+  afterEach(async () => { (await import("@/lib/chat/attachments")).setImageShrinkForTests(null); });
+
+  const pick = (files: File[]) => fireEvent.change(screen.getByLabelText("Choose files to attach"), { target: { files } });
+
+  it("picked files become cards above the box, go with the next question only, and show on the question", async () => {
+    const body = sseBody();
+    const next = sseBody();
+    const log = server({ streams: [() => sse(body), () => sse(next)] });
+    render(<ChatView documentId="d1" />);
+    expect(screen.getByRole("button", { name: "Attach files" })).toBeTruthy();
+    pick([new File(["x"], "cell.png", { type: "image/png" }), new File(["Mitosis has four stages: prophase, metaphase, anaphase, telophase."], "notes.txt", { type: "text/plain" })]);
+    const tray = await screen.findByRole("list", { name: "Attached to your next question" });
+    await waitFor(() => expect(within(tray).getAllByRole("listitem")).toHaveLength(2));
+    fireEvent.click(within(tray).getByRole("button", { name: "Remove cell.png" }));
+    await waitFor(() => expect(within(tray).getAllByRole("listitem")).toHaveLength(1));
+    pick([new File(["x"], "cell.png", { type: "image/png" })]);
+    await waitFor(() => expect(within(screen.getByRole("list", { name: "Attached to your next question" })).getAllByRole("listitem")).toHaveLength(2));
+    ask("Explain these");
+    await waitFor(() => expect(log.bodies).toHaveLength(1));
+    expect(log.bodies[0].attachments).toEqual([
+      { kind: "text", name: "notes.txt", text: "Mitosis has four stages: prophase, metaphase, anaphase, telophase." },
+      { kind: "image", name: "cell.png", mime: "image/jpeg", data: "aGVsbG8=" },
+    ]);
+    expect(screen.queryByRole("list", { name: "Attached to your next question" })).toBeNull();           // used up
+    expect(within(screen.getByRole("article", { name: "You" })).getByRole("list", { name: "Attached" }).textContent).toContain("notes.txt");
+    await act(async () => { body.push(frame("token", { text: "Four stages." }) + frame("sources", FINAL)); body.close(); });
+    // the document can be kept in the course (the picture can't, yet)
+    const keep = await screen.findByRole("button", { name: "Add to my library" });
+    sessionUploads.upload.mockResolvedValue({ id: "n1", filename: "notes.txt", status: "reading" });
+    fireEvent.click(keep);
+    await waitFor(() => expect(sessionUploads.upload).toHaveBeenCalledTimes(1));
+    expect(sessionUploads.upload.mock.calls[0][1].name).toBe("notes.txt");
+    expect(await screen.findByText(/Added: quizzes, notes and search can use it now/)).toBeTruthy();
+    ask("And the next one?");
+    await waitFor(() => expect(log.bodies).toHaveLength(2));
+    expect(log.bodies[1].attachments).toBeUndefined();                                                   // this question only
+  });
+
+  it("a long paste becomes a 'Pasted text' card; a short one pastes as usual; a question can be only files", async () => {
+    const body = sseBody();
+    const log = server({ streams: [() => sse(body)] });
+    render(<ChatView documentId="d1" />);
+    const long = "Photosynthesis turns light into sugar. ".repeat(60);
+    const paste = (text: string) => {
+      const e = new Event("paste", { bubbles: true, cancelable: true });
+      Object.defineProperty(e, "clipboardData", { value: { files: [], getData: () => text } });
+      box().dispatchEvent(e);
+      return e;
+    };
+    expect(paste("short bit").defaultPrevented).toBe(false);
+    await act(async () => { expect(paste(long).defaultPrevented).toBe(true); });
+    const tray = await screen.findByRole("list", { name: "Attached to your next question" });
+    expect(within(tray).getByText("Pasted text")).toBeTruthy();
+    expect((screen.getByRole("button", { name: "Send" }) as HTMLButtonElement).disabled).toBe(false);   // files alone can be sent
+    fireEvent.click(screen.getByRole("button", { name: "Send" }));
+    await waitFor(() => expect(log.bodies).toHaveLength(1));
+    expect(log.bodies[0]).toMatchObject({ question: "Please look at what I attached.", attachments: [{ kind: "text", name: "Pasted text", text: long }] });
+  });
+
+  it("files dropped on the Chat tab are attached (not uploaded to the course); at most 5", async () => {
+    server({ streams: [] });
+    render(<ChatView documentId="d1" />);
+    const drop = new Event("drop", { bubbles: true, cancelable: true });
+    const files = Array.from({ length: 6 }, (_, i) => new File([`Page ${i} text about cells and energy.`], `n${i}.md`, { type: "text/markdown" }));
+    Object.defineProperty(drop, "dataTransfer", { value: { types: ["Files"], files } });
+    await act(async () => { window.dispatchEvent(drop); });
+    await waitFor(() => expect(within(screen.getByRole("list", { name: "Attached to your next question" })).getAllByRole("listitem")).toHaveLength(5));
+    expect(sessionUploads.upload).not.toHaveBeenCalled();
   });
 });

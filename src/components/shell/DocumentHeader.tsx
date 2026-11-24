@@ -1,8 +1,10 @@
 "use client";
 
-import { useEffect, useRef, useState, type ReactNode } from "react";
-import { createPortal } from "react-dom";
-import { BookMarked, FileText, FileUp, Pencil, Trash2, Upload } from "@/components/ui/icons";
+import { useEffect, useRef, type ReactNode } from "react";
+import { BookMarked, FileText, Pencil, Trash2, Upload } from "@/components/ui/icons";
+import { useFileDrop } from "@/hooks/useFileDrop";
+import DropOverlay from "./DropOverlay";
+import { DOCUMENT_ACCEPT, DOCUMENT_KINDS } from "@/lib/study/formats";
 import { Badge, Button, toast, type BadgeTone } from "@/components/ui";
 import type { DocumentUpload } from "@/hooks/useDocumentUpload";
 import type { DocumentInfo, DocumentStatus } from "@/lib/api";
@@ -55,7 +57,6 @@ interface Props {
  */
 export default function DocumentHeader({ doc, gone, loaded, upload, tabs, course, onEditCourse, switcher, onDelete, inCourse, noCourse }: Props) {
   const { inputRef, uploading, uploadMany, multiple, pick, signedIn } = upload;
-  const [isPageDragging, setIsPageDragging] = useState(false);
 
   // Announce the outcome of a document we watched being processed (not one that was already finished on load).
   const previousStatus = useRef<DocumentStatus | undefined>(undefined);
@@ -67,41 +68,9 @@ export default function DocumentHeader({ doc, gone, loaded, upload, tabs, course
     else if (doc.status === "failed") toast.error(doc.error || `${doc.filename} could not be processed`);
   }, [doc?.status]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Dropping a PDF anywhere on the page uploads it.
-  useEffect(() => {
-    if (!signedIn) return;
-    const counter = { n: 0 };
-    const onEnter = (e: DragEvent) => {
-      if (!e.dataTransfer?.types.includes("Files")) return;
-      counter.n++;
-      setIsPageDragging(true);
-    };
-    const onLeave = () => {
-      counter.n--;
-      if (counter.n <= 0) { counter.n = 0; setIsPageDragging(false); }
-    };
-    const onOver = (e: DragEvent) => {
-      e.preventDefault();
-      if (e.dataTransfer) e.dataTransfer.dropEffect = "copy";
-    };
-    const onDrop = (e: DragEvent) => {
-      e.preventDefault();
-      counter.n = 0;
-      setIsPageDragging(false);
-      const files = Array.from(e.dataTransfer?.files ?? []);
-      if (files.length) void uploadMany(files);
-    };
-    window.addEventListener("dragenter", onEnter);
-    window.addEventListener("dragleave", onLeave);
-    window.addEventListener("dragover", onOver);
-    window.addEventListener("drop", onDrop);
-    return () => {
-      window.removeEventListener("dragenter", onEnter);
-      window.removeEventListener("dragleave", onLeave);
-      window.removeEventListener("dragover", onOver);
-      window.removeEventListener("drop", onDrop);
-    };
-  }, [signedIn, uploadMany]);
+  // Dropping a file anywhere on the page (PDF, Word, PowerPoint, Excel, text), or pasting one (Ctrl+V outside a text
+  // box), uploads it.
+  const { dragging } = useFileDrop((files) => void uploadMany(files), { enabled: signedIn });
 
   const busy = uploading || !signedIn || !loaded;
   const named = (name: ReactNode) => (switcher ? switcher(name) : name);
@@ -112,20 +81,10 @@ export default function DocumentHeader({ doc, gone, loaded, upload, tabs, course
 
   return (
     <header aria-label="Active document" className="ws-top">
-      {/* Drag overlay: a portal at the body root so it covers the whole screen */}
-      {isPageDragging && typeof document !== "undefined" && createPortal(
-        <div role="presentation" className="drop-overlay">
-          <div className="drop-overlay__card">
-            <FileUp size={40} className="drop-overlay__icon" aria-hidden="true" />
-            <div className="text-xl font-semibold">{multiple ? "Drop your PDFs anywhere" : "Drop your PDF anywhere"}</div>
-            <div className="text-sm text-fg-muted">Release to upload</div>
-          </div>
-        </div>,
-        document.body,
-      )}
+      <DropOverlay show={dragging} title={multiple ? "Drop your files anywhere" : "Drop your file anywhere"} hint={`${DOCUMENT_KINDS}. Release to upload`} />
 
       <input
-        ref={inputRef} type="file" accept=".pdf" className="hidden" aria-label={multiple ? "Choose PDFs" : "Choose a PDF"}
+        ref={inputRef} type="file" accept={DOCUMENT_ACCEPT} className="hidden" aria-label={multiple ? "Choose files" : "Choose a file"}
         multiple={multiple} disabled={busy}
         onChange={(e) => { const files = Array.from(e.target.files ?? []); if (files.length) void uploadMany(files); }}
       />
@@ -181,7 +140,7 @@ export default function DocumentHeader({ doc, gone, loaded, upload, tabs, course
               {loaded && signedIn
                 ? named(<span className="ws-doc__name">No document yet</span>)
                 : <span className="ws-doc__name">{!signedIn ? "Log in to upload a PDF" : "Checking your documents…"}</span>}
-              <span className="ws-doc__meta">Drop a PDF anywhere on the page</span>
+              <span className="ws-doc__meta">Drop a file anywhere on the page ({DOCUMENT_KINDS})</span>
             </>
           )}
         </div>
@@ -194,8 +153,8 @@ export default function DocumentHeader({ doc, gone, loaded, upload, tabs, course
           {course ? (
             <>
               {/* on a phone just the icons, so the course's name keeps its room */}
-              <Button size="sm" variant="primary" onClick={pick} disabled={busy} loading={uploading} aria-label="Add PDFs" title="Add PDFs" className="max-sm:min-w-11">
-                {!uploading && <Upload size={14} aria-hidden="true" />}<span className="max-sm:hidden">Add PDFs</span>
+              <Button size="sm" variant="primary" onClick={pick} disabled={busy} loading={uploading} aria-label="Add files" title={`Add files: ${DOCUMENT_KINDS}`} className="max-sm:min-w-11">
+                {!uploading && <Upload size={14} aria-hidden="true" />}<span className="max-sm:hidden">Add files</span>
               </Button>
               <Button size="sm" onClick={onEditCourse} aria-label="Edit course" title="Edit course" className="max-sm:min-w-11">
                 <Pencil size={14} aria-hidden="true" /><span className="max-sm:hidden">Edit course</span>

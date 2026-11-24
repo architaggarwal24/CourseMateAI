@@ -77,3 +77,7 @@
   .today-tile.today-tile--stat { grid-column: span 1; padding: var(--space-3); }
   .today-tile--stat .today-big { font-size: 1.15rem; }
 }
+
+/* the Add tile: a quiet line under the button about dropping and pasting (no line on phones, which can't drag) */
+.today-tile__hint { margin: var(--space-2) 0 0; font-size: 0.8rem; color: var(--color-text-secondary); }
+@media (hover: none) { .today-tile__hint { display: none; } }

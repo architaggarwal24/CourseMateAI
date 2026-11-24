@@ -16,7 +16,7 @@ vi.mock("@/lib/study/pdf", () => ({
   }),
 }));
 
-import { PAGES_PER_BATCH, readPdf, sendUpload } from "./upload";
+import { PAGES_PER_BATCH, readDocument, readPdf, sendUpload, setPageImageForTests } from "./upload";
 
 const json = (b: unknown, status = 200) => new Response(JSON.stringify(b), { status, headers: { "content-type": "application/json" } });
 
@@ -31,9 +31,16 @@ describe("readPdf", () => {
     expect(r.hash).toMatch(/^[0-9a-f]{64}$/);
   });
 
-  it("a scan with no text says so before anything is uploaded", async () => {
-    pdfjs.pages = [[" "], [""]];
-    await expect(readPdf(new File(["%PDF"], "scan.pdf"))).rejects.toMatchObject({ code: "no_text", action: "reupload" });
+  it("a scan (most pages without text) lists its pages for the AI to read; a normal PDF's blank page stays blank", async () => {
+    pdfjs.pages = [[" "], [""], ["Mitochondria make ATP through respiration in cells"]];
+    expect((await readPdf(new File(["%PDF"], "scan.pdf"))).ocr).toEqual([1, 2]);
+    pdfjs.pages = [["The cell membrane controls what enters"], [""], ["Mitochondria make ATP through respiration"]];
+    expect((await readPdf(new File(["%PDF"], "normal.pdf"))).ocr).toBeUndefined();
+  });
+
+  it("a photo is one page for the AI to read", async () => {
+    const r = await readDocument(new File(["x"], "board.JPG", { type: "image/jpeg" }));
+    expect(r).toMatchObject({ pageCount: 1, pages: [{ page: 1, text: "" }], ocr: [1] });
   });
 });
 
@@ -57,6 +64,36 @@ describe("sendUpload", () => {
     expect((calls[2].body as { done: boolean }).done).toBe(true);
     expect(seen).toEqual(["reading", "indexing", "ready"]);
     expect(done.status).toBe("ready");
+  });
+
+  it("a Word, PowerPoint, Excel or text file has no file step: its pages go straight up", async () => {
+    vi.stubGlobal("fetch", vi.fn(async (req: Request) => {
+      const path = new URL(req.url).pathname;
+      calls.push({ method: req.method, path, body: await req.json() });
+      return json({ id: "d2", status: "ready" });
+    }));
+    const done = await sendUpload("d2", new File(["x"], "deck.pptx"), { pageCount: 1, pages: [{ page: 1, text: "Slide 1" }], hash: "x", textChars: 6 }, () => {});
+    expect(calls.map((c) => `${c.method} ${c.path}`)).toEqual(["POST /api/v1/documents/d2/pages"]);
+    expect(done.status).toBe("ready");
+  });
+
+  it("scanned pages go one at a time for the AI to read, after the text pages; the last one is marked done", async () => {
+    vi.stubGlobal("fetch", vi.fn(async (req: Request) => {
+      const path = new URL(req.url).pathname;
+      calls.push({ method: req.method, path, body: req.method === "POST" ? await req.json() : null });
+      return json({ id: "d3", status: path.endsWith("/file") ? "reading" : "indexing" });
+    }));
+    setPageImageForTests(async (_f, page) => ({ mime: "image/jpeg", data: `cGFnZQ${page}` }));
+    try {
+      const pages = [{ page: 1, text: "" }, { page: 2, text: "Cells." }, { page: 3, text: "" }];
+      await sendUpload("d3", new File(["%PDF"], "scan.pdf"), { pageCount: 3, pages, hash: "x", textChars: 6, ocr: [1, 3] }, () => {});
+    } finally { setPageImageForTests(null); }
+    expect(calls.map((c) => `${c.method} ${c.path}`)).toEqual([
+      "PUT /api/v1/documents/d3/file", "POST /api/v1/documents/d3/pages", "POST /api/v1/documents/d3/ocr", "POST /api/v1/documents/d3/ocr",
+    ]);
+    expect(calls[1].body).toEqual({ pages: [{ page: 2, text: "Cells." }], done: false });
+    expect(calls[2].body).toEqual({ page: 1, mime: "image/jpeg", data: "cGFnZQ1", done: false });
+    expect(calls[3].body).toMatchObject({ page: 3, done: true });
   });
 
   it("tries a batch again when the server is busy, and gives up on a real refusal", async () => {

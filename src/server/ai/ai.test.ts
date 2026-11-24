@@ -6,7 +6,7 @@ import { appSettings } from "../db/schema";
 import { localPlatform, type LocalPlatform } from "../test/platform";
 import { AI_ENV, fakeLlms } from "../test/ai-fakes";
 import { parseSpec, route, slotTarget } from "./models";
-import { generate, setLlmFactoryForTests, stream } from "./run";
+import { generate, llmFor, setLlmFactoryForTests, stream, workersAiText } from "./run";
 import { CANARY, fenceMaterial, leaked, safeLength, withGuard } from "./guard";
 import { CAP_KEY, capCeilingUsd, capUsd, costMicroUsd, costReport, price, setCapUsd, spendToday, usedThisMonth, usedToday } from "./usage";
 
@@ -35,17 +35,17 @@ describe("routes", () => {
     expect(slotTarget("premium")).toMatchObject({ provider: "claude", model: "sonnet", apiKey: "a-key" });
     vi.stubEnv("ANTHROPIC_API_KEY", "");
     expect(slotTarget("premium")).toMatchObject({ provider: "gemini", model: "flash" });          // LLM_STRONG next
-    expect(slotTarget("small")).toMatchObject({ provider: "workers-ai", model: "@cf/meta/llama-3.1-8b-instruct-fp8" });
+    expect(slotTarget("small")).toMatchObject({ provider: "workers-ai", model: "@cf/google/gemma-4-26b-a4b-it" });
   });
 
   it("per plan and job, the spend cap leaving only Workers AI, and MODEL_ROUTES_JSON overriding", () => {
     const names = (ts: { provider: string; model: string }[]) => ts.map((t) => `${t.provider}:${t.model}`);
     // the free plan: the cheap model, then the free one; never the strong model
-    expect(names(route("apprentice", "strong"))).toEqual(["gemini:flash-lite", "workers-ai:@cf/meta/llama-3.1-8b-instruct-fp8"]);
-    expect(names(route("scholar", "strong"))).toEqual(["gemini:flash", "gemini:flash-lite", "workers-ai:@cf/meta/llama-3.1-8b-instruct-fp8"]);
+    expect(names(route("apprentice", "strong"))).toEqual(["gemini:flash-lite", "workers-ai:@cf/google/gemma-4-26b-a4b-it"]);
+    expect(names(route("scholar", "strong"))).toEqual(["gemini:flash", "gemini:flash-lite", "workers-ai:@cf/google/gemma-4-26b-a4b-it"]);
     expect(names(route("archmage", "strong"))[0]).toBe("claude:sonnet");
-    expect(names(route("sage", "small"))[0]).toBe("workers-ai:@cf/meta/llama-3.1-8b-instruct-fp8");
-    expect(names(route("archmage", "strong", { capped: true }))).toEqual(["workers-ai:@cf/meta/llama-3.1-8b-instruct-fp8"]);
+    expect(names(route("sage", "small"))[0]).toBe("workers-ai:@cf/google/gemma-4-26b-a4b-it");
+    expect(names(route("archmage", "strong", { capped: true }))).toEqual(["workers-ai:@cf/google/gemma-4-26b-a4b-it"]);
     vi.stubEnv("MODEL_ROUTES_JSON", JSON.stringify({ apprentice: { strong: ["strong"] } }));
     expect(names(route("apprentice", "strong"))).toEqual(["gemini:flash"]);
   });
@@ -87,7 +87,7 @@ describe("calling a model", () => {
   });
 
   it("streams: the next model takes over before the first word, and the whole text is metered", async () => {
-    setLlmFactoryForTests(fakeLlms({ "gemini:flash-lite": new Error("timeout"), "workers-ai:@cf/meta/llama-3.1-8b-instruct-fp8": "One two three." }).factory);
+    setLlmFactoryForTests(fakeLlms({ "gemini:flash-lite": new Error("timeout"), "workers-ai:@cf/google/gemma-4-26b-a4b-it": "One two three." }).factory);
     const s = await stream(ctx(), free, "strong", [{ role: "user", content: "hi" }]);
     const got: string[] = [];
     for await (const piece of s.pieces) got.push(piece);
@@ -129,7 +129,7 @@ describe("calling a model", () => {
     await setCapUsd(db, 0.00001);
     const r = await generate(ctx(), { ...free, id: 2 }, "strong", [{ role: "user", content: "hi" }]);
     expect(r).toMatchObject({ target: { provider: "workers-ai" }, limited: true });
-    expect(f.calls.map((c) => c.target)).toEqual(["gemini:flash-lite", "workers-ai:@cf/meta/llama-3.1-8b-instruct-fp8"]);
+    expect(f.calls.map((c) => c.target)).toEqual(["gemini:flash-lite", "workers-ai:@cf/google/gemma-4-26b-a4b-it"]);
   });
 
   it("the cap is never off and never above the hard ceiling (AI_DAILY_CAP_MAX_USD, default 20)", async () => {
@@ -194,5 +194,23 @@ describe("prompt-injection guard", () => {
     expect(got.join("")).toBe("Ends with cm-can");
     expect(safeLength("abc cm-ca")).toBe(4);
     expect(leaked("abc")).toBe(false);
+  });
+});
+
+// Cloudflare retired Llama 3.1 8B and the Llama 3.2 models on 20 Nov 2026 (error 5028); the newer models answer
+// OpenAI-style. Both shapes are read, and the binding is only sent what every text model accepts.
+describe("Workers AI answers", () => {
+  it("are read from {response} or {choices}, with any thinking taken out", async () => {
+    expect(workersAiText({ response: " Hi " })).toBe("Hi");
+    expect(workersAiText({ choices: [{ message: { content: "<think>hmm</think>Mitochondria." } }] })).toBe("Mitochondria.");
+    expect(workersAiText({ choices: [{ message: { content: null } }] })).toBeNull();
+    const seen: Record<string, unknown>[] = [];
+    const ai = { run: async (_m: string, input: Record<string, unknown>) => { seen.push(input); return { choices: [{ message: { content: "ok" } }], usage: { prompt_tokens: 7, completion_tokens: 1 } }; } };
+    const t = { slot: "small" as const, provider: "workers-ai" as const, model: "@cf/google/gemma-4-26b-a4b-it" };
+    expect(await llmFor(t, { AI: ai }).generate([{ role: "user", content: "hi", images: [{ mime: "image/jpeg", data: "x" }] }], { maxOutputTokens: 5000 }))
+      .toEqual({ text: "ok", tokensIn: 7, tokensOut: 1 });
+    expect(seen[0]).toEqual({ messages: [{ role: "user", content: "hi" }], max_tokens: 2048, temperature: undefined });
+    const empty = { run: async () => ({ choices: [{ message: { content: "<think>only thinking</think>" } }] }) };
+    await expect(llmFor(t, { AI: empty }).generate([{ role: "user", content: "hi" }], {})).rejects.toThrow("Workers AI gave no answer");
   });
 });

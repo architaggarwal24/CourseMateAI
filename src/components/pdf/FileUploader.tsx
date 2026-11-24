@@ -6,6 +6,7 @@ import { Upload, FileText, CheckCircle, Loader2, AlertCircle, RefreshCw } from "
 import { toast } from "@/components/ui/Toast";
 import { Button } from "@/components/ui";
 import { useAuth } from "@/contexts/AuthContext";
+import { useFileDrop } from "@/hooks/useFileDrop";
 import { useDocument, useSessionStore } from "@/hooks/useSessions";
 import { describeDocument, isInFlight, STAGES, stageIndex, stageLabel } from "@/lib/study/documents";
 import type { DocumentStatus } from "@/lib/api";
@@ -26,7 +27,6 @@ export default function FileUploader({ sessionId }: FileUploaderProps) {
   const uploadDocument = useSessionStore((s) => s.uploadDocument);
   const [uploading, setUploading] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
-  const [isPageDragging, setIsPageDragging] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
   // Announce the outcome of a document we watched being processed (not one that was already finished on load).
@@ -45,7 +45,6 @@ export default function FileUploader({ sessionId }: FileUploaderProps) {
     if (file.size > 50 * 1024 * 1024) { toast.error("File too large. Maximum size is 50MB"); return; }
 
     setUploading(true);
-    setIsPageDragging(false);
     try {
       // The server answers as soon as the file is registered; indexing continues there and the store
       // polls its status, which this component renders.
@@ -59,43 +58,8 @@ export default function FileUploader({ sessionId }: FileUploaderProps) {
     }
   }, [sessionId, user, uploadDocument]);
 
-  // ── Global window drag-and-drop ─────────────────────────────────────────────
-  useEffect(() => {
-    if (!user) return;
-    const counter = { n: 0 };
-
-    const onEnter = (e: DragEvent) => {
-      if (!e.dataTransfer?.types.includes("Files")) return;
-      counter.n++;
-      setIsPageDragging(true);
-    };
-    const onLeave = () => {
-      counter.n--;
-      if (counter.n <= 0) { counter.n = 0; setIsPageDragging(false); }
-    };
-    const onOver = (e: DragEvent) => {
-      e.preventDefault();
-      if (e.dataTransfer) e.dataTransfer.dropEffect = "copy";
-    };
-    const onDrop = (e: DragEvent) => {
-      e.preventDefault();
-      counter.n = 0;
-      setIsPageDragging(false);
-      const file = e.dataTransfer?.files?.[0];
-      if (file) handleUpload(file);
-    };
-
-    window.addEventListener("dragenter", onEnter);
-    window.addEventListener("dragleave", onLeave);
-    window.addEventListener("dragover", onOver);
-    window.addEventListener("drop", onDrop);
-    return () => {
-      window.removeEventListener("dragenter", onEnter);
-      window.removeEventListener("dragleave", onLeave);
-      window.removeEventListener("dragover", onOver);
-      window.removeEventListener("drop", onDrop);
-    };
-  }, [user, handleUpload]);
+  // Dropped anywhere on the page, or pasted with Ctrl+V outside a text box (hooks/useFileDrop): the first file uploads.
+  const { dragging: isPageDragging } = useFileDrop((files) => { if (files[0]) void handleUpload(files[0]); }, { enabled: !!user });
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];

@@ -13,7 +13,7 @@ export type Job = (typeof JOBS)[number];
 export const SLOTS = ["small", "fast", "strong", "premium"] as const;
 export type Slot = (typeof SLOTS)[number];
 
-export const DEFAULT_WORKERS_AI_MODEL = "@cf/meta/llama-3.1-8b-instruct-fp8";
+export const DEFAULT_WORKERS_AI_MODEL = "@cf/google/gemma-4-26b-a4b-it";
 
 export const ROUTES: Record<Tier, Record<Job, Slot[]>> = {
   // The free plan: the cheap fast model while its budgets last (ai/budget.ts), then the free Workers AI one. Never

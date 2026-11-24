@@ -26,7 +26,7 @@ import { aiBudget, aiWallet, appSettings, manaLedger } from "../db/schema";
 import { HttpError } from "../http";
 import { TIERS, nowIso, type Tier } from "../account/plans";
 import { CAP_KEY, capCeilingUsd, capFrom, costMicroUsd, dayOf, price, recordAnonymousCallQuery, recordCallQueries } from "./usage";
-import { outputCeiling } from "./providers";
+import { IMAGE_TOKENS, outputCeiling } from "./providers";
 import type { Target } from "./models";
 
 type Env = Record<string, string | undefined>;
@@ -134,13 +134,16 @@ export function toolScopes(lim: Limits): Scope[] {
 }
 
 const bytes = new TextEncoder();
-/** At most this many input tokens: UTF-8 bytes (a token is never less than one byte), plus room for message framing. */
-export function worstInputTokens(messages: { content: string }[]): number {
-  return messages.reduce((n, m) => n + bytes.encode(m.content || "").length + 8, 16);
+/**
+ * At most this many input tokens: UTF-8 bytes (a token is never less than one byte), plus room for message framing,
+ * plus IMAGE_TOKENS for each picture.
+ */
+export function worstInputTokens(messages: { content: string; images?: unknown[] }[]): number {
+  return messages.reduce((n, m) => n + bytes.encode(m.content || "").length + 8 + (m.images?.length ?? 0) * IMAGE_TOKENS, 16);
 }
 
 /** The most a call to this target can cost, in micro-dollars (0 for Workers AI and other free models). */
-export function worstCostMicro(t: Pick<Target, "provider" | "model">, messages: { content: string }[], opts: { maxOutputTokens?: number }, env: Env = process.env): number {
+export function worstCostMicro(t: Pick<Target, "provider" | "model">, messages: { content: string; images?: unknown[] }[], opts: { maxOutputTokens?: number }, env: Env = process.env): number {
   const { rate } = price(t.provider, t.model, env);
   const raw = worstInputTokens(messages) * rate[0] + outputCeiling(t, opts) * rate[1];   // tokens * $/1M = micro-dollars
   return raw > 0 ? Math.ceil(raw) : 0;

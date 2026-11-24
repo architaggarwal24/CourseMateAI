@@ -19,7 +19,7 @@ import {
 import "./plan-usage.css";
 
 const LIMIT_LABEL: Record<string, string> = {
-  ai_calls_day: "AI calls today", tokens_month: "AI tokens this month", documents: "Documents", courses: "Courses",
+  ai_calls_day: "AI calls today", ocr_pages_day: "Scanned pages today", tokens_month: "AI tokens this month", documents: "Documents", courses: "Courses",
 };
 
 function sourceText(u: Usage): string {
@@ -86,6 +86,9 @@ export default function PlanUsage() {
 
   const meters: { key: string; used: number; allowed: number; note?: string }[] = [
     { key: "ai_calls_day", used: usage.used.ai_calls_day, allowed: usage.limits.ai_calls_day, note: `Resets ${untilText(usage.resets.ai_calls_day)}` },
+    ...(usage.ocr?.allowed != null
+      ? [{ key: "ocr_pages_day", used: usage.ocr.used, allowed: usage.ocr.allowed, note: `Scans and photos the AI reads. Resets ${untilText(usage.ocr.resets_at)}` }]
+      : []),
     { key: "tokens_month", used: usage.used.tokens_month, allowed: usage.limits.tokens_month, note: `Renews ${untilText(usage.resets.tokens_month)}` },
     { key: "documents", used: usage.used.documents, allowed: usage.limits.documents, note: `PDFs up to ${usage.limits.pdf_mb} MB` },
     { key: "courses", used: usage.used.courses, allowed: usage.limits.courses, note: undefined },

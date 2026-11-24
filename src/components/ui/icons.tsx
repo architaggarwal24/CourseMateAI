@@ -94,6 +94,8 @@ import {
   UsersIcon as HUsers,
   XCircleIcon as HXCircle,
   XMarkIcon as HXMark,
+  PaperClipIcon as HPaperClip,
+  PhotoIcon as HPhoto,
 } from "@heroicons/react/24/outline";
 import {
   Award as LAward,
@@ -260,6 +262,8 @@ export const UserCircle = hero(HUserCircle, "UserCircle");
 export const Users = hero(HUsers, "Users");
 export const WifiOff = hero(HSignalSlash, "WifiOff");
 export const X = hero(HXMark, "X");
+export const Paperclip = hero(HPaperClip, "Paperclip");
+export const ImageIcon = hero(HPhoto, "ImageIcon");
 export const XCircle = hero(HXCircle, "XCircle");
 export const Zap = hero(HBolt, "Zap");
 export const Award = lucide(LAward, "Award");

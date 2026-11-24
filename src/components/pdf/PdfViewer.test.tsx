@@ -2,9 +2,13 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { frame, json, sseBody, urlOf } from "@/test/sse";
 
+const sessionUploads = vi.hoisted(() => ({ upload: vi.fn() }));
 vi.mock("@/contexts/AuthContext", () => ({ useAuth: () => ({ user: { user_id: 1 } }) }));
 vi.mock("@/hooks/useHUD", () => ({ useHUDStore: (sel: (s: unknown) => unknown) => sel({ refreshIfStale: vi.fn(), refresh: vi.fn() }) }));
-vi.mock("@/hooks/useSessions", () => ({ useDocument: () => ({ document: { id: "d1", filename: "bio.pdf", status: "ready" }, loaded: true }) }));
+vi.mock("@/hooks/useSessions", () => ({
+  useDocument: () => ({ document: { id: "d1", filename: "bio.pdf", status: "ready" }, loaded: true }),
+  useSessionStore: (sel: (s: unknown) => unknown) => sel({ uploadDocument: sessionUploads.upload }),
+}));
 vi.mock("@/components/ui/Toast", async (orig) => ({ ...(await orig<typeof import("@/components/ui/Toast")>()),
   toast: { success: vi.fn(), error: vi.fn(), info: vi.fn(), apiError: vi.fn() } }));
 const pdfjs = vi.hoisted(() => ({ opened: [] as unknown[] }));
@@ -19,7 +23,7 @@ vi.mock("@/lib/study/pdf", async (orig) => ({
 }));
 
 import ChatView from "@/components/chat/ChatView";
-import { resetPdfCache } from "./PdfViewer";
+import PdfViewer, { resetPdfCache } from "./PdfViewer";
 
 const CITES = [
   { n: 1, doc_id: "d1", doc_name: "bio.pdf", page: 4, label: "bio.pdf · p.4", snippet: "Mitochondria produce ATP…", text: "Mitochondria produce ATP through respiration." },
@@ -94,5 +98,15 @@ describe("page-linked citations", () => {
     await ask("ATP?");
     fireEvent.click(screen.getByRole("button", { name: "Source 1" }));
     expect(await screen.findByText(/comes with the Sage plan/)).toBeTruthy();
+  });
+
+  it("a Word, PowerPoint or Excel file shows the cited passage as text, named by slide or part, with nothing downloaded", async () => {
+    const log = server(() => json(500, {}));
+    render(<PdfViewer onClose={() => {}} citation={{ n: 3, doc_id: "d7", doc_name: "Cells.pptx", page: 3, label: "Cells.pptx · slide 3", snippet: "Ribosomes", text: "Ribosomes make proteins." } as never} />);
+    expect(await screen.findByText("This file is kept as its text, so the cited passage is shown here.")).toBeTruthy();
+    expect(screen.getByText("Source [3] · cited on slide 3")).toBeTruthy();
+    expect(screen.getByText("Ribosomes make proteins.")).toBeTruthy();
+    expect(log).toEqual([]);
+    expect(pdfjs.opened).toEqual([]);
   });
 });

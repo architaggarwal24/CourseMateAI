@@ -213,7 +213,8 @@ describe("upgrading", () => {
       if (path === "/plans") return json(200, { ...PLANS, payments_enabled: true });
       if (path === "/billing") return json(200, { enabled: true, provider: "stub", key_id: "stub", subscription: null });
       if (path === "/account/usage") {
-        return json(200, usage({ tier: "scholar", tier_name: "Scholar", ai_budget: { limited: true, share: 1, resets_at: "2026-11-05T00:00:00+00:00" }, mana: { ...mana, balance } }));
+        return json(200, usage({ tier: "scholar", tier_name: "Scholar", ai_budget: { limited: true, share: 1, resets_at: "2026-11-05T00:00:00+00:00" }, mana: { ...mana, balance },
+          ocr: { used: 4, allowed: 50, resets_at: "2026-11-05T00:00:00+00:00" } }));
       }
       if (path === "/documents") return json(200, { documents: [] });
       if (path.startsWith("/billing/mana/")) {
@@ -226,6 +227,7 @@ describe("upgrading", () => {
     }));
     render(<PlanUsage />);
     const meter = await screen.findByRole("progressbar", { name: "Today's AI budget" });
+    expect(screen.getByRole("progressbar", { name: "Scanned pages today" }).getAttribute("aria-valuetext")).toBe("4 of 50");
     expect(meter.getAttribute("aria-valuetext")).toBe("100% used");
     expect(meter.closest("li")!.textContent).toContain("a lighter model answers");
     const box = screen.getByRole("region", { name: /Mana/ });

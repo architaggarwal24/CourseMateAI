@@ -15,6 +15,8 @@ import { logActivity } from "../study/core";
 import { onChatAnswered } from "../game/hooks";
 import { buildChatMessages, isConversation, isQuizRequest, isTutorMode, subjectLine, type Coverage, type TutorMode } from "./prompts";
 import { standaloneQuestion, type Rewrite, type Turn } from "./rewrite";
+import { pageLabel } from "@/lib/study/formats";
+import { attachmentNames, hasAttachments, readAttachments, type Attached } from "./attachments";
 
 export const MAX_QUESTION_CHARS = 2000;
 const SNIPPET_CHARS = 220;
@@ -67,7 +69,7 @@ export function toRetrieval(found: Passage[]): Retrieval {
   }
   const citations = kept.map((p, i) => {
     const text = p.text.split(/\s+/).join(" ");
-    const label = p.documentName && p.page ? `${p.documentName} · p.${p.page}` : p.documentName || (p.page ? `p.${p.page}` : "");
+    const label = pageLabel(p.documentName, p.page);
     return {
       n: i + 1, doc_id: p.documentId, doc_name: p.documentName || null, page: p.page || null, label,
       snippet: text.slice(0, SNIPPET_CHARS) + (text.length > SNIPPET_CHARS ? "…" : ""), text: text.slice(0, QUOTE_CHARS),
@@ -107,6 +109,8 @@ export interface ChatPlan {
   coverage: Coverage;
   /** "Biology 101 (lecture.pdf, lab.pdf)": what the student is studying. */
   subject: string;
+  /** Files attached to this question only (chat/attachments.ts). */
+  attached: Attached;
 }
 
 const EMPTY: Retrieval = { passages: [], citations: [], sources: [], best: null };
@@ -126,14 +130,16 @@ export async function planChat(ctx: RequestContext, user: CurrentUser, body: Rec
   const history = sanitizeHistory(body.history);
   const sessionId = typeof body.session_id === "string" ? body.session_id : "";
   const mode: TutorMode = isTutorMode(body.mode) ? body.mode : "explain";
+  const attached = readAttachments(body.attachments);                 // checked before anything is logged
+  const withFiles = hasAttachments(attached);
   const study = await studyDocs(ctx, user, sessionId);
   const subject = subjectLine(study.name, study.docs.map((d) => d.name));
   // logged first, so the history reads question -> answer and keeps the question even if the answer fails
-  await logActivity(ctx, user.id, study.id, "chat", "query", { question, mode });
+  await logActivity(ctx, user.id, study.id, "chat", "query", { question, mode, ...(withFiles ? { attached: attachmentNames(attached) } : {}) });
   const caller = await callerFor(ctx, user);
-  const base = { question, history, caller, sessionId: study.id, tz: user.row.timezone ?? null, mode, subject };
+  const base = { question, history, caller, sessionId: study.id, tz: user.row.timezone ?? null, mode, subject, attached };
   // "hi", "thanks", "what can you do": a conversation, not a search (in Quiz me, a short reply may be an answer)
-  if (isConversation(question) && !(mode === "quiz" && history.length)) {
+  if (isConversation(question) && !(mode === "quiz" && history.length) && !withFiles) {
     return { ...base, found: EMPTY, quality: { blocked: false, needs_clarification: false, reason: "conversation" }, rewrite: { query: question, method: "skipped" }, coverage: "conversation" };
   }
   const deps = searchDeps(ctx.env);
@@ -147,7 +153,10 @@ export async function planChat(ctx: RequestContext, user: CurrentUser, body: Rec
   const quality = assessRelevance(found);
   // Not covered: the tutor still answers (honestly) instead of a canned line. In Quiz me, the student's answer to the
   // tutor's question is judged against the passages found for it, whatever their score.
-  const coverage: Coverage = quality.blocked ? (mode === "quiz" && found.passages.length ? "weak" : "none") : quality.needs_clarification ? "weak" : "strong";
+  // With files attached, a question the course doesn't cover is about them: answered from them first.
+  const coverage: Coverage = quality.blocked
+    ? (withFiles ? "attached" : mode === "quiz" && found.passages.length ? "weak" : "none")
+    : quality.needs_clarification ? (withFiles ? "attached" : "weak") : "strong";
   return { ...base, found, quality: { ...quality, blocked: false }, rewrite, coverage };
 }
 
@@ -158,7 +167,7 @@ export const answerTemperature = (plan: ChatPlan) => (plan.mode === "quiz" ? 0.4
 
 /** The messages for the answer. */
 export function answerMessages(plan: ChatPlan) {
-  return buildChatMessages(numberedContext(plan.found), plan.question, plan.history, { mode: plan.mode, coverage: plan.coverage, subject: plan.subject });
+  return buildChatMessages(numberedContext(plan.found), plan.question, plan.history, { mode: plan.mode, coverage: plan.coverage, subject: plan.subject, attached: plan.attached });
 }
 
 /** The answer joins the history (blocked questions have no answer to log). */

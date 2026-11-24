@@ -4,13 +4,14 @@
 import { fenceMaterial } from "../ai/guard";
 import type { ChatMessage } from "../ai/run";
 import type { Turn } from "./rewrite";
+import type { Attached } from "./attachments";
 
 export const TUTOR_MODES = ["explain", "socratic", "quiz", "simplify"] as const;
 export type TutorMode = (typeof TUTOR_MODES)[number];
 export const isTutorMode = (m: unknown): m is TutorMode => typeof m === "string" && (TUTOR_MODES as readonly string[]).includes(m);
 
 /** How well the course material covers the question (decides what the tutor is told to do). */
-export type Coverage = "strong" | "weak" | "none" | "conversation";
+export type Coverage = "strong" | "weak" | "none" | "conversation" | "attached";
 
 export const TUTOR_PROMPT = `
 You are the student's personal tutor in CourseMateAI: a brilliant, warm teacher who has read their course material
@@ -67,6 +68,7 @@ const COVERAGE_RULES: Record<Coverage, string> = {
   weak: "The passages are only loosely related to the question. Use what is relevant; if the question is unclear, ask the student what they mean (and suggest what the material does cover).",
   none: "The student's material does not seem to cover this question (the passages below are the closest it has, and may be unrelated). Say so plainly first. Then, if it is a reasonable study question, give a short general explanation clearly marked as not from their PDFs, and suggest a related topic their material does cover. Don't cite passages that don't support what you say.",
   conversation: "This message is conversation, not a question about the material (a greeting, thanks, how you work, what to study). Reply naturally and briefly as their tutor, and offer a concrete way to start: a topic from their material, a quick quiz, or a summary.",
+  attached: "The student attached files (pictures or documents) to this question, and their course passages don't cover it well. Answer from what they attached first; cite course passages [n] only where they really support what you say. Name the attached file you are using (\"In your photo, ...\"). If a picture is unreadable or unrelated, say so kindly and ask for a clearer one.",
 };
 
 /** The subject in a line ("Biology 101: lecture-3.pdf, lab.pdf"). */
@@ -77,19 +79,25 @@ export function subjectLine(name: string, docs: string[]): string {
 
 /** System prompt (tutor + mode + coverage), the recent conversation, then the message with the passages. */
 export function buildChatMessages(context: string, question: string, history: Turn[],
-  opts: { mode?: TutorMode; coverage?: Coverage; subject?: string } = {}): ChatMessage[] {
+  opts: { mode?: TutorMode; coverage?: Coverage; subject?: string; attached?: Attached } = {}): ChatMessage[] {
   const mode = opts.mode ?? "explain";
   const coverage = opts.coverage ?? "strong";
   const recent = history.slice(-12).filter((t) => t.content);
   const system = [TUTOR_PROMPT, MODE_RULES[mode], COVERAGE_RULES[coverage], opts.subject ? `The student is studying: ${opts.subject}.` : ""]
     .filter(Boolean).join("\n\n");
+  const attached = opts.attached ?? { images: [], texts: [] };
+  // Files attached to this question only: documents fenced as material like the passages; pictures go with the message
+  const files = [
+    ...attached.texts.map((t) => `Attached file "${t.name}":\n${fenceMaterial(t.text)}`),
+    ...(attached.images.length ? [`The student attached ${attached.images.length === 1 ? "a picture" : `${attached.images.length} pictures`}: ${attached.images.map((i) => `"${i.name}"`).join(", ")} (shown with this message).`] : []),
+  ].join("\n\n");
   const user = coverage === "conversation"
     ? question
-    : `Passages from the student's material:\n${context ? fenceMaterial(context) : "(none found)"}\n\nStudent: ${question}`;
+    : `Passages from the student's material:\n${context ? fenceMaterial(context) : "(none found)"}\n\n${files ? `${files}\n\n` : ""}Student: ${question}`;
   return [
     { role: "system", content: system },
     ...recent.map((t) => ({ role: t.role, content: t.content }) as ChatMessage),
-    { role: "user", content: user },
+    { role: "user", content: user, ...(attached.images.length ? { images: attached.images.map((i) => ({ mime: i.mime, data: i.data })) } : {}) },
   ];
 }
 

@@ -14,7 +14,7 @@ import {
   uploadPDF,
 } from "@/lib/api";
 vi.mock("@/lib/study/upload", () => ({
-  readPdf: async () => ({ pageCount: 2, pages: [{ page: 1, text: "One" }, { page: 2, text: "Two" }], hash: "f".repeat(64), textChars: 6 }),
+  readDocument: async () => ({ pageCount: 2, pages: [{ page: 1, text: "One" }, { page: 2, text: "Two" }], hash: "f".repeat(64), textChars: 6 }),
   sendUpload: async () => ({}),
 }));
 

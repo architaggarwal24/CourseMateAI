@@ -1,0 +1,19 @@
+/* The drop overlay (components/shell/DropOverlay.tsx): files dragged over a screen that takes them. */
+.drop-overlay {
+  position: fixed; inset: 0; z-index: 2147483647;
+  display: grid; place-items: center;
+  background: var(--scrim);
+  pointer-events: none;
+  animation: ui-fade var(--motion-base) var(--motion-ease);
+}
+.drop-overlay__card {
+  display: grid; justify-items: center; gap: var(--space-2);
+  padding: var(--space-7) var(--space-8);
+  border-radius: var(--radius-xl);
+  background: var(--glass-bg-strong);
+  color: var(--color-text);
+  box-shadow: var(--shadow-lg);
+  animation: ui-pop 420ms var(--ease-spring);
+}
+.drop-overlay__icon { color: var(--color-accent-text); animation: float 2.4s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) { .drop-overlay__icon { animation: none; } }

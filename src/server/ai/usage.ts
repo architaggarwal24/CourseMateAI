@@ -110,6 +110,12 @@ export async function usedToday(db: Db, userId: number, now = new Date()) {
   return { ai_calls: row?.aiCalls ?? 0 };
 }
 
+/** Today's row for Plan & usage: AI calls and scanned pages read (study/ocr.ts), in one read. */
+export async function usageToday(db: Db, userId: number, now = new Date()) {
+  const row = await db.select().from(usageDaily).where(and(eq(usageDaily.userId, userId), eq(usageDaily.day, dayOf(now)))).get();
+  return { ai_calls: row?.aiCalls ?? 0, ocr_pages: row?.ocrPages ?? 0 };
+}
+
 export async function usedThisMonth(db: Db, userId: number, now = new Date()) {
   const row = await db.select({
     calls: sql<number>`coalesce(sum(${usageDaily.aiCalls}), 0)`,

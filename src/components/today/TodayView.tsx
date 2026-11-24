@@ -9,6 +9,10 @@ import { useReview } from "@/hooks/useReview";
 import { useHUDStore } from "@/hooks/useHUD";
 import { useCourses } from "@/hooks/useCourses";
 import { useDocumentUpload } from "@/hooks/useDocumentUpload";
+import { useFileDrop } from "@/hooks/useFileDrop";
+import DropOverlay from "@/components/shell/DropOverlay";
+import { DOCUMENT_ACCEPT, DOCUMENT_KINDS } from "@/lib/study/formats";
+import { toast } from "@/components/ui/Toast";
 import { loadMetadata } from "@/lib/study/sessions";
 import { greeting, lastSession, reviewProgress, todaySummary, type LastSession } from "@/lib/study/today";
 import { ROUTES, type StudyTab } from "@/lib/routes";
@@ -59,6 +63,14 @@ export default function TodayView() {
   useEffect(() => { if (user) loadCourses().catch(() => {}); }, [user, loadCourses]);
   const latest = courses[0];
   const upload = useDocumentUpload(undefined, latest?.id);
+  // A PDF dropped anywhere on Today, or pasted (Ctrl+V outside a text box), goes into the latest course, like the button
+  const addFiles = async (files: File[]) => {
+    if (!latest) { toast.info("Files go into a course. Create one first, then drop them in."); return; }
+    const docs = await upload.uploadMany(files);
+    if (docs.length === 1) router.push(ROUTES.studyTab("chat", undefined, docs[0].id));
+    else if (docs.length > 1) router.push(ROUTES.studyTab("overview", undefined, latest.id));
+  };
+  const { dragging } = useFileDrop((files) => void addFiles(files), { enabled: !!user && coursesLoaded });
   const [session, setSession] = useState<LastSession | null>(null);
 
   useEffect(() => { if (!loading && !user) router.replace(ROUTES.login); }, [loading, user, router]);
@@ -78,6 +90,7 @@ export default function TodayView() {
 
   return (
     <div className="today">
+      <DropOverlay show={dragging && !!latest} title={latest ? `Drop files into ${latest.name}` : "Drop files"} hint={`${DOCUMENT_KINDS}. Release to upload`} />
       <header className="today__hello">
         <h1>
           {/* Study's calm motif (two worlds, Stage 6): a small open book */}
@@ -173,7 +186,7 @@ export default function TodayView() {
             <>
               <p className="today-tile__text">Drop in lecture notes, a textbook chapter or past papers for <strong>{latest.name}</strong>. It is ready to study in about a minute.</p>
               <button type="button" className="ui-btn ui-btn--secondary today-tile__cta" onClick={upload.pick} disabled={upload.uploading} aria-busy={upload.uploading || undefined}>
-                <Upload size={16} />{upload.uploading ? "Uploading…" : `Add PDFs to ${latest.name}`}
+                <Upload size={16} />{upload.uploading ? "Uploading…" : `Add files to ${latest.name}`}
               </button>
             </>
           ) : (
@@ -182,12 +195,9 @@ export default function TodayView() {
               <Link href={ROUTES.study} className="ui-btn ui-btn--secondary today-tile__cta"><Plus size={16} />Create a course</Link>
             </>
           )}
-          <input ref={upload.inputRef} type="file" accept=".pdf" className="hidden" aria-label="Choose PDFs" multiple
-            onChange={async (e) => {
-              const docs = await upload.uploadMany(Array.from(e.currentTarget.files ?? []));
-              if (docs.length === 1) router.push(ROUTES.studyTab("chat", undefined, docs[0].id));
-              else if (docs.length > 1 && latest) router.push(ROUTES.studyTab("overview", undefined, latest.id));
-            }} />
+          <input ref={upload.inputRef} type="file" accept={DOCUMENT_ACCEPT} className="hidden" aria-label="Choose files" multiple
+            onChange={(e) => void addFiles(Array.from(e.currentTarget.files ?? []))} />
+          {latest && <p className="today-tile__hint">PDF, Word, PowerPoint, Excel, text or photos. Or drop files anywhere on this page, or paste one with Ctrl+V.</p>}
         </Tile>
       </div>
       {/* news from the Hero world, after the day's own work (on a phone it used to push Review off the first screen) */}

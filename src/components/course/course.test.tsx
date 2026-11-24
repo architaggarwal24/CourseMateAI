@@ -4,11 +4,14 @@ import { bodyOf, json, urlOf } from "@/test/sse";
 
 const toasts = vi.hoisted(() => ({ success: vi.fn(), error: vi.fn(), info: vi.fn(), apiError: vi.fn(), dismiss: vi.fn() }));
 vi.mock("@/components/ui/Toast", async (orig) => ({ ...(await orig<typeof import("@/components/ui/Toast")>()), toast: toasts }));
+vi.mock("@/contexts/AuthContext", () => ({ useAuth: () => ({ user: { user_id: 1 } }) }));
 
 import CourseEditor from "./CourseEditor";
 import CourseOverview from "./CourseOverview";
 import LibraryMenu from "./LibraryMenu";
 import { useCourses } from "@/hooks/useCourses";
+import { useSessionStore } from "@/hooks/useSessions";
+import { resetFileDropForTests } from "@/hooks/useFileDrop";
 import type { DocumentInfo } from "@/lib/api";
 import type { Course } from "@/lib/study/courses";
 
@@ -48,7 +51,7 @@ function server() {
 }
 
 beforeEach(() => { useCourses.getState().reset(); Object.values(toasts).forEach((f) => f.mockClear()); });
-afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
+afterEach(() => { cleanup(); vi.unstubAllGlobals(); resetFileDropForTests(); });
 
 describe("course editor", () => {
   it("creates a course from the documents picked, in the order set", async () => {
@@ -69,6 +72,33 @@ describe("course editor", () => {
     await waitFor(() => expect(saved).toHaveBeenCalled());
     expect(log.posts).toEqual([{ name: "Life sciences", document_ids: ["d2", "d1"], description: null }]);
     expect(useCourses.getState().courses.map((c) => c.id)).toEqual(["new"]);
+  });
+
+  it("adds PDFs right in the dialog: dropped anywhere or pasted, uploaded and ticked at once", async () => {
+    const log = server();
+    const uploads: { name: string; course?: string }[] = [];
+    useSessionStore.setState({ uploadDocument: vi.fn(async (_id: string | undefined, file: File, courseId?: string) => {
+      uploads.push({ name: file.name, course: courseId });
+      return doc(`u${uploads.length}`, file.name, { status: "queued", chunks: null });
+    }) } as never);
+    render(<CourseEditor open onClose={() => {}} documents={DOCS} onSaved={() => {}} />);
+    const dialog = screen.getByRole("dialog", { name: "New course" });
+    expect(within(dialog).getByRole("button", { name: "Add files" })).toBeTruthy();
+    const files = [new File(["%PDF"], "maths.pdf", { type: "application/pdf" }), new File(["%PDF"], "history.pdf", { type: "application/pdf" })];
+    const drop = new Event("drop", { bubbles: true, cancelable: true });
+    Object.defineProperty(drop, "dataTransfer", { value: { types: ["Files"], files } });
+    window.dispatchEvent(drop);
+    await waitFor(() => expect(within(dialog).getByText("(2 of 5)")).toBeTruthy());
+    expect(uploads).toEqual([{ name: "maths.pdf", course: undefined }, { name: "history.pdf", course: undefined }]);   // no course yet
+    expect((within(dialog).getByRole("checkbox", { name: /maths\.pdf/ }) as HTMLInputElement).checked).toBe(true);
+    const pasted = new Event("paste", { bubbles: true, cancelable: true });
+    Object.defineProperty(pasted, "clipboardData", { value: { files: [new File(["%PDF"], "geo.pdf", { type: "application/pdf" })] } });
+    document.body.dispatchEvent(pasted);
+    await waitFor(() => expect(within(dialog).getByText("(3 of 6)")).toBeTruthy());
+    fireEvent.change(within(dialog).getByLabelText("Name"), { target: { value: "Humanities" } });
+    fireEvent.click(within(dialog).getByRole("button", { name: "Create course" }));
+    await waitFor(() => expect(log.posts).toHaveLength(1));
+    expect(log.posts[0].document_ids).toEqual(["u1", "u2", "u3"]);
   });
 
   it("edits a course and deletes it only after asking (its documents stay)", async () => {

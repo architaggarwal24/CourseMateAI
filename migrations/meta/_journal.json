@@ -169,6 +169,13 @@
       "when": 1794755717540,
       "tag": "0023_mana",
       "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "6",
+      "when": 1795469206083,
+      "tag": "0024_ocr_pages",
+      "breakpoints": true
     }
   ]
 }

@@ -171,7 +171,7 @@ describe("calling a model", () => {
     await saveBudgets(db, budgets({ user: { apprentice: 0.001 } }));         // under one worst case
     const r = await generate(ctx(), free, "strong", ask);
     expect(r).toMatchObject({ target: { provider: "workers-ai" }, limited: true });
-    expect(f.calls.map((c) => c.target)).toEqual(["workers-ai:@cf/meta/llama-3.1-8b-instruct-fp8"]);
+    expect(f.calls.map((c) => c.target)).toEqual(["workers-ai:@cf/google/gemma-4-26b-a4b-it"]);
     // another free user still has their own budget, and the owner has none
     await saveBudgets(db, budgets({}));
     expect((await generate(ctx(), { ...free, id: 2 }, "strong", ask)).target.provider).toBe("gemini");

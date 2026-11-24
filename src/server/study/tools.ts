@@ -21,6 +21,7 @@ import { toRetrieval } from "../chat";
 import type { Found } from "./core";
 import { cleanText, newId, questionKey, sameAnswer, stamp, validateTopic } from "./text";
 import { onFlashcards, onNotes, onQuizFinished, onQuizStarted } from "../game/hooks";
+import { pageLabel } from "@/lib/study/formats";
 
 const player = (u: CurrentUser) => ({ id: u.id, tz: u.row.timezone ?? null });
 
@@ -61,7 +62,7 @@ function firstReal(results: PromiseSettledResult<unknown>[], message: string): H
 }
 
 // ── quiz ─────────────────────────────────────────────────────────────────────────────────────────────────────
-const passageLabel = (p: Found["passages"][number]) => (p.documentName && p.page ? `${p.documentName} · p.${p.page}` : p.documentName || (p.page ? `p.${p.page}` : ""));
+const passageLabel = (p: Found["passages"][number]) => pageLabel(p.documentName, p.page);
 /** The passages numbered, so a question can say which one its answer comes from. */
 export function numberedPassages(found: Pick<Found, "passages">, maxChars = 12_000): string {
   let out = "";

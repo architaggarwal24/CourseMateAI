@@ -271,25 +271,6 @@
 }
 .notes-outline__item:hover { background: var(--glass-tint); border-left-color: var(--color-accent-text); color: var(--color-text); }
 
-/* ── Upload / drag overlay ───────────────────────────────────────────────────────────────────────────────────── */
-.drop-overlay {
-  position: fixed; inset: 0; z-index: 2147483647;
-  display: grid; place-items: center;
-  background: var(--scrim);
-pointer-events: none;
-  animation: ui-fade var(--motion-base) var(--motion-ease);
-}
-.drop-overlay__card {
-  display: grid; justify-items: center; gap: var(--space-2);
-  padding: var(--space-7) var(--space-8);
-  border-radius: var(--radius-xl);
-  background: var(--glass-bg-strong);
-  color: var(--color-text);
-  box-shadow: var(--shadow-lg);
-  animation: ui-pop 420ms var(--ease-spring);
-}
-.drop-overlay__icon { color: var(--color-accent-text); animation: float 2.4s ease-in-out infinite; }
-
 /* ── History drawer ──────────────────────────────────────────────────────────────────────────────────────────── */
 .history-drawer {
   display: flex; flex-direction: column; height: 100%; width: 18rem; flex: none;
@@ -300,10 +281,6 @@ pointer-events: none;
 @keyframes history-in { from { opacity: 0; transform: translateX(-16px); } to { opacity: 1; transform: none; } }
 .history-item { transition: background-color var(--motion-base) var(--motion-ease); }
 .history-item:hover { background: var(--glass-tint); }
-
-@media (prefers-reduced-motion: reduce) {
-  .drop-overlay__icon { animation: none; }
-}
 
 /* phones: tighter gutters, no keyboard hints */
 @media (max-width: 767px) {
@@ -447,3 +424,17 @@ pointer-events: none;
 .desk-object .dk-dot { fill: none; stroke: var(--color-text-secondary); stroke-width: 1.4; }
 .desk-object .dk-dot--on { fill: var(--color-text-secondary); }
 .desk-object .dk-hand { fill: none; stroke: var(--color-text-secondary); stroke-width: 1.8; stroke-linecap: round; }
+
+/* Files stage 3: attachment cards above the chat box (like Claude), and what went with a sent question */
+.chat-attach { list-style: none; margin: 0 auto var(--space-2); padding: 0; display: flex; flex-wrap: wrap; gap: var(--space-2); }
+.chat-attach__card {
+  display: inline-flex; align-items: center; gap: var(--space-2); max-width: 15rem; min-height: 2.75rem;
+  padding: 0.25rem 0.25rem 0.25rem 0.375rem; border: 1px solid var(--color-border); border-radius: var(--radius-lg);
+  background: var(--color-elevated); font-size: 0.8rem; color: var(--color-text);
+}
+.chat-attach__card--reading { padding: 0.25rem 0.75rem; color: var(--color-text-secondary); }
+.chat-attach__thumb { width: 2.25rem; height: 2.25rem; object-fit: cover; border-radius: var(--radius-md); }
+.chat-attach__icon { display: grid; place-items: center; width: 2.25rem; height: 2.25rem; border-radius: var(--radius-md); background: var(--color-surface-sunken); color: var(--color-accent-text); }
+.chat-attach__name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.chat-sent-attach { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; justify-content: flex-end; gap: var(--space-1); }
+.chat-sent-attach li { display: inline-flex; align-items: center; gap: 0.3rem; padding: 0.15rem 0.5rem; border: 1px solid var(--color-border); border-radius: var(--radius-full); font-size: 0.72rem; color: var(--color-text-secondary); }

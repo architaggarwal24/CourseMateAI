@@ -29,15 +29,16 @@ describe("useDocumentUpload", () => {
     expect(result.current.uploading).toBe(false);
   });
 
-  it("skips files that aren't PDFs and stops at the first one the server refuses (a plan limit)", async () => {
+  it("skips files a course can't hold (with a way forward) and stops at the first one the server refuses (a plan limit)", async () => {
     store.uploadDocument.mockResolvedValueOnce(doc("a")).mockRejectedValueOnce(new Error("limit"));
     const { result } = renderHook(() => useDocumentUpload(undefined, "course-1"));
-    const txt = new File(["x"], "notes.txt", { type: "text/plain" });
+    const old = new File(["x"], "essay.doc", { type: "application/msword" });
+    const notes = new File(["x"], "notes.txt", { type: "text/plain" });
     let docs: unknown[] = [];
-    await act(async () => { docs = await result.current.uploadMany([pdf("a.pdf"), txt, pdf("b.pdf"), pdf("c.pdf")]); });
+    await act(async () => { docs = await result.current.uploadMany([pdf("a.pdf"), old, notes, pdf("c.pdf")]); });
     expect(docs).toHaveLength(1);
-    expect(store.uploadDocument).toHaveBeenCalledTimes(2);                      // c.pdf is never sent
-    expect(toasts.error).toHaveBeenCalledWith("1 of those files isn't a PDF, skipped");
+    expect(store.uploadDocument.mock.calls.map((c) => c[1].name)).toEqual(["a.pdf", "notes.txt"]);   // text is fine; c.pdf never sent
+    expect(toasts.error).toHaveBeenCalledWith("essay.doc is an old Word file. Save it as .docx (or PDF) first. Skipped.");
     expect(toasts.apiError).toHaveBeenCalledTimes(1);
   });
 

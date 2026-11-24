@@ -246,6 +246,8 @@ export const usageDaily = sqliteTable("usage_daily", {
   aiCalls: integer("ai_calls").notNull().default(0),
   tokensIn: integer("tokens_in").notNull().default(0),
   tokensOut: integer("tokens_out").notNull().default(0),
+  /** Scanned pages and photos read by the AI today (study/ocr.ts), against the plan's daily cap. */
+  ocrPages: integer("ocr_pages").notNull().default(0),
 }, (t) => [primaryKey({ columns: [t.userId, t.day] })]);
 
 export const aiUsage = sqliteTable("ai_usage", {

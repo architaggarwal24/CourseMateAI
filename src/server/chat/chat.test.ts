@@ -44,7 +44,7 @@ beforeEach(async () => {
     "gemini:flash-lite": "Mitochondria make ATP [1].",
     "gemini:flash": "Mitochondria make ATP [1].",
     "claude:sonnet": "Mitochondria make ATP [1].",
-    "workers-ai:@cf/meta/llama-3.1-8b-instruct-fp8": "How do mitochondria make ATP?",
+    "workers-ai:@cf/google/gemma-4-26b-a4b-it": "How do mitochondria make ATP?",
   });
   setLlmFactoryForTests(llm.factory);
 }, 60_000);
@@ -78,7 +78,42 @@ describe("POST /chat", () => {
     setLlmFactoryForTests(llm.factory);
     await saveBudgets(getDb(p.env.DB), { ...DEFAULT_BUDGETS, plan: { ...DEFAULT_BUDGETS.plan, apprentice: 0 } });
     expect(await ask()).toMatchObject({ budget: "limited", can_top_up: false });
-    expect(llm.calls.at(-1)!.target).toBe("workers-ai:@cf/meta/llama-3.1-8b-instruct-fp8");
+    expect(llm.calls.at(-1)!.target).toBe("workers-ai:@cf/google/gemma-4-26b-a4b-it");
+  });
+
+  it("files attached to a question: documents fenced in the prompt, pictures to a model that can see, nothing stored", async () => {
+    const b = await person(mail, "free@example.com", "free");
+    const id = await uploadPdf(b, "Bio.pdf", BIO);
+    const attachments = [
+      { kind: "text", name: "homework.docx", text: "Q3: Explain why plant cells don't burst in water." },
+      { kind: "image", name: "diagram.jpg", mime: "image/jpeg", data: "aGVsbG8=" },
+    ];
+    const r = await json(await chat.POST(b.request("/api/v1/chat", { body: { question: "Help me with Q3 from my homework", session_id: id, attachments } })));
+    expect(r).toMatchObject({ coverage: "attached", blocked: false });
+    const call = llm.calls.at(-1)!;
+    expect(call.target).toBe("gemini:flash-lite");                                  // sees pictures
+    const last = call.messages.at(-1)!;
+    expect(last.content).toContain('Attached file "homework.docx":\n⟦MATERIAL⟧\nQ3: Explain why plant cells');
+    expect(last.images).toEqual([{ mime: "image/jpeg", data: "aGVsbG8=" }]);
+    const logged = await p.env.DB.prepare("SELECT content FROM activity_log WHERE action_type = 'query' ORDER BY id DESC").first<{ content: string }>();
+    expect(logged!.content).toContain("homework.docx, diagram.jpg");
+    expect(logged!.content).not.toContain("aGVsbG8=");                              // the picture itself isn't kept
+    const bad = await chat.POST(b.request("/api/v1/chat", { body: { question: "x?", session_id: id, attachments: [{ kind: "image", name: "a.gif", mime: "image/gif", data: "aGk=" }] } }));
+    expect((await json(bad)).error).toMatchObject({ code: "invalid_input", details: { field: "attachments" } });
+  });
+
+  it("a picture question past the budget says it needs the full model, instead of a text-only model guessing", async () => {
+    const b = await person(mail, "free@example.com", "free");
+    const id = await uploadPdf(b, "Bio.pdf", BIO);
+    await saveBudgets(getDb(p.env.DB), { ...DEFAULT_BUDGETS, plan: { ...DEFAULT_BUDGETS.plan, apprentice: 0 } });
+    const before = llm.calls.length;
+    const res = await chat.POST(b.request("/api/v1/chat", { body: { question: "What is in this picture?", session_id: id,
+      attachments: [{ kind: "image", name: "cell.jpg", mime: "image/jpeg", data: "aGVsbG8=" }] } }));
+    expect(res.status).toBe(429);
+    expect((await json(res)).error).toMatchObject({ code: "budget_images", action: "plans", details: { can_top_up: false } });
+    expect(llm.calls.slice(before).map((c) => c.target)).not.toContain("workers-ai:@cf/google/gemma-4-26b-a4b-it");
+    const u = await json(await usage.GET(b.request("/api/v1/account/usage")));
+    expect(u.used.ai_calls_day).toBe(0);                                             // nothing answered: the call is given back
   });
 
   it("a question the material doesn't cover still gets an honest answer (told it isn't covered; nothing cited)", async () => {
@@ -130,7 +165,7 @@ describe("POST /chat", () => {
     const history = [{ role: "user", content: "How do mitochondria make ATP?" }, { role: "assistant", content: "Through cellular respiration [1]." }];
     const r = await json(await chat.POST(b.request("/api/v1/chat", { body: { question: "quiz me", session_id: id, mode: "quiz", history } })));
     expect(r.tutor_mode).toBe("quiz");
-    expect(llm.calls.map((c) => c.target)).not.toContain("workers-ai:@cf/meta/llama-3.1-8b-instruct-fp8");   // no rewrite needed
+    expect(llm.calls.map((c) => c.target)).not.toContain("workers-ai:@cf/google/gemma-4-26b-a4b-it");   // no rewrite needed
     const last = llm.calls.at(-1)!.messages;
     expect(last[0].content).toMatch(/MODE: Quiz me/);
     expect(last.at(-1)!.content).toContain("[1] (Bio.pdf · p.2)");             // searched for the last topic
@@ -141,7 +176,7 @@ describe("POST /chat", () => {
     const id = await uploadPdf(b, "Bio.pdf", BIO);
     const history = [{ role: "user", content: "What do mitochondria do?" }, { role: "assistant", content: "They make ATP." }];
     await chat.POST(b.request("/api/v1/chat", { body: { question: "How do they do it?", session_id: id, history } }));
-    expect(llm.calls[0].target).toBe("workers-ai:@cf/meta/llama-3.1-8b-instruct-fp8");
+    expect(llm.calls[0].target).toBe("workers-ai:@cf/google/gemma-4-26b-a4b-it");
     expect(llm.calls[0].messages[1].content).toContain("Latest question: How do they do it?");
   });
 });

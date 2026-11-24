@@ -63,7 +63,7 @@ export default function MyModel() {
           </Select>
         ) : (
           <Input label="Model" mono value={model} onChange={(e) => setModel(e.currentTarget.value)}
-            placeholder={ollama ? "llama3.2, qwen2.5:7b, my-model:latest" : provider === "ollama-cloud" ? "gpt-oss:120b, nemotron-3-ultra, kimi-k3" : provider === "workers-ai" ? "@cf/meta/llama-3.1-8b-instruct-fp8" : "model name"}
+            placeholder={ollama ? "llama3.2, qwen2.5:7b, my-model:latest" : provider === "ollama-cloud" ? "gpt-oss:120b, nemotron-3-ultra, kimi-k3" : provider === "workers-ai" ? "@cf/google/gemma-4-26b-a4b-it" : "model name"}
             hint={ollama ? (data.ollama.models.length ? `Any model Ollama at ${data.ollama.base} can run.` : `Ollama at ${data.ollama.base} isn't answering: start it, or type a model name.`) : undefined} />
         ))}
       </div>

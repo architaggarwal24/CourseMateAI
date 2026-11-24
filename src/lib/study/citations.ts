@@ -1,5 +1,6 @@
 // Page-linked citations in chat answers (backend services/context_service.py `citation`).
 import type { components } from "@/lib/api/generated/schema";
+import { pageWord } from "./formats";
 
 export type Citation = components["schemas"]["Citation"];
 
@@ -26,9 +27,15 @@ export function citationNumber(href: string | undefined): number | null {
   return Number.isInteger(n) && n > 0 ? n : null;
 }
 
-/** "biology.pdf, page 4" for screen readers and titles. */
+/** "page 4", "slide 4", "part 4": where a passage is, spelled out (lib/study/formats.ts). */
+function spelledPage(name: string, page: number): string {
+  const word = pageWord(name, page);
+  return word.startsWith("p.") ? `page ${page}` : word;
+}
+
+/** "biology.pdf, page 4" ("cells.pptx, slide 4") for screen readers and titles. */
 export function citationText(c: Citation): string {
-  return [c.doc_name, c.page ? `page ${c.page}` : null].filter(Boolean).join(", ") || `source ${c.n}`;
+  return [c.doc_name, c.page ? spelledPage(c.doc_name ?? "", c.page) : null].filter(Boolean).join(", ") || `source ${c.n}`;
 }
 
 /** The citations an answer refers to, in the order they are first cited (all of them when it cites none). */

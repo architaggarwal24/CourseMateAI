@@ -76,6 +76,7 @@ const USAGE = {
   resets: { ai_calls_day: "2026-11-05T00:00:00+00:00", tokens_month: "2026-12-01T00:00:00+00:00" },
   history: [{ day: "2026-11-04", ai_calls: 126, tokens: 41000 }],
   ai_budget: { limited: true, share: 0.62, resets_at: "2026-11-05T00:00:00+00:00" },
+  ocr: { used: 4, allowed: 50, resets_at: "2026-11-05T00:00:00+00:00" },
   mana: { balance: 12.5, can_buy: true, payments_enabled: true, packs: [
     { id: "small", name: "Pouch of Mana", inr: 49, mana: 49 }, { id: "medium", name: "Flask of Mana", inr: 99, mana: 104 },
     { id: "large", name: "Well of Mana", inr: 199, mana: 219 },
@@ -383,7 +384,7 @@ export async function mockApi(page: Page, { signedIn = true, advanced = true, do
     // Admin -> AI models and the admin's own model (Settings -> AI).
     if (path === "/admin/ai/models") return json(route, 200, {
       slots: {}, mine: null, ollama: { enabled: false, base: null, models: [] },
-      defaults: { fast: "gemini:gemini-3.5-flash-lite", strong: "gemini:gemini-3.8-flash", premium: "claude:claude-sonnet-5-5", small: "@cf/meta/llama-3.1-8b-instruct-fp8" },
+      defaults: { fast: "gemini:gemini-3.5-flash-lite", strong: "gemini:gemini-3.8-flash", premium: "claude:claude-sonnet-5-5", small: "@cf/google/gemma-4-26b-a4b-it" },
       providers: [{ id: "gemini", configured: true, key_env: "GOOGLE_API_KEY" }, { id: "openai", configured: false, key_env: "OPENAI_API_KEY" },
         { id: "claude", configured: true, key_env: "ANTHROPIC_API_KEY" }, { id: "nvidia", configured: false, key_env: "NVIDIA_API_KEY" },
         { id: "workers-ai", configured: true, key_env: null }],
@@ -397,7 +398,7 @@ export async function mockApi(page: Page, { signedIn = true, advanced = true, do
     }
     if (path === "/admin/ai") return json(route, 200, { days: 30, today_usd: 0.42, cap_usd: 2, cap_max_usd: 20, can_edit: true, capped: false, total_usd: 3.1, by_day: [],
       models: [{ provider: "gemini", model: "gemini-3.8-flash", calls: 120, fallbacks: 2, tokens_in: 90000, tokens_out: 30000, cost_usd: 0.42, priced: true }],
-      routes: { apprentice: { small: ["workers-ai:@cf/meta/llama-3.1-8b-instruct-fp8"], strong: ["gemini:gemini-3.5-flash-lite"] },
+      routes: { apprentice: { small: ["workers-ai:@cf/google/gemma-4-26b-a4b-it"], strong: ["gemini:gemini-3.5-flash-lite"] },
         scholar: { small: [], strong: [] }, sage: { small: [], strong: [] }, archmage: { small: [], strong: [] } },
       budgets: { plan: { apprentice: 0.25, scholar: null, sage: null, archmage: null }, user: { apprentice: 0.02, scholar: 0.05, sage: 0.1, archmage: 0.2 }, tools: 0.1 },
       budget_today: { "plan:apprentice": { spent_usd: 0.12, reserved_usd: 0 }, global: { spent_usd: 0.42, reserved_usd: 0 } } });

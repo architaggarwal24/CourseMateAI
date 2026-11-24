@@ -111,6 +111,28 @@ describe("uploading", () => {
     expect(hits.passages[0].text).toMatch(/Mitochondria/);
   });
 
+  it("Word, PowerPoint, Excel and text files: no file step, straight to their pages; only a PDF's file is stored", async () => {
+    const b = await person("owner@example.com", "boss");
+    const start = await json(await upload.POST(b.request("/api/v1/upload", { body: { filename: "Cells.pptx", size: 4096, pages: 2, file_hash: "e".repeat(64) } })));
+    expect(start).toMatchObject({ ok: true, document: { status: "reading", filename: "Cells.pptx", pdf_available: false } });
+    const id = start.session_id as string;
+    const put = await file.PUT(new Request(`${ORIGIN}/api/v1/documents/${id}/file`, {
+      method: "PUT", headers: { cookie: b.header(), origin: ORIGIN }, body: new Uint8Array(4096), duplex: "half",
+    } as RequestInit), params({ id }));
+    expect(put.status).toBe(409);
+    const done = await json(await pages.POST(b.request(`/api/v1/documents/${id}/pages`, { body: { pages: [
+      { page: 1, text: "Slide 1\nThe cell membrane controls what enters and leaves the cell." },
+      { page: 2, text: "Slide 2\nMitochondria make ATP through cellular respiration." },
+    ], done: true } }), params({ id })));
+    expect(done).toMatchObject({ status: "ready", chunks: 2, pdf_available: false });
+    for (const name of ["notes.docx", "marks.xlsx", "summary.md", "data.csv", "plain.txt"]) {
+      const r = await upload.POST(b.request("/api/v1/upload", { body: { filename: name, size: 100, pages: 1, file_hash: "f".repeat(63) + name.length.toString(16).slice(-1) } }));
+      expect(r.status, name).toBe(202);
+    }
+    const refused = await upload.POST(b.request("/api/v1/upload", { body: { filename: "old.doc", size: 100, pages: 1, file_hash: "a".repeat(64) } }));
+    expect((await json(refused)).error).toMatchObject({ code: "invalid_file", message: "That kind of file can't be added: use PDF, Word, PowerPoint, Excel, text or photos." });
+  });
+
   it("the same file under the same id is reused; a changed file is checked against its fingerprint", async () => {
     const b = await person("owner@example.com", "boss");
     const { id } = await uploadPdf(b, "Bio.pdf");

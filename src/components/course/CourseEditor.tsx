@@ -1,15 +1,20 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { ArrowDown, ArrowUp, Trash2 } from "@/components/ui/icons";
+import { ArrowDown, ArrowUp, Trash2, Upload } from "@/components/ui/icons";
 import { Button, Checkbox, Input, Modal, Textarea, toast } from "@/components/ui";
 import { useCourses } from "@/hooks/useCourses";
+import { useDocumentUpload } from "@/hooks/useDocumentUpload";
+import { useFileDrop } from "@/hooks/useFileDrop";
+import DropOverlay from "@/components/shell/DropOverlay";
+import { DOCUMENT_ACCEPT, DOCUMENT_KINDS } from "@/lib/study/formats";
 import type { DocumentInfo } from "@/lib/api";
 import type { Course } from "@/lib/study/courses";
 
 /**
  * Create or edit a course: its name, a line about it, and which documents it holds, in order (the order the
- * overview lists them). Deleting a course keeps its documents.
+ * overview lists them). Deleting a course keeps its documents. New files (PDF, Word, PowerPoint, Excel, text) can be added right here: Add files, a drop
+ * anywhere while the dialog is open, or a paste (Ctrl+V outside the text boxes). They are ticked in at once.
  */
 export default function CourseEditor({ open, onClose, course, documents, onSaved, onDeleted }: {
   open: boolean; onClose: () => void; course?: Course | null; documents: DocumentInfo[];
@@ -24,6 +29,16 @@ export default function CourseEditor({ open, onClose, course, documents, onSaved
   const [saving, setSaving] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // PDFs added in this dialog: they join the list (and are ticked) before the library list catches up
+  const [added, setAdded] = useState<DocumentInfo[]>([]);
+  const upload = useDocumentUpload(undefined, course?.id, { multiple: true });
+  const addFiles = async (files: File[]) => {
+    const docs = await upload.uploadMany(files);
+    if (!docs.length) return;
+    setAdded((a) => [...a, ...docs.filter((d) => !a.some((x) => x.id === d.id))]);
+    setPicked((p) => [...p, ...docs.map((d) => d.id).filter((id) => !p.includes(id))]);
+  };
+  const { dragging } = useFileDrop((files) => void addFiles(files), { enabled: open && !confirmDelete, priority: 2 });
 
   useEffect(() => {
     if (!open) return;
@@ -32,6 +47,7 @@ export default function CourseEditor({ open, onClose, course, documents, onSaved
     setPicked(course?.documents.map((d) => d.id) ?? []);
     setError(null);
     setConfirmDelete(false);
+    setAdded([]);
   }, [open, course]);
 
   const toggle = (id: string) => setPicked((p) => (p.includes(id) ? p.filter((x) => x !== id) : [...p, id]));
@@ -75,9 +91,12 @@ export default function CourseEditor({ open, onClose, course, documents, onSaved
     }
   };
 
-  const byId = new Map(documents.map((d) => [d.id, d]));
+  const all = [...documents, ...added.filter((a) => !documents.some((d) => d.id === a.id))];
+  const byId = new Map(all.map((d) => [d.id, d]));
   const inCourse = picked.map((id) => byId.get(id)).filter(Boolean) as DocumentInfo[];
   return (
+    <>
+    <DropOverlay show={dragging} title={course ? `Drop files into ${course.name}` : "Drop files for this course"} hint={`${DOCUMENT_KINDS}. Release to upload`} />
     <Modal open={open} onClose={onClose} title={course ? "Edit course" : "New course"} size="wide"
            actions={confirmDelete ? (
              <>
@@ -99,11 +118,17 @@ export default function CourseEditor({ open, onClose, course, documents, onSaved
                  placeholder="e.g. Biology 101" error={error} autoFocus />
           <Textarea label="About (optional)" value={description} maxLength={500} rows={2}
                     onChange={(e) => setDescription(e.target.value)} placeholder="What the course covers, the exam date…" />
+          <div className="course-editor__add">
+            <Button onClick={upload.pick} loading={upload.uploading} disabled={!upload.signedIn}><Upload size={15} aria-hidden="true" />Add files</Button>
+            <span className="course-editor__hint">{DOCUMENT_KINDS}: or drop them anywhere, or paste one with Ctrl+V</span>
+            <input ref={upload.inputRef} type="file" accept={DOCUMENT_ACCEPT} className="hidden" aria-label="Choose files to add" multiple
+                   onChange={(e) => void addFiles(Array.from(e.currentTarget.files ?? []))} />
+          </div>
           <fieldset className="course-editor__docs">
-            <legend>Documents <span>({picked.length} of {documents.length})</span></legend>
-            {documents.length === 0 && <p className="text-sm text-fg-muted m-0">Upload a PDF first: courses group your documents.</p>}
+            <legend>Documents <span>({picked.length} of {all.length})</span></legend>
+            {all.length === 0 && <p className="text-sm text-fg-muted m-0">Add a file above: courses group your documents.</p>}
             <ul>
-              {documents.map((d) => (
+              {all.map((d) => (
                 <li key={d.id}>
                   <Checkbox label={d.filename} checked={picked.includes(d.id)} onChange={() => toggle(d.id)}
                             description={d.status === "ready" ? `${d.chunks ?? 0} chunks` : d.status === "failed" ? "Failed to index" : "Still indexing"} />
@@ -128,5 +153,6 @@ export default function CourseEditor({ open, onClose, course, documents, onSaved
         </div>
       )}
     </Modal>
+    </>
   );
 }

@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { cleanup, render, screen, within } from "@testing-library/react";
+import { cleanup, render, screen, waitFor, within } from "@testing-library/react";
 
 const nav = vi.hoisted(() => ({ push: vi.fn(), replace: vi.fn() }));
 vi.mock("next/navigation", () => ({ useRouter: () => nav, usePathname: () => "/today" }));
@@ -12,6 +12,7 @@ import { useHUDStore } from "@/hooks/useHUD";
 import { useSessionStore } from "@/hooks/useSessions";
 import { useCourses } from "@/hooks/useCourses";
 import { saveMetadata } from "@/lib/study/sessions";
+import { resetFileDropForTests } from "@/hooks/useFileDrop";
 
 const doc = (id: string, filename: string, last: string) => ({ id, filename, status: "ready", chunks: 10, kind: "document", last_used_at: last }) as never;
 
@@ -30,7 +31,7 @@ beforeEach(() => {
   ] } as never);
   saveMetadata({ q1: { type: "quiz", preview: "cells · 3/5 answered", updated: "2026-11-05T09:00:00Z", title: "Mitosis.pdf" } as never });
 });
-afterEach(cleanup);
+afterEach(() => { cleanup(); resetFileDropForTests(); nav.push.mockClear(); });
 
 describe("Today", () => {
   it("greets you by first name and says in one line what is left", () => {
@@ -93,12 +94,27 @@ describe("Today", () => {
     const list = within(screen.getByRole("region", { name: "Your courses" })).getAllByRole("link");
     expect(list.map((a) => a.textContent)).toEqual([expect.stringContaining("Biology2 PDFs"), expect.stringContaining("Chemistry0 PDFs")]);
     expect(list[0].getAttribute("href")).toBe("/study?tab=overview&doc=c1");
-    expect(screen.getByRole("button", { name: "Add PDFs to Biology" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Add files to Biology" })).toBeTruthy();
   });
 
   it("sends a visitor who isn't signed in to log in", () => {
     auth.user = null;
     render(<TodayView />);
     expect(nav.replace).toHaveBeenCalledWith("/login");
+  });
+
+  it("a PDF dropped or pasted anywhere on Today goes into the latest course, like the button", async () => {
+    const uploaded: { name: string; course?: string }[] = [];
+    useSessionStore.setState({ uploadDocument: vi.fn(async (_id: string | undefined, file: File, courseId?: string) => {
+      uploaded.push({ name: file.name, course: courseId });
+      return doc("d9", file.name, "2026-11-06T10:00:00Z");
+    }) } as never);
+    render(<TodayView />);
+    expect(screen.getByText("PDF, Word, PowerPoint, Excel, text or photos. Or drop files anywhere on this page, or paste one with Ctrl+V.")).toBeTruthy();
+    const drop = new Event("drop", { bubbles: true, cancelable: true });
+    Object.defineProperty(drop, "dataTransfer", { value: { types: ["Files"], files: [new File(["%PDF"], "cells.pdf", { type: "application/pdf" })] } });
+    window.dispatchEvent(drop);
+    await waitFor(() => expect(nav.push).toHaveBeenCalledWith("/study?tab=chat&doc=d9"));
+    expect(uploaded).toEqual([{ name: "cells.pdf", course: "c1" }]);
   });
 });

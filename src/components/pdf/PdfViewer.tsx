@@ -2,13 +2,17 @@
 
 import { usePlanChanged } from "@/hooks/usePlanChanged";
 import { useEffect, useRef, useState } from "react";
-import { ChevronLeft, ChevronRight, FileWarning, Lock, X } from "@/components/ui/icons";
+import { ChevronLeft, ChevronRight, FileText, FileWarning, Lock, X } from "@/components/ui/icons";
 import { Button, Skeleton } from "@/components/ui";
 import { citationText, type Citation } from "@/lib/study/citations";
 import { documentFileUrl, loadPdfJs, passageItems } from "@/lib/study/pdf";
+import { formatOf, pageWord } from "@/lib/study/formats";
 import "./pdf.css";
 
-type Status = "loading" | "ready" | "unavailable" | "locked" | "error";
+/** "page 4", "slide 4", "part 4". */
+const spelled = (name: string, page: number) => { const w = pageWord(name, page); return w.startsWith("p.") ? `page ${page}` : w; };
+
+type Status = "loading" | "ready" | "unavailable" | "locked" | "error" | "text";
 type PdfDoc = { numPages: number; getPage: (n: number) => Promise<any> };
 
 // One download per document per page view: opening another citation of the same PDF reuses it.
@@ -70,6 +74,9 @@ export default function PdfViewer({ citation, onClose }: { citation: Citation; o
     let alive = true;
     setStatus("loading");
     if (!citation.doc_id) { setStatus("unavailable"); return; }
+    // Word, PowerPoint, Excel and text files keep only their text (lib/study/formats.ts): the passage is the view
+    const format = formatOf(citation.doc_name ?? "");
+    if (format && format !== "pdf") { setStatus("text"); return; }
     openDocument(citation.doc_id).then((d) => {
       if (!alive) return;
       docRef.current = d;
@@ -133,7 +140,7 @@ export default function PdfViewer({ citation, onClose }: { citation: Citation; o
       <header className="pdf-panel__head">
         <div className="min-w-0">
           <h3 id="pdf-panel-title" ref={heading} tabIndex={-1} style={{ outline: "none" }} className="pdf-panel__title" title={title}>{title}</h3>
-          <p className="pdf-panel__sub">Source [{citation.n}]{citation.page ? ` · cited on page ${citation.page}` : ""}</p>
+          <p className="pdf-panel__sub">Source [{citation.n}]{citation.page ? ` · cited on ${spelled(title, citation.page)}` : ""}</p>
         </div>
         <Button size="sm" icon variant="ghost" onClick={onClose} aria-label="Close the PDF (Esc)" title="Close (Esc)"><X size={16} /></Button>
       </header>
@@ -154,6 +161,10 @@ export default function PdfViewer({ citation, onClose }: { citation: Citation; o
         {status === "unavailable" && (
           <div className="pdf-panel__notice"><FileWarning size={18} aria-hidden="true" />
             <p>This PDF's pages aren't stored (it was uploaded before page viewing existed). Upload the same file again to open them.</p></div>
+        )}
+        {status === "text" && (
+          <div className="pdf-panel__notice"><FileText size={18} aria-hidden="true" />
+            <p>This file is kept as its text, so the cited passage is shown here.</p></div>
         )}
         {status === "locked" && (
           <div className="pdf-panel__notice"><Lock size={18} aria-hidden="true" />

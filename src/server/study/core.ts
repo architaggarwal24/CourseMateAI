@@ -10,6 +10,7 @@ import { generate, type Caller, type CallOptions, type ChatMessage } from "../ai
 import type { Job } from "../ai/models";
 import { BadAnswer } from "./schemas";
 import { extractJson, questionKey } from "./text";
+import { pageLabel } from "@/lib/study/formats";
 
 type Env = Record<string, string | undefined>;
 const num = (v: string | undefined, d: number) => (v !== undefined && v !== "" && Number.isFinite(Number(v)) ? Number(v) : d);
@@ -83,7 +84,7 @@ export function requireSearch(ctx: RequestContext) {
   return deps;
 }
 
-const label = (p: Passage) => (p.documentName && p.page ? `${p.documentName} · p.${p.page}` : p.documentName || (p.page ? `p.${p.page}` : ""));
+const label = (p: Passage) => pageLabel(p.documentName, p.page);
 
 export async function search(ctx: RequestContext, docs: { id: string; name: string }[], query: string, k: number): Promise<Found> {
   const passages = await searchPassages(ctx.db, requireSearch(ctx), docs, query, k);

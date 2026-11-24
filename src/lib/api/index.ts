@@ -4,7 +4,7 @@
 // Error handling is shared: failures throw an ApiError (code / message / action / details),
 // a 401 sends the user to /login and a vanished document raises "cmai:document-gone" - see ./api/client.ts.
 import { API_BASE_URL, api, rawApi } from "./client";
-import { readPdf, type ReadPdf } from "../study/upload";
+import { readDocument, type ReadPdf } from "../study/upload";
 import type { components } from "./generated/schema";
 import { ApiError, parseApiError } from "./errors";
 import { idempotencyKey } from "./idempotency";
@@ -45,12 +45,13 @@ function body(result: { data?: unknown }): any {
  * Throws an ApiError with the server's message on failure (and "no_text" for a scanned PDF).
  */
 export async function uploadPDF(file: File, sessionId?: string, courseId?: string): Promise<UploadResult & { read: ReadPdf }> {
-  const read = await readPdf(file);
+  const read = await readDocument(file);
   let res: Response;
   try {
     res = await fetch(new Request(`${API_BASE_URL}/upload`, {
       method: "POST", credentials: "include", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ filename: file.name, size: file.size, pages: read.pageCount, file_hash: read.hash, session_id: sessionId, course_id: courseId }),
+      body: JSON.stringify({ filename: file.name, size: file.size, pages: read.pageCount, file_hash: read.hash, session_id: sessionId, course_id: courseId,
+        ...(read.ocr?.length ? { ocr_pages: read.ocr.length } : {}) }),
     }));
   } catch {
     throw new ApiError(0, { code: "network", message: "Couldn't reach CourseMateAI. Check your connection and try again.", action: "retry", details: null });
@@ -90,10 +91,11 @@ export async function chatQuestion(
   history: { role: string; content: string }[] = [],
   signal?: AbortSignal,
   mode: string = "explain",
+  attachments?: unknown[],
 ) {
   const { data } = await api.POST("/chat", {
-    // (mode: how the tutor teaches; newer than the generated schema)
-    body: { question, session_id: sessionId, history, top_k: topK, mode } as { question: string; session_id: string; history: typeof history; top_k: number },
+    // (mode: how the tutor teaches; attachments: files for this question only; both newer than the generated schema)
+    body: { question, session_id: sessionId, history, top_k: topK, mode, ...(attachments?.length ? { attachments } : {}) } as { question: string; session_id: string; history: typeof history; top_k: number },
     signal,
   });
   return body({ data });

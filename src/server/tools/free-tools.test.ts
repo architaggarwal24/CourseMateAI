@@ -115,7 +115,7 @@ describe("the free tools", () => {
     const db = getDb(p.env.DB);
     await saveBudgets(db, { ...DEFAULT_BUDGETS, tools: 0 });
     expect((await post(new Browser("203.0.113.11"), { tool: "summary", text: NOTES })).status).toBe(200);
-    expect(f.calls.map((c) => c.target)).toEqual(["gemini:flash-lite", "workers-ai:@cf/meta/llama-3.1-8b-instruct-fp8"]);
+    expect(f.calls.map((c) => c.target)).toEqual(["gemini:flash-lite", "workers-ai:@cf/google/gemma-4-26b-a4b-it"]);
   });
 
   it("nobody answers: a clear 503, and the visitor's run is given back", async () => {

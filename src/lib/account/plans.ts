@@ -9,6 +9,8 @@ export type Usage = components["schemas"]["UsageResponse"] & {
   ai_budget?: { limited: boolean; share: number; resets_at: string };
   /** The Mana wallet and the packs on sale (server/account/wallet.ts). */
   mana?: ManaInfo;
+  /** Scanned pages and photos the AI read today, and the plan's daily cap (null: none). */
+  ocr?: { used: number; allowed: number | null; resets_at: string };
 };
 
 export interface ManaPack { id: "small" | "medium" | "large"; name: string; inr: number; mana: number }

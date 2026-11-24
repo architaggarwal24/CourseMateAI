@@ -7,6 +7,7 @@ import { chatQuestion } from "../api";
 import { API_BASE_URL, throwForResponse } from "../api/client";
 import { ApiError } from "../api/errors";
 import type { Citation } from "../study/citations";
+import type { AttachmentPayload } from "./attachments";
 
 export interface ChatAnswer {
   content: string;
@@ -43,6 +44,8 @@ export interface AskOptions {
   onToken?: (text: string) => void;
   /** Called when the stream is abandoned for the plain endpoint: drop what was shown so far, the full answer follows. */
   onFallback?: () => void;
+  /** Files attached to this question only (lib/chat/attachments.ts). */
+  attachments?: AttachmentPayload[];
 }
 
 export class StreamUnavailableError extends Error {
@@ -111,7 +114,8 @@ export async function streamChat(opts: AskOptions): Promise<ChatAnswer> {
     method: "POST",
     credentials: "include",
     headers: { "Content-Type": "application/json", Accept: "text/event-stream" },
-    body: JSON.stringify({ question: opts.question, session_id: opts.sessionId, history: opts.history, top_k: opts.topK ?? 5, mode: opts.mode ?? "explain" }),
+    body: JSON.stringify({ question: opts.question, session_id: opts.sessionId, history: opts.history, top_k: opts.topK ?? 5, mode: opts.mode ?? "explain",
+      ...(opts.attachments?.length ? { attachments: opts.attachments } : {}) }),
     signal: opts.signal,
   });
   if (!response.ok) await throwForResponse(response);     // the same ApiError (and global effects) as every other call
@@ -157,7 +161,7 @@ export async function askChat(opts: AskOptions): Promise<ChatAnswer> {
   } catch (err) {
     if (isAbortError(err) || opts.signal?.aborted || isDefinite(err)) throw err;
     opts.onFallback?.();
-    const data = await chatQuestion(opts.question, opts.sessionId, opts.topK ?? 5, opts.history, opts.signal, opts.mode);
+    const data = await chatQuestion(opts.question, opts.sessionId, opts.topK ?? 5, opts.history, opts.signal, opts.mode, opts.attachments);
     return {
       content: String(data?.content ?? ""),
       sources: Array.isArray(data?.sources) ? data.sources.map(String) : [],

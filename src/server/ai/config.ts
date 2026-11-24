@@ -102,7 +102,7 @@ function invalid(message: string, field: string): HttpError {
 function checkSlot(slot: SlotName, value: string, env: Env): string {
   const v = value.trim();
   if (slot === "small") {
-    if (!/^@cf\/[\w.@/-]+$/.test(v)) throw invalid("The small slot is a Workers AI model, such as @cf/meta/llama-3.1-8b-instruct-fp8.", slot);
+    if (!/^@cf\/[\w.@/-]+$/.test(v)) throw invalid("The small slot is a Workers AI model, such as @cf/google/gemma-4-26b-a4b-it.", slot);
     return v;
   }
   const spec = parseSpec(v);

@@ -204,3 +204,25 @@ describe("errors", () => {
     expect(() => apiLlm({ slot: "small", provider: "workers-ai", model: "m" })).toThrow(/no API client/);
   });
 });
+
+describe("pictures (Files stage 3)", () => {
+  const withPicture = [
+    { role: "system" as const, content: "Be brief." },
+    { role: "user" as const, content: "What is this?", images: [{ mime: "image/jpeg", data: "aGVsbG8=" }] },
+  ];
+  it("go to Gemini as inlineData, Claude as image blocks, OpenAI as image_url; nothing else is sent with a message", async () => {
+    const seen: Seen[] = [];
+    await apiLlm(target("gemini", "g"), fakeFetch({ json: { candidates: [{ content: { parts: [{ text: "A cell" }] } }] } }, seen)).generate(withPicture, {});
+    expect(seen[0].body.contents[0].parts).toEqual([{ text: "What is this?" }, { inlineData: { mimeType: "image/jpeg", data: "aGVsbG8=" } }]);
+    await apiLlm(target("claude", "c"), fakeFetch({ json: { content: [{ type: "text", text: "A cell" }], usage: {} } }, seen)).generate(withPicture, {});
+    expect(seen[1].body.messages).toEqual([{ role: "user", content: [
+      { type: "image", source: { type: "base64", media_type: "image/jpeg", data: "aGVsbG8=" } }, { type: "text", text: "What is this?" }] }]);
+    await apiLlm(target("openai", "gpt-x"), fakeFetch({ json: { choices: [{ message: { content: "A cell" } }] } }, seen)).generate([...withPicture, { role: "assistant", content: "ok" }], {});
+    expect(seen[2].body.messages).toEqual([
+      { role: "system", content: "Be brief." },
+      { role: "user", content: [{ type: "text", text: "What is this?" }, { type: "image_url", image_url: { url: "data:image/jpeg;base64,aGVsbG8=" } }] },
+      { role: "assistant", content: "ok" },
+    ]);
+  });
+});
+

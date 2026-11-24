@@ -7,6 +7,10 @@ import type { ChatMessage, CallOptions, Llm } from "./run";
 import type { Target } from "./models";
 
 export const DEFAULT_MAX_OUTPUT = 4096;
+/** Providers whose models here can look at pictures (Files stage 3): only these are given a question with images. */
+export const SEES_IMAGES: ReadonlySet<string> = new Set(["gemini", "claude", "openai"]);
+/** Tokens a picture (at most 1,600 px) can cost as input, generously: Claude ~2,600, Gemini ~1,600, OpenAI ~1,100. */
+export const IMAGE_TOKENS = 3000;
 const NVIDIA_BASE = "https://integrate.api.nvidia.com/v1";
 const OPENAI_BASE = "https://api.openai.com/v1";
 
@@ -65,7 +69,10 @@ function gemini(t: Target, fetchImpl: typeof fetch): Llm {
     const system = messages.filter((m) => m.role === "system").map((m) => m.content).join("\n\n");
     return {
       ...(system ? { systemInstruction: { parts: [{ text: system }] } } : {}),
-      contents: messages.filter((m) => m.role !== "system").map((m) => ({ role: m.role === "assistant" ? "model" : "user", parts: [{ text: m.content }] })),
+      contents: messages.filter((m) => m.role !== "system").map((m) => ({
+        role: m.role === "assistant" ? "model" : "user",
+        parts: [{ text: m.content }, ...(m.images ?? []).map((i) => ({ inlineData: { mimeType: i.mime, data: i.data } }))],
+      })),
       generationConfig: {
         maxOutputTokens: o.maxOutputTokens ?? DEFAULT_MAX_OUTPUT, ...(o.temperature !== undefined ? { temperature: o.temperature } : {}),
         ...(o.json ? { responseMimeType: "application/json" } : {}),
@@ -131,7 +138,13 @@ function openaiCompatible(t: Target, fetchImpl: typeof fetch, baseUrl: string, n
   const body = (messages: ChatMessage[], o: CallOptions, stream: boolean) => {
     const max = thinking ? Math.max(o.maxOutputTokens ?? DEFAULT_MAX_OUTPUT, OLLAMA_MIN_OUTPUT) : o.maxOutputTokens ?? DEFAULT_MAX_OUTPUT;
     return {
-      model: t.model, messages,
+      // only role and content go (a picture becomes an image_url part; the API refuses fields it doesn't know)
+      model: t.model, messages: messages.map((m) => ({
+        role: m.role,
+        content: m.images?.length
+          ? [{ type: "text", text: m.content }, ...m.images.map((i) => ({ type: "image_url", image_url: { url: `data:${i.mime};base64,${i.data}` } }))]
+          : m.content,
+      })),
       ...(newStyle ? { max_completion_tokens: max } : { max_tokens: max }),
       ...(o.temperature !== undefined && !reasoning ? { temperature: o.temperature } : {}),
       ...(stream ? { stream: true, stream_options: { include_usage: true } } : {}),
@@ -177,7 +190,12 @@ function claude(t: Target, fetchImpl: typeof fetch): Llm {
     const system = messages.filter((m) => m.role === "system").map((m) => m.content).join("\n\n");
     return {
       model: t.model, max_tokens: o.maxOutputTokens ?? DEFAULT_MAX_OUTPUT, ...(system ? { system } : {}),
-      messages: messages.filter((m) => m.role !== "system"),
+      messages: messages.filter((m) => m.role !== "system").map((m) => ({
+        role: m.role,
+        content: m.images?.length
+          ? [...m.images.map((i) => ({ type: "image", source: { type: "base64", media_type: i.mime, data: i.data } })), { type: "text", text: m.content }]
+          : m.content,
+      })),
       ...(o.temperature !== undefined ? { temperature: o.temperature } : {}), ...(stream ? { stream: true } : {}),
     };
   };

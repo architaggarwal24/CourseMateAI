@@ -10,13 +10,14 @@ import type { Db } from "../db";
 import { HttpError } from "../http";
 import type { Tier } from "../account/plans";
 import { route, type Job, type Target } from "./models";
-import { apiLlm, DEFAULT_MAX_OUTPUT } from "./providers";
+import { apiLlm, DEFAULT_MAX_OUTPUT, SEES_IMAGES } from "./providers";
 import { releaseCall, reserveCall } from "./usage";
 import { loadLimits, meter, release, reserve, userScopes, worstCostMicro, type Hold, type Scope } from "./budget";
 import { aiSettings, overrideTarget, withSlots } from "./config";
 import { leaked, safeLength, withGuard } from "./guard";
 
-export interface ChatMessage { role: "system" | "user" | "assistant"; content: string }
+/** `images`: pictures with a user message (Files stage 3), base64; only models that can see are given them. */
+export interface ChatMessage { role: "system" | "user" | "assistant"; content: string; images?: { mime: string; data: string }[] }
 export interface CallOptions {
   maxOutputTokens?: number; temperature?: number; timeoutMs?: number;
   /** Ask for a JSON answer where the provider has a switch for it (Gemini, OpenAI). The prompt must ask too. */
@@ -30,7 +31,23 @@ export interface Llm {
   stream(messages: ChatMessage[], opts: CallOptions): AsyncIterable<{ text?: string; tokensIn?: number; tokensOut?: number }>;
 }
 
-type AiBinding = { run(model: string, input: Record<string, unknown>): Promise<{ response?: string; usage?: { prompt_tokens?: number; completion_tokens?: number } }> };
+type AiBinding = { run(model: string, input: Record<string, unknown>): Promise<WorkersAiAnswer> };
+/**
+ * What a Workers AI text model answers: the older models gave `{response}`, the newer ones (Gemma 4, Qwen 3.8 ...;
+ * Cloudflare retired Llama 3.1 8B and the Llama 3.2 models on 20 Nov 2026) answer OpenAI-style `{choices}`.
+ */
+type WorkersAiAnswer = {
+  response?: string;
+  choices?: { message?: { content?: string | null } }[];
+  usage?: { prompt_tokens?: number; completion_tokens?: number };
+};
+
+/** The answer's text, whichever shape it came in, without any thinking the model wrote first. */
+export function workersAiText(r: WorkersAiAnswer | null | undefined): string | null {
+  const raw = typeof r?.response === "string" ? r.response : r?.choices?.[0]?.message?.content;
+  if (typeof raw !== "string") return null;
+  return raw.replace(/<think>[\s\S]*?<\/think>/gi, "").trim();
+}
 
 export { DEFAULT_MAX_OUTPUT };
 
@@ -40,9 +57,13 @@ const promptTokens = (messages: ChatMessage[]) => estimateTokens(messages.map((m
 
 function workersAiLlm(ai: AiBinding, t: Target): Llm {
   const run = async (messages: ChatMessage[], o: CallOptions) => {
-    const r = await ai.run(t.model, { messages, max_tokens: Math.min(o.maxOutputTokens ?? 1024, 2048), temperature: o.temperature });
-    if (typeof r?.response !== "string") throw new Error("Workers AI gave no answer");
-    return { text: r.response, tokensIn: r.usage?.prompt_tokens, tokensOut: r.usage?.completion_tokens };
+    const max = Math.min(o.maxOutputTokens ?? 1024, 2048);
+    // max_tokens is in every text model's schema (the newer ones also take max_completion_tokens; extra fields are
+    // refused by some older ones, so only what all of them accept goes)
+    const r = await ai.run(t.model, { messages: messages.map((m) => ({ role: m.role, content: m.content })), max_tokens: max, temperature: o.temperature });
+    const text = workersAiText(r);
+    if (!text) throw new Error("Workers AI gave no answer");
+    return { text, tokensIn: r.usage?.prompt_tokens, tokensOut: r.usage?.completion_tokens };
   };
   return {
     generate: run,
@@ -83,10 +104,15 @@ export function withheld(caller: Caller, job: Job): HttpError {
 interface Ctx { db: Db; env: { AI?: unknown } }
 
 /** The models to try, in order, and the budgets they're held to. Reserves one of today's calls first (see reserveCall). */
-async function targets(ctx: Ctx, caller: Caller, job: Job): Promise<{ list: Target[]; reserved: boolean; scopes: Scope[] }> {
-  const reserved = await reserveCall(ctx.db, caller);
+async function targets(ctx: Ctx, caller: Caller, job: Job, sees = false, countCall = true): Promise<{ list: Target[]; reserved: boolean; scopes: Scope[] }> {
+  const reserved = countCall ? await reserveCall(ctx.db, caller) : false;
   try {
-    return { ...(await pickTargets(ctx, caller, job)), reserved };
+    const picked = await pickTargets(ctx, caller, job);
+    if (!sees) return { ...picked, reserved };
+    // a question with pictures: only models that can see them (never the free text-only one)
+    const list = picked.list.filter((t) => SEES_IMAGES.has(t.provider));
+    if (!list.length) throw new HttpError(503, "vision_unavailable", "Questions about pictures need an AI model that can see them, and none is set up here yet.", "retry");
+    return { ...picked, list, reserved };
   } catch (e) {
     if (reserved) await releaseCall(ctx.db, caller.id).catch(() => {});
     throw e;
@@ -119,6 +145,19 @@ async function holdFor(ctx: Ctx, caller: Caller, scopes: Scope[], worst: number)
   return { hold: paid, mana: !!paid };
 }
 
+const hasImages = (messages: ChatMessage[]) => messages.some((m) => m.images?.length);
+
+/**
+ * Nothing could answer a question with pictures because the budgets turned the models that see away (the free model
+ * can't see): a clear "not today" instead of a wrong answer.
+ */
+function imagesNeedBudget(caller: Caller): HttpError {
+  const paid = caller.tier !== "apprentice";
+  return new HttpError(429, "budget_images",
+    `Questions about pictures need the full AI model, and today's AI budget is used up. It comes back at midnight UTC${paid ? ", or top up Mana to keep going" : ", or upgrade for more"}.`,
+    "plans", { can_top_up: paid });
+}
+
 /** Meter a call and settle its reservation; a failure here is logged, not shown (the reservation then stays held). */
 async function meterQuietly(ctx: Ctx, call: Parameters<typeof meter>[1], hold: Hold): Promise<void> {
   try {
@@ -130,11 +169,14 @@ async function meterQuietly(ctx: Ctx, call: Parameters<typeof meter>[1], hold: H
 
 /**
  * One answer, whole. `limited`: a budget turned at least one model away (the answer came from a later, cheaper or
- * free one). `mana`: the user's Mana paid for it.
+ * free one). `mana`: the user's Mana paid for it. `countCall: false`: not one of the plan's AI calls (a scanned page
+ * has its own daily cap, study/ocr.ts); the money budgets hold either way.
  */
-export async function generate(ctx: Ctx, caller: Caller, job: Job, raw: ChatMessage[], opts: CallOptions = {}) {
+export async function generate(ctx: Ctx, caller: Caller, job: Job, raw: ChatMessage[], opts: CallOptions = {},
+  { countCall = true }: { countCall?: boolean } = {}) {
   const messages = withGuard(raw);
-  const { list, reserved, scopes } = await targets(ctx, caller, job);
+  const sees = hasImages(messages);
+  const { list, reserved, scopes } = await targets(ctx, caller, job, sees, countCall);
   let lastError: unknown;
   let limited = false;
   for (let i = 0; i < list.length; i++) {
@@ -151,12 +193,13 @@ export async function generate(ctx: Ctx, caller: Caller, job: Job, raw: ChatMess
       log.warn(`[coursemate-ai] ${t.provider}:${t.model} failed (${e instanceof Error ? e.message.slice(0, 200) : "error"})`);
       continue;
     }
-    await meterQuietly(ctx, { userId: caller.id, target: t, job, tokensIn: r.tokensIn ?? promptTokens(messages), tokensOut: r.tokensOut ?? estimateTokens(r.text), fallback: i > 0, reserved }, hold);
+    await meterQuietly(ctx, { userId: caller.id, target: t, job, tokensIn: r.tokensIn ?? promptTokens(messages), tokensOut: r.tokensOut ?? estimateTokens(r.text), fallback: i > 0, reserved: reserved || !countCall }, hold);
     if (leaked(r.text)) { lastError = withheld(caller, job); break; }
     return { text: r.text, target: t, limited: limited && !mana, mana };
   }
   if (lastError instanceof HttpError && lastError.code === "answer_withheld") throw lastError;   // answered (and metered), not shown
   if (reserved) await releaseCall(ctx.db, caller.id).catch(() => {});      // nobody answered: the call isn't spent
+  if (sees && limited && lastError === undefined) throw imagesNeedBudget(caller);
   throw noModel();
 }
 
@@ -167,8 +210,10 @@ export async function generate(ctx: Ctx, caller: Caller, job: Job, raw: ChatMess
  */
 export async function stream(ctx: Ctx, caller: Caller, job: Job, raw: ChatMessage[], opts: CallOptions = {}) {
   const messages = withGuard(raw);
-  const { list, reserved, scopes } = await targets(ctx, caller, job);
+  const sees = hasImages(messages);
+  const { list, reserved, scopes } = await targets(ctx, caller, job, sees);
   let limited = false;
+  let failed = false;
   for (let i = 0; i < list.length; i++) {
     const t = list[i];
     const { hold, mana } = await holdFor(ctx, caller, scopes, worstCostMicro(t, messages, opts));
@@ -181,6 +226,7 @@ export async function stream(ctx: Ctx, caller: Caller, job: Job, raw: ChatMessag
       if (first.done) throw new Error("empty answer");
     } catch (e) {
       await release(ctx.db, hold).catch(() => {});
+      failed = true;
       log.warn(`[coursemate-ai] ${t.provider}:${t.model} failed before answering (${e instanceof Error ? e.message.slice(0, 200) : "error"})`);
       continue;
     }
@@ -225,5 +271,6 @@ export async function stream(ctx: Ctx, caller: Caller, job: Job, raw: ChatMessag
     return { target: t, pieces: pieces(), done, limited: limited && !mana, mana };
   }
   if (reserved) await releaseCall(ctx.db, caller.id).catch(() => {});
+  if (sees && limited && !failed) throw imagesNeedBudget(caller);
   throw noModel();
 }

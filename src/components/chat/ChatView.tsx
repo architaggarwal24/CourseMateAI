@@ -4,7 +4,7 @@ import DeskObject from "@/components/study/DeskObject";
 import { rewardText } from "@/lib/game/reward-text";
 import { announceAchievements } from "@/lib/fx/celebrate";
 import { useState, useRef, useEffect, useLayoutEffect, useCallback } from "react";
-import { ArrowDown, ArrowUp, Check, Copy, FileText, HelpCircle, History, Lightbulb, ListChecks, MessageSquare, Plus, Sparkles, Trash2 } from "@/components/ui/icons";
+import { ArrowDown, ArrowUp, Check, Copy, FileText, HelpCircle, History, Lightbulb, ListChecks, MessageSquare, Paperclip, Plus, Sparkles, Trash2 } from "@/components/ui/icons";
 import { motion } from "motion/react";
 import HistoryPanel from "../history/HistoryPanel";
 import ChatMarkdown from "./ChatMarkdown";
@@ -15,6 +15,12 @@ import CitationList from "./CitationList";
 import { citedFirst, type Citation } from "@/lib/study/citations";
 import dynamic from "next/dynamic";
 import Link from "next/link";
+import { useChatAttachments } from "@/hooks/useChatAttachments";
+import { useFileDrop } from "@/hooks/useFileDrop";
+import { useDocumentUpload } from "@/hooks/useDocumentUpload";
+import DropOverlay from "@/components/shell/DropOverlay";
+import { AttachmentTray, SentAttachments } from "./AttachmentTray";
+import { ATTACH_ACCEPT, PASTE_CARD_CHARS, toPayload, type Attachment } from "@/lib/chat/attachments";
 import { Button, ErrorState, Textarea } from "@/components/ui";
 import { askChat, isAbortError, type TutorMode } from "@/lib/chat/chat-stream";
 import { useDocument } from "@/hooks/useSessions";
@@ -38,6 +44,10 @@ interface Message {
   outside?: boolean;
   /** The day's AI budget changed who answered (a lighter model, or the user's Mana): a calm note under it. */
   budget?: { state: "limited" | "mana"; canTopUp: boolean };
+  /** A question's attachments (names only: the files aren't kept in the conversation). */
+  attachments?: { name: string; kind: "image" | "text" }[];
+  /** An answer to a question with documents attached: "Add to course" can keep them (while this page is open). */
+  addId?: string;
 }
 
 /** When the day's AI budgets come back: midnight UTC, in the reader's own time ("5:30 am"). */
@@ -104,7 +114,15 @@ const MAX_INPUT_PX = 160;
 // pdf.js is heavy: the viewer (and pdf.js with it) loads only when a citation is first opened
 const PdfViewer = dynamic(() => import("../pdf/PdfViewer"), { ssr: false });
 
-type LiveChatState = { messages: Message[]; followUps: string[]; failure: { error: unknown; question: string } | null; loading: boolean };
+type Failure = { error: unknown; question: string; attachments?: Attachment[] };
+type LiveChatState = { messages: Message[]; followUps: string[]; failure: Failure | null; loading: boolean };
+/** Documents attached to answered questions, by the answer's addId, for "Add to course" (this page view only). */
+const attachedFiles = new Map<string, File[]>();
+function rememberAttached(files: File[]): string {
+  const id = typeof crypto !== "undefined" && "randomUUID" in crypto ? crypto.randomUUID() : String(Date.now());
+  attachedFiles.set(id, files);
+  return id;
+}
 
 export default function ChatView({ documentId, restoreSessionId }: { documentId?: string; restoreSessionId?: string }) {
   const [chatId, setChatId] = useState(() => restoreSessionId || crypto.randomUUID());
@@ -146,7 +164,15 @@ export default function ChatView({ documentId, restoreSessionId }: { documentId?
   /** The last question failed: shown under the conversation (not part of it, never saved) with the button its code calls for. */
   /** What a screen reader hears about the answer: one short line when it starts and when it is complete (not every token). */
   const [announcement, setAnnouncement] = useState("");
-  const [failure, setFailure] = useState<{ error: unknown; question: string } | null>(null);
+  const [failure, setFailure] = useState<Failure | null>(null);
+  // Files stage 3: files attached to the next question (cards above the box), dropped anywhere on the Chat tab
+  // (over the Study page's own upload), pasted, or picked with the paperclip
+  const attach = useChatAttachments();
+  const { dragging } = useFileDrop((files) => void attach.add(files), { priority: 1 });
+  const attachInput = useRef<HTMLInputElement>(null);
+  const courseId = pdf?.kind === "course" ? pdf.id : undefined;
+  const keep = useDocumentUpload(undefined, courseId, { multiple: true });
+  const [added, setAdded] = useState<ReadonlySet<string>>(new Set());
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const requestRef = useRef<AbortController | null>(null);
   const refreshIfStale = useHUDStore((s) => s.refreshIfStale);
@@ -211,8 +237,10 @@ export default function ChatView({ documentId, restoreSessionId }: { documentId?
   }, [cancelRequest, documentId]);
 
   /** `base` is the conversation the question is added to (a retry passes the one without the failed question). */
-  const sendMessage = useCallback(async (question: string, base: Message[] = messages) => {
+  const sendMessage = useCallback(async (question: string, base: Message[] = messages, files: Attachment[] = []) => {
     if (!question.trim() || loading) return;
+    const sent = files.length ? { attachments: files.map((a) => ({ name: a.name, kind: a.kind })) } : {};
+    const docs = files.filter((a) => a.kind === "text").map((a) => a.file);
     const id = chatId, scope = documentId;
     setAnnouncement("The assistant is answering.");
     scroll.jump();                                          // sending is asking to see the answer
@@ -220,10 +248,10 @@ export default function ChatView({ documentId, restoreSessionId }: { documentId?
     const history = base.map((m) => ({ role: m.role, content: m.content }));
     // The conversation lives outside this view while the answer is written, so leaving the screen doesn't stop it.
     // The question is saved at once: coming back reopens this conversation (lib/study/memory.ts).
-    let live: LiveChatState = { messages: [...base, { role: "user", content: question }, { role: "assistant", content: "" }], followUps: [], failure: null, loading: true };
+    let live: LiveChatState = { messages: [...base, { role: "user", content: question, ...sent }, { role: "assistant", content: "" }], followUps: [], failure: null, loading: true };
     const put = (patch: Partial<LiveChatState>) => { live = { ...live, ...patch }; setLiveChat(id, live); };
     put({});
-    saveSession(id, [...base, { role: "user", content: question }].map((m) => ({ ...m, type: "chat" })) as any);
+    saveSession(id, [...base, { role: "user", content: question, ...sent }].map((m) => ({ ...m, type: "chat" })) as any);
     rememberSession("chat", scope, id);
     const patchAnswer = (patch: (m: Message) => Message) =>
       put({ messages: live.messages.length ? [...live.messages.slice(0, -1), patch(live.messages[live.messages.length - 1])] : live.messages });
@@ -233,7 +261,7 @@ export default function ChatView({ documentId, restoreSessionId }: { documentId?
     let answered = false;
     try {
       const answer = await askChat({
-        question, sessionId, history, signal: controller.signal, mode,
+        question, sessionId, history, signal: controller.signal, mode, attachments: toPayload(files),
         onToken: (text) => patchAnswer((m) => ({ ...m, content: m.content + text })),
         onFallback: () => patchAnswer((m) => ({ ...m, content: "" })),     // the stream failed: the full answer follows
       });
@@ -241,7 +269,8 @@ export default function ChatView({ documentId, restoreSessionId }: { documentId?
       patchAnswer(() => answer.blocked
         ? { role: "assistant", content: answer.content, notFound: { question } }
         : { role: "assistant", content: main, sources: answer.sources, citations: answer.citations, ...(answer.coverage === "none" ? { outside: true } : {}),
-            ...(answer.budget ? { budget: { state: answer.budget, canTopUp: !!answer.canTopUp } } : {}) });
+            ...(answer.budget ? { budget: { state: answer.budget, canTopUp: !!answer.canTopUp } } : {}),
+            ...(docs.length ? { addId: rememberAttached(docs) } : {}) });
       if (parsed.length > 0 && !answer.blocked) put({ followUps: parsed });
       answered = true;
       setAnnouncement(answer.blocked ? "The document doesn't cover that question." : "Answer complete.");
@@ -252,7 +281,7 @@ export default function ChatView({ documentId, restoreSessionId }: { documentId?
       }
     } catch (e) {
       if (isAbortError(e) || controller.signal.aborted) { setLiveChat(id, undefined); return; }   // New chat / Clear: dropped
-      put({ messages: live.messages.slice(0, -1), failure: { error: e, question } });   // the half-written answer goes; the question stays
+      put({ messages: live.messages.slice(0, -1), failure: { error: e, question, attachments: files } });   // the half-written answer goes; the question (and its files) stay
       setAnnouncement("");                                        // the error below announces itself (role="alert")
     } finally {
       if (requestRef.current === controller) requestRef.current = null;
@@ -271,14 +300,36 @@ export default function ChatView({ documentId, restoreSessionId }: { documentId?
   const retryFailed = () => {
     if (!failure) return;
     const base = messages[messages.length - 1]?.role === "user" ? messages.slice(0, -1) : messages;
-    void sendMessage(failure.question, base);
+    void sendMessage(failure.question, base, failure.attachments ?? []);
   };
 
   const handleSend = () => {
-    const q = input.trim();
+    if (attach.reading) { toast.info("Still reading your files: send in a moment."); return; }
+    const q = input.trim() || (attach.items.length ? "Please look at what I attached." : "");
     if (!q || loading) return;
+    const files = attach.items;
     setInput("");
-    void sendMessage(q);
+    attach.clear();
+    void sendMessage(q, messages, files);
+  };
+
+  /** Pasting into the box: files become cards, and so does a long block of text (like Claude); short text pastes as usual. */
+  const onPaste = (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
+    const files = Array.from(e.clipboardData?.files ?? []);
+    if (files.length) { e.preventDefault(); void attach.add(files); return; }
+    const text = e.clipboardData?.getData("text/plain") ?? "";
+    if (text.length > PASTE_CARD_CHARS && attach.addText(text)) e.preventDefault();
+  };
+
+  /** Keep an answered question's documents in the course (or the library, outside a course). */
+  const addToCourse = async (addId: string) => {
+    const files = attachedFiles.get(addId);
+    if (!files?.length) return;
+    const docs = await keep.uploadMany(files);
+    if (docs.length) {
+      setAdded((s) => new Set(s).add(addId));
+      toast.success(courseId ? `Added to ${pdf?.filename ?? "the course"}` : "Added to your library");
+    }
   };
 
   const onKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -377,9 +428,12 @@ export default function ChatView({ documentId, restoreSessionId }: { documentId?
                     <motion.article key={idx} aria-label="You" className="flex justify-end"
                       initial={{ opacity: 0, y: 14, scale: 0.97 }} animate={{ opacity: 1, y: 0, scale: 1 }}
                       transition={{ type: "spring", stiffness: 380, damping: 30 }} style={{ transformOrigin: "100% 100%" }}>
-                      <p className="chat-user max-w-[85%] whitespace-pre-wrap break-words">
-                        {msg.content}
-                      </p>
+                      <div className="flex max-w-[85%] flex-col items-end gap-1">
+                        {msg.attachments?.length ? <SentAttachments items={msg.attachments} /> : null}
+                        <p className="chat-user whitespace-pre-wrap break-words">
+                          {msg.content}
+                        </p>
+                      </div>
                     </motion.article>
                   );
                 }
@@ -412,6 +466,13 @@ export default function ChatView({ documentId, restoreSessionId }: { documentId?
                         ? <CitationList citations={citedFirst(shown, msg.citations)} onOpen={setOpenCitation} />
                         : <SourceChips sources={msg.sources} />)}
                       {!isStreaming && msg.budget && <BudgetNote budget={msg.budget} />}
+                      {!isStreaming && msg.addId && attachedFiles.has(msg.addId) && (
+                        added.has(msg.addId)
+                          ? <p className="chat-ai__budget"><Check size={13} aria-hidden="true" /> Added: quizzes, notes and search can use it now.</p>
+                          : <Button size="sm" variant="secondary" className="mt-2" loading={keep.uploading} onClick={() => void addToCourse(msg.addId!)}>
+                              <Plus size={14} aria-hidden="true" />{courseId ? "Add to course" : "Add to my library"}
+                            </Button>
+                      )}
                       {!isStreaming && (
                         <div className="chat-ai__actions">
                           <Button variant="ghost" size="sm" onClick={() => void copyToClipboard(msg.content, idx)}>
@@ -464,7 +525,13 @@ export default function ChatView({ documentId, restoreSessionId }: { documentId?
               </Button>
             ))}
           </div>
+          <AttachmentTray items={attach.items} reading={attach.reading} onRemove={attach.remove} />
           <form onSubmit={(e) => { e.preventDefault(); handleSend(); }} className="study-composer mx-auto w-full max-w-[72ch]">
+            <input ref={attachInput} type="file" accept={ATTACH_ACCEPT} multiple className="hidden" aria-label="Choose files to attach"
+                   onChange={(e) => { const f = Array.from(e.currentTarget.files ?? []); e.currentTarget.value = ""; if (f.length) void attach.add(f); }} />
+            <Button type="button" icon variant="ghost" onClick={() => attachInput.current?.click()} aria-label="Attach files" title="Attach pictures or documents (up to 5)">
+              <Paperclip size={18} />
+            </Button>
             <Textarea
               ref={inputRef}
               rows={1}
@@ -472,13 +539,14 @@ export default function ChatView({ documentId, restoreSessionId }: { documentId?
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={onKeyDown}
+              onPaste={onPaste}
               placeholder={messages.length > 0 && mode !== "quiz" ? "Reply to your tutor…" : modeInfo.placeholder}
               hint={undefined}
               wrapperClassName="flex-1"
               className="resize-none"
               style={{ maxHeight: MAX_INPUT_PX }}
             />
-            <Button type="submit" variant="primary" icon disabled={!input.trim() || loading} loading={loading} aria-label="Send">
+            <Button type="submit" variant="primary" icon disabled={(!input.trim() && !attach.items.length) || loading} loading={loading} aria-label="Send">
               {!loading && <ArrowUp size={18} strokeWidth={2.5} />}
             </Button>
           </form>
@@ -487,6 +555,7 @@ export default function ChatView({ documentId, restoreSessionId }: { documentId?
       </div>
 
       {openCitation && <PdfViewer citation={openCitation} onClose={closeCitation} />}
+      <DropOverlay show={dragging} title="Drop to attach to your question" hint="Pictures, PDF, Word, PowerPoint, Excel or text. Up to 5 files." />
     </div>
   );
 }
