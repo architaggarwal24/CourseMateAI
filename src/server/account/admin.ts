@@ -43,26 +43,55 @@ export const GRANT_MAX = 1_000_000;
  * (kind "admin_grant", the reason kept as its source), so it shows in the history and levels follow the XP.
  * Taking away never goes below zero: it takes what there is.
  */
-export async function grantGame(ctx: RequestContext, actor: CurrentUser, id: number, xp: unknown, coins: unknown, reason: unknown) {
+/** The most a set amount can be (Admin's "Set exactly"). */
+export const SET_MAX = 100_000_000;
+
+/**
+ * The owner only. `give` (the default): add XP and coins; a minus takes away (never below zero). `set`: make them
+ * exactly these amounts (null or empty leaves one as it is): the difference is recorded like any grant, so the reward
+ * history still adds up. A lower XP lowers the level; what was unlocked on the way stays.
+ */
+export async function grantGame(ctx: RequestContext, actor: CurrentUser, id: number, xp: unknown, coins: unknown, reason: unknown, mode: unknown = "give") {
   if (!actor.owner) throw new HttpError(403, "owner_only", "Only the owner can give XP and coins.");
-  const whole = (v: unknown, field: string) => {
-    const n = v === null || v === undefined || v === "" ? 0 : Number(v);
+  const setting = mode === "set";
+  if (mode !== undefined && mode !== null && mode !== "give" && !setting) throw new HttpError(400, "invalid_input", "Choose give or set.", null, { field: "mode" });
+  const blank = (v: unknown) => v === null || v === undefined || v === "";
+  const whole = (v: unknown, field: "xp" | "coins") => {
+    const n = blank(v) ? 0 : Number(v);
     if (!Number.isInteger(n) || Math.abs(n) > GRANT_MAX) {
       throw new HttpError(400, "invalid_amount", `${field === "xp" ? "XP" : "Coins"} must be a whole number between -${GRANT_MAX.toLocaleString("en")} and ${GRANT_MAX.toLocaleString("en")}.`, null, { field });
     }
     return n;
   };
-  const x = whole(xp, "xp"), c = whole(coins, "coins");
-  if (!x && !c) throw new HttpError(400, "invalid_amount", "Give some XP or coins (a minus takes them away).", null, { field: "xp" });
+  const exact = (v: unknown, field: "xp" | "coins"): number | null => {
+    if (blank(v)) return null;
+    const n = Number(v);
+    if (!Number.isInteger(n) || n < 0 || n > SET_MAX) {
+      throw new HttpError(400, "invalid_amount", `${field === "xp" ? "XP" : "Coins"} must be a whole number from 0 to ${SET_MAX.toLocaleString("en")}.`, null, { field });
+    }
+    return n;
+  };
   const t = await target(ctx, id);
   const note = typeof reason === "string" ? reason.trim().slice(0, 120) : "";
   const now = await ctx.db.select({ xp: userProgress.totalXp, coins: userProgress.coins }).from(userProgress).where(eq(userProgress.userId, id)).get();
-  // taking away: at most what there is
-  const dx = Math.max(x, -(now?.xp ?? 0)), dc = Math.max(c, -(now?.coins ?? 0));
-  const res = await recordRewardEvent(ctx, id, "admin_grant", dx, dc, `admin:${actor.id}${note ? `:${note}` : ""}`, `admin-grant:${actor.id}:${crypto.randomUUID()}`);
+  const have = { xp: now?.xp ?? 0, coins: now?.coins ?? 0 };
+  let dx: number, dc: number;
+  if (setting) {
+    const x = exact(xp, "xp"), c = exact(coins, "coins");
+    dx = x === null ? 0 : x - have.xp;
+    dc = c === null ? 0 : c - have.coins;
+    if (!dx && !dc) throw new HttpError(400, "invalid_amount", "Those are already their amounts: nothing to change.", null, { field: "xp" });
+  } else {
+    const x = whole(xp, "xp"), c = whole(coins, "coins");
+    if (!x && !c) throw new HttpError(400, "invalid_amount", "Give some XP or coins (a minus takes them away).", null, { field: "xp" });
+    // taking away: at most what there is
+    dx = Math.max(x, -have.xp); dc = Math.max(c, -have.coins);
+  }
+  const why = `admin${setting ? "-set" : ""}:${actor.id}${note ? `:${note}` : ""}`;
+  const res = await recordRewardEvent(ctx, id, "admin_grant", dx, dc, why, `admin-grant:${actor.id}:${crypto.randomUUID()}`);
   if (!res.applied) throw new HttpError(409, "grant_failed", "That didn't go through. Try again.");
   if (dx > 0) await checkAchievements(ctx, id);
-  return { ...(await adminUserView(ctx, t.row)), granted: { xp: dx, coins: dc, reason: note || null } };
+  return { ...(await adminUserView(ctx, t.row)), granted: { xp: dx, coins: dc, reason: note || null, mode: setting ? "set" : "give" } };
 }
 
 export async function listUsers(ctx: RequestContext, { q = "", offset = 0, limit = 25 }: { q?: string; offset?: number; limit?: number }) {

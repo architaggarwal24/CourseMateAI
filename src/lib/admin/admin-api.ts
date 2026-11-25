@@ -25,7 +25,7 @@ export interface AdminUser {
   /** Level, XP and coins in the game. */
   game?: { level: number; total_xp: number; coins: number };
   /** What a grant just gave (POST /users/:id/grant). */
-  granted?: { xp: number; coins: number; reason: string | null };
+  granted?: { xp: number; coins: number; reason: string | null; mode?: "give" | "set" };
   tier: Tier;
   tier_name: string;
   plan: { tier: Tier; source: string; expires_at: string | null; started_at: string } | null;
@@ -123,6 +123,8 @@ export const adminApi = {
   unban: (id: number) => call<AdminUser>(`/users/${id}/ban`, { method: "DELETE" }),
   /** The owner only: give XP / coins (a minus takes away, never below zero). */
   grant: (id: number, xp: number, coins: number, reason: string) => call<AdminUser>(`/users/${id}/grant`, { body: { xp, coins, reason } }),
+  /** The owner only: make XP and coins exactly these amounts (null leaves one as it is). */
+  setGame: (id: number, xp: number | null, coins: number | null, reason: string) => call<AdminUser>(`/users/${id}/grant`, { body: { xp, coins, reason, mode: "set" } }),
   invites: () => call<{ invites: Invite[] }>("/invites"),
   createInvite: async (b: { tier: Tier; days: number | null; max_uses: number; code?: string; note?: string; valid_days: number | null }) => {
     const once = idempotencyKey("admin-invite", b);

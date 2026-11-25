@@ -33,6 +33,7 @@ beforeEach(() => {
       return json({ ...STUDENT, tier: body.tier, tier_name: "Sage", plan: { tier: body.tier, source: "admin", expires_at: "2026-12-05T00:00:00Z", started_at: "x" } });
     }
     if (u.pathname === "/api/v1/admin/users/7/grant" && method === "POST") {
+      if (body.mode === "set") return json({ ...STUDENT, game: { level: 26, total_xp: body.xp ?? 100_900, coins: body.coins ?? 101_400 }, granted: { xp: 0, coins: (body.coins ?? 101_400) - 101_400, reason: body.reason || null, mode: "set" } });
       return json({ ...STUDENT, game: { level: 4, total_xp: 500, coins: 20 }, granted: { xp: body.xp, coins: body.coins, reason: body.reason || null } });
     }
     if (u.pathname === "/api/v1/admin/invites" && method === "GET") return json({ invites: [] });
@@ -186,5 +187,31 @@ describe("AdminPanel", () => {
     await flush();
     fireEvent.click(screen.getByRole("button", { name: "Manage s@example.com" }));
     expect(screen.queryByRole("heading", { name: "XP and coins" })).toBeNull();
+  });
+
+  it("the owner sets XP and coins exactly: it starts from theirs, shows the change, and sends only what changed", async () => {
+    auth.user = { user_id: 1, email: "o@x.io", is_admin: true, is_owner: true };
+    const rich = { ...STUDENT, game: { level: 26, total_xp: 100_900, coins: 101_400 } };
+    const real = (globalThis.fetch as unknown as (u: string, i?: RequestInit) => Promise<Response>);
+    vi.stubGlobal("fetch", vi.fn(async (url: string, init: RequestInit = {}) => {
+      if (new URL(url, "http://localhost").pathname === "/api/v1/admin/users") return json({ users: [rich], total: 1, offset: 0, limit: 25 });
+      return real(url, init);
+    }));
+    render(<AdminPanel />);
+    await flush();
+    fireEvent.click(screen.getByRole("button", { name: "Manage s@example.com" }));
+    const dialog = within(screen.getByRole("dialog"));
+    fireEvent.click(dialog.getByRole("button", { name: "Set exactly" }));
+    const coins = dialog.getByLabelText("Coins (new total)") as HTMLInputElement;
+    expect(coins.value).toBe("101400");
+    expect((dialog.getByLabelText("XP (new total)") as HTMLInputElement).value).toBe("100900");
+    fireEvent.click(dialog.getByRole("button", { name: "Save amounts" }));
+    expect(dialog.getByText("Change XP or coins first")).toBeTruthy();                                  // nothing changed: nothing sent
+    fireEvent.change(coins, { target: { value: "10000" } });
+    expect(dialog.getByText("101,400 → 10,000 (−91,400)")).toBeTruthy();
+    fireEvent.click(dialog.getByRole("button", { name: "Save amounts" }));
+    await flush();
+    expect(sent.find((c) => c.path.endsWith("/grant"))?.body).toEqual({ xp: 100_900, coins: 10_000, reason: "", mode: "set" });
+    expect(toasts.success).toHaveBeenCalledWith("stud now has 100,900 XP and 10,000 coins");
   });
 });

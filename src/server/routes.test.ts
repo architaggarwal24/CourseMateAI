@@ -224,6 +224,18 @@ describe("admin", () => {
     expect((await json(await grant(helper, hid, { xp: 10 }))).error.code).toBe("owner_only");
     const list = await json(await adminUsers.GET(owner.request("/api/v1/admin/users?q=lucky")));
     expect(list.users[0].game).toMatchObject({ total_xp: 1200, coins: 0 });
+    // "Set exactly": fixes a slip of a zero; the difference is recorded like a grant, an empty one stays as it is
+    await grant(owner, sid, { coins: 101_400 });
+    const set = await json(await grant(owner, sid, { coins: 10_000, xp: null, mode: "set", reason: "typo" }));
+    expect(set).toMatchObject({ granted: { coins: -91_400, xp: 0, mode: "set" }, game: { coins: 10_000, total_xp: 1200 } });
+    const lower = await json(await grant(owner, sid, { xp: 0, mode: "set" }));
+    expect(lower.game).toMatchObject({ total_xp: 0, level: 1, coins: 10_000 });                   // the level follows the XP
+    expect((await json(await grant(owner, sid, { coins: 10_000, mode: "set" }))).error.message).toMatch(/already their amounts/);
+    expect((await json(await grant(owner, sid, { coins: -5, mode: "set" }))).error.details.field).toBe("coins");
+    expect((await json(await grant(owner, sid, { coins: 5, mode: "swap" }))).error.details.field).toBe("mode");
+    expect((await json(await grant(helper, sid, { coins: 5, mode: "set" }))).error.code).toBe("owner_only");
+    const events = await p.env.DB.prepare("SELECT coins AS c FROM reward_events WHERE user_id = ?").bind(sid).all<{ c: number }>();
+    expect(events.results.reduce((n, e) => n + e.c, 0)).toBe(10_000);                               // the history still adds up
   });
 
   it("a ban signs the person out everywhere and keeps them out until lifted", async () => {

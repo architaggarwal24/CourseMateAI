@@ -171,29 +171,55 @@ function UserEditor({ user, isOwnerActor, onClose, onSaved }: {
   );
 }
 
-/** The owner only: give anyone (themselves too) XP and coins; a minus takes them away. */
+/**
+ * The owner only: XP and coins for anyone (themselves too). "Give" adds (a minus takes away, never below zero);
+ * "Set exactly" starts from their amounts and saves the new ones, showing the change first (for a slip of a zero).
+ */
 export function GrantGame({ user, onSaved }: { user: AdminUser; onSaved: (u: AdminUser) => void }) {
   const me = useAuth().user;
+  const [mode, setMode] = useState<"give" | "set">("give");
   const [xp, setXp] = useState("");
   const [coins, setCoins] = useState("");
   const [note, setNote] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<{ field: "xp" | "coins"; text: string } | null>(null);
-  const num = (t: string) => (t.trim() === "" ? 0 : Number(t.trim()));
+  const num = (t: string) => (t.trim() === "" ? 0 : Number(t.trim().replace(/,/g, "")));
+  const have = { xp: user.game?.total_xp ?? 0, coins: user.game?.coins ?? 0 };
 
-  async function give(e: React.FormEvent) {
+  const switchTo = (m: "give" | "set") => {
+    setMode(m);
+    setError(null);
+    if (m === "set") { setXp(String(have.xp)); setCoins(String(have.coins)); } else { setXp(""); setCoins(""); }
+  };
+  /** "101,400 → 10,000 (−91,400)", or nothing when it doesn't change. */
+  const change = (from: number, raw: string) => {
+    const to = num(raw);
+    if (raw.trim() === "" || !Number.isInteger(to) || to === from) return undefined;
+    const d = to - from;
+    return `${from.toLocaleString()} → ${to.toLocaleString()} (${d > 0 ? "+" : "−"}${Math.abs(d).toLocaleString()})`;
+  };
+
+  async function save(e: React.FormEvent) {
     e.preventDefault();
     const x = num(xp), c = num(coins);
-    if (!Number.isInteger(x)) { setError({ field: "xp", text: "A whole number (a minus takes XP away)" }); return; }
-    if (!Number.isInteger(c)) { setError({ field: "coins", text: "A whole number (a minus takes coins away)" }); return; }
-    if (!x && !c) { setError({ field: "xp", text: "Enter some XP or coins" }); return; }
+    const word = mode === "set" ? "A whole number, 0 or more" : "A whole number (a minus takes away)";
+    if (!Number.isInteger(x) || (mode === "set" && x < 0)) { setError({ field: "xp", text: word }); return; }
+    if (!Number.isInteger(c) || (mode === "set" && c < 0)) { setError({ field: "coins", text: word }); return; }
+    if (mode === "give" && !x && !c) { setError({ field: "xp", text: "Enter some XP or coins" }); return; }
+    if (mode === "set" && x === have.xp && c === have.coins) { setError({ field: "xp", text: "Change XP or coins first" }); return; }
     setBusy(true);
     try {
-      const fresh = await adminApi.grant(user.user_id, x, c, note);
+      const fresh = mode === "set"
+        ? await adminApi.setGame(user.user_id, xp.trim() === "" ? null : x, coins.trim() === "" ? null : c, note)
+        : await adminApi.grant(user.user_id, x, c, note);
       const g = fresh.granted!;
       const part = (n: number, unit: string) => (n ? `${n > 0 ? "+" : ""}${n.toLocaleString()} ${unit}` : "");
-      toast.success(`${[part(g.xp, "XP"), part(g.coins, "coins")].filter(Boolean).join(", ")} for ${user.username || user.email}`);
-      setXp(""); setCoins(""); setNote("");
+      const who = user.username || user.email;
+      toast.success(mode === "set"
+        ? `${who} now has ${(fresh.game?.total_xp ?? x).toLocaleString()} XP and ${(fresh.game?.coins ?? c).toLocaleString()} coins`
+        : `${[part(g.xp, "XP"), part(g.coins, "coins")].filter(Boolean).join(", ")} for ${who}`);
+      setNote("");
+      if (mode === "set") { setXp(String(fresh.game?.total_xp ?? x)); setCoins(String(fresh.game?.coins ?? c)); } else { setXp(""); setCoins(""); }
       onSaved(fresh);
       // your own header shows the new numbers at once
       if (me && String(me.user_id) === String(user.user_id)) void useHUDStore.getState().refresh();
@@ -204,18 +230,28 @@ export function GrantGame({ user, onSaved }: { user: AdminUser; onSaved: (u: Adm
 
   return (
     <section aria-labelledby="ed-grant" className="space-y-3">
-      <h3 id="ed-grant" className="text-sm font-semibold text-fg">XP and coins</h3>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h3 id="ed-grant" className="text-sm font-semibold text-fg">XP and coins</h3>
+        <div role="group" aria-label="How to change them" className="flex gap-1">
+          <Button size="sm" variant="ghost" pressed={mode === "give"} onClick={() => switchTo("give")}>Give or take</Button>
+          <Button size="sm" variant="ghost" pressed={mode === "set"} onClick={() => switchTo("set")}>Set exactly</Button>
+        </div>
+      </div>
       <p className="text-sm text-fg-2">
         {user.game ? <>Level {user.game.level} · {user.game.total_xp.toLocaleString()} XP · {user.game.coins.toLocaleString()} coins. </> : null}
-        Any amount; a minus takes away (never below zero).
+        {mode === "give" ? "Any amount; a minus takes away (never below zero)." : "Their new amounts. A lower XP lowers the level; what they unlocked stays."}
       </p>
-      <form className="grid gap-3 sm:grid-cols-3" onSubmit={give} noValidate>
-        <Input label="XP" inputMode="numeric" value={xp} placeholder="0" error={error?.field === "xp" ? error.text : undefined}
+      <form className="grid gap-3 sm:grid-cols-3" onSubmit={save} noValidate>
+        <Input label={mode === "set" ? "XP (new total)" : "XP"} inputMode="numeric" value={xp} placeholder="0"
+          error={error?.field === "xp" ? error.text : undefined} hint={mode === "set" ? change(have.xp, xp) : undefined}
           onChange={(e) => { setXp(e.currentTarget.value); setError(null); }} />
-        <Input label="Coins" inputMode="numeric" value={coins} placeholder="0" error={error?.field === "coins" ? error.text : undefined}
+        <Input label={mode === "set" ? "Coins (new total)" : "Coins"} inputMode="numeric" value={coins} placeholder="0"
+          error={error?.field === "coins" ? error.text : undefined} hint={mode === "set" ? change(have.coins, coins) : undefined}
           onChange={(e) => { setCoins(e.currentTarget.value); setError(null); }} />
         <Input label="Note (optional)" value={note} maxLength={120} onChange={(e) => setNote(e.currentTarget.value)} />
-        <div className="sm:col-span-3"><Button type="submit" variant="primary" loading={busy}><Sparkles size={14} aria-hidden="true" />Give</Button></div>
+        <div className="sm:col-span-3">
+          <Button type="submit" variant="primary" loading={busy}><Sparkles size={14} aria-hidden="true" />{mode === "set" ? "Save amounts" : "Give"}</Button>
+        </div>
       </form>
     </section>
   );
