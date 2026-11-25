@@ -429,12 +429,15 @@ describe("ChatView: attachments (Files stage 3)", () => {
     render(<ChatView documentId="d1" />);
     expect(screen.getByRole("button", { name: "Attach files" })).toBeTruthy();
     pick([new File(["x"], "cell.png", { type: "image/png" }), new File(["Mitosis has four stages: prophase, metaphase, anaphase, telophase."], "notes.txt", { type: "text/plain" })]);
+    // wait until both files are read (a card that is still "Reading…" is a list item too, so count the names)
     const tray = await screen.findByRole("list", { name: "Attached to your next question" });
-    await waitFor(() => expect(within(tray).getAllByRole("listitem")).toHaveLength(2));
+    await within(tray).findByText("notes.txt");
+    await within(tray).findByText("cell.png");
+    await waitFor(() => expect(within(tray).queryByText("Reading…")).toBeNull());
     fireEvent.click(within(tray).getByRole("button", { name: "Remove cell.png" }));
-    await waitFor(() => expect(within(tray).getAllByRole("listitem")).toHaveLength(1));
+    await waitFor(() => expect(within(tray).queryByText("cell.png")).toBeNull());
     pick([new File(["x"], "cell.png", { type: "image/png" })]);
-    await waitFor(() => expect(within(screen.getByRole("list", { name: "Attached to your next question" })).getAllByRole("listitem")).toHaveLength(2));
+    await within(screen.getByRole("list", { name: "Attached to your next question" })).findByText("cell.png");
     ask("Explain these");
     await waitFor(() => expect(log.bodies).toHaveLength(1));
     expect(log.bodies[0].attachments).toEqual([
