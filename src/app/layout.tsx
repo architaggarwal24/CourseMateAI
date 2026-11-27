@@ -3,7 +3,7 @@ import { ToastHost } from "@/components/ui/Toast";
 import { Providers } from "@/components/shell/Providers";
 import { ErrorBoundary } from "@/components/shell/ErrorBoundary";
 import { geistMono } from "@/fonts/geist";
-import { bricolage, onest } from "@/fonts/brand";
+import { fraunces, onest, wordmark } from "@/fonts/brand";
 import { THEME_SCRIPT } from "@/lib/theme";
 import { SIDEBAR_SCRIPT } from "@/lib/sidebar";
 import { SHARE_IMAGE, SITE_NAME, siteOrigin } from "@/lib/site";
@@ -28,8 +28,8 @@ export const metadata: Metadata = {
 
 export const viewport: Viewport = {
   themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#ffffff" },
-    { media: "(prefers-color-scheme: dark)", color: "#000000" },
+    { media: "(prefers-color-scheme: light)", color: "#fbfaf7" },
+    { media: "(prefers-color-scheme: dark)", color: "#0b0d12" },
   ],
   colorScheme: "dark light",
   // Draw under the notch and home bar (with statusBarStyle "black-translucent"); edges pad by --safe-* (globals.css).
@@ -38,7 +38,7 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" data-mode="dark" className={`${onest.variable} ${bricolage.variable} ${geistMono.variable}`} suppressHydrationWarning>
+    <html lang="en" data-mode="dark" className={`${onest.variable} ${fraunces.variable} ${wordmark.variable} ${geistMono.variable}`} suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{ __html: THEME_SCRIPT + SIDEBAR_SCRIPT }} />
       </head>

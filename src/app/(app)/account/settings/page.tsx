@@ -9,7 +9,7 @@ import {
   Eye, EyeOff, CheckCircle2, XCircle,
   Type, Zap, Database, Download, AlertTriangle,
 } from "@/components/ui/icons";
-import { Button, Card, Checkbox, Input } from "@/components/ui";
+import { Button, Card, Checkbox, Input, useFeedback } from "@/components/ui";
 import { toast } from "@/components/ui/Toast";
 import { parseApiError, rawApi } from "@/lib/api";
 import { loadMetadata, deleteSession } from "@/lib/study/sessions";
@@ -78,6 +78,8 @@ export default function SettingsPage() {
     currentPassword: "", newPassword: "", confirmPassword: "",
   });
   const [savingProfile, setSavingProfile] = useState(false);
+  const profileSaved = useFeedback();
+  const appearanceSaved = useFeedback();
   const [checkingUsername, setCheckingUsername] = useState(false);
   const [usernameAvailable, setUsernameAvailable] = useState<boolean | null>(null);
   const [showCurrent, setShowCurrent] = useState(false);
@@ -149,6 +151,7 @@ export default function SettingsPage() {
       const { error: err, response } = await rawApi.POST("/auth/update-profile", { body });
       if (response.ok) {
         toast.success("Profile saved");
+        profileSaved.flash("success");
         setForm(f => ({ ...f, currentPassword: "", newPassword: "", confirmPassword: "" }));
         setTimeout(() => window.location.reload(), 800);
       } else {
@@ -178,6 +181,7 @@ export default function SettingsPage() {
   const handleAppearanceSave = () => {
     saveAppearance({ fontSize, reduceAnimations });
     toast.success("Appearance saved");
+    appearanceSaved.flash("success");
   };
 
   const handleClearChatHistory = () => {
@@ -289,7 +293,7 @@ export default function SettingsPage() {
               </div>
             </div>
 
-            <Button type="submit" variant="primary" block loading={savingProfile} disabled={usernameAvailable === false}>
+            <Button type="submit" variant="primary" block loading={savingProfile} feedback={profileSaved.feedback} disabled={usernameAvailable === false}>
               {savingProfile ? "Saving..." : <><Save size={16} />Save Changes</>}
             </Button>
           </form>
@@ -337,7 +341,7 @@ export default function SettingsPage() {
 
           <SoundSettings />
 
-          <Button block onClick={handleAppearanceSave}>
+          <Button block onClick={handleAppearanceSave} feedback={appearanceSaved.feedback}>
             <Save size={15} />Apply Appearance
           </Button>
         </Section>

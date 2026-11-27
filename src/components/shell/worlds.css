@@ -265,12 +265,8 @@ html[data-sidebar="collapsed"] :is(.hscene__arena, .hscene__torch, .hscene__orb)
 /* ── Stage 5: the bridges ────────────────────────────────────────────────────────────────────────────────────── */
 .insight { display: grid; grid-template-columns: auto 1fr; align-items: center; gap: 4px var(--space-2); }
 .insight__label { display: inline-flex; align-items: center; gap: 4px; font-size: 0.7rem; color: var(--color-text-secondary); }
-.insight__bar { height: 0.45rem; border-radius: var(--radius-full); background: var(--color-surface-sunken); border: 1px solid var(--color-border); overflow: hidden; }
-.insight__bar > span { display: block; height: 100%; background: #8b5cf6; transition: width var(--motion-slow) var(--motion-ease); }
-.insight[data-full] .insight__bar > span { background: var(--color-reward, #f5b942); }
 .insight[data-full] .insight__label { color: var(--color-reward, #b45309); }
 .insight__hint { grid-column: 1 / -1; font-size: 0.75rem; color: var(--color-text-secondary); }
-[data-theme="play"] .insight__bar { border-radius: 0; border: 2px solid #03040d; }
 .hside__insight { margin-top: 2px; }
 .side__hero-chip { display: grid; gap: 4px; margin: var(--space-2) var(--space-3) 0; padding: var(--space-2) var(--space-3); border: 1px solid var(--color-border); border-radius: var(--radius-md); background: var(--color-elevated); }
 .side__hero-line { display: flex; justify-content: space-between; margin: 0; font-size: 0.78rem; font-weight: 600; color: var(--color-text); }

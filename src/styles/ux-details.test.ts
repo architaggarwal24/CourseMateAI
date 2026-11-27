@@ -25,8 +25,10 @@ describe("UX details", () => {
   });
 
   it("page changes finish in under 300 ms, and full-page loads cross-fade only when motion is allowed", () => {
+    // the (app) template's page change uses the "base" motion (components/fx/motion.ts)
     const template = read("app/(app)/template.tsx");
-    const seconds = Number(template.match(/duration:\s*([\d.]+)/)![1]);
+    expect(template).toMatch(/duration:\s*MOTION\.base/);
+    const seconds = Number(read("components/fx/motion.ts").match(/base:\s*([\d.]+)/)![1]);
     expect(seconds).toBeLessThan(0.3);
     const globals = read("app/globals.css");
     const i = globals.indexOf("@media (prefers-reduced-motion: no-preference) {\n  @view-transition");
@@ -108,9 +110,7 @@ describe("UX details", () => {
     }
   });
   it("progress tracks show against the page (border colour, not the near-black sunken surface)", () => {
-    for (const [file, sel] of [["components/play/hero.css", ".quest__bar"], ["components/account/plan-usage.css", ".pu-meter__bar"],
-      ["components/map/map.css", ".cmap-progress__bar"], ["components/today/today.css", ".today-bar"],
-      ["components/study/study.css", ".study-progress"]] as const) {
+    for (const [file, sel] of [["components/play/hero.css", ".quest__bar"], ["components/ui/ui.css", ".ui-meter"]] as const) {
       expect(block(read(file), sel), sel).toMatch(/background:\s*var\(--color-border\)/);
     }
   });

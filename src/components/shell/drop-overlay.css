@@ -13,7 +13,7 @@
   background: var(--glass-bg-strong);
   color: var(--color-text);
   box-shadow: var(--shadow-lg);
-  animation: ui-pop 420ms var(--ease-spring);
+  animation: ui-pop var(--motion-slow) var(--ease-spring);
 }
 .drop-overlay__icon { color: var(--color-accent-text); animation: float 2.4s ease-in-out infinite; }
 @media (prefers-reduced-motion: reduce) { .drop-overlay__icon { animation: none; } }

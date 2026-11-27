@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useId, useRef, type MouseEvent } from "react";
 import { motion } from "motion/react";
+import { SPRING } from "@/components/fx/motion";
 import { cn } from "@/lib/utils";
 
 export interface SubNavItem {
@@ -74,7 +75,7 @@ export default function SubNav({ label, items, className, onNavigate }: {
         <span className="ui-tab__badge"><span aria-hidden="true">{item.badge.count > 99 ? "99+" : item.badge.count}</span>
           <span className="sr-only">, {item.badge.label}</span></span>
       )}
-      {isCurrent(pathname, item) && <motion.span layoutId={`${barId}-bar`} className="ui-tab__bar" transition={{ type: "spring", stiffness: 520, damping: 40 }} aria-hidden="true" />}
+      {isCurrent(pathname, item) && <motion.span layoutId={`${barId}-bar`} className="ui-tab__bar" transition={SPRING.indicator} aria-hidden="true" />}
     </Link>
   );
 

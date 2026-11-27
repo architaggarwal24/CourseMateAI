@@ -1,5 +1,5 @@
 // @vitest-environment node
-// Ink is flat: no gradients, no frosted glass, no glow. (The arena's star dots and two CSS techniques that only
+// Ink is flat: no gradients, no frosted glass, no glow, apart from the one light layer (see LIT below). (The arena's star dots and two CSS techniques that only
 // look like gradients in code are the exceptions: a mask that cuts a border ring, and a range slider's hard-edged fill.)
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join, relative } from "node:path";
@@ -25,7 +25,21 @@ const ALLOWED = [
 // (paths compared with forward slashes: on Windows `relative` gives components\bestiary\book.css)
 const PAINTED = (file: string) => file.replace(/\\/g, "/").endsWith("components/bestiary/book.css");
 
+// The one light layer (redesign Stage 1, "Ink, lit"): only through var(--light-*), and only in these files. Add a file
+// here when a screen earns it; the light itself is defined once in tokens.css.
+const LIT = ["app/globals.css"];
+const slash = (file: string) => file.replace(/\\/g, "/");
+
 describe("flat Ink surfaces", () => {
+  it.each(ALL.map((f) => [f.file, f.text]))("%s uses the light layer only if it is on the list", (file, text) => {
+    if (!LIT.includes(slash(file as string))) expect(text).not.toMatch(/var\(--light-/);
+  });
+  it("the light layer is laid on by one utility, .lit", () => {
+    const globals = ALL.find((f) => slash(f.file) === "app/globals.css")!.text;
+    expect([...globals.matchAll(/var\(--light-[a-z-]+\)/g)].length).toBe(1);
+    expect(globals).toMatch(/\.lit\s*\{[^}]*background-image:\s*var\(--light-soft\)/);
+  });
+
   it.each(ALL.filter((f) => !PAINTED(f.file)).map((f) => [f.file, f.text]))("%s paints no gradients", (_file, text) => {
     let t = text as string;
     for (const re of ALLOWED) t = t.replace(re, "");

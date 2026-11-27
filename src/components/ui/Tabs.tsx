@@ -2,6 +2,7 @@
 
 import { useId, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
 import { motion } from "motion/react";
+import { SPRING } from "@/components/fx/motion";
 import { cn } from "@/lib/utils";
 
 export interface TabItem {
@@ -82,7 +83,7 @@ export default function Tabs({ tabs, value, defaultValue, onChange, label, class
               onClick={() => select(t.id)}
             >
               {t.label}
-              {isSelected && <motion.span layoutId={`${base}-bar`} className="ui-tab__bar" transition={{ type: "spring", stiffness: 520, damping: 40 }} aria-hidden="true" />}
+              {isSelected && <motion.span layoutId={`${base}-bar`} className="ui-tab__bar" transition={SPRING.indicator} aria-hidden="true" />}
             </button>
           );
         })}

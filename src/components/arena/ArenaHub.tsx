@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { motion } from "motion/react";
+import { ARRIVE } from "@/components/fx/motion";
+import { useEnter } from "@/components/fx/useEnter";
 import { Crown, Gauge, HeartPulse, Lock, Map as MapIcon, Swords, Target } from "@/components/ui/icons";
 import { Badge } from "@/components/ui";
 import { fetchActiveRun, fetchLeaderboard, fetchPower, fetchWeakConcepts } from "@/lib/arena/api";
@@ -19,6 +21,7 @@ const mmss = (seconds: number) => `${Math.floor(seconds / 60)}m ${Math.round(sec
  * bests), your power level (Stage 6: the bosses of Boss Rush and Survival are matched to it), and this week's board.
  */
 export default function ArenaHub({ sessionId, onPick, onSeason, starting }: { sessionId: string; onPick: (m: ArenaMode) => void; onSeason?: () => void; starting?: boolean }) {
+  const enter = useEnter();
   const [weak, setWeak] = useState<WeakConceptsResponse | null>(null);
   const [run, setRun] = useState<Run | null>(null);
   const [board, setBoard] = useState<LeaderboardEntry[]>([]);
@@ -66,7 +69,7 @@ export default function ArenaHub({ sessionId, onPick, onSeason, starting }: { se
 
       <ul className="arena-hub__modes">
         {modes.map((m, i) => (
-          <motion.li key={m.id} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.07, type: "spring", stiffness: 260, damping: 24 }}>
+          <motion.li key={m.id} {...enter(ARRIVE, i)}>
             <div className="arena-mode" data-tone={m.tone}>
               <button type="button" className="arena-mode__btn" onClick={() => onPick(m.id)} aria-describedby={`mode-${m.id}`}>
                 <span className="arena-mode__icon" aria-hidden="true"><m.Icon size={26} /></span>

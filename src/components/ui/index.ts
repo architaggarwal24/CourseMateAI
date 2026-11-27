@@ -15,3 +15,5 @@ export { default as EmptyState, type EmptyStateProps } from "./EmptyState";
 export { default as Badge, type BadgeProps, type BadgeTone } from "./Badge";
 export { default as ErrorState, ErrorActions, type ErrorStateProps } from "./ErrorState";
 export { default as Tooltip, type TooltipProps } from "./Tooltip";
+export { default as Meter, meterTone, type MeterProps, type MeterTone } from "./Meter";
+export { useFeedback, type Feedback } from "./useFeedback";

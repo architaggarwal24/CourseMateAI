@@ -49,13 +49,13 @@ html.reduce-animations .fx-spark { display: none; }
 @keyframes fx-rise {
   from { opacity: 0; transform: translate(var(--fx-x, 0), var(--fx-y, 8px)); }
 }
-/* TextReveal: each word rises out of a soft blur. */
+/* TextReveal: each word rises and fades in (no blur: it is costly on phones, and Ink has none). */
 .fx-word {
   display: inline-block;
   animation: fx-word 700ms var(--ease-out-expo) var(--fx-delay, 0ms) both;
 }
 @keyframes fx-word {
-  from { opacity: 0; transform: translateY(0.45em); filter: blur(8px); }
+  from { opacity: 0; transform: translateY(0.45em); }
 }
 
 /* ── reward ceremonies (Stage R3) ──────────────────────────────────────────────────────────────────────────── */

@@ -1,7 +1,7 @@
 "use client";
 
 import { forwardRef, type ButtonHTMLAttributes, type PointerEvent } from "react";
-import { Loader2 } from "@/components/ui/icons";
+import { Check, Loader2, X } from "@/components/ui/icons";
 import { cn } from "@/lib/utils";
 import { ripple, sparkBurst } from "@/components/fx/motion";
 
@@ -20,6 +20,11 @@ export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   pressed?: boolean;
   /** A burst of sparks from the click point (celebratory actions: claim, buy, summon). Defaults on for "reward". */
   sparks?: boolean;
+  /**
+   * A short confirm state after the action (redesign Stage 2): "success" pops a check, "error" a cross and a small
+   * shake. The label stays, so the width does not jump. Drive it with useFeedback().
+   */
+  feedback?: "success" | "error";
 }
 
 /**
@@ -29,7 +34,7 @@ export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
  * type defaults to "button" so a Button inside a form never submits it by accident.
  */
 const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button(
-  { variant = "secondary", size = "md", loading = false, icon = false, block = false, pressed, sparks, className, type = "button",
+  { variant = "secondary", size = "md", loading = false, icon = false, block = false, pressed, sparks, feedback, className, type = "button",
     disabled, children, onPointerDown, onClick, ...rest },
   ref,
 ) {
@@ -41,6 +46,7 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button(
       disabled={disabled || loading}
       aria-busy={loading || undefined}
       aria-pressed={pressed}
+      data-feedback={feedback}
       className={cn(
         "ui-btn", `ui-btn--${variant}`,
         size === "sm" && "ui-btn--sm", size === "lg" && "ui-btn--lg", icon && "ui-btn--icon", block && "ui-btn--block",
@@ -57,6 +63,11 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button(
       {...rest}
     >
       {loading && <Loader2 size={size === "sm" ? 14 : 16} className="ui-spinner" aria-hidden="true" />}
+      {!loading && feedback && (
+        <span key={feedback} className="ui-btn__mark" aria-hidden="true">
+          {feedback === "success" ? <Check size={size === "sm" ? 14 : 16} /> : <X size={size === "sm" ? 14 : 16} />}
+        </span>
+      )}
       {children}
     </button>
   );

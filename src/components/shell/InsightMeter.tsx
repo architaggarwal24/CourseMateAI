@@ -2,6 +2,7 @@
 
 import { Brain } from "@/components/ui/icons";
 import { useHUDStore } from "@/hooks/useHUD";
+import Meter from "@/components/ui/Meter";
 
 export const INSIGHT_MAX = 100;
 
@@ -16,7 +17,7 @@ export default function InsightMeter({ className = "", compact = false }: { clas
   return (
     <div className={`insight ${className}`} data-full={full || undefined} data-testid="insight">
       <span className="insight__label"><Brain size={13} aria-hidden="true" />Insight</span>
-      <span className="insight__bar" role="progressbar" aria-label="Insight" aria-valuemin={0} aria-valuemax={100} aria-valuenow={pct}><span style={{ width: `${pct}%` }} /></span>
+      <Meter label="Insight" value={pct} tone={full ? "reward" : "epic"} size="sm" className="insight__bar" />
       {!compact && <span className="insight__hint">{full ? "Full: your next fight starts with +1 Focus and a free 50/50." : "Study to fill it. Full, your next fight gets an edge."}</span>}
     </div>
   );

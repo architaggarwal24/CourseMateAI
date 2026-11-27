@@ -133,6 +133,10 @@ export default function StudyWorkspace() {
     ...(t === "review" && due ? { badge: { count: due, label: `${due} ${due === 1 ? "card" : "cards"} due` } } : {}),
   }));
   const key = `${tab}:${documentId ?? ""}:${restoreSessionId ?? ""}:${topic ?? ""}`;
+  // Switching tools (or documents) brings the new one in with the "reveal" motion; the tool a visit opens on paints
+  // at once (the page's own entrance, if any, is the (app) template's).
+  const [firstKey] = useState(key);
+  const entering = key !== firstKey;
   // Each tool reopens what it had open on this course / PDF (lib/study/memory.ts), unless History or the concept
   // map asked for something else. Read once per tool and subject: the view keeps it up to date from then on.
   const resume = useMemo(() => restoreSessionId ?? (topic ? undefined : activeSession(tab, documentId)),
@@ -172,7 +176,7 @@ export default function StudyWorkspace() {
           onSaved={(c) => { if (!editor.course) router.push(ROUTES.studyTab("overview", undefined, c.id)); }}
           onDeleted={() => router.push(ROUTES.studyTab(DEFAULT_STUDY_TAB))} />
       )}
-      <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
+      <div className="ws-tools flex-1 min-h-0 flex flex-col overflow-hidden" data-enter={entering || undefined}>
         {noCourses ? (
           <CourseOnboarding onCreated={(c) => router.push(ROUTES.studyTab("overview", undefined, c.id))} />
         ) : loose && doc ? (

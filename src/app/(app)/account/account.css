@@ -5,7 +5,7 @@
   padding: var(--space-6);
   border: 1px solid var(--glass-border-strong);
   border-radius: var(--radius-xl);
-  background: color-mix(in srgb, var(--color-surface-sunken) 50%, transparent);
+  background-color: color-mix(in srgb, var(--color-surface-sunken) 50%, transparent);
   box-shadow: var(--shadow-md);
 }
 .profile-hero__id { display: flex; align-items: center; gap: var(--space-5); }
@@ -18,8 +18,7 @@
 .profile-hero__initial { display: grid; place-items: center; width: 100%; height: 100%; font-size: 2rem; font-weight: 700; }
 .profile-hero__name { margin: 0; font-size: 1.6rem; font-weight: 700; letter-spacing: -0.03em; }
 .profile-hero__handle { margin: 0; color: var(--color-muted); font-size: 0.9rem; }
-.profile-hero__xp { width: min(22rem, 100%); height: 6px; margin-top: var(--space-3); border-radius: var(--radius-full); background: var(--color-border); overflow: hidden; }
-.profile-hero__xp > span { display: block; height: 100%; border-radius: inherit; background: var(--color-accent); transition: width 1s var(--ease-out-expo); }
+.profile-hero__xp { width: min(22rem, 100%); margin-top: var(--space-3); }
 .profile-hero__xptext { margin: 0.35rem 0 0; font-family: var(--font-mono); font-size: 0.72rem; color: var(--color-muted); }
 .profile-hero__stats { display: grid; grid-template-columns: repeat(2, 1fr); gap: var(--space-3); margin: 0; }
 @media (min-width: 640px) { .profile-hero__stats { grid-template-columns: repeat(4, 1fr); } }

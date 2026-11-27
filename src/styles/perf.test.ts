@@ -7,10 +7,15 @@ const SRC = join(__dirname, "..");
 const read = (rel: string) => readFileSync(join(SRC, rel), "utf8");
 
 describe("performance rules", () => {
-  it("only the two faces the first paint needs are preloaded (Onest, Bricolage); Geist Mono and the pixel font load on use", () => {
+  it("only the faces the first paint needs are preloaded (Onest, Fraunces, the wordmark cut); Geist Mono and the pixel font load on use", () => {
     expect(read("fonts/brand.ts")).not.toMatch(/preload:\s*false/);
     expect(read("fonts/geist.ts")).toMatch(/preload:\s*false/);
     expect(read("fonts/pixel.ts")).toMatch(/preload:\s*false/);
+  });
+
+  it("the preloaded faces stay small: Fraunces is the Latin cut (opsz + wght only), the wordmark only its 11 letters", () => {
+    expect(statSync(join(SRC, "fonts/Fraunces-latin-opsz-variable.woff2")).size).toBeLessThan(70_000);
+    expect(statSync(join(SRC, "fonts/BricolageGrotesque-wordmark.woff2")).size).toBeLessThan(8_000);
   });
 
   it("Geist Mono stays subset (it was 71 KB with Cyrillic, Greek and Vietnamese)", () => {

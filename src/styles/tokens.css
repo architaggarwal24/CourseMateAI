@@ -1,7 +1,13 @@
-/* Design tokens: "Ink". Flat surfaces, one deep ink-blue accent, no gradients, no glass, no glow.
+/* Design tokens: "Ink, lit" (the redesign, Stage 1). Layered surfaces, one deep ink-blue accent, one soft light.
+ * No glass, no blur, no glow, no gradient text.
  *
- *   :root (and [data-theme="study"])                  STUDY, dark (the default): pure black page, near-black cards.
- *   :root[data-mode="light"] (and its study scopes)    STUDY, light: white page, ink text. data-mode is set on <html>
+ * Three layers. Components read only the semantic layer (--color-*, --surface-*, --light-*, --motion-*, --font-*):
+ *   primitives  --prim-*               raw values (an ink ramp and a paper ramp), defined once below; never used by components
+ *   semantic    --color-*, ...         swap per theme and mode
+ *   component   --button-*, ...        only where a component needs its own knob (added with the kit, Stage 2)
+ *
+ *   :root (and [data-theme="study"])                  STUDY, dark (the default): a deep ink page, three lighter levels.
+ *   :root[data-mode="light"] (and its study scopes)    STUDY, light: warm paper, ink text. data-mode is set on <html>
  *                                                      from Settings (System / Light / Dark) before first paint.
  *   [data-theme="play"]                                HERO: the darker Ink variant, always dark. Ink blue is still the
  *                                                      accent; gold is for coins and rewards only. The pixel font is
@@ -12,31 +18,66 @@
  *
  *   --color-*   OPAQUE hex values: what contrast is computed against (src/styles/tokens.test.ts fails the build if a
  *               text/fill pair drops below WCAG AA).
- *   --glass-*   historic names for the flat panel fills and borders (opaque now; no blur).
+ *   Surface levels: 0 page (--color-surface), 1 rail and insets (--color-surface-sunken), 2 cards
+ *               (--color-elevated), 3 things that float: menus, popovers, dialogs (--color-raised).
+ *   --light-*   the one light layer: a soft radial wash of the accent from the top edge. Only through the .lit
+ *               utility (app/globals.css); src/styles/flat.test.ts names the files allowed to use it. None in Hero,
+ *               none with reduced transparency, none in print.
+ *   --glass-*   historic names for the panel fills and borders (opaque; no blur). Cleaned up in Stage 10.
  *   --glow-*, --aurora-*, --spotlight*, --sheen   kept only so old rules resolve: all transparent.
  *
  * Variable names are prefixed (--color-*) on purpose: some screens set their own local --accent / --shadow.
  */
 
+/* ── primitives ─────────────────────────────────────────────────────────────── */
+:root {
+  /* ink: a cool blue-black ramp for dark mode */
+  --prim-ink-950: #0b0d12;
+  --prim-ink-925: #0f1218;
+  --prim-ink-900: #141821;
+  --prim-ink-850: #1b202a;
+  --prim-ink-825: #1d222c;
+  --prim-ink-800: #232937;
+  --prim-ink-750: #2b313d;
+  --prim-ink-650: #444c5b;
+  --prim-ink-300: #a3a9b6;
+  --prim-ink-200: #d4d8e0;
+  --prim-ink-50: #f5f6f8;
+
+  /* paper: a warm off-white ramp for light mode, with ink text */
+  --prim-paper-0: #ffffff;
+  --prim-paper-50: #fbfaf7;
+  --prim-paper-100: #f4f2ed;
+  --prim-paper-150: #eeebe5;
+  --prim-paper-200: #e7e4dd;
+  --prim-paper-300: #dad6cd;
+  --prim-paper-400: #bcb7ac;
+  --prim-paper-text: #14161b;
+  --prim-paper-text-2: #34373e;
+  --prim-paper-muted: #5a5d66;
+}
+
 :root,
 [data-theme="study"] {
   color-scheme: dark;
 
-  /* surfaces */
-  --color-surface: #000000;            /* page */
-  --color-surface-sunken: #0a0a0a;     /* sidebar, header bands, insets */
-  --color-elevated: #0f0f0f;           /* cards, inputs, menus */
-  --color-elevated-hover: #1a1a1a;
+  /* surfaces: four levels, each a step lighter */
+  --color-surface: var(--prim-ink-950);           /* 0: page */
+  --color-surface-sunken: var(--prim-ink-925);    /* 1: rail, header bands, insets */
+  --color-elevated: var(--prim-ink-900);          /* 2: cards, inputs */
+  --color-elevated-hover: var(--prim-ink-850);
+  --color-raised: var(--prim-ink-850);            /* 3: menus, popovers, dialogs */
+  --color-raised-hover: var(--prim-ink-800);
 
   /* lines */
-  --color-border-subtle: #1c1c1c;
-  --color-border: #2a2a2a;
-  --color-border-strong: #404040;
+  --color-border-subtle: var(--prim-ink-825);
+  --color-border: var(--prim-ink-750);
+  --color-border-strong: var(--prim-ink-650);
 
   /* text */
-  --color-text: #ffffff;
-  --color-text-secondary: #d4d4d4;
-  --color-muted: #a3a3a3;
+  --color-text: var(--prim-ink-50);
+  --color-text-secondary: var(--prim-ink-200);
+  --color-muted: var(--prim-ink-300);
 
   /* the one accent: deep ink blue (fill / text-and-borders / text on the fill) */
   --color-accent: #3550c8;
@@ -76,24 +117,29 @@
   --color-scroll-thumb: rgba(255, 255, 255, 0.12);
   --color-scroll-thumb-hover: rgba(255, 255, 255, 0.22);
 
-  /* panels: flat and opaque (historic --glass-* names) */
+  /* panels: opaque (historic --glass-* names) */
   --glass-bg: var(--color-elevated);
-  --glass-bg-strong: #141414;
+  --glass-bg-strong: var(--color-raised);
   --glass-bg-hover: var(--color-elevated-hover);
   --glass-tint: rgba(255, 255, 255, 0.04);
-  --glass-border: #262626;
-  --glass-border-strong: #383838;
+  --glass-border: var(--color-border);
+  --glass-border-strong: var(--color-border-strong);
   --glass-highlight: 0 0 0 0 transparent;
   --glass-blur: 0px;
   --glass-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
-  --scrim: rgba(0, 0, 0, 0.72);
+  --scrim: rgba(4, 5, 8, 0.72);
 
   /* shadows: only for things that float (menus, dialogs, toasts) */
   --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.5);
   --shadow-md: 0 8px 24px -8px rgba(0, 0, 0, 0.7);
   --shadow-lg: 0 24px 64px -16px rgba(0, 0, 0, 0.8);
   --shadow-glow: 0 0 0 1px var(--color-border-strong);
-  --edge-light: 0 0 0 0 transparent;
+  /* a raised surface catches the light on its top edge: a 1px inset line, no blur */
+  --edge-light: inset 0 1px 0 0 rgba(255, 255, 255, 0.05);
+
+  /* the light layer: a soft wash of the accent from the top edge (see the header) */
+  --light-color: color-mix(in srgb, var(--color-accent) 16%, transparent);
+  --light-soft: radial-gradient(90% 70% at 50% -10%, var(--light-color), transparent 70%);
 
   /* focus ring: an outline in the accent, set off from the element by a gap */
   --focus-ring-color: var(--color-accent-text);
@@ -134,21 +180,25 @@
   --focus-ring-width: 2px;
   --focus-ring-offset: 2px;
 
-  /* motion: enter slower than exit; springs for anything the hand moves */
-  --motion-fast: 120ms;
-  --motion-base: 180ms;
-  --motion-slow: 280ms;
+  /* motion: one short vocabulary (press, confirm, reveal, stage, route); springs for anything the hand moves */
+  --motion-press: 90ms;                /* button and chip press */
+  --motion-fast: 150ms;                /* hover, tab indicator, toggles */
+  --motion-base: 240ms;                /* menus, popovers, confirm states */
+  --motion-slow: 380ms;                /* modals, sheets, route change */
+  --motion-stage: 40ms;                /* the step between staged list items (at most 8 are staged) */
   --motion-ease: cubic-bezier(0.2, 0, 0, 1);
   --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
   --ease-spring: linear(0, 0.006, 0.025 2.8%, 0.101 6.1%, 0.539 18.9%, 0.721 25.3%, 0.849 31.5%, 0.937 38.1%, 0.968 41.8%, 0.991 45.7%, 1.006 50.1%, 1.015 55%, 1.017 63.9%, 1.001 85.9%, 1);
 
-  /* type: Onest for the interface and reading, Bricolage Grotesque for headings and big numbers, Geist Mono for code */
+  /* type: Onest for the interface and reading, Fraunces (an editorial serif) for headings and big numbers, Geist Mono
+     for code. The logo's wordmark keeps Bricolage Grotesque (a 4 KB cut of its 11 letters). */
   --font-sans: var(--font-onest), ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
-  --font-display: var(--font-bricolage), var(--font-onest), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-fraunces), Georgia, "Times New Roman", serif;
+  --font-brand: var(--font-wordmark), var(--font-onest), ui-sans-serif, system-ui, sans-serif;
   --font-mono: var(--font-geist-mono), ui-monospace, "SF Mono", Menlo, Consolas, monospace;
   --font-label: var(--font-sans);      /* .pixel-font: Onest in Study */
   --label-tracking: 0;
-  --heading-tracking: -0.02em;
+  --heading-tracking: -0.01em;          /* Fraunces sets tight on its own; less negative tracking than the old grotesque */
   --line-height-body: 1.55;
   --measure: 72ch;                     /* widest a block of reading text gets */
 }
@@ -159,18 +209,20 @@
   color-scheme: light;
   --highlighter: #fdeb8a;
 
-  --color-surface: #ffffff;
-  --color-surface-sunken: #f5f5f5;
-  --color-elevated: #ffffff;
-  --color-elevated-hover: #f0f0f0;
+  --color-surface: var(--prim-paper-50);
+  --color-surface-sunken: var(--prim-paper-100);
+  --color-elevated: var(--prim-paper-0);
+  --color-elevated-hover: var(--prim-paper-150);
+  --color-raised: var(--prim-paper-0);
+  --color-raised-hover: var(--prim-paper-150);
 
-  --color-border-subtle: #ececec;
-  --color-border: #dedede;
-  --color-border-strong: #c2c2c2;
+  --color-border-subtle: var(--prim-paper-200);
+  --color-border: var(--prim-paper-300);
+  --color-border-strong: var(--prim-paper-400);
 
-  --color-text: #0a0a0a;
-  --color-text-secondary: #333333;
-  --color-muted: #5c5c5c;
+  --color-text: var(--prim-paper-text);
+  --color-text-secondary: var(--prim-paper-text-2);
+  --color-muted: var(--prim-paper-muted);
 
   --color-accent: #1f3aa8;
   --color-accent-text: #1f3aa8;
@@ -196,16 +248,17 @@
   --color-scroll-thumb: rgba(0, 0, 0, 0.14);
   --color-scroll-thumb-hover: rgba(0, 0, 0, 0.26);
 
-  --glass-bg-strong: #ffffff;
-  --glass-tint: rgba(0, 0, 0, 0.035);
-  --glass-border: #e0e0e0;
-  --glass-border-strong: #c9c9c9;
-  --glass-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
-  --scrim: rgba(10, 10, 10, 0.45);
+  --glass-tint: rgba(20, 22, 27, 0.035);
+  --glass-shadow: 0 1px 2px rgba(40, 34, 20, 0.06);
+  --scrim: rgba(20, 22, 27, 0.45);
 
-  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.08);
-  --shadow-md: 0 8px 24px -8px rgba(0, 0, 0, 0.18);
-  --shadow-lg: 0 24px 64px -16px rgba(0, 0, 0, 0.25);
+  /* warm shadows: paper casts brown-grey, not blue-black */
+  --shadow-sm: 0 1px 2px rgba(40, 34, 20, 0.08);
+  --shadow-md: 0 8px 24px -8px rgba(40, 34, 20, 0.18);
+  --shadow-lg: 0 24px 64px -16px rgba(40, 34, 20, 0.24);
+  --edge-light: 0 0 0 0 transparent;
+
+  --light-color: color-mix(in srgb, var(--color-accent) 8%, transparent);
 }
 
 [data-theme="play"] {
@@ -273,6 +326,12 @@
   --shadow-glow: 0 0 0 1px var(--color-border-strong);
   --edge-light: 0 0 0 0 transparent;
 
+  /* Hero has no light layer: pixel panels stay flat */
+  --color-raised: var(--glass-bg-strong);
+  --color-raised-hover: var(--color-elevated-hover);
+  --light-color: transparent;
+  --light-soft: none;
+
   /* night-sky dots behind the arena (dots, not a gradient wash) */
   --gradient-arena-stars: radial-gradient(1.5px 1.5px at 12% 22%, var(--color-text) 50%, transparent), radial-gradient(1px 1px at 28% 12%, var(--color-text) 50%, transparent),
     radial-gradient(1.5px 1.5px at 62% 18%, var(--color-text) 50%, transparent), radial-gradient(1px 1px at 78% 10%, var(--color-text) 50%, transparent),
@@ -288,6 +347,7 @@
   --font-label: var(--font-pixel), ui-monospace, "Courier New", monospace;
   --font-sans: var(--font-pixel-body), ui-monospace, "Courier New", monospace;
   --font-display: var(--font-pixel), ui-monospace, "Courier New", monospace;
+  --font-brand: var(--font-pixel), ui-monospace, "Courier New", monospace;
   /* square corners and stepped motion: nothing glides in a 16-bit menu */
   --radius-sm: 0px;
   --radius-md: 0px;
@@ -309,8 +369,34 @@
 @media (prefers-reduced-motion: reduce) {
   :root,
   [data-theme] {
+    --motion-press: 0.01ms;
     --motion-fast: 0.01ms;
     --motion-base: 0.01ms;
     --motion-slow: 0.01ms;
+    --motion-stage: 0ms;
+  }
+}
+
+/* The in-app "Reduce animations" switch (Settings) is the same as the OS setting, for this app only. */
+html.reduce-animations,
+html.reduce-animations [data-theme] {
+  --motion-press: 0.01ms;
+  --motion-fast: 0.01ms;
+  --motion-base: 0.01ms;
+  --motion-slow: 0.01ms;
+  --motion-stage: 0ms;
+}
+
+/* The light layer goes with reduced transparency, and never prints. */
+@media (prefers-reduced-transparency: reduce) {
+  :root,
+  [data-theme] {
+    --light-soft: none;
+  }
+}
+@media print {
+  :root,
+  [data-theme] {
+    --light-soft: none;
   }
 }

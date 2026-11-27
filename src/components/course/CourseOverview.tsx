@@ -86,7 +86,7 @@ export default function CourseOverview({ course, onEdit, onUpload, uploading, ha
 
               <section aria-labelledby="course-docs-title">
                 <h3 id="course-docs-title" className="course-h">Documents</h3>
-                <ul className="course-docs">
+                <ul className="course-docs stage">
                   {course.documents.map((d) => {
                     const stats = p?.documents.find((x) => x.id === d.id);
                     return (

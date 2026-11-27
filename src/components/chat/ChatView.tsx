@@ -6,6 +6,8 @@ import { announceAchievements } from "@/lib/fx/celebrate";
 import { useState, useRef, useEffect, useLayoutEffect, useCallback } from "react";
 import { ArrowDown, ArrowUp, Check, Copy, FileText, HelpCircle, History, Lightbulb, ListChecks, MessageSquare, Paperclip, Plus, Sparkles, Trash2 } from "@/components/ui/icons";
 import { motion } from "motion/react";
+import { POP, REVEAL, SPRING } from "@/components/fx/motion";
+import { useEnter } from "@/components/fx/useEnter";
 import HistoryPanel from "../history/HistoryPanel";
 import ChatMarkdown from "./ChatMarkdown";
 import AiLabel from "@/components/study/AiLabel";
@@ -21,7 +23,7 @@ import { useDocumentUpload } from "@/hooks/useDocumentUpload";
 import DropOverlay from "@/components/shell/DropOverlay";
 import { AttachmentTray, SentAttachments } from "./AttachmentTray";
 import { ATTACH_ACCEPT, PASTE_CARD_CHARS, toPayload, type Attachment } from "@/lib/chat/attachments";
-import { Button, ErrorState, Textarea } from "@/components/ui";
+import { Button, ErrorState, Textarea, type Feedback } from "@/components/ui";
 import { askChat, isAbortError, type TutorMode } from "@/lib/chat/chat-stream";
 import { useDocument } from "@/hooks/useSessions";
 import { useHUDStore } from "@/hooks/useHUD";
@@ -125,6 +127,7 @@ function rememberAttached(files: File[]): string {
 }
 
 export default function ChatView({ documentId, restoreSessionId }: { documentId?: string; restoreSessionId?: string }) {
+  const enter = useEnter();
   const [chatId, setChatId] = useState(() => restoreSessionId || crypto.randomUUID());
   const sessionId = documentId ?? chatId;
   const [messages, setMessages] = useState<Message[]>(() => {
@@ -143,7 +146,7 @@ export default function ChatView({ documentId, restoreSessionId }: { documentId?
   const uploadedFile = pdf?.status === "ready" ? pdf.filename : null;   // what the server says is usable
   const [input, setInput] = useDraft("chat", documentId);          // typed but not sent: kept (lib/study/memory.ts)
   const [loading, setLoading] = useState(() => !!(restoreSessionId && liveChat(restoreSessionId)?.loading));
-  const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
+  const [copied, setCopied] = useState<{ index: number; kind: Feedback } | null>(null);
   const [followUps, setFollowUps] = useState<string[]>(() => (restoreSessionId && liveChat(restoreSessionId)?.followUps) || []);
   const [mode, setModeState] = useState<TutorMode>("explain");
   useEffect(() => { setModeState(savedMode()); }, []);
@@ -340,10 +343,15 @@ export default function ChatView({ documentId, restoreSessionId }: { documentId?
     }
   };
 
+  // Copy confirms on the button itself (a check, or a cross when the browser refuses the clipboard).
+  const copyTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  useEffect(() => () => clearTimeout(copyTimer.current), []);
   const copyToClipboard = async (text: string, index: number) => {
-    await navigator.clipboard.writeText(text);
-    setCopiedIndex(index);
-    setTimeout(() => setCopiedIndex(null), 2000);
+    let kind: Feedback = "success";
+    try { await navigator.clipboard.writeText(text); } catch { kind = "error"; }
+    setCopied({ index, kind });
+    clearTimeout(copyTimer.current);
+    copyTimer.current = setTimeout(() => setCopied(null), 2000);
   };
 
   const clearChat = () => {
@@ -408,8 +416,7 @@ export default function ChatView({ documentId, restoreSessionId }: { documentId?
                     {modeInfo.prompts.map((p, i) => {
                       const PromptIcon = [Lightbulb, ListChecks, FileText, MessageSquare][i % 4];
                       return (
-                      <motion.div key={p} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
-                                  transition={{ delay: 0.25 + i * 0.06, duration: 0.5, ease: [0.16, 1, 0.3, 1] }}>
+                      <motion.div key={p} {...enter(REVEAL, i, 0.12)}>
                         <div className="rounded-[var(--radius-lg)]">
                           <button onClick={() => void sendMessage(p)} className="study-prompt">
                             <PromptIcon size={16} aria-hidden="true" />{p}
@@ -426,8 +433,8 @@ export default function ChatView({ documentId, restoreSessionId }: { documentId?
                 if (msg.role === "user") {
                   return (
                     <motion.article key={idx} aria-label="You" className="flex justify-end"
-                      initial={{ opacity: 0, y: 14, scale: 0.97 }} animate={{ opacity: 1, y: 0, scale: 1 }}
-                      transition={{ type: "spring", stiffness: 380, damping: 30 }} style={{ transformOrigin: "100% 100%" }}>
+                      {...enter({ ...POP, initial: { ...POP.initial, y: 8 }, animate: { ...POP.animate, y: 0 }, transition: SPRING.snappy })}
+                      style={{ transformOrigin: "100% 100%" }}>
                       <div className="flex max-w-[85%] flex-col items-end gap-1">
                         {msg.attachments?.length ? <SentAttachments items={msg.attachments} /> : null}
                         <p className="chat-user whitespace-pre-wrap break-words">
@@ -454,7 +461,7 @@ export default function ChatView({ documentId, restoreSessionId }: { documentId?
                 const shown = parseFollowUps(msg.content).main;     // the "explore further" block is not part of the answer
                 return (
                   <motion.article key={idx} aria-label="Assistant" aria-busy={isStreaming || undefined} className="chat-ai"
-                    initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1] }}>
+                    {...enter(REVEAL)}>
                     <span className="chat-ai__avatar" aria-hidden="true"><Sparkles size={15} /></span>
                     <div className="chat-ai__body">
                       {msg.outside && !isStreaming && <p className="chat-ai__outside">Not in your PDFs: a general explanation</p>}
@@ -475,8 +482,10 @@ export default function ChatView({ documentId, restoreSessionId }: { documentId?
                       )}
                       {!isStreaming && (
                         <div className="chat-ai__actions">
-                          <Button variant="ghost" size="sm" onClick={() => void copyToClipboard(msg.content, idx)}>
-                            {copiedIndex === idx ? <><Check size={13} aria-hidden="true" /> Copied</> : <><Copy size={13} aria-hidden="true" /> Copy</>}
+                          <Button variant="ghost" size="sm" feedback={copied?.index === idx ? copied.kind : undefined}
+                                  onClick={() => void copyToClipboard(msg.content, idx)}>
+                            <Copy size={13} aria-hidden="true" />
+                            {copied?.index === idx ? (copied.kind === "success" ? "Copied" : "Couldn't copy") : "Copy"}
                           </Button>
                           <AiLabel />
                         </div>
@@ -489,7 +498,7 @@ export default function ChatView({ documentId, restoreSessionId }: { documentId?
               {failure && <ErrorState error={failure.error} onRetry={retryFailed} />}
 
               {!loading && followUps.length > 0 && (
-                <motion.div className="flex flex-col gap-2 pl-11" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>
+                <motion.div className="flex flex-col gap-2 pl-11" {...enter(REVEAL)}>
                   <p className="study-suggest-label !mb-1">{mode === "quiz" ? "Quick replies" : "Explore further"}</p>
                   <div className="flex flex-wrap gap-2">
                     {followUps.map((q, i) => (

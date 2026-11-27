@@ -24,13 +24,33 @@ function resolve(own: Record<string, string>, base: Record<string, string>): Rec
   };
   return Object.fromEntries([...Object.keys({ ...base, ...own })].map((k) => [k, get(k)]));
 }
-// --font-onest / --font-bricolage / --font-geist-mono / --font-pixel are defined at runtime by next/font
-const FONTS = { "--font-onest": "Onest", "--font-bricolage": "Bricolage Grotesque", "--font-geist-mono": "Geist Mono", "--font-pixel": "pixel-face", "--font-pixel-body": "pixel-body-face" };
+// --font-onest / --font-fraunces / --font-wordmark / --font-geist-mono / --font-pixel are defined at runtime by next/font
+const FONTS = { "--font-onest": "Onest", "--font-fraunces": "Fraunces", "--font-wordmark": "Bricolage wordmark", "--font-geist-mono": "Geist Mono", "--font-pixel": "pixel-face", "--font-pixel-body": "pixel-body-face" };
+// the primitives (--prim-*): raw values the themes point at
+const PRIMITIVES = declarations(/^:root(?=\s*\{)/);
+const BASE = { ...FONTS, ...PRIMITIVES };
 const studyOwn = declarations(/:root,\s*\[data-theme="study"\]/);
-const study = resolve(studyOwn, FONTS);
-const light = resolve(declarations(/:root\[data-mode="light"\],/), { ...FONTS, ...studyOwn });
+const study = resolve(studyOwn, BASE);
+const light = resolve(declarations(/:root\[data-mode="light"\],/), { ...BASE, ...studyOwn });
 const play = resolve(declarations(/\[data-theme="play"\]/), study);
 const THEMES = { study, light, play } as const;
+
+// components read only the semantic layer
+import { readdirSync, statSync } from "node:fs";
+import { join, relative } from "node:path";
+function primitiveUses(): string[] {
+  const root = fileURLToPath(new URL("..", import.meta.url));
+  const out: string[] = [];
+  const walk = (dir: string) => {
+    for (const name of readdirSync(dir)) {
+      const p = join(dir, name);
+      if (statSync(p).isDirectory()) walk(p);
+      else if (/\.(css|tsx?)$/.test(name) && !/\.test\.tsx?$/.test(name) && name !== "tokens.css" && /var\(--prim-/.test(readFileSync(p, "utf8"))) out.push(relative(root, p));
+    }
+  };
+  walk(root);
+  return out;
+}
 
 // ── WCAG contrast ────────────────────────────────────────────────────────────
 const rgb = (hex: string) => [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16));
@@ -42,7 +62,7 @@ const ratio = (a: string, b: string) => { const [x, y] = [lum(a), lum(b)]; retur
 const tint = (fg: string, bg: string, a: number) =>
   "#" + rgb(fg).map((v, i) => Math.round(v * a + rgb(bg)[i] * (1 - a)).toString(16).padStart(2, "0")).join("");
 
-const SURFACES = ["surface", "surface-sunken", "elevated", "elevated-hover"];
+const SURFACES = ["surface", "surface-sunken", "elevated", "elevated-hover", "raised", "raised-hover"];
 const TEXT_ON_SURFACE = [
   "text", "text-secondary", "muted",
   "accent-text", "accent-alt-text", "highlight-text", "success-text", "warning-text", "danger-text", "reward",
@@ -87,15 +107,16 @@ describe("the Study theme (Ink)", () => {
       expect(t[`--color-${n}-text`]).toBe(t["--color-accent-text"]);
     }
   });
-  it("is ink: a pure black page in dark, white in light, and a deep ink-blue accent", () => {
-    expect(study["--color-surface"]).toBe("#000000");
-    expect(light["--color-surface"]).toBe("#ffffff");
+  it("is ink: a deep ink page in dark, warm paper in light, and a deep ink-blue accent", () => {
+    expect(study["--color-surface"]).toBe("#0b0d12");
+    expect(light["--color-surface"]).toBe("#fbfaf7");
     expect(study["--color-accent"]).toBe("#3550c8");
     expect(light["--color-accent"]).toBe("#1f3aa8");
   });
-  it("sets Onest for text, Bricolage Grotesque for display, Geist Mono for code; no pixel font; 72ch reading width", () => {
+  it("sets Onest for text, Fraunces for display, the Bricolage cut for the wordmark, Geist Mono for code; no pixel font; 72ch reading width", () => {
     expect(study["--font-sans"]).toMatch(/^Onest,/);
-    expect(study["--font-display"]).toMatch(/^Bricolage Grotesque,/);
+    expect(study["--font-display"]).toMatch(/^Fraunces,.*serif$/);
+    expect(study["--font-brand"]).toMatch(/^Bricolage wordmark,/);
     expect(study["--font-mono"]).toMatch(/^Geist Mono,/);
     expect(study["--font-label"]).not.toMatch(/pixel/);
     expect(study["--measure"]).toBe("72ch");
@@ -103,13 +124,46 @@ describe("the Study theme (Ink)", () => {
   it("uses soft corners", () => {
     expect(study["--radius-md"]).toBe("10px");
   });
+  // Stage 1: depth comes from four surface levels, each a step lighter in dark mode
+  const lightness = (hex: string) => lum(hex);
+  it("dark mode steps up: page < rail < card < raised", () => {
+    const steps = ["surface", "surface-sunken", "elevated", "raised"].map((n) => lightness(study[`--color-${n}`]));
+    for (let i = 1; i < steps.length; i++) expect(steps[i], `level ${i}`).toBeGreaterThan(steps[i - 1]);
+  });
+  it("light mode: cards and raised surfaces are lighter than the paper page and the rail", () => {
+    expect(lightness(light["--color-elevated"])).toBeGreaterThan(lightness(light["--color-surface"]));
+    expect(lightness(light["--color-surface"])).toBeGreaterThan(lightness(light["--color-surface-sunken"]));
+    expect(light["--color-raised"]).toBe(light["--color-elevated"]);
+  });
+  it("components never read a primitive: --prim-* appears only in tokens.css", () => {
+    expect(primitiveUses()).toEqual([]);
+  });
+  it("names the motion vocabulary, and reduced motion zeroes all of it", () => {
+    expect(study["--motion-press"]).toBe("90ms");
+    expect(study["--motion-stage"]).toBe("40ms");
+    const reduced = code.match(/prefers-reduced-motion: reduce\)\s*\{([\s\S]*?)\n\}/)?.[1] ?? "";
+    for (const m of ["press", "fast", "base", "slow", "stage"]) expect(reduced, m).toMatch(new RegExp(`--motion-${m}:\\s*0`));
+  });
 });
 
-describe("flat: no gradients, glass or glow", () => {
-  const tokens = [...code.matchAll(/(--[a-z0-9-]+)\s*:/g)].map((m) => m[1]);
-  it("the only gradient token left is the arena's star dots", () => {
-    expect([...new Set(tokens.filter((t) => t.startsWith("--gradient-")))]).toEqual(["--gradient-arena-stars"]);
+describe("flat: no gradients, glass or glow (one light layer allowed)", () => {
+  const tokens = [...code.matchAll(/(--[a-z0-9-]+)\s*:\s*([^;]+);/g)].map((m) => [m[1], m[2]] as const);
+  it("the only gradient tokens are the arena's star dots and the light layer", () => {
+    expect([...new Set(tokens.filter(([t]) => t.startsWith("--gradient-")).map(([t]) => t))]).toEqual(["--gradient-arena-stars"]);
     expect(study["--gradient-arena-stars"]).toBe("none");
+    const painted = [...new Set(tokens.filter(([, v]) => /gradient\(/.test(v)).map(([t]) => t))].sort();
+    expect(painted).toEqual(["--gradient-arena-stars", "--light-soft"]);
+  });
+  it("the light layer is one soft radial wash of the accent into transparent, fainter in light mode, absent in Hero", () => {
+    expect(studyOwn["--light-soft"]).toMatch(/^radial-gradient\([^,]+, var\(--light-color\), transparent \d+%\)$/);
+    expect(studyOwn["--light-color"]).toMatch(/^color-mix\(in srgb, var\(--color-accent\) (\d+)%, transparent\)$/);
+    const pct = (v: string) => Number(v.match(/(\d+)%/)![1]);
+    expect(pct(studyOwn["--light-color"])).toBeLessThanOrEqual(20);
+    expect(pct(light["--light-color"])).toBeLessThan(pct(studyOwn["--light-color"]));
+    expect(play["--light-soft"]).toBe("none");
+    for (const media of ["prefers-reduced-transparency: reduce", "print"]) {
+      expect(code, media).toMatch(new RegExp(`@media \\(?${media.replace(/[()]/g, "\\$&")}\\)?\\s*\\{[^}]*--light-soft:\\s*none`));
+    }
   });
   it.each(Object.entries(THEMES))("%s: panels are opaque, nothing blurs, glows are transparent", (_n, t) => {
     expect(t["--glass-bg"]).toMatch(/^#[0-9a-f]{6}$/i);

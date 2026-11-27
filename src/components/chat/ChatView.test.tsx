@@ -108,6 +108,26 @@ describe("ChatView: streaming", () => {
   });
 });
 
+describe("ChatView: copy (redesign Stage 2 confirm states)", () => {
+  const answerWith = (text: string) => () => { const b = sseBody(); b.push(frame("token", { text }) + frame("sources", FINAL)); b.close(); return sse(b); };
+  it("Copy writes the answer, then confirms with a check; a refused clipboard shows a cross instead of failing silently", async () => {
+    server({ streams: [answerWith("Mitochondria make ATP.")] });
+    const writeText = vi.fn().mockResolvedValueOnce(undefined).mockRejectedValueOnce(new Error("denied"));
+    Object.defineProperty(navigator, "clipboard", { value: { writeText }, configurable: true });
+    render(<ChatView documentId="d1" />);
+    ask("what do mitochondria do");
+    await waitFor(() => expect(answers()).toHaveLength(1));
+    const copy = within(answers()[0]).getByRole("button", { name: "Copy" });
+    await act(async () => { fireEvent.click(copy); });
+    expect(writeText).toHaveBeenCalledWith("Mitochondria make ATP.");
+    const done = within(answers()[0]).getByRole("button", { name: "Copied" });
+    expect(done.dataset.feedback).toBe("success");
+    await act(async () => { fireEvent.click(done); });
+    const failed = within(answers()[0]).getByRole("button", { name: "Couldn't copy" });
+    expect(failed.dataset.feedback).toBe("error");
+  });
+});
+
 describe("ChatView: not found", () => {
   const notFound = () => {
     const b = sseBody();

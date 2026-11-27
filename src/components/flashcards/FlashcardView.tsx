@@ -5,11 +5,12 @@ import AiLabel from "@/components/study/AiLabel";
 import { announceAchievements } from "@/lib/fx/celebrate";
 import { useState, useCallback, useEffect, useRef } from "react";
 import { motion, useMotionValue, useTransform } from "motion/react";
+import { SPRING } from "@/components/fx/motion";
 import { ChevronLeft, ChevronRight, RotateCcw, Shuffle, CheckCircle2, XCircle, Sparkles, Minus, Plus, Repeat } from "@/components/ui/icons";
 import HistoryPanel from "../history/HistoryPanel";
 import StudyToolbar from "../study/StudyToolbar";
 import Writing from "../study/Writing";
-import { Badge, Button, ButtonLink, Card, Input } from "@/components/ui";
+import { Badge, Button, ButtonLink, Card, Input, Meter } from "@/components/ui";
 import { ApiError, fetchReviewDeck, generateFlashcards, reviewFlashcard, type ReviewCard } from "@/lib/api";
 import { addToReview } from "@/lib/study/review";
 import { useReview } from "@/hooks/useReview";
@@ -359,10 +360,8 @@ export default function FlashcardView({ documentId, restoreSessionId, initialTop
                   aria-label="Add deck to review" title={addedToReview ? "In your review queue" : "Add deck to review"}><Repeat size={16} /></Button>
         </StudyToolbar>
 
-        <div role="progressbar" aria-label="Deck progress" aria-valuemin={1} aria-valuemax={cards.length} aria-valuenow={currentIndex + 1}
-             aria-valuetext={`Card ${currentIndex + 1} of ${cards.length}`} className="study-progress mx-6 shrink-0">
-          <div className="study-progress__fill" style={{ width: `${((currentIndex + 1) / cards.length) * 100}%` }} />
-        </div>
+        <Meter label="Deck progress" value={currentIndex + 1} max={cards.length}
+               valueText={`Card ${currentIndex + 1} of ${cards.length}`} className="mx-6 shrink-0" />
 
         <div className="mx-auto flex w-full max-w-[72ch] shrink-0 items-center justify-between px-6 py-2 text-sm text-fg-muted">
           <span className="inline-flex items-center gap-1.5 text-fg-2"><CheckCircle2 size={14} className="text-ink-green" aria-hidden="true" />Got it: {correct}</span>
@@ -389,10 +388,10 @@ export default function FlashcardView({ documentId, restoreSessionId, initialTop
               }}
               initial={{ opacity: 0, y: 24, scale: 0.96 }} animate={{ opacity: 1, y: 0, scale: 1 }}
               key={card.id}
-              transition={{ type: "spring", stiffness: 260, damping: 26 }}
+              transition={SPRING.card}
             >
               <motion.div className="fc-card" animate={{ rotateY: flipped ? 180 : 0 }}
-                          transition={{ type: "spring", stiffness: 180, damping: 22 }}>
+                          transition={SPRING.flip}>
                 <div aria-hidden={flipped} className="fc-face" data-result={cardResult}>
                   <div className="fc-meta mb-4">Question · <kbd className="kbd">Space</kbd> to reveal</div>
                   <p className="text-center text-2xl font-semibold leading-[1.5] tracking-tight text-fg">{card.front}</p>

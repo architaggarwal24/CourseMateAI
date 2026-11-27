@@ -99,6 +99,20 @@
 .ui-btn:disabled,
 .ui-btn[aria-disabled="true"] { opacity: 0.45; cursor: not-allowed; filter: saturate(0.6); }
 .ui-btn[aria-busy="true"] { cursor: progress; }
+
+/* Confirm states (useFeedback): the check or cross pops in where the icon was; the label stays. */
+.ui-btn[data-feedback] > svg:not(.ui-spinner) { display: none; }
+.ui-btn__mark { display: inline-flex; flex: none; animation: ui-mark-pop var(--motion-base) var(--ease-spring); }
+@keyframes ui-mark-pop { from { opacity: 0; transform: scale(0.4); } to { opacity: 1; transform: none; } }
+.ui-btn[data-feedback="success"]:not(.ui-btn--primary):not(.ui-btn--danger):not(.ui-btn--reward) { color: var(--color-success-text); }
+.ui-btn[data-feedback="error"]:not(.ui-btn--primary):not(.ui-btn--danger):not(.ui-btn--reward) { color: var(--color-danger-text); }
+.ui-btn--primary[data-feedback="success"] { background: var(--color-success); color: var(--color-on-success); }
+.ui-btn--primary[data-feedback="error"] { background: var(--color-danger); color: var(--color-on-danger); }
+.ui-btn[data-feedback="error"] { animation: ui-btn-shake calc(var(--motion-base) * 1.4) var(--motion-ease); }
+@keyframes ui-btn-shake { 20%, 60% { translate: -3px 0; } 40%, 80% { translate: 3px 0; } }
+@media (prefers-reduced-motion: reduce) {
+  .ui-btn__mark, .ui-btn[data-feedback="error"] { animation: none; }
+}
 .ui-btn__label { display: inline-flex; align-items: center; gap: inherit; transition: opacity var(--motion-base) var(--motion-ease), transform var(--motion-slow) var(--ease-spring); }
 .ui-btn[aria-busy="true"] .ui-btn__label { opacity: 0.55; }
 
@@ -117,7 +131,7 @@
   letter-spacing: 0.005em;
 }
 .ui-field__hint { margin-top: var(--space-1); color: var(--color-muted); font-size: 0.8125rem; line-height: 1.4; }
-.ui-field__error { margin-top: var(--space-1); color: var(--color-danger-text); font-size: 0.8125rem; line-height: 1.4; animation: ui-shake 360ms var(--ease-out-expo); }
+.ui-field__error { margin-top: var(--space-1); color: var(--color-danger-text); font-size: 0.8125rem; line-height: 1.4; animation: ui-shake calc(var(--motion-base) * 1.5) var(--ease-out-expo); }
 @keyframes ui-shake { 0%, 100% { transform: none; } 25% { transform: translateX(-3px); } 75% { transform: translateX(3px); } }
 
 .ui-control {
@@ -247,18 +261,72 @@ textarea.ui-control { min-height: 5rem; resize: vertical; line-height: var(--lin
 .ui-check__input--switch:active:not(:disabled) { transform: none; }
 .ui-check--switch { align-items: center; justify-content: space-between; }
 
+/* ── Motion vocabulary (redesign Stage 3) ──────────────────────────────────────────────────────────────────────
+   press, confirm, reveal, stage and route, timed by the --motion-* tokens (so Hero steps them and reduced motion,
+   from the OS or the in-app switch, stills them). The JS side is components/fx/motion.ts.
+     .reveal              an element that arrives: fades up 8px
+     .stage               its children arrive one after another (40 ms apart, at most eight steps). Only after the
+                          first in-app page change (<html data-nav>, set by app/(app)/template.tsx): the first page
+                          of a visit paints as its HTML arrives, never waiting at opacity 0.
+   "Backwards" fill: before it starts the element waits at the first frame; after, it keeps no transform of its own. */
+@keyframes motion-reveal { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+.reveal,
+:root[data-nav] .stage > * {
+  animation: motion-reveal var(--motion-base) var(--ease-out-expo) backwards;
+  animation-delay: calc(var(--i, 0) * var(--motion-stage));
+}
+.stage > :nth-child(2) { --i: 1; }
+.stage > :nth-child(3) { --i: 2; }
+.stage > :nth-child(4) { --i: 3; }
+.stage > :nth-child(5) { --i: 4; }
+.stage > :nth-child(6) { --i: 5; }
+.stage > :nth-child(7) { --i: 6; }
+.stage > :nth-child(n + 8) { --i: 7; }
+
+/* ── Meter ─────────────────────────────────────────────────────────────────────────────────────────────────────
+   One progress bar for Study (Meter.tsx). The track is the border colour so it shows against any surface; the fill
+   scales from the left (no layout work) and glides with the motion tokens: stepped in Hero, still under reduced
+   motion. */
+.ui-meter {
+  --meter-fill: var(--color-accent);
+  position: relative;
+  height: 6px;
+  border-radius: var(--radius-full);
+  background: var(--color-border);
+  overflow: hidden;
+}
+.ui-meter[data-size="sm"] { height: 4px; }
+.ui-meter[data-size="lg"] { height: 8px; }
+.ui-meter__fill {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: var(--meter-fill);
+  transform: scaleX(var(--meter, 0));
+  transform-origin: left center;
+  transition: transform var(--motion-slow) var(--ease-out-expo), background-color var(--motion-fast) var(--motion-ease);
+}
+.ui-meter[data-tone="warning"] { --meter-fill: var(--color-warning); }
+.ui-meter[data-tone="danger"] { --meter-fill: var(--color-danger); }
+.ui-meter[data-tone="success"] { --meter-fill: var(--color-success); }
+.ui-meter[data-tone="reward"] { --meter-fill: var(--color-reward); }
+.ui-meter[data-tone="epic"] { --meter-fill: var(--color-rarity-epic); }
+.ui-meter[data-tone="inverse"] { --meter-fill: var(--color-on-accent); background: color-mix(in srgb, var(--color-on-accent) 22%, var(--color-accent)); }
+[data-theme="play"] .ui-meter { border-radius: 0; box-shadow: 0 0 0 2px var(--color-surface-sunken); }
+:dir(rtl) .ui-meter__fill { transform-origin: right center; }
+
 /* ── Card ────────────────────────────────────────────────────────────────────────────────────────────────────── */
 .ui-card {
   position: relative;
-  background: var(--glass-bg);
+  background-color: var(--glass-bg);
   border: 1px solid var(--glass-border);
   border-radius: var(--radius-lg);
   box-shadow: var(--glass-shadow);
   color: var(--color-text);
   overflow: hidden;
 }
-.ui-card--raised { box-shadow: var(--shadow-lg); }
-.ui-card--inset { background: var(--color-surface-sunken); box-shadow: none; }
+.ui-card--raised { background-color: var(--color-raised); box-shadow: var(--edge-light), var(--shadow-lg); }
+.ui-card--inset { background-color: var(--color-surface-sunken); box-shadow: none; }
 .ui-card--interactive { transition: border-color var(--motion-fast) var(--motion-ease), background-color var(--motion-fast) var(--motion-ease); }
 .ui-card--interactive:hover { border-color: var(--color-border-strong); }
 .ui-card--danger { border-color: color-mix(in srgb, var(--color-danger-text) 55%, transparent); box-shadow: 0 0 0 1px color-mix(in srgb, var(--color-danger-text) 12%, transparent), var(--glass-shadow); }
@@ -289,11 +357,11 @@ textarea.ui-control { min-height: 5rem; resize: vertical; line-height: var(--lin
 }
 @keyframes ui-fade { from { opacity: 0; } to { opacity: 1; } }
 @keyframes ui-pop {
-  from { opacity: 0; transform: translateY(14px) scale(0.96); filter: blur(6px); }
-  to { opacity: 1; transform: none; filter: none; }
+  from { opacity: 0; transform: translateY(14px) scale(0.96); }
+  to { opacity: 1; transform: none; }
 }
 .ui-modal {
-  animation: ui-pop 420ms var(--ease-out-expo);
+  animation: ui-pop var(--motion-slow) var(--ease-out-expo);
   width: 100%;
   max-width: 28rem;
   max-height: calc(100vh - 2 * var(--space-4));
@@ -452,7 +520,7 @@ a.ui-tab { display: inline-flex; align-items: center; text-decoration: none; }
   font-size: 0.875rem;
   line-height: 1.45;
   pointer-events: auto;
-  animation: ui-toast-in 520ms var(--ease-spring);
+  animation: ui-toast-in var(--motion-slow) var(--ease-spring);
 }
 /* the coloured status edge: a stripe on the left */
 .ui-toast::before {
@@ -473,8 +541,8 @@ a.ui-tab { display: inline-flex; align-items: center; text-decoration: none; }
 .ui-toast__desc { margin-top: 0.125rem; color: var(--color-muted); font-size: 0.8125rem; }
 .ui-toast__close { flex: none; margin: -0.25rem -0.5rem -0.25rem 0; }
 @keyframes ui-toast-in {
-  from { opacity: 0; transform: translateY(-14px) scale(0.94); filter: blur(4px); }
-  to { opacity: 1; transform: none; filter: none; }
+  from { opacity: 0; transform: translateY(-14px) scale(0.94); }
+  to { opacity: 1; transform: none; }
 }
 
 .ui-toast__action { margin-top: var(--space-2); }

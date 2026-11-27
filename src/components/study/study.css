@@ -13,6 +13,8 @@
   border: 1px solid var(--glass-border);
   box-shadow: var(--glass-shadow);
 }
+/* A tool coming in (StudyWorkspace sets data-enter once you switch): the "reveal" motion (components/ui/ui.css). */
+.ws-tools[data-enter] > * { animation: motion-reveal var(--motion-base) var(--ease-out-expo) backwards; }
 @media (min-width: 768px) {
   .ws { margin: var(--space-3) var(--space-3) var(--space-3) 0; border-radius: var(--radius-xl); }
 }
@@ -176,14 +178,6 @@
 .study-composer .ui-btn--primary { border-radius: 14px; }
 
 /* ── Quiz ────────────────────────────────────────────────────────────────────────────────────────────────────── */
-.study-progress { position: relative; height: 0.4rem; overflow: hidden; border-radius: var(--radius-full); background: var(--color-border); }
-.study-progress > div,
-.study-progress__fill {
-  height: 100%; border-radius: var(--radius-full);
-  background: var(--color-accent);
-  transition: width 600ms var(--ease-out-expo);
-}
-
 .quiz-opt {
   --spot-size: 300px;
   position: relative;
@@ -210,25 +204,25 @@
   border-color: var(--color-success-text);
   background: color-mix(in srgb, var(--color-success) 16%, transparent);
   box-shadow: 0 0 0 1px color-mix(in srgb, var(--color-success-text) 30%, transparent);
-  animation: quiz-pop 520ms var(--ease-spring);
+  animation: quiz-pop var(--motion-slow) var(--ease-spring);
 }
 .quiz-opt[data-state="correct"] .quiz-opt__key { color: var(--color-on-success); background: var(--color-success); border-color: var(--color-success-text); }
 .quiz-opt[data-state="wrong"] {
   border-color: var(--color-danger-text);
   background: color-mix(in srgb, var(--color-danger) 14%, transparent);
-  animation: ui-shake 420ms var(--ease-out-expo);
+  animation: ui-shake calc(var(--motion-base) * 1.75) var(--ease-out-expo);
 }
 .quiz-opt[data-state="wrong"] .quiz-opt__key { color: var(--color-on-danger); background: var(--color-danger); border-color: var(--color-danger-text); }
 .quiz-opt[data-state="dim"] { opacity: 0.55; }
 @keyframes quiz-pop { 0% { transform: scale(1); } 40% { transform: scale(1.025); } 100% { transform: scale(1); } }
 
-.quiz-verdict { animation: ui-pop 480ms var(--ease-out-expo); }
+.quiz-verdict { animation: ui-pop var(--motion-slow) var(--ease-out-expo); }
 
 /* the score ring on the review screen */
 .score-ring { position: relative; width: 8.5rem; height: 8.5rem; flex: none; }
 .score-ring svg { width: 100%; height: 100%; transform: rotate(-90deg); }
 .score-ring__track { stroke: var(--color-border); }
-.score-ring__fill { stroke: var(--color-accent-text); filter: none; transition: stroke-dashoffset 1.2s var(--ease-out-expo); }
+.score-ring__fill { stroke: var(--color-accent-text); filter: none; transition: stroke-dashoffset calc(var(--motion-slow) * 3) var(--ease-out-expo); }
 .score-ring[data-tone="good"] .score-ring__fill { stroke: var(--color-success-text); filter: none; }
 .score-ring[data-tone="bad"] .score-ring__fill { stroke: var(--color-danger-text); filter: none; }
 .score-ring__label { position: absolute; inset: 0; display: grid; place-items: center; text-align: center; }
@@ -276,7 +270,7 @@
   display: flex; flex-direction: column; height: 100%; width: 18rem; flex: none;
   border-right: 1px solid var(--glass-border);
   background: color-mix(in srgb, var(--color-surface-sunken) 45%, transparent);
-  animation: history-in 380ms var(--ease-out-expo);
+  animation: history-in var(--motion-slow) var(--ease-out-expo);
 }
 @keyframes history-in { from { opacity: 0; transform: translateX(-16px); } to { opacity: 1; transform: none; } }
 .history-item { transition: background-color var(--motion-base) var(--motion-ease); }

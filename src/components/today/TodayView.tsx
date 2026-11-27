@@ -13,6 +13,7 @@ import { useFileDrop } from "@/hooks/useFileDrop";
 import DropOverlay from "@/components/shell/DropOverlay";
 import { DOCUMENT_ACCEPT, DOCUMENT_KINDS } from "@/lib/study/formats";
 import { toast } from "@/components/ui/Toast";
+import Meter from "@/components/ui/Meter";
 import { loadMetadata } from "@/lib/study/sessions";
 import { greeting, lastSession, reviewProgress, todaySummary, type LastSession } from "@/lib/study/today";
 import { ROUTES, type StudyTab } from "@/lib/routes";
@@ -37,13 +38,6 @@ function Tile({ id, title, icon, emphasis, className, children }: {
   );
 }
 
-function Bar({ pct, label }: { pct: number; label: string }) {
-  return (
-    <div className="today-bar" role="progressbar" aria-label={label} aria-valuemin={0} aria-valuemax={100} aria-valuenow={pct}>
-      <span style={{ width: `${pct}%` }} />
-    </div>
-  );
-}
 
 const firstName = (u: { full_name?: unknown; username?: unknown } | null) =>
   String(u?.full_name || u?.username || "").trim().split(/\s+/)[0] || "there";
@@ -103,7 +97,7 @@ export default function TodayView() {
         <button type="button" className="today__focus" onClick={() => useFocusMode.getState().start()}>Start a focus session</button>
       </header>
 
-      <div className="today__grid">
+      <div className="today__grid stage">
         <Tile id="today-review" title="Review" icon={<Repeat size={18} />} emphasis={!review.locked && review.due > 0} className="today-tile--wide">
           {review.locked ? (
             <>
@@ -113,7 +107,7 @@ export default function TodayView() {
           ) : review.due > 0 ? (
             <>
               <p className="today-big"><span className="num">{review.due}</span> {review.due === 1 ? "card" : "cards"} due</p>
-              <Bar pct={review.pct} label="Today's review" />
+              <Meter label="Today's review" value={review.pct} tone="inverse" size="lg" className="today-bar" />
               <p className="today-tile__meta num">{review.done} of {review.total} done today · about {review.minutes} min left</p>
               <Link href={ROUTES.studyTab("review")} className="ui-btn today-tile__cta today-tile__cta--on-accent">Start review</Link>
             </>
@@ -147,7 +141,7 @@ export default function TodayView() {
 
         <Tile id="today-quests" title="Daily quests" icon={<ScrollText size={18} />} className="today-tile--stat">
           <p className="today-big"><span className="num">{questsDone}</span> of {questList.length} done</p>
-          <Bar pct={questList.length ? Math.round((questsDone / questList.length) * 100) : 0} label="Daily quests" />
+          <Meter label="Daily quests" value={questsDone} max={questList.length} size="lg" className="today-bar" />
           <Link href={ROUTES.heroQuests} className="today-tile__link">See quests<ArrowRight size={16} /></Link>
         </Tile>
 
@@ -159,7 +153,7 @@ export default function TodayView() {
               <p className="today-tile__meta num"><Coins size={16} /> {coins.toLocaleString("en-IN")} coins</p>
             </div>
           </div>
-          <Bar pct={xpPct} label="XP to the next level" />
+          <Meter label="XP to the next level" value={xpPct} size="lg" className="today-bar" />
           <InsightMeter compact />
           {/* the two worlds: the Hero world is through a portal (Stage 2) */}
           <PortalLink to="hero" className="today-portal__go" label="Step into the Hero world" peek={false} />

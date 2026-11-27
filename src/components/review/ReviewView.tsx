@@ -4,10 +4,11 @@ import { rewardText } from "@/lib/game/reward-text";
 import { usePlanChanged } from "@/hooks/usePlanChanged";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { motion, useMotionValue, useTransform } from "motion/react";
+import { SPRING } from "@/components/fx/motion";
 import { CalendarClock, CheckCircle2, FileText, Layers, Repeat, Trash2 } from "@/components/ui/icons";
 import StudyToolbar from "@/components/study/StudyToolbar";
 import UpgradeCard from "@/components/study/UpgradeCard";
-import { Badge, Button, ButtonLink, Card, EmptyState, Skeleton, toast } from "@/components/ui";
+import { Badge, Button, ButtonLink, Card, EmptyState, Meter, Skeleton, toast } from "@/components/ui";
 import { useHUDStore } from "@/hooks/useHUD";
 import { useReview } from "@/hooks/useReview";
 import { ApiError } from "@/lib/api";
@@ -250,10 +251,8 @@ export default function ReviewView({ documentId }: { documentId?: string }) {
   return (
     <div className="ws-pane flex flex-col h-full overflow-hidden">
       {toolbar}
-      <div role="progressbar" aria-label="Review progress" aria-valuemin={0} aria-valuemax={done + (stats?.due ?? items.length)}
-           aria-valuenow={done} aria-valuetext={`${done} reviewed, ${stats?.due ?? items.length} to go`} className="study-progress mx-6 shrink-0">
-        <div className="study-progress__fill" style={{ width: `${(done / Math.max(1, done + (stats?.due ?? items.length))) * 100}%` }} />
-      </div>
+      <Meter label="Review progress" value={done} max={done + (stats?.due ?? items.length)}
+             valueText={`${done} reviewed, ${stats?.due ?? items.length} to go`} className="mx-6 shrink-0" />
       <div className="flex-1 min-h-0 overflow-y-auto px-6 py-6">
         <div className="mx-auto flex w-full max-w-[72ch] flex-col items-center">
           <motion.section
@@ -269,7 +268,7 @@ export default function ReviewView({ documentId }: { documentId?: string }) {
               else if (info.offset.x < -120) void grade(1);
             }}
             initial={{ opacity: 0, y: 18, scale: 0.97 }} animate={{ opacity: 1, y: 0, scale: 1 }}
-            transition={{ type: "spring", stiffness: 280, damping: 26 }}
+            transition={SPRING.card}
           >
             <motion.span className="review-stamp review-stamp--good" style={{ opacity: goodOpacity }} aria-hidden="true">Good</motion.span>
             <motion.span className="review-stamp review-stamp--again" style={{ opacity: againOpacity }} aria-hidden="true">Again</motion.span>

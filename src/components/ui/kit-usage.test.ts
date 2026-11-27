@@ -37,6 +37,17 @@ describe("UI kit usage", () => {
     expect(offenders).toEqual([]);
   });
 
+  // Redesign Stage 2: one Meter. Hero's own bars (arena, play, champion, forge, the Hero sidebar) move over with the
+  // Hero chrome in Stage 8; until then they are the only hand-made progress bars left.
+  const HERO_BARS = /components\/(arena|play|champion)\/|components\/shell\/HeroSidebar\.tsx$/;
+  it("every Study progress bar is the kit's Meter (no hand-made role=\"progressbar\")", () => {
+    const offenders = walk(root.replace(/\/$/, ""))
+      .filter(f => f.endsWith(".tsx") && !/\.test\./.test(f) && !f.endsWith("components/ui/Meter.tsx") && !HERO_BARS.test(f))
+      .filter(f => /role=["']progressbar["']/.test(readFileSync(f, "utf8")))
+      .map(f => f.slice(root.length - 1));
+    expect(offenders).toEqual([]);
+  });
+
   it("the kit's styles use no raw colours and no gradient literals (gradients come from the --gradient-* tokens)", () => {
     const css = read("components/ui/ui.css").replace(/\/\*[\s\S]*?\*\//g, "");
     expect(css).not.toMatch(/(?:linear|radial|conic)-gradient\(/);

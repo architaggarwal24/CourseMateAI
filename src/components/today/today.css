@@ -32,16 +32,13 @@
   align-self: flex-start; color: var(--color-accent-text); font-size: 0.875rem; font-weight: 600; text-decoration: none; min-height: 2.75rem; }
 .today-tile__link:hover { text-decoration: underline; text-underline-offset: 3px; }
 
-.today-bar { height: 0.5rem; border-radius: var(--radius-full); background: var(--color-border); overflow: hidden; }
-.today-bar > span { display: block; height: 100%; border-radius: inherit; background: var(--color-accent); transition: width var(--motion-slow) var(--ease-out-expo); }
+.today-bar { flex: none; }   /* a Meter (components/ui/Meter.tsx): keeps its height in the tile's column */
 
 /* the one filled card (Von Restorff): the next thing to do */
 .today-tile[data-emphasis] { background: var(--color-accent); border-color: var(--color-accent); color: var(--color-on-accent); }
 .today-tile[data-emphasis] .today-tile__title,
 .today-tile[data-emphasis] .today-tile__meta,
 .today-tile[data-emphasis] .today-big { color: var(--color-on-accent); }
-.today-tile[data-emphasis] .today-bar { background: color-mix(in srgb, var(--color-on-accent) 22%, var(--color-accent)); }
-.today-tile[data-emphasis] .today-bar > span { background: var(--color-on-accent); }
 .today-tile__cta--on-accent { background: var(--color-on-accent); color: var(--color-accent); border-color: var(--color-on-accent); }
 .today-tile__cta--on-accent:hover:not(:disabled) { background: color-mix(in srgb, var(--color-on-accent) 88%, var(--color-accent)); }
 

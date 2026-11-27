@@ -3,7 +3,7 @@
 import { showUpgradeNow } from "@/lib/account/upgrade-notice";
 import { useCallback, useEffect, useState } from "react";
 import { Check, CreditCard, FileText, KeyRound, Sparkles, Ticket, Trash2 } from "@/components/ui/icons";
-import { Badge, Button, Card, Input, Modal, Skeleton, toast } from "@/components/ui";
+import { Badge, Button, Card, Input, Meter, Modal, Skeleton, toast, type MeterTone } from "@/components/ui";
 import { undoable } from "@/lib/undo";
 import { ApiError } from "@/lib/api";
 import { useDocuments, useSessionStore } from "@/hooks/useSessions";
@@ -103,7 +103,7 @@ export default function PlanUsage() {
         </div>
       </header>
 
-      <section className="pu-plan" aria-labelledby="pu-plan-title">
+      <section className="pu-plan lit" aria-labelledby="pu-plan-title">
         <div className="pu-plan__top">
           <span className="pu-plan__icon" aria-hidden="true"><Sparkles size={18} /></span>
           <div className="min-w-0">
@@ -128,11 +128,8 @@ export default function PlanUsage() {
                   <span className="pu-meter__label">{label}</span>
                   <span className="pu-meter__value">{m.allowed ? <>{formatCount(m.used)} <span>of {formatCount(m.allowed)}</span></> : <span>Not on this plan</span>}</span>
                 </div>
-                <div className="pu-meter__bar" role="progressbar" aria-label={label} aria-valuemin={0}
-                     aria-valuemax={Math.max(1, m.allowed)} aria-valuenow={Math.min(m.used, Math.max(1, m.allowed))}
-                     aria-valuetext={`${m.used} of ${m.allowed}`}>
-                  <span style={{ width: `${f.share * 100}%` }} />
-                </div>
+                <Meter label={label} value={f.share * Math.max(1, m.allowed)} max={Math.max(1, m.allowed)}
+                       valueText={`${m.used} of ${m.allowed}`} tone={TONE[f.state]} />
                 {m.note && <span className="pu-meter__note">{f.state === "full" && m.key !== "courses" ? "Used up. " : ""}{m.note}</span>}
               </li>
             );
@@ -157,7 +154,7 @@ export default function PlanUsage() {
             <Button size="sm" pressed={yearly} onClick={() => setYearly(true)}>Yearly <span className="pu-save">2 months free</span></Button>
           </div>
         </div>
-        <ul className="pu-plans">
+        <ul className="pu-plans stage">
           {plans.plans.map((p) => (
             <PlanCard key={p.tier} plan={p} current={usage.tier as Tier} yearly={yearly} payments={plans.payments_enabled}
                       busy={busyTier === p.tier} onUpgrade={() => void upgrade(p.tier)} />
@@ -227,6 +224,9 @@ function PlanCard({ plan, current, yearly, payments, busy, onUpgrade }: {
  * Today's AI budget (server/ai/budget.ts), as a share rather than money. Past it the answers come from a lighter
  * model until it resets, or Mana pays for the full one.
  */
+/** A usage meter's colour follows how full it is (fill() in lib/account/plans.ts). */
+const TONE: Record<"ok" | "near" | "full", MeterTone> = { ok: "accent", near: "warning", full: "danger" };
+
 function BudgetMeter({ share, resetsAt }: { share: number; resetsAt: string }) {
   const pct = Math.round(Math.min(1, Math.max(0, share)) * 100);
   const state = fill(pct, 100).state;
@@ -236,10 +236,7 @@ function BudgetMeter({ share, resetsAt }: { share: number; resetsAt: string }) {
         <span className="pu-meter__label">Today&apos;s AI budget</span>
         <span className="pu-meter__value">{pct}% <span>used</span></span>
       </div>
-      <div className="pu-meter__bar" role="progressbar" aria-label="Today's AI budget" aria-valuemin={0} aria-valuemax={100}
-           aria-valuenow={pct} aria-valuetext={`${pct}% used`}>
-        <span style={{ width: `${pct}%` }} />
-      </div>
+      <Meter label="Today's AI budget" value={pct} valueText={`${pct}% used`} tone={TONE[state]} />
       <span className="pu-meter__note">
         {pct >= 100 ? "Used up: a lighter model answers until it resets, unless Mana pays. " : ""}Resets {untilText(resetsAt)}
       </span>

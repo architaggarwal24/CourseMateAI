@@ -149,7 +149,7 @@ animation: ui-fade var(--motion-slow) var(--motion-ease);
   border-radius: var(--radius-xl);
   box-shadow: var(--shadow-lg);
 color: var(--color-text);
-  animation: ui-pop 380ms var(--ease-out-expo);
+  animation: ui-pop var(--motion-slow) var(--ease-out-expo);
 }
 .cmdk-input-row { display: flex; align-items: center; gap: var(--space-3); padding: var(--space-4) var(--space-4); border-bottom: 1px solid var(--glass-border); color: var(--color-muted); }
 .cmdk-input { flex: 1; min-width: 0; background: transparent; border: 0; color: var(--color-text); font: inherit; font-size: 1rem; }
@@ -200,7 +200,7 @@ color: var(--color-text);
 .umenu__handle { display: flex; align-items: center; gap: var(--space-2); font-size: 0.72rem; color: var(--color-muted); }
 .umenu__lvl { font-family: var(--font-mono); color: var(--color-reward); font-weight: 600; }
 .umenu__xp { flex: 1; height: 4px; border-radius: var(--radius-full); background: var(--color-border); overflow: hidden; }
-.umenu__xp > span { display: block; height: 100%; border-radius: inherit; background: var(--color-accent); transition: width 800ms var(--ease-out-expo); }
+.umenu__xp > span { display: block; height: 100%; border-radius: inherit; background: var(--color-accent); transition: width calc(var(--motion-slow) * 2) var(--ease-out-expo); }
 .umenu__chev { color: var(--color-muted); flex: none; }
 .umenu__menu {
   z-index: 400; width: 15.5rem; padding: var(--space-1);
@@ -209,7 +209,7 @@ color: var(--color-text);
   box-shadow: var(--shadow-lg);
 color: var(--color-text); font-family: var(--font-sans);
   transform-origin: var(--radix-dropdown-menu-content-transform-origin);
-  animation: ui-pop 260ms var(--ease-out-expo);
+  animation: ui-pop var(--motion-base) var(--ease-out-expo);
 }
 .umenu__head { display: flex; align-items: center; gap: var(--space-3); padding: var(--space-3); margin-bottom: var(--space-1); border-bottom: 1px solid var(--glass-border); }
 .umenu__item {

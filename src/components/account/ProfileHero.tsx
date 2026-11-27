@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import { Coins, Flame, Sparkles, Trophy } from "@/components/ui/icons";
+import Meter from "@/components/ui/Meter";
 import ChampionAvatar from "@/components/champion/ChampionAvatar";
 import { AnimatedNumber } from "@/components/fx";
 import { useChampion } from "@/hooks/useChampion";
@@ -24,7 +25,6 @@ export default function ProfileHero({ name, handle }: { name: string; handle?: s
     if (!useHeroStore.getState().shop) void useHeroStore.getState().loadShop();   // the skins it wears
   }, []);
 
-  const pct = xpToNext > 0 ? Math.min(100, (xpInto / xpToNext) * 100) : 0;
   const stats = [
     { label: "Level", value: level, icon: <Sparkles size={16} />, tone: "accent" },
     { label: "Total XP", value: xp, icon: <Trophy size={16} />, tone: "reward" },
@@ -33,7 +33,7 @@ export default function ProfileHero({ name, handle }: { name: string; handle?: s
   ];
 
   return (
-    <section className="profile-hero" aria-label="Your progress">
+    <section className="profile-hero lit" aria-label="Your progress">
       <div className="profile-hero__id">
         <span className="profile-hero__ring">
           <ChampionAvatar size={84} withPet label={`Your champion, ${champion.name}, ${champion.title}`} />
@@ -41,10 +41,7 @@ export default function ProfileHero({ name, handle }: { name: string; handle?: s
         <div className="min-w-0">
           <h2 className="profile-hero__name">{name}</h2>
           {handle && <p className="profile-hero__handle">@{handle}</p>}
-          <div className="profile-hero__xp" role="progressbar" aria-label="XP to next level" aria-valuemin={0}
-               aria-valuemax={xpToNext} aria-valuenow={xpInto}>
-            <span style={{ width: `${pct}%` }} />
-          </div>
+          <Meter label="XP to next level" value={xpInto} max={xpToNext} className="profile-hero__xp" />
           <p className="profile-hero__xptext">{xpInto} / {xpToNext} XP to level {level + 1}</p>
         </div>
       </div>

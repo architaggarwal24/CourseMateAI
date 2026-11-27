@@ -5,6 +5,8 @@ import { existsSync, rmSync } from "node:fs";
 import { join } from "node:path";
 
 const OLD = [
+  // Redesign Stage 1: headings moved to Fraunces; the wordmark keeps a 4 KB cut of Bricolage (BricolageGrotesque-wordmark.woff2)
+  "src/fonts/BricolageGrotesque-Variable.woff2",
   "src/components/arena/BossCanvas.tsx",   // dead code: breaks the type check (bossSize / drawBoss no longer exist)
   "tailwind.config.js",                    // Tailwind 4 reads its config from src/app/globals.css
   "src/fonts/inter.ts",                    // Geist replaced Inter

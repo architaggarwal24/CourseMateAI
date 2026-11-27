@@ -9,7 +9,8 @@
  * (bg-ink-blue/10) are mixed in with color-mix by Tailwind v4.
  *
  * Names never equal a token's own name (no --color-text here), so a theme variable can never shadow a token.
- *   canvas / sunken / panel / panel-hover   page, sidebar band, card, card hover
+ *   canvas / sunken / panel / panel-hover   page, sidebar band, card, card hover (surface levels 0, 1, 2)
+ *   float / float-hover                     menus, popovers, dialogs (surface level 3)
  *   line-subtle / line / line-strong        borders
  *   fg / fg-2 / fg-muted                    text
  *   accent-*                                FILLS  (bg-accent-blue: the button blue, gold, ...)
@@ -20,6 +21,8 @@
   --color-sunken: var(--color-surface-sunken);
   --color-panel: var(--color-elevated);
   --color-panel-hover: var(--color-elevated-hover);
+  --color-float: var(--color-raised);
+  --color-float-hover: var(--color-raised-hover);
 
   --color-line-subtle: var(--color-border-subtle);
   --color-line: var(--color-border);
@@ -126,14 +129,14 @@
   .glass-strong {
     background: var(--glass-bg-strong);
     border: 1px solid var(--glass-border-strong);
-    box-shadow: var(--shadow-lg);
+    box-shadow: var(--edge-light), var(--shadow-lg);
   }
 
   /* The CourseMateAI logo (components/brand/Logo.tsx): the mark in ink, its dot and "AI" in the accent. */
   .brand { display: inline-flex; align-items: center; gap: calc(var(--brand-size, 28px) * 0.34); color: var(--color-text); line-height: 1; }
   .brand-mark { flex: none; display: block; }
   .brand-mark__dot { fill: var(--color-accent); }
-  .brand__word { font-family: var(--font-display); font-weight: 700; font-size: calc(var(--brand-size, 28px) * 0.74); letter-spacing: -0.035em; white-space: nowrap; }
+  .brand__word { font-family: var(--font-brand); font-weight: 700; font-size: calc(var(--brand-size, 28px) * 0.74); letter-spacing: -0.035em; white-space: nowrap; }
   .brand__ai { color: var(--color-accent-text); }
 
   /* Keyboard hint chip: <kbd class="kbd">K</kbd> */
@@ -337,3 +340,13 @@ html.reduce-animations .loading-dot {
 .offline__card h1 { margin: 0; font-size: 1.4rem; font-weight: 700; color: var(--color-text); }
 .offline__card p { margin: 0; line-height: 1.5; }
 .offline__icon { display: grid; place-items: center; width: 3.5rem; height: 3.5rem; border-radius: 16px; color: var(--color-accent-text); background: var(--glass-bg); border: 1px solid var(--glass-border); }
+
+/* The one light layer (redesign Stage 1): a soft wash of the accent from the top edge, laid over the surface's own
+   fill. For a few places only: the page's lead panel, the tool in use, a focused card. None in Hero, none with
+   reduced transparency, none in print (styles/tokens.css). src/styles/flat.test.ts lists who may use it.
+   Outside the layers on purpose, so it sits on top of a component's fill; surfaces that take it set
+   background-color, never the background shorthand (which would wipe the image). */
+.lit {
+  background-image: var(--light-soft);
+  background-repeat: no-repeat;
+}

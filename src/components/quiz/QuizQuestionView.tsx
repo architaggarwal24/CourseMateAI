@@ -3,7 +3,9 @@
 import { useEffect, useRef, useLayoutEffect } from "react";
 import { ArrowRight, CheckCircle2, XCircle } from "@/components/ui/icons";
 import { motion } from "motion/react";
-import { Button, Card } from "@/components/ui";
+import { REVEAL } from "@/components/fx/motion";
+import { useEnter } from "@/components/fx/useEnter";
+import { Button, Card, Meter } from "@/components/ui";
 import type { QuizFeedback, QuizQuestion } from "@/types";
 import { sameAnswer } from "./answers";
 import { shortcutBlocked } from "@/lib/keys";
@@ -34,6 +36,7 @@ function isTyping(target: EventTarget | null): boolean {
 
 /** One question on its own screen: "n of N", the options (click, or keys 1-4), then the verdict and explanation. */
 export default function QuizQuestionView({ index, total, question, picked, result, revealed, checking, onAnswer, onNext }: Props) {
+  const enter = useEnter();
   const options = question.options ?? [];
   const nextRef = useRef<HTMLButtonElement>(null);
   const isLast = index >= total - 1;
@@ -70,11 +73,7 @@ export default function QuizQuestionView({ index, total, question, picked, resul
       <div className="mx-auto w-full max-w-[72ch] space-y-6">
         <div>
           <p className="mb-2 flex items-baseline justify-between text-sm text-fg-muted"><span>Question {index + 1} of {total}</span><span className="font-num text-xs">{Math.round(progress)}%</span></p>
-          <div role="progressbar" aria-label="Quiz progress" aria-valuemin={0} aria-valuemax={total}
-               aria-valuenow={index + (revealed ? 1 : 0)} aria-valuetext={`Question ${index + 1} of ${total}`}
-               className="study-progress">
-            <div className="study-progress__fill" style={{ width: `${progress}%` }} />
-          </div>
+          <Meter label="Quiz progress" value={index + (revealed ? 1 : 0)} max={total} valueText={`Question ${index + 1} of ${total}`} />
         </div>
 
         <h3 className="text-xl font-semibold leading-[1.5] tracking-tight text-fg">{question.question}</h3>
@@ -86,8 +85,7 @@ export default function QuizQuestionView({ index, total, question, picked, resul
             const isWrongPick = revealed && isPicked && !correct && !isCorrectOption;
             const state = isCorrectOption ? "correct" : isWrongPick ? "wrong" : isPicked ? "picked" : revealed ? "dim" : undefined;
             return (
-              <motion.li key={i} initial={{ opacity: 0, x: -12 }} animate={{ opacity: 1, x: 0 }}
-                         transition={{ delay: 0.08 + i * 0.05, duration: 0.45, ease: [0.16, 1, 0.3, 1] }}>
+              <motion.li key={i} {...enter(REVEAL, i, 0.04)}>
                 <button type="button" disabled={!canAnswer} onClick={() => onAnswer(opt)}
                         aria-keyshortcuts={i < MAX_KEY ? String(i + 1) : undefined}
                         data-state={state} className="quiz-opt">

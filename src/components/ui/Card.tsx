@@ -11,22 +11,25 @@ export interface CardProps extends Omit<HTMLAttributes<HTMLDivElement>, "title">
   tone?: "default" | "danger" | "warning" | "success";
   /** "inset" sits one step darker (a panel inside a card). */
   surface?: "elevated" | "inset";
+  /** Floats above the page (surface level 3, with a lit top edge): popovers, a lead panel. */
   raised?: boolean;
+  /** Lays the one light layer on (a soft wash of the accent from the top): the page's lead panel only. */
+  lit?: boolean;
   /** Padding of the content. With a title the body gets the default padding. */
   pad?: "none" | "sm" | "lg";
   /** Responds to hover (its border lifts): for cards that are a link or a control. */
   interactive?: boolean;
 }
 
-/** A flat panel with a thin border (see .ui-card in ui.css). */
+/** A panel with a thin border (see .ui-card in ui.css): surface level 2, or 1 (inset), or 3 (raised). */
 export default function Card({
-  title, headingLevel = 2, tone = "default", surface = "elevated", raised, pad, interactive, className, children, ...rest
+  title, headingLevel = 2, tone = "default", surface = "elevated", raised, lit, pad, interactive, className, children, ...rest
 }: CardProps) {
   const Heading = `h${headingLevel}` as "h2" | "h3" | "h4";
   return (
     <div
       className={cn(
-        "ui-card", surface === "inset" && "ui-card--inset", raised && "ui-card--raised", interactive && "ui-card--interactive",
+        "ui-card", surface === "inset" && "ui-card--inset", raised && "ui-card--raised", lit && "lit", interactive && "ui-card--interactive",
         tone !== "default" && `ui-card--${tone}`,
         !title && pad === "sm" && "ui-card--pad", !title && pad === "lg" && "ui-card--pad-lg",
         className,

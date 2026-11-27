@@ -5,7 +5,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Brain, Layers, List, Network, RefreshCw, Sparkles, Swords, X } from "@/components/ui/icons";
 import StudyToolbar from "@/components/study/StudyToolbar";
 import UpgradeCard from "@/components/study/UpgradeCard";
-import { Badge, Button, ButtonLink, EmptyState, Skeleton, toast, type BadgeTone } from "@/components/ui";
+import { Badge, Button, ButtonLink, EmptyState, Meter, Skeleton, toast, type BadgeTone } from "@/components/ui";
 import { ApiError } from "@/lib/api";
 import { ROUTES } from "@/lib/routes";
 import {
@@ -177,13 +177,11 @@ export default function ConceptMapView({ documentId }: { documentId?: string }) 
 }
 
 function Progress({ map }: { map: ConceptMap }) {
-  const share = map.total ? Math.max(0.08, map.built / map.total) : 0.08;
   return (
     <section className="cmap-progress" aria-labelledby="cmap-progress-title" aria-busy="true">
       <h3 id="cmap-progress-title" className="m-0 text-base font-semibold">Making the concept map</h3>
       <p className="m-0 text-sm text-fg-2" role="status" aria-live="polite">{map.stage ?? "Waiting to start…"}</p>
-      <div className="cmap-progress__bar" role="progressbar" aria-label="Documents mapped" aria-valuemin={0}
-           aria-valuemax={map.total} aria-valuenow={map.built}><span style={{ width: `${share * 100}%` }} /></div>
+      <Meter label="Documents mapped" value={map.built} max={map.total} />
       {map.total > 1 && (
         <ul>{map.documents.filter((d) => d.status !== "not_ready").map((d) => (
           <li key={d.id}><span className="truncate">{d.name}</span><span>{d.status === "ready" ? "Done" : d.status === "failed" ? "Failed" : d.status === "running" ? "Mapping…" : "Waiting"}</span></li>
