@@ -4,6 +4,7 @@ import type { CurrentUser, RequestContext } from "../context";
 import { HttpError } from "../http";
 import { callerFor } from "../chat";
 import { studyDocs } from "../study/documents";
+import { boardHash } from "./board";
 import { weakConcepts } from "../study/mastery";
 import { validateTopic } from "../study/text";
 import { expeditionActs } from "./arena-ai";
@@ -34,7 +35,7 @@ export async function leaderboard(ctx: RequestContext, user: CurrentUser, q: URL
   const topic = q.get("topic") ?? "";
   if (scope === "topic" && !topic.trim()) throw new HttpError(400, "invalid_input", "Topic is required for a topic board.");
   const sessionId = q.get("session_id");
-  const docHash = sessionId && scope === "topic" ? (await studyDocs(ctx, user, sessionId)).hash : null;
+  const docHash = sessionId && scope === "topic" ? await boardHash(ctx, user.id, sessionId, (await studyDocs(ctx, user, sessionId)).hash) : null;
   const entries = await arena.leaderboard(ctx, user.id, topic, difficulty, docHash, scope);
   return { ok: true, date: q.get("date") ?? "", scope, entries, total: entries.length };
 }
@@ -186,7 +187,7 @@ export async function runLeaderboard(ctx: RequestContext, user: CurrentUser, q: 
   if (scope === "document") {
     const sid = q.get("session_id");
     if (!sid) throw new HttpError(400, "invalid_input", "session_id is required for a document board.");
-    hash = (await studyDocs(ctx, user, sid)).hash;
+    hash = await boardHash(ctx, user.id, sid, (await studyDocs(ctx, user, sid)).hash);
   }
   const entries = await exp.leaderboard(ctx, user.id, scope, hash);
   return { ok: true, scope, entries, total: entries.length };

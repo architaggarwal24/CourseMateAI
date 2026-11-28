@@ -6,6 +6,7 @@ import { addInsight } from "./insight";
 import { scrollEvent } from "./scrolls";
 import { bestiaryStats } from "./tome";
 import { and, eq, sql } from "drizzle-orm";
+import { HttpError } from "../http";
 import type { RequestContext } from "../context";
 import { dailyQuests, userAchievements, userBuffs } from "../db/schema";
 import {
@@ -159,21 +160,49 @@ export const BUFF_DURATION: Record<string, number> = { xp_boost_1h: 3600, xp_boo
 const ARENA_MAX: Record<string, number> = { heal_1: 3, fifty_fifty: 2 };
 const ARENA_EXPIRY_DAYS = 30;
 
-export async function activeBuffs(ctx: RequestContext, userId: number): Promise<Record<string, Buff>> {
+/** The stored buffs row (raw JSON, or null when there is none) and its live buffs. */
+async function readBuffs(ctx: RequestContext, userId: number): Promise<{ raw: string | null; live: Record<string, Buff> }> {
   const row = await ctx.db.select().from(userBuffs).where(eq(userBuffs.userId, userId)).get();
-  if (!row) return {};
+  if (!row) return { raw: null, live: {} };
   let all: Record<string, Buff> = {};
-  try { all = JSON.parse(row.buffsJson || "{}"); } catch { return {}; }
+  try { all = JSON.parse(row.buffsJson || "{}"); } catch { all = {}; }
   const now = Date.now() / 1000;
-  const live = Object.fromEntries(Object.entries(all).filter(([, b]) => (b?.expires_at ?? 0) > now));
-  if (Object.keys(live).length !== Object.keys(all).length) await saveBuffs(ctx, userId, live);
-  return live;
+  return { raw: row.buffsJson, live: Object.fromEntries(Object.entries(all).filter(([, b]) => (b?.expires_at ?? 0) > now)) };
 }
 
-export async function saveBuffs(ctx: RequestContext, userId: number, buffs: Record<string, Buff>) {
-  const t = nowIso();
-  await ctx.db.insert(userBuffs).values({ userId, buffsJson: JSON.stringify(buffs), updatedAt: t })
-    .onConflictDoUpdate({ target: userBuffs.userId, set: { buffsJson: JSON.stringify(buffs), updatedAt: t } });
+/** Write buffs only if the row still holds `raw` (compare-and-set; null = no row yet). True if it was written. */
+async function writeBuffs(ctx: RequestContext, userId: number, raw: string | null, buffs: Record<string, Buff>): Promise<boolean> {
+  const t = nowIso(), json = JSON.stringify(buffs);
+  const done = raw === null
+    ? await ctx.db.insert(userBuffs).values({ userId, buffsJson: json, updatedAt: t }).onConflictDoNothing().returning({ u: userBuffs.userId }).all()
+    : await ctx.db.update(userBuffs).set({ buffsJson: json, updatedAt: t })
+      .where(and(eq(userBuffs.userId, userId), eq(userBuffs.buffsJson, raw))).returning({ u: userBuffs.userId }).all();
+  return done.length > 0;
+}
+
+/**
+ * Change the buffs atomically (security audit run 1): read, change, and write only if nobody wrote in between,
+ * else try again. `change` returns its result and whether it changed anything. Before, a read-modify-write let one
+ * queued arena charge be spent by several parallel uses.
+ */
+export async function modifyBuffs<R>(ctx: RequestContext, userId: number, change: (buffs: Record<string, Buff>) => { result: R; changed: boolean }): Promise<R> {
+  for (let i = 0; i < 6; i++) {
+    const { raw, live } = await readBuffs(ctx, userId);
+    const { result, changed } = change(live);
+    if (!changed || await writeBuffs(ctx, userId, raw, live)) return result;
+  }
+  throw new HttpError(409, "busy", "Something else changed your buffs just now. Try again.", "retry");
+}
+
+export async function activeBuffs(ctx: RequestContext, userId: number): Promise<Record<string, Buff>> {
+  const { raw, live } = await readBuffs(ctx, userId);
+  // tidy expired buffs away (only if nobody wrote in between; it's housekeeping)
+  if (raw !== null && raw !== JSON.stringify(live)) {
+    let all: Record<string, Buff> = {};
+    try { all = JSON.parse(raw || "{}"); } catch { /* rewrite it */ }
+    if (Object.keys(all).length !== Object.keys(live).length) await writeBuffs(ctx, userId, raw, live);
+  }
+  return live;
 }
 
 export async function xpMultiplier(ctx: RequestContext, userId: number) {
@@ -186,34 +215,42 @@ export async function coinMultiplier(ctx: RequestContext, userId: number) {
 
 /** Use up one arena charge (heal_1, fifty_fifty, hint_charges). The count left, or -1 if there was none. */
 export async function consumeCharge(ctx: RequestContext, userId: number, key: "heal_1" | "fifty_fifty" | "hint_charges"): Promise<number> {
-  const buffs = await activeBuffs(ctx, userId);
-  const n = Number(buffs[key]?.count ?? 0);
-  if (n <= 0) { if (buffs[key]) { delete buffs[key]; await saveBuffs(ctx, userId, buffs); } return -1; }
-  if (n <= 1) delete buffs[key]; else buffs[key] = { ...buffs[key], count: n - 1 };
-  await saveBuffs(ctx, userId, buffs);
-  return n - 1;
+  return modifyBuffs(ctx, userId, (buffs) => {
+    const n = Number(buffs[key]?.count ?? 0);
+    if (n <= 0) {
+      if (!buffs[key]) return { result: -1, changed: false };
+      delete buffs[key];
+      return { result: -1, changed: true };
+    }
+    if (n <= 1) delete buffs[key]; else buffs[key] = { ...buffs[key], count: n - 1 };
+    return { result: n - 1, changed: true };
+  });
 }
 
 export async function applyBuff(ctx: RequestContext, p: Player, effect: string): Promise<{ ok: boolean; reason?: string; [k: string]: unknown }> {
   const buffs = await activeBuffs(ctx, p.id);
   const arenaExpiry = Date.now() / 1000 + ARENA_EXPIRY_DAYS * 86_400;
   if (effect === "heal_1" || effect === "fifty_fifty") {
-    const cur = Number(buffs[effect]?.count ?? 0);
-    if (cur >= ARENA_MAX[effect]) {
+    const total = await modifyBuffs(ctx, p.id, (b) => {
+      const cur = Number(b[effect]?.count ?? 0);
+      if (cur >= ARENA_MAX[effect]) return { result: -1, changed: false };
+      b[effect] = { effect, count: cur + 1, expires_at: arenaExpiry, applied_at: nowIso() };
+      return { result: cur + 1, changed: true };
+    });
+    if (total < 0) {
       return { ok: false, reason: effect === "heal_1" ? `Max ${ARENA_MAX.heal_1} heals already queued for arena` : `Max ${ARENA_MAX.fifty_fifty} Veil charges already queued for arena` };
     }
-    buffs[effect] = { effect, count: cur + 1, expires_at: arenaExpiry, applied_at: nowIso() };
-    await saveBuffs(ctx, p.id, buffs);
-    const total = cur + 1;
     return effect === "heal_1"
       ? { ok: true, effect, count: total, message: `Crimson Vial ready! You have ${total} heal${total > 1 ? "s" : ""} for the Arena.` }
       : { ok: true, effect, count: total, message: `Veil of Duality ready! You have ${total} charge(s) for the Arena.` };
   }
   if (effect === "hint_charge") {
-    const cur = Number(buffs.hint_charges?.count ?? 0);
-    buffs.hint_charges = { effect, count: cur + 1, expires_at: arenaExpiry, applied_at: nowIso() };
-    await saveBuffs(ctx, p.id, buffs);
-    return { ok: true, effect, count: cur + 1, message: `Hint ready! You now have ${cur + 1} hint(s) for the Arena.` };
+    const total = await modifyBuffs(ctx, p.id, (b) => {
+      const cur = Number(b.hint_charges?.count ?? 0);
+      b.hint_charges = { effect, count: cur + 1, expires_at: arenaExpiry, applied_at: nowIso() };
+      return { result: cur + 1, changed: true };
+    });
+    return { ok: true, effect, count: total, message: `Hint ready! You now have ${total} hint(s) for the Arena.` };
   }
   if (effect in BUFF_DURATION) {
     if (buffs[effect]) {
@@ -221,8 +258,12 @@ export async function applyBuff(ctx: RequestContext, p: Player, effect: string):
       return { ok: false, reason: `Buff already active (${remaining}s remaining)`, remaining_seconds: remaining };
     }
     const expires = new Date(Date.now() + BUFF_DURATION[effect] * 1000);
-    buffs[effect] = { effect, expires_at: expires.getTime() / 1000, expires_iso: expires.toISOString(), applied_at: nowIso(), duration_seconds: BUFF_DURATION[effect] };
-    await saveBuffs(ctx, p.id, buffs);
+    const started = await modifyBuffs(ctx, p.id, (b) => {
+      if (b[effect]) return { result: false, changed: false };
+      b[effect] = { effect, expires_at: expires.getTime() / 1000, expires_iso: expires.toISOString(), applied_at: nowIso(), duration_seconds: BUFF_DURATION[effect] };
+      return { result: true, changed: true };
+    });
+    if (!started) return { ok: false, reason: "Buff already active" };
     const label = effect === "xp_boost_2h" ? "+100% XP for 2 hours!" : effect === "xp_boost_1h" ? "+50% XP for 1 hour!" : "+50% Coins for 1 hour!";
     return { ok: true, effect, message: label, expires_at: expires.toISOString() };
   }

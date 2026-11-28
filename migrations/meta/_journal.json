@@ -176,6 +176,13 @@
       "when": 1795469206083,
       "tag": "0024_ocr_pages",
       "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "6",
+      "when": 1795900000000,
+      "tag": "0025_board_privacy",
+      "breakpoints": true
     }
   ]
 }

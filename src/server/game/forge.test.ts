@@ -91,4 +91,23 @@ describe("the forge in play", () => {
     expect(JSON.parse(row!.equipped_json)).toEqual({ mount: "pet_fox" });
     expect((await json(await mountRoute.PUT(b.request("/api/v1/forge/mount", { method: "PUT", body: { pet: null } })))).mount).toBeNull();
   }, 60_000);
+
+  it("two saddles at once with materials for one: one saddle, materials never below zero, the other keeps its coins (security audit run 1)", async () => {
+    const b = await person(mail, "two@example.com", "twopets");
+    await view(b);
+    const me = await uid(b);
+    const ctx = await requestContext(b.request("/api/v1/forge"));
+    await modifyAvatar(ctx, me, (_eq, owned) => { owned.push("pet_fox", "pet_owl"); });
+    for (const pet of ["pet_fox", "pet_owl"]) await db().prepare("INSERT INTO item_progress (user_id, item_id, xp, tier, saddled, updated_at) VALUES (?, ?, 0, 4, 0, 'x')").bind(me, pet).run();
+    await db().prepare("UPDATE user_progress SET coins = 2000 WHERE user_id = ?").bind(me).run();
+    await db().prepare("INSERT INTO forge_materials (user_id, material_id, quantity) VALUES (?, 'sun_plume', 2)").bind(me).run();
+    const tries = await Promise.allSettled([forge.saddle(ctx, me, "pet_fox"), forge.saddle(await requestContext(b.request("/api/v1/forge")), me, "pet_owl")]);
+    expect(tries.filter((t) => t.status === "fulfilled")).toHaveLength(1);
+    const q = await db().prepare("SELECT quantity FROM forge_materials WHERE user_id = ? AND material_id = 'sun_plume'").bind(me).first<{ quantity: number }>();
+    expect(q?.quantity).toBe(0);
+    const saddled = await db().prepare("SELECT COUNT(*) AS n FROM item_progress WHERE user_id = ? AND saddled = 1").bind(me).first<{ n: number }>();
+    expect(saddled?.n).toBe(1);
+    const coins = await db().prepare("SELECT coins FROM user_progress WHERE user_id = ?").bind(me).first<{ coins: number }>();
+    expect(coins?.coins).toBe(2000 - 600);                                        // one saddle paid for
+  }, 60_000);
 });

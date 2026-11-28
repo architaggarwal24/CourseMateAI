@@ -34,7 +34,9 @@ async function person(email: string, username: string, extra: Record<string, unk
   const b = new Browser(`198.51.100.${ip++}`);
   const r = await authRoute.POST(b.request("/api/auth/sign-up/email", { body: { email, password: "correct-horse-1", name: username, username, ...extra } }));
   expect(r.status).toBe(200);
-  b.keep(await authRoute.POST(b.request("/api/auth/email-otp/verify-email", { body: { email, otp: mail.lastCode(email) } })));
+  // verifying proves the mailbox only (security audit run 1): then sign in with the password
+  await authRoute.POST(b.request("/api/auth/email-otp/verify-email", { body: { email, otp: mail.lastCode(email), password: "correct-horse-1" } }));
+  b.keep(await authRoute.POST(b.request("/api/auth/sign-in/email", { body: { email, password: "correct-horse-1" } })));
   return b;
 }
 const stored = (email: string) => p.env.DB.prepare("SELECT terms_version AS v, terms_accepted_at AS at FROM user WHERE email = ?").bind(email).first<{ v: string | null; at: number | null }>();

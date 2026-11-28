@@ -51,7 +51,9 @@ async function person(email: string, username: string): Promise<Browser> {
   const b = new Browser(`198.51.100.${ip++}`);
   const r = await authRoute.POST(b.request("/api/auth/sign-up/email", { body: { email, password: "correct-horse-1", name: username.toUpperCase(), username } }));
   expect(r.status).toBe(200);
-  b.keep(await authRoute.POST(b.request("/api/auth/email-otp/verify-email", { body: { email, otp: mail.lastCode(email) } })));
+  // verifying proves the mailbox only (security audit run 1): then sign in with the password
+  await authRoute.POST(b.request("/api/auth/email-otp/verify-email", { body: { email, otp: mail.lastCode(email), password: "correct-horse-1" } }));
+  b.keep(await authRoute.POST(b.request("/api/auth/sign-in/email", { body: { email, password: "correct-horse-1" } })));
   return b;
 }
 async function idOf(b: Browser): Promise<number> {
@@ -128,6 +130,20 @@ describe("update-profile and delete-account", () => {
     expect(mail.sent.at(-1)?.to).toBe("new@example.com");
   });
 
+  it("a new email unlinks Google and GitHub and signs other devices out (audit run 2)", async () => {
+    const b = await person("linked@example.com", "linked");
+    const other = new Browser(`198.51.100.${ip++}`);
+    other.keep(await authRoute.POST(other.request("/api/auth/sign-in/email", { body: { email: "linked@example.com", password: "correct-horse-1" } })));
+    expect((await me.GET(other.request("/api/v1/auth/me"))).status).toBe(200);
+    const id = await p.env.DB.prepare("SELECT id FROM user WHERE email = 'linked@example.com'").first<number>("id");
+    await p.env.DB.prepare("INSERT INTO account (account_id, provider_id, user_id, created_at, updated_at) VALUES ('g-1', 'google', ?, 0, 0)").bind(id).run();
+    const ok = await updateProfile.POST(b.request("/api/v1/auth/update-profile", { body: { email: "moved@example.com", current_password: "correct-horse-1" } }));
+    expect(ok.status).toBe(200);
+    expect(await p.env.DB.prepare("SELECT provider_id FROM account WHERE user_id = ? ORDER BY provider_id").bind(id).all().then((r) => r.results.map((x) => x.provider_id))).toEqual(["credential"]);
+    expect((await me.GET(b.request("/api/v1/auth/me"))).status).toBe(200);           // this device stays signed in
+    expect((await me.GET(other.request("/api/v1/auth/me"))).status).toBe(401);       // the other one doesn't
+  });
+
   it("deletes the account with the password, but never the owner's", async () => {
     const b = await person("bye@example.com", "bye");
     expect((await deleteAccount.DELETE(b.request("/api/v1/auth/delete-account", { method: "DELETE", body: { password: "wrong-wrong-1", confirm: "DELETE" } }))).status).toBe(400);
@@ -202,6 +218,32 @@ describe("admin", () => {
     expect((await adminRole.PUT(owner.request(`/api/v1/admin/users/${oid}/role`, { method: "PUT", body: { role: "user" } }), params({ id: String(oid) }))).status).toBe(400);
   });
 
+  it("only the owner lifts a ban on an admin, as only the owner places one (security audit run 1)", async () => {
+    const owner = await person("owner@example.com", "boss");
+    const a = await person("adm-a@example.com", "adma");
+    const b = await person("adm-b@example.com", "admb");
+    const aid = await idOf(a), bid = await idOf(b);
+    for (const id of [aid, bid]) await adminRole.PUT(owner.request(`/api/v1/admin/users/${id}/role`, { method: "PUT", body: { role: "admin" } }), params({ id: String(id) }));
+    expect((await adminBan.POST(owner.request(`/api/v1/admin/users/${bid}/ban`, { body: {} }), params({ id: String(bid) }))).status).toBe(200);
+    const lift = await adminBan.DELETE(a.request(`/api/v1/admin/users/${bid}/ban`, { method: "DELETE" }), params({ id: String(bid) }));
+    expect(lift.status).toBe(403);
+    expect((await json(lift)).error.code).toBe("owner_only");
+    expect((await adminBan.DELETE(owner.request(`/api/v1/admin/users/${bid}/ban`, { method: "DELETE" }), params({ id: String(bid) }))).status).toBe(200);
+  });
+
+  it("only the owner changes another admin's plan (security audit run 2)", async () => {
+    const owner = await person("owner@example.com", "boss");
+    const a = await person("adm-c@example.com", "admc");
+    const b = await person("adm-d@example.com", "admd");
+    const aid = await idOf(a), bid = await idOf(b);
+    for (const id of [aid, bid]) await adminRole.PUT(owner.request(`/api/v1/admin/users/${id}/role`, { method: "PUT", body: { role: "admin" } }), params({ id: String(id) }));
+    const plan = (who: Browser) => adminPlan.PUT(who.request(`/api/v1/admin/users/${bid}/plan`, { method: "PUT", body: { tier: "scholar", days: 7 } }), params({ id: String(bid) }));
+    const refused = await plan(a);
+    expect(refused.status).toBe(403);
+    expect((await json(refused)).error.code).toBe("owner_only");
+    expect((await plan(owner)).status).toBe(200);
+  });
+
   it("the owner gives anyone XP and coins (themselves too), takes them away down to zero; admins can't", async () => {
     const owner = await person("owner@example.com", "boss");
     const student = await person("lucky@example.com", "lucky");
@@ -254,6 +296,18 @@ describe("admin", () => {
 });
 
 describe("invite codes", () => {
+  it("one person's parallel redeems use one use of a shared code, so the rest stay for others (security audit run 1)", async () => {
+    const owner = await person("owner@example.com", "boss");
+    await adminInvites.POST(owner.request("/api/v1/admin/invites", { body: { tier: "scholar", days: 30, max_uses: 4, code: "class-code" } }));
+    const alice = await person("alice@example.com", "alice");
+    const tries = await Promise.all(Array.from({ length: 4 }, () => redeem.POST(alice.request("/api/v1/account/redeem", { body: { code: "CLASS-CODE" } }))));
+    expect(tries.filter((r) => r.status === 200)).toHaveLength(1);
+    const row = await p.env.DB.prepare("SELECT uses FROM invite_codes WHERE code = 'CLASS-CODE'").first<{ uses: number }>();
+    expect(row?.uses).toBe(1);
+    const bob = await person("bob@example.com", "bob");
+    expect((await redeem.POST(bob.request("/api/v1/account/redeem", { body: { code: "CLASS-CODE" } }))).status).toBe(200);
+  });
+
   it("the admin makes a code, a student redeems it once, and it can be revoked", async () => {
     const owner = await person("owner@example.com", "boss");
     const made = await json(await adminInvites.POST(owner.request("/api/v1/admin/invites", { body: { tier: "sage", days: 30, max_uses: 2, code: "beta-sage" } })));

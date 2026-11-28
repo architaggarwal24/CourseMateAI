@@ -141,7 +141,14 @@ export async function updateProfile(req: Request, ctx: RequestContext, u: Curren
   }
   if (emailChanges) {
     // The new address has to be confirmed again; until then the account isn't verified (and isn't the owner).
-    await ctx.db.update(userTable).set({ email: newEmail, emailVerified: false, updatedAt: new Date() }).where(eq(userTable.id, u.id));
+    // Google and GitHub logins belonged to the old address, so they are unlinked, and other devices are signed out
+    // (audit run 2): otherwise a login kept from before would still open the account once the new address's real
+    // holder had proven it and taken it over. The password stays, and so does this session.
+    await ctx.db.batch([
+      ctx.db.update(userTable).set({ email: newEmail, emailVerified: false, updatedAt: new Date() }).where(eq(userTable.id, u.id)),
+      ctx.db.delete(accountTable).where(and(eq(accountTable.userId, u.id), ne(accountTable.providerId, "credential"))),
+    ]);
+    await ctx.auth.api.revokeOtherSessions({ headers }).catch(() => {});
     await ctx.auth.api.sendVerificationOTP({ body: { email: newEmail, type: "email-verification" } });
   }
   return { ok: true, email_verification_sent: emailChanges };

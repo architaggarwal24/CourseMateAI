@@ -134,13 +134,15 @@ describe("Ollama on the live site, through an admin's tunnel", () => {
     expect(checkOllamaUrl(`${TUNNEL}/api`)).toBe(TUNNEL);
     expect(checkOllamaUrl("http://localhost:11434/v1", { NODE_ENV: "development" })).toBe("http://localhost:11434");
     expect(ollamaBase({}, "http://localhost:11434/v1")).toBe("http://localhost:11434");          // already saved that way
-    expect(await saveOllamaUrl(db, `${TUNNEL}/`)).toBe(TUNNEL);
-    expect((await aiSettings(db)).ollamaUrl).toBe(TUNNEL);
+    expect(await saveOllamaUrl(db, 1, `${TUNNEL}/`)).toBe(TUNNEL);
+    expect((await aiSettings(db, 1)).ollamaUrl).toBe(TUNNEL);
+    expect((await aiSettings(db, 2)).ollamaUrl).toBeNull();                       // each admin's own (security audit run 1)
+    expect((await aiSettings(db)).ollamaUrl).toBeNull();
     await saveOverride(db, 1, "ollama:my-custom-model:q4", process.env, TUNNEL);            // any model name
     expect(overrideTarget("ollama:my-custom-model:q4", process.env, TUNNEL)).toMatchObject({ provider: "ollama", model: "my-custom-model:q4", baseUrl: TUNNEL });
     expect(providerStatus(process.env, TUNNEL).some((x) => x.id === "ollama")).toBe(true);
-    expect(await saveOllamaUrl(db, null)).toBeNull();
-    expect((await aiSettings(db)).ollamaUrl).toBeNull();
+    expect(await saveOllamaUrl(db, 1, null)).toBeNull();
+    expect((await aiSettings(db, 1)).ollamaUrl).toBeNull();
   });
 
   it("an admin's Ollama answers their requests through the tunnel; the list comes from it too", async () => {
@@ -148,7 +150,7 @@ describe("Ollama on the live site, through an admin's tunnel", () => {
     const tags = vi.fn(async () => new Response(JSON.stringify({ models: [{ name: "phi4" }] })));
     expect(await ollamaModels(process.env, tags as unknown as typeof fetch, TUNNEL)).toEqual(["phi4"]);
     expect((tags.mock.calls[0] as unknown[])[0]).toBe(`${TUNNEL}/api/tags`);
-    await saveOllamaUrl(db, TUNNEL);
+    await saveOllamaUrl(db, 1, TUNNEL);
     await saveOverride(db, 1, "ollama:phi4", process.env, TUNNEL);
     const llms = fakeLlms({ "*": () => "from my ollama" });
     setLlmFactoryForTests(llms.factory);
@@ -156,6 +158,17 @@ describe("Ollama on the live site, through an admin's tunnel", () => {
     const r = await generate(ctx(), admin, "strong", [{ role: "user", content: "hi" }]);
     expect(r.target).toMatchObject({ provider: "ollama", model: "phi4", baseUrl: TUNNEL });
     expect((await generate(ctx(), student, "strong", [{ role: "user", content: "hi" }])).target.provider).not.toBe("ollama");
+  });
+
+  it("another admin saving a tunnel never moves this admin's own model (security audit run 1)", async () => {
+    vi.stubEnv("NODE_ENV", "production");
+    await saveOllamaUrl(db, 1, TUNNEL);
+    await saveOverride(db, 1, "ollama:phi4", process.env, TUNNEL);
+    await saveOllamaUrl(db, 2, "https://someone-else.trycloudflare.com");
+    setLlmFactoryForTests(fakeLlms({ "*": () => "ok" }).factory);
+    const admin = { id: 1, owner: true, admin: true, tier: "archmage" as const };
+    const r = await generate(ctx(), admin, "strong", [{ role: "user", content: "my notes" }]);
+    expect(r.target).toMatchObject({ provider: "ollama", baseUrl: TUNNEL });
   });
 });
 

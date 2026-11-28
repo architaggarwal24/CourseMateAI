@@ -1,7 +1,7 @@
 // Invite codes and plan grants (the TypeScript port of backend/services/invite_service.py, Stage 4.1).
 // A code grants a plan for some days (or for good), to up to `max_uses` people, until it expires or is revoked.
 // Redeeming never lowers a plan in force: a code for a lower plan is refused; one for the same plan adds its days.
-import { and, desc, eq, lt, sql } from "drizzle-orm";
+import { and, desc, eq, gt, isNull, lt, or, sql } from "drizzle-orm";
 import type { Db } from "../db";
 import { inviteCodes, inviteRedemptions, userPlans } from "../db/schema";
 import { HttpError } from "../http";
@@ -93,11 +93,23 @@ export async function redeemInvite(db: Db, userId: number, code: string, now = n
   let from: Date | null = null;
   if (current && current.tier === row.tier && current.expiresAt && days) from = new Date(current.expiresAt);   // time adds up
   else if (current && current.tier === row.tier && !current.expiresAt) days = null;                           // stays for good
-  // Count the use first, guarded, so two people racing for the last use can't both get it.
-  const took = await db.update(inviteCodes).set({ uses: sql`${inviteCodes.uses} + 1` })
-    .where(and(eq(inviteCodes.code, row.code), lt(inviteCodes.uses, row.maxUses), eq(inviteCodes.revoked, false))).run();
-  if ((took.meta?.changes ?? 0) === 0) throw invalid("That invite code has been used up.");
-  await db.insert(inviteRedemptions).values({ code: row.code, userId, redeemedAt: nowIso(now) });
+  // One batch (one transaction): claim this user's redemption (the (code, user) key makes it once per user, even
+  // under concurrency), then count the use only if that claim was new, guarded so two people racing for the last use
+  // can't both get it. Before (security audit run 1) the use was counted first and the claim failed afterwards, so one
+  // person's parallel requests used up every use of a shared code.
+  const [claimed, took] = await db.batch([
+    db.insert(inviteRedemptions).values({ code: row.code, userId, redeemedAt: nowIso(now) }).onConflictDoNothing()
+      .returning({ code: inviteRedemptions.code }),
+    db.update(inviteCodes).set({ uses: sql`${inviteCodes.uses} + 1` })
+      .where(and(eq(inviteCodes.code, row.code), lt(inviteCodes.uses, row.maxUses), eq(inviteCodes.revoked, false),
+        or(isNull(inviteCodes.expiresAt), gt(inviteCodes.expiresAt, nowIso(now))), sql`changes() = 1`))
+      .returning({ uses: inviteCodes.uses }),
+  ]);
+  if (!claimed.length) throw invalid("You've already used this invite code.");
+  if (!took.length) {
+    await db.delete(inviteRedemptions).where(and(eq(inviteRedemptions.code, row.code), eq(inviteRedemptions.userId, userId)));
+    throw invalid("That invite code has been used up.");
+  }
   const before = await planState(db, userId, now);
   const plan = await setPlan(db, userId, row.tier, { days, source: "invite", ref: row.code, from }, now);
   await notePlanChange(db, userId, before, { source: "invite" }, now);

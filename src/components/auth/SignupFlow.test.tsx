@@ -2,8 +2,8 @@ import { TERMS_VERSION } from "@/lib/legal";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { act, cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 
-const auth = vi.hoisted(() => ({ register: vi.fn(), refresh: vi.fn() }));
-vi.mock("@/contexts/AuthContext", () => ({ useAuth: () => ({ register: auth.register, refresh: auth.refresh }) }));
+const auth = vi.hoisted(() => ({ register: vi.fn(), refresh: vi.fn(), login: vi.fn() }));
+vi.mock("@/contexts/AuthContext", () => ({ useAuth: () => ({ register: auth.register, refresh: auth.refresh, login: auth.login }) }));
 const toasts = vi.hoisted(() => ({ success: vi.fn(), apiError: vi.fn() }));
 vi.mock("@/components/ui/Toast", async (orig) => ({ ...(await orig<object>()), toast: toasts }));
 
@@ -25,6 +25,8 @@ beforeEach(() => {
   calls.length = 0;
   auth.register.mockReset();
   auth.refresh.mockReset();
+  auth.login.mockReset();
+  auth.login.mockResolvedValue({ status: "signed-in" });
   toasts.success.mockReset();
   toasts.apiError.mockReset();
   resetAuthConfigCache();
@@ -172,8 +174,24 @@ describe("verifying the email", () => {
 
     type("6-digit code", "123456");
     await click("Verify");
+    // the code goes with the sign-up password, and verifying signs nobody in: the flow signs in with the password
+    expect(calls.find((c) => c.path === "/api/auth/email-otp/verify-email" && (c.body as { otp: string }).otp === "123456")?.body)
+      .toMatchObject({ email: "ada@example.com", password: "correct-horse" });
+    expect(auth.login).toHaveBeenCalledWith("ada@example.com", "correct-horse");
     expect(auth.refresh).toHaveBeenCalled();
     expect(onDone).toHaveBeenCalled();
+  });
+
+  it("an address someone else registered first: the code step says so and nothing signs in", async () => {
+    auth.register.mockResolvedValue({ ok: true, signedIn: false });
+    const onDone = await open();
+    await fillAccount();
+    await click("Create account");
+    auth.login.mockResolvedValue({ status: "failed", failure: { code: "INVALID_EMAIL_OR_PASSWORD", message: "Wrong" } });
+    type("6-digit code", "123456");
+    await click("Verify");
+    expect(screen.getByRole("alert").textContent).toMatch(/Sign in with your password/);
+    expect(onDone).not.toHaveBeenCalled();
   });
 
   it("without an email service there is no code step", async () => {

@@ -7,9 +7,10 @@
 //     the first five characters of its SHA-1 hash leave the Worker (k-anonymity). If the service can't be reached the
 //     password is allowed (a sign-up never fails because a third party is down).
 import * as logs from "../log";
-import { APIError, createAuthMiddleware } from "better-auth/api";
+import { APIError, createAuthMiddleware, getSessionFromCtx } from "better-auth/api";
 import { isPasswordCompromised } from "better-auth/plugins";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
+import { verifyPassword } from "./password";
 import type { Db } from "../db";
 import * as schema from "../db/schema";
 import { bumpCounter, clearCounter, peekCounter, windowLeft } from "../http";
@@ -50,9 +51,55 @@ async function accountKey(db: Db, path: string, body: Record<string, unknown>): 
   return u ? `signin-fail:${u.email.toLowerCase()}` : `signin-fail:u:${name}`;
 }
 
+// ── an emailed code proves the mailbox, not the account (security audit run 1) ─────────────────────────────────────
+// Verifying an address never signs anyone in (emailVerification.autoSignInAfterVerification is off in ./index.ts), an
+// address that is already verified can't be verified again, and a first verification of an account that has a
+// password needs that password too (sent as `password` alongside the code), unless the request comes from that
+// account's own session. Otherwise someone who registered a victim's address first would get the account (and with
+// it OWNER_EMAIL's rights) the moment the victim proved the mailbox, and an email-only sign-in would skip two-step.
+// The before-hook below notes what the request carried; checkFirstVerification runs once Better Auth has accepted the
+// code (emailVerification.beforeEmailVerification), so a wrong password is never told apart from a wrong code.
+// The note is kept against the request object itself (audit run 2): keyed by email, a second request for the same
+// address could swap its own password in while the real holder's verification was in flight.
+const VERIFY_PATH = "/email-otp/verify-email";
+const attempts = new WeakMap<Request, { email: string; password?: string; sessionUserId?: string }>();
+
+export const EMAIL_REGISTERED_BEFORE = "EMAIL_REGISTERED_BEFORE";
+
+export function checkFirstVerification(db: Db) {
+  return async (user: { id: string | number; email: string; emailVerified?: boolean }, request?: Request) => {
+    if (!request || !new URL(request.url).pathname.endsWith(VERIFY_PATH)) return;
+    const email = String(user.email).toLowerCase();
+    const noted = attempts.get(request);
+    attempts.delete(request);
+    const seen = noted?.email === email ? noted : undefined;
+    if (user.emailVerified) {
+      throw new APIError("BAD_REQUEST", { code: "EMAIL_ALREADY_VERIFIED", message: "This email is already verified. Sign in instead." });
+    }
+    if (seen?.sessionUserId && String(seen.sessionUserId) === String(user.id)) return;   // verifying from inside the account
+    const cred = await db.select({ password: schema.account.password }).from(schema.account)
+      .where(and(eq(schema.account.userId, Number(user.id)), eq(schema.account.providerId, "credential"))).get();
+    if (!cred?.password) return;                                    // no password was set before the mailbox was proven
+    const ok = !!seen?.password && await verifyPassword({ hash: cred.password, password: seen.password });
+    if (!ok) {
+      throw new APIError("BAD_REQUEST", {
+        code: EMAIL_REGISTERED_BEFORE,
+        message: "This email was already registered with a different password. Reset your password to take the account over.",
+      });
+    }
+  };
+}
+
 export function authGuards({ db, breachCheck, log = logs.warn }: GuardOptions) {
   const before = createAuthMiddleware(async (ctx) => {
     const body = (ctx.body ?? {}) as Record<string, unknown>;
+    if (ctx.path === VERIFY_PATH) {
+      const email = str(body.email);
+      if (email && ctx.request) {
+        const s = await getSessionFromCtx(ctx).catch(() => null);
+        attempts.set(ctx.request, { email, password: typeof body.password === "string" ? body.password : undefined, sessionUserId: s?.user?.id });
+      }
+    }
     if (SIGN_IN_PATHS.has(ctx.path)) {
       const key = await accountKey(db, ctx.path, body);
       if (key && await peekCounter(db, key, ACCOUNT_WINDOW) >= ACCOUNT_FAILS) {
@@ -101,31 +148,47 @@ export function authGuards({ db, breachCheck, log = logs.warn }: GuardOptions) {
 /** The real check against Have I Been Pwned (an error means it couldn't be checked). */
 export const pwnedCheck: BreachCheck = (password) => isPasswordCompromised(password);
 
-// ── how many codes go out (security fix #8) ──────────────────────────────────────────────────────────────────────
+// ── how many codes go out (security fix #8, split by audit run 2) ────────────────────────────────────────────────
 // Better Auth already limits each code endpoint per IP. On top: at most MAIL_PER_ADDRESS codes an hour to one
 // address (whoever asks, from however many IPs), and EMAIL_DAILY_CAP emails a day for the whole site (default 100,
 // Resend's free daily allowance), so nobody can flood one inbox or use up the sending quota. Over either limit the
 // code is quietly not sent (the reply stays the same, so it never tells whether an account exists) and the Worker's
 // log says why. The person can ask again later.
+//
+// Codes come from two budgets. "open" codes are the ones anyone can ask for without owning a verified account (a
+// sign-up's verification code, a reset for an address nobody has verified): they may use at most OPEN_SHARE of the
+// daily cap. "account" codes (a reset or a two-step code for a verified account) are counted on their own per address
+// and may use the whole cap, so filling the open budget with throwaway addresses never stops a real user's reset or
+// two-step code.
 export const MAIL_PER_ADDRESS = 5;
 export const DEFAULT_EMAIL_DAILY_CAP = 100;
+export const OPEN_SHARE = 0.6;
+export type MailBudget = "open" | "account";
 
 export function emailDailyCap(raw: string | undefined): number {
   const n = Number((raw ?? "").trim() || NaN);
   return Number.isInteger(n) && n > 0 ? n : DEFAULT_EMAIL_DAILY_CAP;
 }
 
+type Mail = { to: string; subject: string; text: string; html: string };
+
 /** The mailer, with the per-address and daily limits in front of it. */
-export function limitedMailer<M extends { canSend: boolean; send: (m: { to: string; subject: string; text: string; html: string }) => Promise<void> }>(
+export function limitedMailer<M extends { canSend: boolean; send: (m: Mail) => Promise<void> }>(
   db: Db, mailer: M, dailyCap: number, log: (line: string) => void = logs.warn,
-): M {
+): Omit<M, "send"> & { send: (m: Mail, budget?: MailBudget) => Promise<void> } {
+  const openCap = Math.max(1, Math.floor(dailyCap * OPEN_SHARE));
   return {
     ...mailer,
-    async send(m) {
+    async send(m: Mail, budget: MailBudget = "open") {
       if (!mailer.canSend) return mailer.send(m);              // nothing really goes out: the code is only logged
       const to = m.to.trim().toLowerCase();
-      if (await bumpCounter(db, `mail-to:${to}`, 3600) > MAIL_PER_ADDRESS) {
+      const perAddress = budget === "account" ? `mail-to:account:${to}` : `mail-to:${to}`;
+      if (await bumpCounter(db, perAddress, 3600) > MAIL_PER_ADDRESS) {
         log(`[coursemate-email] not sent: over ${MAIL_PER_ADDRESS} codes this hour for one address`);
+        return;
+      }
+      if (budget === "open" && await bumpCounter(db, "mail-day-open", 86_400) > openCap) {
+        log(`[coursemate-email] not sent: the daily share for sign-up codes (${openCap} of ${dailyCap}) is used up`);
         return;
       }
       if (await bumpCounter(db, "mail-day", 86_400) > dailyCap) {

@@ -24,8 +24,9 @@ describe("sign-up and sign-in", () => {
     const before = await auth.handler(b.request("/api/auth/sign-in/email", { body: { email: "asha@example.com", password: "correct-horse-1" } }));
     expect(before.status).toBe(403);                                  // EMAIL_NOT_VERIFIED
 
-    const v = b.keep(await auth.handler(b.request("/api/auth/email-otp/verify-email", { body: { email: "asha@example.com", otp: mail.lastCode() } })));
+    const v = await auth.handler(b.request("/api/auth/email-otp/verify-email", { body: { email: "asha@example.com", otp: mail.lastCode(), password: "correct-horse-1" } }));
     expect(v.status).toBe(200);
+    b.keep(await auth.handler(b.request("/api/auth/sign-in/email", { body: { email: "asha@example.com", password: "correct-horse-1" } })));
     const s = await json(await auth.handler(b.request("/api/auth/get-session")));
     expect(s.user).toMatchObject({ email: "asha@example.com", emailVerified: true, username: "asha_r", role: "user" });
     expect(Number(s.user.id)).toBeGreaterThan(0);
@@ -70,7 +71,7 @@ describe("sign-up and sign-in", () => {
     const auth = testAuth(p.env.DB, mail);
     const b = new Browser();
     await auth.handler(signUp(b, "r@example.com", { username: "resetter" }));
-    await auth.handler(b.request("/api/auth/email-otp/verify-email", { body: { email: "r@example.com", otp: mail.lastCode() } }));
+    await auth.handler(b.request("/api/auth/email-otp/verify-email", { body: { email: "r@example.com", otp: mail.lastCode(), password: "correct-horse-1" } }));
     expect((await auth.handler(b.request("/api/auth/forget-password/email-otp", { body: { email: "r@example.com" } }))).status).toBe(200);
     const reset = await auth.handler(b.request("/api/auth/email-otp/reset-password", {
       body: { email: "r@example.com", otp: mail.lastCode(), password: "brand-new-pass-2" },
@@ -89,7 +90,8 @@ describe("the owner", () => {
     await auth.handler(signUp(b, "owner@example.com", { username: "boss" }));
     const row = await p.env.DB.prepare("SELECT role FROM user WHERE email = ?").bind("owner@example.com").first<{ role: string }>();
     expect(row?.role).toBe("user");
-    b.keep(await auth.handler(b.request("/api/auth/email-otp/verify-email", { body: { email: "owner@example.com", otp: mail.lastCode() } })));
+    await auth.handler(b.request("/api/auth/email-otp/verify-email", { body: { email: "owner@example.com", otp: mail.lastCode(), password: "correct-horse-1" } }));
+    b.keep(await auth.handler(b.request("/api/auth/sign-in/email", { body: { email: "owner@example.com", password: "correct-horse-1" } })));
     const s = await json(await auth.handler(b.request("/api/auth/get-session")));
     expect(s.user.role).toBe("admin");
   });
@@ -145,7 +147,7 @@ describe("credential stuffing defences", () => {
     const auth = testAuth(p.env.DB, mail);
     const b = new Browser("192.0.2.1");
     await auth.handler(signUp(b, "victim@example.com", { username: "victim" }));
-    await auth.handler(b.request("/api/auth/email-otp/verify-email", { body: { email: "victim@example.com", otp: mail.lastCode() } }));
+    await auth.handler(b.request("/api/auth/email-otp/verify-email", { body: { email: "victim@example.com", otp: mail.lastCode(), password: "correct-horse-1" } }));
     for (let i = 0; i < 10; i++) {
       const res = i % 2
         ? await auth.handler(signInEmail(`192.0.2.${10 + i}`, "victim@example.com", "wrong-guess-1"))
@@ -216,7 +218,7 @@ describe("how many codes go out", () => {
       const r = await auth.handler(signUp(new Browser(`192.0.2.${230 + i}`), `n${i}@example.com`, { username: `newbie${i}` }));
       expect(r.status).toBe(200);
     }
-    expect(mail.sent).toHaveLength(2);
+    expect(mail.sent).toHaveLength(1);                                // sign-up codes get 60% of the cap (audit run 2)
   });
 });
 

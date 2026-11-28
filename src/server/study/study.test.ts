@@ -454,6 +454,23 @@ describe("the concept map", () => {
     expect((await json(await conceptMap.POST(post(b, "/api/v1/concept-map", { session_id: id })))).status).toBe("ready");
   });
 
+  it("belongs to its owner: another account with the same file hash neither sees it nor gets it for free (security audit run 1)", async () => {
+    const owner = await person(mail, "owner@example.com", "boss");
+    const id = await uploadPdf(owner, "Bio.pdf", BIO);
+    expect((await json(await conceptMap.POST(post(owner, "/api/v1/concept-map", { session_id: id })))).status).toBe("ready");
+    expect(llm.calls).toHaveLength(1);
+
+    const other = await person(mail, "sam@example.com", "sam");
+    const samId = (await p.env.DB.prepare("SELECT id FROM user WHERE email = ?").bind("sam@example.com").first<{ id: number }>())!.id;
+    const t = new Date().toISOString();
+    await p.env.DB.prepare("INSERT INTO user_plans (user_id, tier, source, started_at, updated_at) VALUES (?, 'sage', 'admin', ?, ?)").bind(samId, t, t).run();
+    const theirs = await uploadPdf(other, "Bio.pdf", [{ page: 1, text: "Sam's own notes about plant cells and chloroplasts." }]);   // same bytes, same hash
+    expect(await json(await conceptMap.GET(other.request(`/api/v1/concept-map?session_id=${theirs}`)))).toMatchObject({ status: "none", built: 0 });
+    expect((await json(await conceptMap.POST(post(other, "/api/v1/concept-map", { session_id: theirs })))).status).toBe("ready");
+    expect(llm.calls).toHaveLength(2);                                         // built from Sam's own text
+    expect(prompts()[1]).toContain("Sam's own notes");
+  });
+
   it("is locked below Sage", async () => {
     const b = await person(mail, "free@example.com", "free");
     expect((await json(await conceptMap.GET(b.request("/api/v1/concept-map?session_id=x")))).error.code).toBe("feature_locked");

@@ -110,6 +110,8 @@ export async function listUsers(ctx: RequestContext, { q = "", offset = 0, limit
 export async function setUserPlan(ctx: RequestContext, actor: CurrentUser, id: number, tier: unknown, days: unknown, note?: unknown) {
   const t = await target(ctx, id);
   if (t.owner) throw new HttpError(400, "owner_plan", "The owner is always on the top plan.");
+  // like banning or changing the role of an admin, changing an admin's plan is the owner's call (audit run 2)
+  if (t.admin && !actor.owner) throw new HttpError(403, "owner_only", "Only the owner can change another admin's plan.");
   const before = await planState(ctx.db, id);
   if (tier === null || tier === "apprentice" && !days) {
     await clearPlan(ctx.db, id);
@@ -151,8 +153,10 @@ export async function ban(ctx: RequestContext, actor: CurrentUser, id: number, r
   return adminUserView(ctx, (await target(ctx, id)).row);
 }
 
-export async function unban(ctx: RequestContext, id: number) {
-  await target(ctx, id);
+/** Lifting a ban needs the same authority as placing it: only the owner can unban an admin (security audit run 1). */
+export async function unban(ctx: RequestContext, actor: CurrentUser, id: number) {
+  const t = await target(ctx, id);
+  if (t.admin && !actor.owner) throw new HttpError(403, "owner_only", "Only the owner can lift an admin's ban.");
   await ctx.db.update(userTable).set({ banned: false, banReason: null, banExpires: null, updatedAt: new Date() }).where(eq(userTable.id, id));
   return adminUserView(ctx, (await target(ctx, id)).row);
 }

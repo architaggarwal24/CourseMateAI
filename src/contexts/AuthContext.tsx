@@ -3,6 +3,7 @@
 // Who is signed in, and the account actions every screen shares. Since Stage 4.1 accounts live on the Worker
 // (Better Auth, src/server/auth): sign-in, sign-up and codes go to /api/auth/* (src/lib/auth/auth-api.ts), and
 // GET /api/v1/auth/me says who you are, with your plan and whether you are an admin.
+import { claimStudyStorage, clearStudyStorage } from "@/lib/study/sessions";
 import { createContext, useCallback, useContext, useEffect, useState } from "react";
 import { useHUDStore } from "@/hooks/useHUD";
 import { rawApi } from "@/lib/api";
@@ -62,6 +63,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const { data, response } = await rawApi.GET("/auth/me");
       if (response.ok && data) next = data as unknown as User;
     } catch { offline = true; /* offline: no answer either way */ }
+    if (next) claimStudyStorage(String(next.user_id));   // another account's stored sessions never show (audit run 1)
     setUser(next);
     setUnreachable(offline);
     // One GET /hud at most: it shares the request AppShell started on mount (in parallel with /auth/me), and a
@@ -88,6 +90,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   async function logout() {
     try { await rawApi.POST("/auth/logout"); } catch { /* signed out here either way */ }
+    clearStudyStorage();                        // chats, notes, quizzes and drafts stay with the account, not the browser
     useChampion.getState().reset();             // the next person on this browser starts from the default
     useMyHero.getState().reset();
     useForge.getState().reset();

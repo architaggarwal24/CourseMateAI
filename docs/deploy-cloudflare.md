@@ -80,7 +80,7 @@ Sign-up, sign-in, email codes, two-step sign-in, Google, and the admin page all 
 3. Verify the email. Without an email service, the code is in the Worker's log: run `npx wrangler tail` and look for `[coursemate-email]`, or use Workers & Pages → `coursemateai` → Logs.
 4. **Account → Admin** appears.
 
-Sign up as the owner before anyone else can. Until the email is verified the account isn't the owner, so another person signing up with your address first gets nothing, but it would block your sign-up.
+Sign up as the owner before anyone else can. Until the email is verified the account isn't the owner. If someone did register your address first, verifying tells you to reset the password instead: the reset proves the mailbox, signs every device out and removes any Google or GitHub login that was on the account, so the account is then only yours.
 
 **Emails** (verification and password-reset codes, and emailed two-step codes):
 - **Cloudflare Email Service:** needs Workers Paid and a sending domain set up in the dashboard (Email Service). Then add this to `wrangler.jsonc`:
@@ -218,11 +218,13 @@ XP, coins, levels, streaks, daily quests, achievements, the shop, potions, champ
 
 ## Auto-deploy from GitHub
 
-1. Cloudflare dashboard → *My Profile* → API Tokens → *Create Token* → template **Edit Cloudflare Workers**. Make sure these *Account* permissions are on it (add any missing): *Workers Scripts → Edit*, *D1 → Edit*, *Workers R2 Storage → Edit*, *Vectorize → Edit*, *Workers AI → Read*. Account Resources: your account. Create it and copy the token (shown once).
-2. In GitHub: repository → Settings → Secrets and variables → Actions → *New repository secret*:
+1. Cloudflare dashboard → *My Profile* → API Tokens → *Create Token* → template **Edit Cloudflare Workers**. Make sure these *Account* permissions are on it (add any missing): *Workers Scripts → Edit*, *D1 → Edit*, *Workers R2 Storage → Edit*, *Vectorize → Edit*, *Workers AI → Read*. Account Resources: your account only. Create it and copy the token (shown once).
+2. In GitHub: repository → Settings → Environments → *New environment* named `production`. Under *Deployment branches and tags* choose *Selected branches* and add `main`. Then, in that environment, *Add environment secret*:
    - `CLOUDFLARE_API_TOKEN`: the token;
    - `CLOUDFLARE_ACCOUNT_ID`: the long hex id in the dashboard URL (`dash.cloudflare.com/<account id>/...`), or run `npx wrangler whoami`.
-3. Push to `main`. The **deploy** job runs after the tests pass. It migrates D1, builds with OpenNext and deploys. Without the two secrets the deploy job fails (red X) and says which secret is missing. After adding them, open the latest run → *Re-run all jobs*.
+
+   Environment secrets reach only jobs that run from `main`, so a workflow edited on another branch can't use the token (security audit run 2). If you added them as repository secrets before, delete those.
+3. Push to `main`. The **deploy** job starts straight away, without waiting for the tests (a commit that doesn't compile still fails the build). It builds with OpenNext, migrates D1 and deploys. Without the two secrets the deploy job fails (red X) and says which secret is missing. After adding them, open the latest run → *Re-run all jobs*.
 
 A deploy doesn't cut off people already using the app: requests that are already running finish on the old version.
 

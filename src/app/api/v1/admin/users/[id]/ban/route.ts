@@ -16,5 +16,5 @@ export const POST = api<{ id: string }>(async (req, ctx, { id }) => {
 export const DELETE = api<{ id: string }>(async (req, ctx, { id }) => {
   const actor = await requireAdmin(req, ctx);
   await rateLimit(ctx.db, `admin:${actor.id}`, 120, 60);
-  return unban(ctx, intParam(id));
+  return unban(ctx, actor, intParam(id));
 });

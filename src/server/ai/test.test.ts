@@ -50,7 +50,7 @@ describe("test connection", () => {
     const live = await testModel(db, 1, { spec: "ollama:llama3.2" }, {}, AI_ENV, now);
     expect(live).toMatchObject({ ok: false, error: "Ollama can't be reached from here." });
     expect(live.hint).toMatch(/tunnel address/);
-    await saveOllamaUrl(db, "https://abc.trycloudflare.com", AI_ENV);
+    await saveOllamaUrl(db, 1, "https://abc.trycloudflare.com", AI_ENV);
     setLlmFactoryForTests(fakeLlms({ "ollama:llama3.2": new Error("404 model 'llama3.2' not found") }).factory);
     const r = await testModel(db, 1, { spec: "ollama:llama3.2" }, {}, AI_ENV, now);
     expect(r.hint).toMatch(/ollama pull llama3.2/);
@@ -59,7 +59,7 @@ describe("test connection", () => {
   });
 
   it("Ollama: a wrong path, and a cloud model it doesn't know yet", async () => {
-    await saveOllamaUrl(db, "https://abc.trycloudflare.com", AI_ENV);
+    await saveOllamaUrl(db, 1, "https://abc.trycloudflare.com", AI_ENV);
     setLlmFactoryForTests(fakeLlms({ "ollama:qwen3:8b": new Error("404 404 page not found") }).factory);
     expect((await testModel(db, 1, { spec: "ollama:qwen3:8b" }, {}, AI_ENV, now)).hint).toMatch(/no \/v1 or \/api/);
     setLlmFactoryForTests(fakeLlms({ "ollama:gpt-oss:120b-cloud": new Error("404 model \"gpt-oss:120b-cloud\" not found, try pulling it first") }).factory);

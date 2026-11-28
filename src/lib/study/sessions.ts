@@ -115,3 +115,29 @@ export function deleteArenaState(sessionId: string) {
   if (!isClient()) return;
   localStorage.removeItem(`${STORAGE_PREFIX}arena_${sessionId}`);
 }
+
+// ── whose storage this is (security audit run 1) ─────────────────────────────────────────────────────────────────
+// Study sessions, drafts and the last-open session per tool live in this browser's localStorage. On a shared computer
+// they must not outlast the account that wrote them: logout clears them, and an account signing in where another
+// account's sessions are stored starts empty. Device settings (theme, accent, sound, sidebar) are not study data and
+// stay.
+const OWNER_KEY = `${STORAGE_PREFIX}owner`;
+const STUDY_KEY = /^cmai_(session_|arena_|active_|draft_|metadata$|owner$)/;
+
+/** Remove every study key from this browser (logout, account deletion). */
+export function clearStudyStorage(): void {
+  if (!isClient()) return;
+  try {
+    for (const k of Object.keys(localStorage)) if (STUDY_KEY.test(k)) localStorage.removeItem(k);
+  } catch { /* storage blocked: nothing stored either */ }
+}
+
+/** The account now signed in on this browser: if the stored sessions belong to another account, they are removed. */
+export function claimStudyStorage(userId: string): void {
+  if (!isClient()) return;
+  try {
+    const owner = localStorage.getItem(OWNER_KEY);
+    if (owner !== null && owner !== userId) clearStudyStorage();
+    localStorage.setItem(OWNER_KEY, userId);
+  } catch { /* storage blocked */ }
+}

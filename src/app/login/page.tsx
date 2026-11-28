@@ -155,7 +155,13 @@ export default function LoginPage() {
           ) : mode === 'two-factor' ? (
             <TwoFactorStep onDone={signedIn} onCancel={backToLogin} />
           ) : mode === 'verify' ? (
-            <VerifyEmailStep email={formData.email} sent={false} onVerified={signedIn} />
+            <VerifyEmailStep email={formData.email} password={formData.password} sent={false} onVerified={async () => {
+              // verifying signs nobody in: sign in again with the password typed above (two-step may follow)
+              const r = await login(formData.email, formData.password);
+              if (r.status === 'two-factor') { setMode('two-factor'); return; }
+              if (r.status !== 'signed-in') throw new Error('Your email is verified. Sign in with your password to continue.');
+              await signedIn();
+            }} />
           ) : mode === 'forgot' ? (
             <ResetPassword initialEmail={formData.email}
               onDone={(email) => { setMode('login'); setFormData({ email, password: '' }); setNotice('Password changed. Log in with the new one.'); }}

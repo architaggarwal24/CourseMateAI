@@ -11,6 +11,7 @@ import type { RequestContext } from "../context";
 import { arenaBattles, arenaRuns, documents, missedQuestions } from "../db/schema";
 import { HttpError } from "../http";
 import { conceptKey } from "../study/review";
+import { boardHash } from "./board";
 import { weakConcepts } from "../study/mastery";
 import * as kits from "./kits";
 import { createBattle, end as endBattle, gearFor, PLAYER_MAX_HP, publicBoss, setRunBattleEnd, state as battleState, weekStart } from "./arena";
@@ -161,7 +162,7 @@ export async function createRun(ctx: RequestContext, userId: number, sessionId: 
   const now = iso();
   const id = crypto.randomUUID().replace(/-/g, "");
   try {
-    await ctx.db.insert(arenaRuns).values({ id, userId, sessionId, docHash, difficulty, seed: s, actsJson: JSON.stringify(acts), mapJson: JSON.stringify(maps),
+    await ctx.db.insert(arenaRuns).values({ id, userId, sessionId, docHash, boardHash: await boardHash(ctx, userId, sessionId, docHash), difficulty, seed: s, actsJson: JSON.stringify(acts), mapJson: JSON.stringify(maps),
       nemesisOk: ok ? 1 : 0, hearts, maxHearts: hearts, createdAt: now, updatedAt: now });
   } catch (e) {
     if (String((e as Error)?.message ?? e).includes("UNIQUE")) throw err("run_in_progress", "You already have an expedition running on this document.");
@@ -287,49 +288,65 @@ export async function choose(ctx: RequestContext, userId: number, runId: string,
   if (!run.pendingJson) throw err("no_choice", "There is nothing to choose right now.");
   const pending = J<Record<string, any>>(run.pendingJson, {});
   const t = typeof target === "string" ? target : null;
+  /**
+   * Take the pending choice (security audit run 1): one UPDATE that replaces exactly the pending value read above and
+   * applies the choice's own effect with it, so parallel requests for one choice resolve it once (the rest get
+   * no_choice, as a repeat already did). Follow-ups (score, relic, next act) run only after a successful claim.
+   */
+  const claim = async (next: unknown, effect: Record<string, unknown> = {}, guard?: ReturnType<typeof sql>) => {
+    const rows = await ctx.db.update(arenaRuns).set({ pendingJson: next ? JSON.stringify(next) : null, updatedAt: iso(), ...effect })
+      .where(and(eq(arenaRuns.id, run.id), eq(arenaRuns.status, "active"), eq(arenaRuns.pendingJson, run.pendingJson!), ...(guard ? [guard] : [])))
+      .returning({ id: arenaRuns.id }).all();
+    return rows.length > 0;
+  };
+  const taken = () => err("no_choice", "There is nothing to choose right now.");
   let outcome: Record<string, unknown>;
   if (pending.kind === "rest") {
     if (action === "heal") {
       const healed = restHeal(run);
-      await ctx.db.update(arenaRuns).set({ hearts: sql`${arenaRuns.hearts} + ${healed}` }).where(eq(arenaRuns.id, run.id));
+      if (!await claim(null, { hearts: sql`MIN(${arenaRuns.maxHearts}, ${arenaRuns.hearts} + ${healed})` })) throw taken();
       outcome = { action: "heal", healed };
     } else if (action === "study") {
       const concept = (pending.concepts ?? []).find((c: string) => t && c.toLowerCase() === t.trim().toLowerCase());
       if (!concept) throw new HttpError(400, "invalid_choice", "Pick one of the concepts on offer to study.", null, { concepts: pending.concepts ?? [] });
-      await ctx.db.update(arenaRuns).set({ actFocusBonus: sql`${arenaRuns.actFocusBonus} + 1` }).where(eq(arenaRuns.id, run.id));
+      if (!await claim(null, { actFocusBonus: sql`${arenaRuns.actFocusBonus} + 1` })) throw taken();
       const review = (await ctx.db.select().from(missedQuestions).where(and(eq(missedQuestions.userId, run.userId), eq(missedQuestions.docHash, run.docHash), eq(missedQuestions.conceptKey, conceptKey(concept))))
         .orderBy(desc(missedQuestions.missedAt)).limit(5).all()).map((r) => ({ question: r.question, correct_answer: r.correctAnswer, explanation: r.explanation }));
       outcome = { action: "study", concept, review, act_focus_bonus: run.actFocusBonus + 1 };
     } else throw badAction(pending as { kind: string }, pending.options ?? ["heal"]);
     await score(ctx, run.id, POINTS.rest, 1);
-    await setPending(ctx, run.id, null);
   } else if (pending.kind === "shop") {
-    if (action === "leave") { await score(ctx, run.id, POINTS.shop, 1); await setPending(ctx, run.id, null); outcome = { action: "leave" }; }
-    else if (action !== "buy") throw badAction(pending as { kind: string }, ["buy", "leave"]);
+    if (action === "leave") {
+      if (!await claim(null)) throw taken();
+      await score(ctx, run.id, POINTS.shop, 1);
+      outcome = { action: "leave" };
+    } else if (action !== "buy") throw badAction(pending as { kind: string }, ["buy", "leave"]);
     else {
       const item = (pending.stock ?? []).find((i: Record<string, unknown>) => i.id === t);
       if (!item) throw new HttpError(400, "invalid_choice", "That isn't for sale here.");
       if (item.sold) throw err("sold_out", "You already bought that.");
       if (run.gold < item.price) throw err("not_enough_gold", "You don't have enough gold.", { gold: run.gold, price: item.price });
-      const paid = await ctx.db.update(arenaRuns).set({ gold: sql`${arenaRuns.gold} - ${item.price}` }).where(and(eq(arenaRuns.id, run.id), sql`${arenaRuns.gold} >= ${item.price}`)).returning({ id: arenaRuns.id }).all();
-      if (!paid.length) throw err("not_enough_gold", "You don't have enough gold.");
-      outcome = { action: "buy", item: t, price: item.price };
-      if (item.kind === "potion") {
-        const healed = Math.max(0, Math.min(POTION.heal, run.maxHearts - run.hearts));
-        await ctx.db.update(arenaRuns).set({ hearts: sql`${arenaRuns.hearts} + ${healed}` }).where(eq(arenaRuns.id, run.id));
-        outcome.healed = healed;
-      } else { await grantRelic(ctx, run.id, t!); outcome.relic = publicRelic(t!); }
       item.sold = true;
-      await setPending(ctx, run.id, pending);
+      const healed = item.kind === "potion" ? Math.max(0, Math.min(POTION.heal, run.maxHearts - run.hearts)) : 0;
+      // the stock change, the payment and a potion's hearts in one guarded write: bought once, paid once
+      const effect: Record<string, unknown> = { gold: sql`${arenaRuns.gold} - ${item.price}` };
+      if (healed) effect.hearts = sql`MIN(${arenaRuns.maxHearts}, ${arenaRuns.hearts} + ${healed})`;
+      if (!await claim(pending, effect, sql`${arenaRuns.gold} >= ${item.price}`)) {
+        const now = await need(ctx, runId, userId);
+        if (now.pendingJson === run.pendingJson && now.gold < item.price) throw err("not_enough_gold", "You don't have enough gold.");
+        throw taken();
+      }
+      outcome = { action: "buy", item: t, price: item.price };
+      if (item.kind === "potion") outcome.healed = healed;
+      else { await grantRelic(ctx, run.id, t!); outcome.relic = publicRelic(t!); }
     }
   } else {
     if (action === "take") {
       if (!(pending.options ?? []).includes(t)) throw new HttpError(400, "invalid_choice", "Pick one of the relics on offer.");
-      await grantRelic(ctx, run.id, t!);
-      outcome = { action: "take", relic: publicRelic(t!) };
-    } else if (action === "skip") outcome = { action: "skip" };
-    else throw badAction(pending as { kind: string }, ["take", "skip"]);
-    await setPending(ctx, run.id, null);
+    } else if (action !== "skip") throw badAction(pending as { kind: string }, ["take", "skip"]);
+    if (!await claim(null)) throw taken();
+    if (action === "take") { await grantRelic(ctx, run.id, t!); outcome = { action: "take", relic: publicRelic(t!) }; }
+    else outcome = { action: "skip" };
     if (pending.then === "next_act") { await nextAct(ctx, run.id); outcome.next_act = true; }
   }
   return { run: await state(ctx, await need(ctx, runId, userId)), outcome };
@@ -407,7 +424,7 @@ export async function abandon(ctx: RequestContext, player: Player, runId: string
 
 /** Each player's best finished run: on one document (all time) or global (this week). */
 export async function leaderboard(ctx: RequestContext, userId: number, scope: "document" | "global", docHash: string | null) {
-  const where = scope === "global" ? sql`r.status != 'active' AND r.finished_at >= ${weekStart().toISOString()}` : sql`r.status != 'active' AND r.doc_hash = ${docHash}`;
+  const where = scope === "global" ? sql`r.status != 'active' AND r.finished_at >= ${weekStart().toISOString()}` : sql`r.status != 'active' AND coalesce(r.board_hash, r.doc_hash) = ${docHash}`;
   const rows = await ctx.db.all<{ user_id: number; username: string | null; score: number; depth: number; act: number; status: string; difficulty: string; finished_at: string | null }>(sql`
     SELECT * FROM (SELECT r.*, u.username AS username, ROW_NUMBER() OVER (PARTITION BY r.user_id ORDER BY r.score DESC, r.finished_at ASC) AS rn
       FROM arena_runs r JOIN user u ON u.id = r.user_id WHERE ${where}) WHERE rn = 1 ORDER BY score DESC, finished_at ASC LIMIT 100`);

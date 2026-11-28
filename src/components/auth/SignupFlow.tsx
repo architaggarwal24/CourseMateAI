@@ -25,7 +25,7 @@ type UsernameCheck = { status: "idle" } | { status: "checking" | "available" | "
  * A refusal lands beside its field (a taken email or username) or as a message on the step.
  */
 export default function SignupFlow({ onDone }: { onDone: () => void }) {
-  const { register, refresh } = useAuth();
+  const { register, refresh, login } = useAuth();
   const [step, setStep] = useState<1 | 2>(1);
   const [account, setAccount] = useState<AccountForm>(emptyAccountForm);
   const [touched, setTouched] = useState<Partial<Record<AccountField, boolean>>>({});
@@ -221,7 +221,12 @@ export default function SignupFlow({ onDone }: { onDone: () => void }) {
             </Button>
           </form>
         ) : (
-          <VerifyEmailStep email={account.email.trim()} onVerified={async () => { await refresh(); await finish(); }} />
+          <VerifyEmailStep email={account.email.trim()} password={account.password} onVerified={async () => {
+            // verifying signs nobody in: sign in with the password chosen above
+            const s = await login(account.email.trim(), account.password);
+            if (s.status !== "signed-in") throw new Error("Your email is verified. Sign in with your password to continue.");
+            await refresh(); await finish();
+          }} />
         )}
       </div>
     </div>

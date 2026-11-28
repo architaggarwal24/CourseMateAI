@@ -441,7 +441,8 @@ export const examAnswers = sqliteTable("exam_answers", {
   answeredAt: text("answered_at").notNull(),
 }, (t) => [primaryKey({ columns: [t.examId, t.idx] })]);
 
-/** One concept map per document content (file hash) and extractor version. `lease_until`: a build in progress. */
+/** One concept map per owner and document content and extractor version: doc_hash is `u<userId>:<file hash>`
+ *  (study/concept-map.ts mapKey; maps are never shared between accounts). `lease_until`: a build in progress. */
 export const conceptMaps = sqliteTable("concept_maps", {
   docHash: text("doc_hash").notNull(),
   version: integer("version").notNull(),
@@ -751,6 +752,8 @@ export const arenaRuns = sqliteTable("arena_runs", {
   userId: integer("user_id").notNull().references(() => user.id, { onDelete: "cascade" }),
   sessionId: text("session_id").notNull(),
   docHash: text("doc_hash").notNull(),
+  /** The hash the document board groups by (game/board.ts); null on runs from before it existed. */
+  boardHash: text("board_hash"),
   difficulty: text("difficulty").notNull(),
   seed: integer("seed").notNull(),
   actsJson: text("acts_json").notNull(),

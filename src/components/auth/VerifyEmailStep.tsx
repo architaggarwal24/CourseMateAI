@@ -7,11 +7,14 @@ import { sendVerificationCode, verifyEmail } from "@/lib/auth/auth-api";
 import CodeField from "./CodeField";
 
 /**
- * "We emailed you a code": enter it to confirm the address (and be signed in). `sent` says whether a code is already
- * on its way (sign-up sends one); otherwise the first button sends it.
+ * "We emailed you a code": enter it to confirm the address. `sent` says whether a code is already on its way (sign-up
+ * sends one); otherwise the first button sends it. Verifying signs nobody in: `onVerified` signs in with the password
+ * (and may throw an Error whose message is shown here). `password` goes with the code on a first verification.
  */
-export default function VerifyEmailStep({ email, sent = true, onVerified, onSkip }: {
+export default function VerifyEmailStep({ email, password, sent = true, onVerified, onSkip }: {
   email: string;
+  /** The password chosen at sign-up or typed at sign-in (needed to verify an account that has one). */
+  password?: string;
   sent?: boolean;
   onVerified: () => void | Promise<void>;
   /** Shown when the server doesn't insist on a verified email. */
@@ -37,10 +40,11 @@ export default function VerifyEmailStep({ email, sent = true, onVerified, onSkip
     if (code.length !== 6) { setError("Enter the 6-digit code from the email"); return; }
     setBusy(true);
     setError("");
-    const r = await verifyEmail(email, code);
-    setBusy(false);
-    if (r.ok) await onVerified();
-    else setError(r.failure.message);
+    const r = await verifyEmail(email, code, password);
+    if (!r.ok) { setBusy(false); setError(r.failure.message); return; }
+    try { await onVerified(); }
+    catch (err) { setError(err instanceof Error ? err.message : "Your email is verified. Sign in to continue."); }
+    finally { setBusy(false); }
   }
 
   return (

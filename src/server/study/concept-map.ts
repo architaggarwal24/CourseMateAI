@@ -83,7 +83,14 @@ async function scope(ctx: RequestContext, user: CurrentUser, id: string) {
   return { kind: "document" as const, name: found.row.filename, docs: [found.row], hashes: [found.row.fileHash] };
 }
 
-/** The maps of these documents, by hash, in one query. */
+/**
+ * A map row's key: the owner and the content hash. Maps are never shared between accounts (security audit run 1): the
+ * hash is declared by the browser at upload and the page text is sent by it too, so a shared row let one account plant
+ * the map other accounts saw for the same file, or read another account's map by claiming its hash.
+ */
+export const mapKey = (userId: number, fileHash: string) => `u${userId}:${fileHash}`;
+
+/** The maps of these documents, by key, in one query. */
 async function mapRows(ctx: RequestContext, hashes: string[]) {
   const unique = [...new Set(hashes)];
   const rows = unique.length
@@ -102,15 +109,16 @@ const live = (r: { status: string; leaseUntil: string | null }) => (r.status ===
 export async function build(ctx: RequestContext, user: CurrentUser, id: string) {
   const s = await scope(ctx, user, id);
   const todo: DocRow[] = [];
-  const maps = await mapRows(ctx, s.docs.filter((d) => d.status === "ready").map((d) => d.fileHash));
+  const key = (d: { fileHash: string }) => mapKey(user.id, d.fileHash);
+  const maps = await mapRows(ctx, s.docs.filter((d) => d.status === "ready").map(key));
   for (const d of s.docs) {
     if (d.status !== "ready") continue;
-    const r = maps.get(d.fileHash);
+    const r = maps.get(key(d));
     if (r && (r.status === "ready" || live(r))) continue;
     const t = now();
     const lease = new Date(Date.now() + LEASE_MS).toISOString();
     // claim it: only one request builds a given map
-    const claimed = await ctx.db.insert(conceptMaps).values({ docHash: d.fileHash, version: VERSION, status: "queued", stage: "Waiting to start…", leaseUntil: lease, createdAt: t, updatedAt: t })
+    const claimed = await ctx.db.insert(conceptMaps).values({ docHash: key(d), version: VERSION, status: "queued", stage: "Waiting to start…", leaseUntil: lease, createdAt: t, updatedAt: t })
       .onConflictDoUpdate({
         target: [conceptMaps.docHash, conceptMaps.version],
         set: { status: "queued", stage: "Waiting to start…", error: null, leaseUntil: lease, updatedAt: t },
@@ -121,15 +129,15 @@ export async function build(ctx: RequestContext, user: CurrentUser, id: string) 
   if (todo.length) {
     const caller = await callerFor(ctx, user);
     await Promise.all(todo.map(async (d) => {
-      const stage = (text: string) => setRow(ctx, d.fileHash, { status: "running", stage: text }).then(() => undefined);
+      const stage = (text: string) => setRow(ctx, key(d), { status: "running", stage: text }).then(() => undefined);
       try {
         await stage("Reading the document…");
         const chunks = await allChunks(ctx.db, [d.id]);
         const data = await extract(ctx, caller, chunks, stage);
-        await setRow(ctx, d.fileHash, { status: "ready", stage: null, error: null, dataJson: JSON.stringify(data), leaseUntil: null });
+        await setRow(ctx, key(d), { status: "ready", stage: null, error: null, dataJson: JSON.stringify(data), leaseUntil: null });
       } catch (e) {
         log.warn(`[coursemate] concept map failed for ${d.fileHash.slice(0, 12)}: ${e instanceof Error ? e.message.slice(0, 120) : e}`);
-        await setRow(ctx, d.fileHash, { status: "failed", stage: null, error: FAILED_TEXT, leaseUntil: null });
+        await setRow(ctx, key(d), { status: "failed", stage: null, error: FAILED_TEXT, leaseUntil: null });
       }
     }));
   }
@@ -144,9 +152,10 @@ export async function view(ctx: RequestContext, user: CurrentUser, id: string) {
   const docs: { id: string; name: string; status: string; stage: string | null; error: string | null }[] = [];
   const concepts = new Map<string, Concept>();
   const relations = new Map<string, { source: string; target: string; label: string }>();
-  const maps = await mapRows(ctx, s.docs.filter((d) => d.status === "ready").map((d) => d.fileHash));
+  const key = (d: { fileHash: string }) => mapKey(user.id, d.fileHash);
+  const maps = await mapRows(ctx, s.docs.filter((d) => d.status === "ready").map(key));
   for (const d of s.docs) {
-    const r = d.status === "ready" ? maps.get(d.fileHash) : undefined;
+    const r = d.status === "ready" ? maps.get(key(d)) : undefined;
     let status = r ? r.status : d.status === "ready" ? "none" : "not_ready";
     if (r && (r.status === "queued" || r.status === "running") && !live(r)) status = "stalled";
     docs.push({ id: d.id, name: d.filename, status, stage: r?.stage ?? null, error: r?.error ?? null });

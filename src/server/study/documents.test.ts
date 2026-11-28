@@ -54,7 +54,9 @@ const params = <T,>(v: T) => ({ params: Promise.resolve(v) });
 async function person(email: string, username: string): Promise<Browser> {
   const b = new Browser(`198.51.100.${ip++}`);
   await authRoute.POST(b.request("/api/auth/sign-up/email", { body: { email, password: "correct-horse-1", name: username, username } }));
-  b.keep(await authRoute.POST(b.request("/api/auth/email-otp/verify-email", { body: { email, otp: mail.lastCode(email) } })));
+  // verifying proves the mailbox only (security audit run 1): then sign in with the password
+  await authRoute.POST(b.request("/api/auth/email-otp/verify-email", { body: { email, otp: mail.lastCode(email), password: "correct-horse-1" } }));
+  b.keep(await authRoute.POST(b.request("/api/auth/sign-in/email", { body: { email, password: "correct-horse-1" } })));
   return b;
 }
 
@@ -131,6 +133,35 @@ describe("uploading", () => {
     }
     const refused = await upload.POST(b.request("/api/v1/upload", { body: { filename: "old.doc", size: 100, pages: 1, file_hash: "a".repeat(64) } }));
     expect((await json(refused)).error).toMatchObject({ code: "invalid_file", message: "That kind of file can't be added: use PDF, Word, PowerPoint, Excel, text or photos." });
+  });
+
+  it("a document's indexed text is bounded: no page twice, no more pages than it declared, and a per-account ceiling (security audit run 1)", async () => {
+    const b = await person("free@example.com", "freeuser");
+    const start = await json(await upload.POST(b.request("/api/v1/upload", { body: { filename: "one.txt", size: 10, pages: 2, file_hash: "c".repeat(64) } })));
+    const id = start.session_id as string;
+    const send = (pgs: { page: number; text: string }[], done = false) => pages.POST(b.request(`/api/v1/documents/${id}/pages`, { body: { pages: pgs, done } }), params({ id }));
+    const twice = await send([{ page: 1, text: "Cells make ATP." }, { page: 1, text: "Cells make ATP again." }]);
+    expect(twice.status).toBe(400);
+    expect((await send([{ page: 1, text: "Cells make ATP." }])).status).toBe(200);
+    const again = await send([{ page: 1, text: "The same page sent again." }]);                       // page 1 is already in
+    expect(again.status).toBe(409);
+    const ready = await json(await send([{ page: 2, text: "Membranes control entry." }], true));
+    expect(ready).toMatchObject({ status: "ready", pages: 2, indexed_pages: 2 });
+    expect((await p.env.DB.prepare("SELECT COUNT(*) AS n FROM document_chunks WHERE document_id = ?").bind(id).first<{ n: number }>())?.n).toBe(2);
+  });
+
+  it("the per-account ceiling on indexed text counts what waits in the Trash too", async () => {
+    vi.stubEnv("INDEX_CHUNKS_PER_DOCUMENT", "3");                                  // Free: 3 documents x 3 chunks
+    const b = await person("free@example.com", "freeuser");
+    const big = (n: number) => Array.from({ length: n }, (_, i) => ({ page: i + 1, text: `Page ${i + 1} about mitochondria and ATP.` }));
+    const start = async (name: string, n: number) => (await json(await upload.POST(b.request("/api/v1/upload", { body: { filename: name, size: 10, pages: n, file_hash: name.length.toString(16).repeat(64).slice(0, 64) } })))).session_id as string;
+    const a = await start("aa.txt", 6);
+    expect((await pages.POST(b.request(`/api/v1/documents/${a}/pages`, { body: { pages: big(6), done: true } }), params({ id: a }))).status).toBe(200);
+    await doc.DELETE(b.request(`/api/v1/documents/${a}`, { method: "DELETE" }), params({ id: a }));   // into the Trash, chunks kept
+    const c = await start("ccc.txt", 6);
+    const over = await pages.POST(b.request(`/api/v1/documents/${c}/pages`, { body: { pages: big(6), done: true } }), params({ id: c }));
+    expect(over.status).toBe(403);
+    expect((await json(over)).error.code).toBe("plan_limit");
   });
 
   it("the same file under the same id is reused; a changed file is checked against its fingerprint", async () => {
@@ -282,6 +313,23 @@ describe("deleting", () => {
     const actions = (await p.env.DB.prepare("SELECT action FROM deletion_log ORDER BY id").all()).results.map((r) => r.action);
     expect(actions).toEqual(["trashed", "trashed", "purged", "expired"]);
     expect((await restore.POST(b.request(`/api/v1/trash/${one}/restore`, { method: "POST" }), params({ id: one }))).status).toBe(404);
+  });
+
+  it("parallel restores can't pass the plan's document count either (security audit run 1)", async () => {
+    const b = await person("free@example.com", "freeuser");
+    const ids: string[] = [];
+    for (let round = 0; round < 2; round++) {
+      const batch = [];
+      for (let i = 0; i < 3; i++) batch.push((await uploadPdf(b, `r${round}-${i}.pdf`)).id);
+      for (const id of batch) await doc.DELETE(b.request(`/api/v1/documents/${id}`, { method: "DELETE" }), params({ id }));
+      ids.push(...batch);
+    }
+    const tries = await Promise.all(ids.map((id) => restore.POST(b.request(`/api/v1/trash/${id}/restore`, { body: {} }), params({ id }))));
+    const n = (await json(await docs.GET(b.request("/api/v1/documents")))).documents.length;
+    expect(n).toBeLessThanOrEqual(3);
+    expect(tries.filter((r) => r.status === 200).length).toBe(n);
+    const waiting = (await json(await trashList.GET(b.request("/api/v1/trash")))).items.length;
+    expect(waiting + n).toBe(6);                                                   // nothing lost: the rest wait in the Trash
   });
 
   it("only you can see, restore or empty your Trash; a restore still respects the plan's document count", async () => {

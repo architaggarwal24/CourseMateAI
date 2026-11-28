@@ -26,6 +26,7 @@ import { questionKey, sameAnswer } from "../study/text";
 import { bossFlavor, generateBattleQuiz, questionTier, type BattleQuestion } from "./arena-ai";
 import { baseBoss, summon } from "./bestiary";
 import * as tome from "./tome";
+import { boardHash } from "./board";
 import * as roster from "./roster";
 import * as mastery from "./mastery";
 import * as build from "./build";
@@ -366,7 +367,7 @@ export async function createBattle(ctx: RequestContext, userId: number, o: {
   const id = crypto.randomUUID().replace(/-/g, "");
   try {
     await ctx.db.insert(arenaBattles).values({
-      id, userId, sessionId: o.sessionId, docHash: o.docHash, topic: o.topic, difficulty: o.difficulty, boardKey: boardKey(o.topic, o.difficulty, o.docHash),
+      id, userId, sessionId: o.sessionId, docHash: o.docHash, topic: o.topic, difficulty: o.difficulty, boardKey: boardKey(o.topic, o.difficulty, await boardHash(ctx, userId, o.sessionId, o.docHash)),
       bossJson: JSON.stringify(boss), bossHp: boss.max_hp, bossMaxHp: boss.max_hp, playerHp: hearts, playerMaxHp: maxHearts, createdAt: now,
       updatedAt: now, mode: o.mode ?? "quick", runId: o.runId ?? null, gauntletId: o.gauntletId ?? null, focus, focusCap, intentJson: JSON.stringify(intent),
     });
@@ -921,10 +922,18 @@ async function heroXp(ctx: RequestContext, userId: number, b: Row, won: boolean)
   return { id: build.HERO_ID, xp_gained: xp, xp: r?.xp ?? 0, level: r?.level ?? 1, leveled_up: !!r?.leveled_up, next_level_xp: r?.next_level_xp ?? null, unlocked: [] as string[] };
 }
 
+/** What other players may see of a battle's topic. Nemesis, Invasion and Season topics are built from the player's own
+ *  missed and studied concepts, so the weekly board shows only the mode's name for them (security audit run 2). */
+export function publicTopic(mode: string | null | undefined, topic: string): string {
+  if (mode === "nemesis" || mode === "invasion" || mode === "season") return topic.split(":")[0].trim() || titleCase(mode);
+  return topic;
+}
+
 async function recordScore(ctx: RequestContext, b: Row, grade: string, accuracy: number, seconds: number, now: string) {
   const u = await ctx.db.select({ name: userTable.username }).from(userTable).where(eq(userTable.id, b.userId)).get();
-  await ctx.db.insert(arenaScores).values({ battleId: b.id, boardKey: b.boardKey, userId: b.userId, username: u?.name || String(b.userId).slice(0, 8), topic: b.topic,
-    topicKey: normTopic(b.topic), difficulty: b.difficulty, docHash: b.docHash, grade, accuracy, timeSeconds: seconds, createdAt: now }).onConflictDoNothing();
+  const board = b.boardKey.slice(b.boardKey.lastIndexOf("|") + 1);          // the shared hash (./board.ts), not the study hash
+  await ctx.db.insert(arenaScores).values({ battleId: b.id, boardKey: b.boardKey, userId: b.userId, username: u?.name || String(b.userId).slice(0, 8), topic: publicTopic(b.mode, b.topic),
+    topicKey: normTopic(b.topic), difficulty: b.difficulty, docHash: board, grade, accuracy, timeSeconds: seconds, createdAt: now }).onConflictDoNothing();
   const best = await ctx.db.insert(arenaPersonalBests).values({ userId: b.userId, boardKey: b.boardKey, battleId: b.id, grade, accuracy, timeSeconds: seconds, updatedAt: now })
     .onConflictDoUpdate({
       target: [arenaPersonalBests.userId, arenaPersonalBests.boardKey],

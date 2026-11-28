@@ -16,6 +16,6 @@ export const PUT = api(async (req, ctx) => {
   const u = await requireAdmin(req, ctx);
   await rateLimit(ctx.db, `admin:${u.id}`, 120, 60);
   const { spec } = await readJson<{ spec?: unknown }>(req);
-  const { ollamaUrl } = await aiSettings(ctx.db);
+  const { ollamaUrl } = await aiSettings(ctx.db, u.id);                 // this admin's own tunnel only
   return { spec: await saveOverride(ctx.db, u.id, typeof spec === "string" ? spec : null, process.env, ollamaUrl) };
 });

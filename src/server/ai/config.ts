@@ -23,7 +23,9 @@ const overrideKey = (userId: number) => `ai_override:${userId}`;
 /** The setting each slot stands in for. */
 export const SLOT_ENV: Record<SlotName, string> = { fast: "LLM_FAST", strong: "LLM_STRONG", premium: "LLM_PREMIUM", small: "WORKERS_AI_MODEL" };
 
-const OLLAMA_URL_KEY = "ollama_url";
+/** Each admin's own Ollama tunnel (security audit run 1: it was one key for every admin, so any admin could point
+ *  another admin's own model at an address of theirs). The old shared "ollama_url" row is no longer read. */
+const ollamaUrlKey = (userId: number) => `ollama_url:${userId}`;
 /** Ollama answers under `next dev` (this computer), or anywhere once an admin has saved a tunnel URL. */
 export function ollamaEnabled(env: Env = process.env, tunnel?: string | null): boolean {
   return env.NODE_ENV === "development" || !!tunnel;
@@ -52,14 +54,15 @@ export function checkOllamaUrl(raw: string, env: Env = process.env): string {
   return ollamaRoot(`${u.origin}${u.pathname}`);
 }
 
-/** Save (or with null clear) the Ollama tunnel URL. */
-export async function saveOllamaUrl(db: Db, url: string | null, env: Env = process.env): Promise<string | null> {
+/** Save (or with null clear) this admin's own Ollama tunnel URL. */
+export async function saveOllamaUrl(db: Db, userId: number, url: string | null, env: Env = process.env): Promise<string | null> {
+  const key = ollamaUrlKey(userId);
   if (url === null || url.trim() === "") {
-    await db.delete(appSettings).where(eq(appSettings.key, OLLAMA_URL_KEY));
+    await db.delete(appSettings).where(eq(appSettings.key, key));
     return null;
   }
   const value = checkOllamaUrl(url, env);
-  await db.insert(appSettings).values({ key: OLLAMA_URL_KEY, value: JSON.stringify({ url: value }), updatedAt: nowIso() })
+  await db.insert(appSettings).values({ key, value: JSON.stringify({ url: value }), updatedAt: nowIso() })
     .onConflictDoUpdate({ target: appSettings.key, set: { value: JSON.stringify({ url: value }), updatedAt: nowIso() } });
   return value;
 }
@@ -70,14 +73,14 @@ function parseJson<T>(raw: string | undefined | null, fallback: T): T {
   try { return raw ? (JSON.parse(raw) as T) : fallback; } catch { return fallback; }
 }
 
-/** The saved slots, the Ollama tunnel URL and (for `userId`) that admin's own model, in one read. */
+/** The saved slots and (for `userId`) that admin's own model and own Ollama tunnel URL, in one read. */
 export async function aiSettings(db: Db, userId?: number): Promise<{ slots: Slots; override: string | null; ollamaUrl: string | null }> {
-  const keys = userId ? [SLOTS_KEY, OLLAMA_URL_KEY, overrideKey(userId)] : [SLOTS_KEY, OLLAMA_URL_KEY];
+  const keys = userId ? [SLOTS_KEY, ollamaUrlKey(userId), overrideKey(userId)] : [SLOTS_KEY];
   const rows = await db.select().from(appSettings).where(inArray(appSettings.key, keys)).all();
   const get = (k: string) => rows.find((r) => r.key === k)?.value;
   const slots = parseJson<Slots>(get(SLOTS_KEY), {});
   const override = userId ? parseJson<{ spec?: string } | null>(get(overrideKey(userId)), null)?.spec ?? null : null;
-  const ollamaUrl = parseJson<{ url?: string } | null>(get(OLLAMA_URL_KEY), null)?.url ?? null;
+  const ollamaUrl = userId ? parseJson<{ url?: string } | null>(get(ollamaUrlKey(userId)), null)?.url ?? null : null;
   return { slots: typeof slots === "object" && slots ? slots : {}, override, ollamaUrl };
 }
 

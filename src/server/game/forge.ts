@@ -2,7 +2,7 @@
 // XP when it is worn in a fight. A full bar plus coins plus materials (dropped by Bestiary creatures) raises it one
 // tier, I to V: a small capped bonus (+5% a tier, +20% at most) and a new look. A pet grows with its tiers (baby,
 // young, adult); an adult pet can be saddled and ridden as a mount, which brings a small bonus of its own.
-import { and, eq, inArray, sql } from "drizzle-orm";
+import { and, eq, gte, inArray, sql } from "drizzle-orm";
 import type { RequestContext } from "../context";
 import { forgeMaterials, itemProgress } from "../db/schema";
 import { HttpError } from "../http";
@@ -89,8 +89,23 @@ export async function dropMaterials(ctx: RequestContext, userId: number, species
   return Object.entries(out).map(([id, n]) => ({ id, name: MATERIAL_NAMES[id] ?? id, count: n, rare: RARE.has(id) }));
 }
 
-/** Take `common` common and `rare` rare materials, the most plentiful first. Null (and nothing taken) if short; `dry` only checks. */
-async function spend(ctx: RequestContext, userId: number, common: number, rare: number, dry = false) {
+type Take = Record<string, number>;
+
+/** Put back materials taken by spend() (a forge that didn't happen). */
+async function giveBack(ctx: RequestContext, userId: number, take: Take) {
+  for (const [id, n] of Object.entries(take)) {
+    await ctx.db.update(forgeMaterials).set({ quantity: sql`${forgeMaterials.quantity} + ${n}` })
+      .where(and(eq(forgeMaterials.userId, userId), eq(forgeMaterials.materialId, id)));
+  }
+}
+
+/**
+ * Take `common` common and `rare` rare materials, the most plentiful first. Null (and nothing taken) if short; `dry`
+ * only checks. Each row is taken only while it still holds enough (a guarded UPDATE, all in one batch), so parallel
+ * forges can't spend the same materials twice or drive a count below zero (security audit run 1). On a shortfall,
+ * only the rows actually taken are put back.
+ */
+async function spend(ctx: RequestContext, userId: number, common: number, rare: number, dry = false): Promise<Take | null> {
   const rows = await ctx.db.select().from(forgeMaterials).where(eq(forgeMaterials.userId, userId)).all();
   const take: Record<string, number> = {};
   for (const [want, pool] of [[common, COMMON], [rare, RARE]] as const) {
@@ -102,12 +117,17 @@ async function spend(ctx: RequestContext, userId: number, common: number, rare: 
     }
     if (left > 0) return null;
   }
-  if (dry) return take;
-  for (const [id, n] of Object.entries(take)) {
-    await ctx.db.update(forgeMaterials).set({ quantity: sql`${forgeMaterials.quantity} - ${n}` })
-      .where(and(eq(forgeMaterials.userId, userId), eq(forgeMaterials.materialId, id)));
-  }
-  return take;
+  const ids = Object.keys(take);
+  if (dry || !ids.length) return take;
+  const stmts = ids.map((id) => ctx.db.update(forgeMaterials).set({ quantity: sql`${forgeMaterials.quantity} - ${take[id]}` })
+    .where(and(eq(forgeMaterials.userId, userId), eq(forgeMaterials.materialId, id), gte(forgeMaterials.quantity, take[id])))
+    .returning({ id: forgeMaterials.materialId }));
+  const res = await ctx.db.batch(stmts as unknown as [typeof stmts[number], ...typeof stmts]);
+  const taken: Take = {};
+  ids.forEach((id, i) => { if (res[i].length === 1) taken[id] = take[id]; });
+  if (Object.keys(taken).length === ids.length) return take;
+  await giveBack(ctx, userId, taken);                              // never credit a row whose guarded UPDATE changed nothing
+  return null;
 }
 
 /** What can be forged: the gear you own (and your hero's styles), its tier and bar, and your materials. */
@@ -142,11 +162,12 @@ export async function upgrade(ctx: RequestContext, userId: number, itemId: unkno
   if (!it.next) throw new HttpError(409, "max_tier", "That is already at tier V.");
   if (it.xp < it.next.xp) throw new HttpError(409, "not_ready", `It needs ${it.next.xp - it.xp} more XP: wear it in fights.`);
   const short = () => new HttpError(409, "not_enough_materials", `That needs ${it.next!.common} common${it.next!.rare ? ` and ${it.next!.rare} rare` : ""} materials from Bestiary wins.`);
-  if (!(await spend(ctx, userId, it.next.common, it.next.rare, true))) throw short();
-  // one payment per tier (a double click can't pay twice)
+  // materials first, then one payment per tier (a double click can't pay twice); a failed payment returns the
+  // materials, so the tier's payment key is only ever used by an upgrade that happens
+  const took = await spend(ctx, userId, it.next.common, it.next.rare);
+  if (!took) throw short();
   const paid = await recordRewardEvent(ctx, userId, "forge_upgrade", 0, -it.next.coins, `${it.id}:${it.tier + 1}`, `u${userId}:forge:${it.id}:${it.tier + 1}`);
-  if (!paid.applied) throw new HttpError(402, "not_enough_coins", `That costs ${it.next.coins} coins.`);
-  if (!(await spend(ctx, userId, it.next.common, it.next.rare))) throw short();
+  if (!paid.applied) { await giveBack(ctx, userId, took); throw new HttpError(402, "not_enough_coins", `That costs ${it.next.coins} coins.`); }
   const t = nowIso();
   await ctx.db.insert(itemProgress).values({ userId, itemId: it.id, xp: it.xp - it.next.xp, tier: it.tier + 1, updatedAt: t })
     .onConflictDoUpdate({ target: [itemProgress.userId, itemProgress.itemId], set: { xp: it.xp - it.next.xp, tier: it.tier + 1, updatedAt: t } });
@@ -160,11 +181,12 @@ export async function saddle(ctx: RequestContext, userId: number, petId: unknown
   if (!it) throw new HttpError(404, "not_owned", "You don't own that pet.");
   if (it.saddled) throw new HttpError(409, "already_saddled", "That pet already has a saddle.");
   if (it.tier < SADDLE.tier) throw new HttpError(409, "not_grown", "Only an adult pet (tier IV) can carry you.");
-  if (!(await spend(ctx, userId, 0, SADDLE.rare, true))) throw new HttpError(409, "not_enough_materials", `A saddle needs ${SADDLE.rare} rare materials.`);
+  const took = await spend(ctx, userId, 0, SADDLE.rare);           // materials first (see upgrade)
+  if (!took) throw new HttpError(409, "not_enough_materials", `A saddle needs ${SADDLE.rare} rare materials.`);
   const paid = await recordRewardEvent(ctx, userId, "saddle", 0, -SADDLE.coins, it.id, `u${userId}:saddle:${it.id}`);
-  if (!paid.applied) throw new HttpError(402, "not_enough_coins", `A saddle costs ${SADDLE.coins} coins.`);
-  await spend(ctx, userId, 0, SADDLE.rare);
-  await ctx.db.update(itemProgress).set({ saddled: true, updatedAt: nowIso() }).where(and(eq(itemProgress.userId, userId), eq(itemProgress.itemId, it.id)));
+  if (!paid.applied) { await giveBack(ctx, userId, took); throw new HttpError(402, "not_enough_coins", `A saddle costs ${SADDLE.coins} coins.`); }
+  await ctx.db.update(itemProgress).set({ saddled: true, updatedAt: nowIso() })
+    .where(and(eq(itemProgress.userId, userId), eq(itemProgress.itemId, it.id), eq(itemProgress.saddled, false)));
   return forgeView(ctx, userId, heroStyles);
 }
 

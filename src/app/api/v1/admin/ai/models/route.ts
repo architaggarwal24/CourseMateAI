@@ -37,7 +37,7 @@ export const PUT = api(async (req, ctx) => {
   const u = await requireAdmin(req, ctx);
   await rateLimit(ctx.db, `admin:${u.id}`, 120, 60);
   const body = await readJson<{ slots?: Record<string, unknown>; ollama_url?: unknown }>(req);
-  if ("ollama_url" in body) await saveOllamaUrl(ctx.db, typeof body.ollama_url === "string" ? body.ollama_url : null);
+  if ("ollama_url" in body) await saveOllamaUrl(ctx.db, u.id, typeof body.ollama_url === "string" ? body.ollama_url : null);
   const change: Partial<Record<SlotName, string | null>> = {};
   for (const s of SLOT_NAMES) {
     const v = body.slots?.[s];

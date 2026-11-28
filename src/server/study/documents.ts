@@ -5,12 +5,12 @@
 // Statuses as before: queued -> reading -> indexing -> ready | failed. An upload the browser never finished turns
 // into "failed" after STALE_MINUTES, with a message to upload it again.
 import * as log from "../log";
-import { and, count, desc, eq, inArray } from "drizzle-orm";
+import { and, count, desc, eq, gte, inArray, like, lt, sql } from "drizzle-orm";
 import type { CurrentUser, RequestContext } from "../context";
-import { courseDocuments, courses, documentChunks, documents } from "../db/schema";
+import { conceptMaps, courseDocuments, courses, documentChunks, documents, trashChunks } from "../db/schema";
 import { HttpError } from "../http";
 import { limits, nowIso, planLimit, requireFeature, tierFor, type Tier } from "../account/plans";
-import { chunkText } from "../search/chunker";
+import { CHUNK_OVERLAP, CHUNK_SIZE, chunkText } from "../search/chunker";
 import { EMBEDDING_MODEL, vectorId, type SearchDeps } from "../search";
 import { purgeExpired, purgeTrashFiles, trashDocument } from "./trash";
 import { MAX_COURSE_DOCUMENTS, r2Key } from "./limits";
@@ -309,6 +309,18 @@ export async function putFile(ctx: RequestContext, user: CurrentUser, id: string
 
 export interface PageText { page: number; text: string }
 
+/**
+ * How much indexed text one account may keep, live and in the Trash (security audit run 1): chunks per document of
+ * the plan, times the plan's documents. 2,000 chunks is about 1.6 million characters, a 400-page book. Without it, a
+ * document could take any number of embeddings, vectors and rows (the page numbers sent were only range-checked).
+ */
+export const indexChunksPerDocument = (env: Record<string, unknown> = process.env) => {
+  const n = Number(env.INDEX_CHUNKS_PER_DOCUMENT);
+  return Number.isInteger(n) && n > 0 ? n : 2000;
+};
+/** The most chunks one capped page can make (chunks overlap). */
+const MAX_CHUNKS_PER_PAGE = Math.ceil(MAX_PAGE_CHARS / (CHUNK_SIZE - CHUNK_OVERLAP)) + 1;
+
 export async function addPages(ctx: RequestContext, deps: SearchDeps, user: CurrentUser, id: string, body: { pages?: unknown; done?: unknown }) {
   const row = await ownedDocument(ctx, user, id);
   if (row.status !== "reading" && row.status !== "indexing") {
@@ -317,45 +329,97 @@ export async function addPages(ctx: RequestContext, deps: SearchDeps, user: Curr
   const raw = Array.isArray(body.pages) ? body.pages : [];
   if (raw.length > MAX_PAGES_PER_BATCH) throw new HttpError(400, "invalid_input", `Send at most ${MAX_PAGES_PER_BATCH} pages at a time.`);
   const pages: PageText[] = raw.map((p: { page?: unknown; text?: unknown }) => ({ page: Number(p?.page), text: String(p?.text ?? "") }));
+  const seen = new Set<number>();
   for (const p of pages) {
     if (!Number.isInteger(p.page) || p.page < 1 || p.page > row.pages) throw new HttpError(400, "invalid_input", "A page number is out of range.");
+    if (seen.has(p.page)) throw new HttpError(400, "invalid_input", "A page was sent twice.");
+    seen.add(p.page);
     if (p.text.length > MAX_PAGE_CHARS) p.text = p.text.slice(0, MAX_PAGE_CHARS);
+  }
+  // Each page is indexed once (security audit run 1): more pages than the document declared, or a page that already
+  // has text in it, is refused before any embedding. (Pages need not come in order: a scan's pages come after its text
+  // pages, one by one from the OCR route.)
+  const already = pages.length && row.chunks > 0
+    ? await ctx.db.selectDistinct({ page: documentChunks.page }).from(documentChunks)
+      .where(and(eq(documentChunks.documentId, id), inArray(documentChunks.page, pages.map((p) => p.page)))).all()
+    : [];
+  if (row.indexedPages + pages.length > row.pages || already.length) {
+    throw new HttpError(409, "upload_state", "Those pages are already in this document. Upload it again.", "reupload");
   }
 
   const pieces = pages.flatMap((p) => chunkText(p.text).map((text) => ({ page: p.page, text })));
-  let chunks = row.chunks;
+  if (row.chunks + pieces.length > row.pages * MAX_CHUNKS_PER_PAGE) {
+    throw new HttpError(409, "upload_state", "This document has more text than its pages can hold. Upload it again.", "reupload");
+  }
   if (pieces.length) {
-    let vectors: number[][];
-    try {
-      vectors = await deps.embedder.embed(pieces.map((c) => c.text));
-    } catch {
-      throw new HttpError(503, "embedding_unavailable", "Couldn't index these pages just now. Please try again in a moment.", "retry");
+    // the account's ceiling, live and in the Trash (deleting a document frees its slot but keeps its text 30 days)
+    const tier = await tierFor(ctx.db, user);
+    const cap = limits(tier).documents * indexChunksPerDocument();
+    const [live, trashed] = await Promise.all([
+      ctx.db.select({ n: sql<number>`coalesce(sum(${documents.chunks}), 0)` }).from(documents).where(eq(documents.userId, user.id)).get(),
+      ctx.db.select({ n: count() }).from(trashChunks).where(eq(trashChunks.userId, user.id)).get(),
+    ]);
+    const have = Number(live?.n ?? 0) + Number(trashed?.n ?? 0);
+    if (have + pieces.length > cap) {
+      const per = indexChunksPerDocument();
+      throw planLimit(tier, "documents", Math.ceil((have + pieces.length) / per), limits(tier).documents,
+        "Your plan's room for document text is full. Empty the Trash or delete a document, or upgrade.");
     }
-    const start = row.chunks;
+  }
+  // Claim this batch's place in the index before any embedding (audit run 2). Two batches for one document that
+  // overlap can't both get the same chunk numbers: the loser is refused here and has written nothing, and whatever the
+  // winner writes lies inside the document's counted range, so deleting the document removes all of it.
+  const start = row.chunks;
+  const chunks = start + pieces.length;
+  const indexedPages = row.indexedPages + pages.length;
+  const claim = await ctx.db.update(documents).set({ chunks, indexedPages, status: "indexing", updatedAt: nowIso() })
+    .where(and(eq(documents.id, id), eq(documents.chunks, start), eq(documents.indexedPages, row.indexedPages),
+      inArray(documents.status, ["reading", "indexing"]))).run();
+  if ((claim.meta?.changes ?? 0) === 0) throw new HttpError(409, "upload_state", "Two uploads of this document crossed. Upload it again.", "reupload");
+
+  if (pieces.length) {
+    const ids = pieces.map((_, i) => vectorId(id, start + i));
+    const undo = async () => {
+      await deps.vectors.deleteByIds(ids).catch((e) => log.error("[coursemate] search index clean-up failed", e));
+      await ctx.db.delete(documentChunks).where(and(eq(documentChunks.documentId, id), gte(documentChunks.idx, start), lt(documentChunks.idx, chunks)));
+      await ctx.db.update(documents).set({ chunks: start, indexedPages: row.indexedPages, updatedAt: nowIso() })
+        .where(and(eq(documents.id, id), eq(documents.chunks, chunks)));
+    };
     try {
-      await deps.vectors.upsert(pieces.map((c, i) => ({
-        id: vectorId(id, start + i), values: vectors[i], metadata: { doc: id, user: String(user.id), page: c.page },
-      })));
+      let vectors: number[][];
+      try {
+        vectors = await deps.embedder.embed(pieces.map((c) => c.text));
+      } catch {
+        throw new HttpError(503, "embedding_unavailable", "Couldn't index these pages just now. Please try again in a moment.", "retry");
+      }
+      try {
+        await deps.vectors.upsert(pieces.map((c, i) => ({
+          id: ids[i], values: vectors[i], metadata: { doc: id, user: String(user.id), page: c.page },
+        })));
+      } catch (e) {
+        // Under `npm run dev` this is usually "Binding VECTORS needs to be run remotely": Vectorize has no local
+        // version, so wrangler.jsonc marks it `"remote": true` and dev needs `npx wrangler login` (docs/deploy-cloudflare.md).
+        log.error("[coursemate] search index write failed", e);
+        throw new HttpError(503, "search_unavailable", "Couldn't save this PDF to the search index just now. Please try again in a moment.", "retry");
+      }
+      const rows = pieces.map((c, i) => ({ documentId: id, idx: start + i, page: c.page, text: c.text }));
+      for (let i = 0; i < rows.length; i += 25) {                 // D1 takes at most 100 bound values a statement
+        await ctx.db.insert(documentChunks).values(rows.slice(i, i + 25)).onConflictDoNothing();
+      }
     } catch (e) {
-      // Under `npm run dev` this is usually "Binding VECTORS needs to be run remotely": Vectorize has no local
-      // version, so wrangler.jsonc marks it `"remote": true` and dev needs `npx wrangler login` (docs/deploy-cloudflare.md).
-      log.error("[coursemate] search index write failed", e);
-      throw new HttpError(503, "search_unavailable", "Couldn't save this PDF to the search index just now. Please try again in a moment.", "retry");
+      await undo();
+      throw e;
     }
-    const rows = pieces.map((c, i) => ({ documentId: id, idx: start + i, page: c.page, text: c.text }));
-    for (let i = 0; i < rows.length; i += 25) {                 // D1 takes at most 100 bound values a statement
-      await ctx.db.insert(documentChunks).values(rows.slice(i, i + 25)).onConflictDoNothing();
-    }
-    chunks = start + pieces.length;
   }
   const done = body.done === true;
   const status = done ? (chunks > 0 ? "ready" as const : "failed" as const) : "indexing" as const;
-  const next = {
-    chunks, indexedPages: row.indexedPages + pages.length, status, error: status === "failed" ? NO_TEXT_MESSAGE : null, updatedAt: nowIso(),
-  };
-  const updated = await ctx.db.update(documents).set(next)
-    .where(and(eq(documents.id, id), eq(documents.chunks, row.chunks))).run();
-  if ((updated.meta?.changes ?? 0) === 0) throw new HttpError(409, "upload_state", "Two uploads of this document crossed. Upload it again.", "reupload");
+  const next = { chunks, indexedPages, status, error: status === "failed" ? NO_TEXT_MESSAGE : null, updatedAt: nowIso() };
+  if (status !== "indexing") {
+    // `done` finishes the upload only once every earlier batch has landed (none still holds a claim past this one)
+    const updated = await ctx.db.update(documents).set({ status, error: next.error, updatedAt: next.updatedAt })
+      .where(and(eq(documents.id, id), eq(documents.chunks, chunks), eq(documents.status, "indexing"))).run();
+    if ((updated.meta?.changes ?? 0) === 0) throw new HttpError(409, "upload_state", "Two uploads of this document crossed. Upload it again.", "reupload");
+  }
   return publicView({ ...row, ...next });
 }
 
@@ -371,6 +435,8 @@ export async function purgeUserFiles(ctx: RequestContext, deps: SearchDeps | nul
   const rows = await ctx.db.select().from(documents).where(eq(documents.userId, userId)).all();
   for (const r of rows) await purge(ctx, deps, r, true);
   await purgeTrashFiles(ctx, deps, userId);                       // and what waits in the Trash
+  // concept maps have no foreign key (keyed u<userId>:<hash>, see study/concept-map.ts mapKey): remove them by prefix
+  await ctx.db.delete(conceptMaps).where(like(conceptMaps.docHash, `u${userId}:%`));
 }
 
 /** The kept PDF for the page viewer (the PDF viewer is a Sage feature), with byte ranges for pdf.js. */

@@ -12,7 +12,9 @@ export const params = <T,>(v: T) => ({ params: Promise.resolve(v) });
 export async function person(mail: ReturnType<typeof fakeMailer>, email: string, username: string): Promise<Browser> {
   const b = new Browser(`203.0.113.${ip++ % 250}`);
   await authRoute.POST(b.request("/api/auth/sign-up/email", { body: { email, password: "correct-horse-1", name: username, username } }));
-  b.keep(await authRoute.POST(b.request("/api/auth/email-otp/verify-email", { body: { email, otp: mail.lastCode(email) } })));
+  // verifying proves the mailbox only (security audit run 1): then sign in with the password
+  await authRoute.POST(b.request("/api/auth/email-otp/verify-email", { body: { email, otp: mail.lastCode(email), password: "correct-horse-1" } }));
+  b.keep(await authRoute.POST(b.request("/api/auth/sign-in/email", { body: { email, password: "correct-horse-1" } })));
   return b;
 }
 

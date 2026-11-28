@@ -121,9 +121,13 @@ export async function sendVerificationCode(email: string) {
   return post("/email-otp/send-verification-otp", { email: email.trim(), type: "email-verification" });
 }
 
-/** Confirms the email with the 6-digit code; signs the person in. */
-export async function verifyEmail(email: string, code: string) {
-  return post("/email-otp/verify-email", { email: email.trim(), otp: code.trim() });
+/**
+ * Confirms the email with the 6-digit code. It signs nobody in: sign in with the password afterwards. A first
+ * verification sends the password chosen at sign-up too (the server refuses it otherwise, so an address someone else
+ * registered first can't be taken over); from inside a signed-in account, the session is enough.
+ */
+export async function verifyEmail(email: string, code: string, password?: string) {
+  return post("/email-otp/verify-email", { email: email.trim(), otp: code.trim(), ...(password ? { password } : {}) });
 }
 
 export async function requestPasswordReset(email: string) {

@@ -126,6 +126,15 @@ export async function restoreFromTrash(ctx: RequestContext, user: CurrentUser, i
       ctx.db.delete(trash).where(eq(trash.id, id)),
       ctx.db.insert(deletionLog).values(logLine(user.id, user.id, "restored", "document", id, r.name, now)),
     ]);
+    // Same as security fix #11 in startUpload (security audit run 1): parallel restores can all pass the count above,
+    // so count again now that it is back, and send it back to the Trash (same expiry) if that went over. Racers for
+    // the last slot may all be refused, but never all kept.
+    const after = (await ctx.db.select({ n: count() }).from(documents).where(eq(documents.userId, user.id)).get())?.n ?? 0;
+    if (after > lim.documents) {
+      const restored = await ctx.db.select().from(documents).where(eq(documents.id, id)).get();
+      if (restored) await trashDocument(ctx, user, restored, r.deletedAt);
+      throw planLimit(tier, "documents", after - 1, lim.documents, `Your plan holds ${lim.documents} documents and you have ${after - 1}. Delete one first, or upgrade.`);
+    }
     return { ok: true, kind: "document" as const, id, name: r.name, courses: back.length };
   }
   const row = JSON.parse(r.row) as CourseRow;
@@ -145,6 +154,12 @@ export async function restoreFromTrash(ctx: RequestContext, user: CurrentUser, i
     ctx.db.delete(trash).where(eq(trash.id, id)),
     ctx.db.insert(deletionLog).values(logLine(user.id, user.id, "restored", "course", id, r.name, now)),
   ]);
+  const afterCourses = (await ctx.db.select({ n: count() }).from(courses).where(eq(courses.userId, user.id)).get())?.n ?? 0;
+  if (afterCourses > allowed) {                                       // the same recount as documents, above
+    const restored = await ctx.db.select().from(courses).where(eq(courses.id, id)).get();
+    if (restored) await trashCourse(ctx, user, restored, r.deletedAt);
+    throw planLimit(tier, "courses", afterCourses - 1, allowed, `Your plan holds ${allowed} courses and you have ${afterCourses - 1}. Delete one first, or upgrade.`);
+  }
   return { ok: true, kind: "course" as const, id, name: r.name, documents: back.length };
 }
 

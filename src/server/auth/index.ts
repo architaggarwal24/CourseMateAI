@@ -10,11 +10,11 @@ import { TERMS_VERSION } from "@/lib/legal";
 import { betterAuth, type BetterAuthOptions } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { admin, emailOTP, twoFactor, username } from "better-auth/plugins";
-import { eq } from "drizzle-orm";
+import { and, eq, ne } from "drizzle-orm";
 import { getDb } from "../db";
 import * as schema from "../db/schema";
 import { codeMail, createMailer, type Mailer, type MailerEnv } from "./mailer";
-import { authGuards, emailDailyCap, limitedMailer, pwnedCheck, type BreachCheck } from "./guards";
+import { authGuards, checkFirstVerification, emailDailyCap, limitedMailer, pwnedCheck, type BreachCheck } from "./guards";
 import { hashPassword, iterationsFrom, verifyPassword } from "./password";
 
 export interface AuthSettings extends MailerEnv {
@@ -162,9 +162,19 @@ export function authOptions(d1: D1Database, settings: AuthSettings, { origin, ma
       // Without an email service nobody could ever verify, so the account works straight away.
       requireEmailVerification: mail.canSend,
       revokeSessionsOnPasswordReset: true,
+      // A reset by email code proves the mailbox. When it is the first proof (the address was never verified), any
+      // Google or GitHub login already on the account came from whoever set the address before, so it goes too
+      // (audit run 2: otherwise someone who moved their account onto your address keeps a way back in after you take
+      // it over). Sessions are already revoked by revokeSessionsOnPasswordReset.
+      onPasswordReset: async ({ user }: { user: { id: string | number; emailVerified?: boolean | null } }) => {
+        if (user.emailVerified) return;
+        await db.delete(schema.account).where(and(eq(schema.account.userId, Number(user.id)), ne(schema.account.providerId, "credential")));
+      },
       password: { hash: (password: string) => hashPassword(password, iterations), verify: verifyPassword },
     },
-    emailVerification: { autoSignInAfterVerification: true },
+    // An emailed code proves the mailbox, not the account: it signs nobody in, can't re-verify a verified address,
+    // and a first verification needs the sign-up password (security audit run 1; see ./guards.ts).
+    emailVerification: { autoSignInAfterVerification: false, beforeEmailVerification: checkFirstVerification(db) },
     socialProviders: socialProviders(settings),
     // Google is trusted; GitHub links only verified addresses (see socialProviders above)
     account: { accountLinking: { enabled: true, trustedProviders: ["google"] } },
@@ -175,7 +185,9 @@ export function authOptions(d1: D1Database, settings: AuthSettings, { origin, ma
         termsVersion: { type: "string", required: false, input: true },
         termsAcceptedAt: { type: "date", required: false, input: false },
       },
-      deleteUser: { enabled: true },
+      // Off: the app's DELETE /api/v1/auth/delete-account is the only way to delete an account (owner protection,
+      // password, typed DELETE, file and vector purge, deletion log). Better Auth's own /delete-user skipped all of it.
+      deleteUser: { enabled: false },
     },
     rateLimit: {
       enabled: true,
@@ -240,11 +252,21 @@ export function authOptions(d1: D1Database, settings: AuthSettings, { origin, ma
         allowedAttempts: 5,
         sendVerificationOnSignUp: true,
         overrideDefaultEmailVerification: true,
-        sendVerificationOTP: async ({ email, otp, type }) => mail.send(codeMail(email, otp, type)),
+        // Email sign-in is off (/sign-in/email-otp is disabled), so a "sign-in" code is never sent, and nobody can ask
+        // for one to an address with no account (audit run 2). A repeat request re-sends the code already issued
+        // instead of replacing it, so asking again for someone else can't void the code in their inbox.
+        disableSignUp: true,
+        resendStrategy: "reuse",
+        sendVerificationOTP: async ({ email, otp, type }) => {
+          if (type === "sign-in") return;
+          const verified = type === "forget-password" && !!(await db.select({ v: schema.user.emailVerified }).from(schema.user)
+            .where(eq(schema.user.email, email.toLowerCase())).get())?.v;
+          return mail.send(codeMail(email, otp, type), verified ? "account" : "open");
+        },
       }),
       twoFactor({
         issuer: "CourseMateAI",
-        otpOptions: { sendOTP: async ({ user, otp }) => mail.send(codeMail(user.email, otp, "two-factor")) },
+        otpOptions: { sendOTP: async ({ user, otp }) => mail.send(codeMail(user.email, otp, "two-factor"), "account") },
       }),
       admin({ defaultRole: "user", adminRoles: ["admin"] }),
     ],
